@@ -1,4 +1,230 @@
-# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index), 23 (I-5b — A-27's forgiveness entry), 24 (I-5c — A-28's second arm for filter 2), 25 (the I-5 closure round), 26 (I-6 — the widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan), 27 (I-6a — A-29's stated-country gate and A-30's `refreshSummary`) 28 (I-7 — `travelStats` and the row's record census), 29 (I-7a — A-32's civil calendar, A-33's exit criterion 6, A-34's `provisional`) 30 (I-7b — A-35's span cap, A-36's executed port gate, A-37's row read gates) 31 (A-38 — the seeded double and `ensureReady`'s upcast) 32 (A-39 — the finite covering set and the boundary that closes the arc), 33 (I-8a — the tab shell, the world map, the token layer and the signal-collision fix), 34 (I-8c — A-45's calendar gate, A-44's lifecycle read gate, BLD-3's way out) 35 (I-8e — A-46's unreadable row, its rescue export, and R34-1's ordering fix) 36 (I-8d — A-41's atlas frame and A-42's withdrawn min-span claim; I-8d's first adversarial round) 37 (I-8g — A-48's `countryKeyPoint`, the connected-components partition, C9's paint order and the pane's `aspect`) 38 (I-8h — A-49's `countryParts`, C8′'s extent, C8″'s detached pane and A-50's symmetric pane box) 39 (I-8i — A-51's one-pane-per-cluster frame, A-52's ring filter and A-53's home/extent panes + I18) 40 (I-8f + I-8j together — A-47's `openFailures`/`rowUnopenable`, and A-54's G7′/G7″ layout, D/I19 ring guard and G5′ tie-break) 41 (I-8b — the Profile, the mobile-first shell, and `DESIGN.md` §5/§6's first rendered acceptance standard) 42 (I-8b's repair pass — the mandatory re-breaker over round 41's 3 MAJOR / 14 MINOR, `DESIGN.md` revision 2 §6.2's refusal-equivalence criterion, and the vacuous fault harness) and **43 (I-12 — A-56's `cities[].centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` 4 → 5, and `TravelStatsCity`'s city dates) 44 (I-12a — A-59's counted city-date fallback and nameable row, A-60's clamp-artefact fix) 45 (I-13 — the photo foundation: §10's record class, EXIF reader, byte stores and loading-state selectors, A-57/A-58/A-61) and **46 (I-13b — the confirmation round over the whole photo repair arc: A-62's `[tripId, photoId]` byte key, A-63's fourth `PhotoListing` phase, A-64's withdrawn provenance claim) 47 (I-13c — the confirmation round over the round-46 repair pass and revisions 45/46: A-62 Part 8 residue 4, A-65's refused deferred delete, A-66's five-armed failure union) 48 (I-13d — the confirmation round over §4.2 **A-67**, the store's generation guard, and revision 48's **Part 7a**) 49 (I-13e — the confirmation round over §4.2 **A-68**, the wiring at A-67's own call sites, and the required re-cut of `qa/r47-i13c.mjs`) 50 (I-13g + I-13h — the confirmation round over §4.2 **A-69**'s settling boundary and **A-70**'s sequence-stamped predicate, the required re-cut of `qa/r49-i13e.mjs`, and the close of the A-67…A-70 arc) 51 (I-13i — the confirmation round over §4.2 **A-71**'s subscriber-exception brand and one classifier, §10 **A-66 Part 11**'s `setBatch`, and the required re-cut of six assertions across three `qa/` probes)**** **52 (I-9 — participants in core: `Trip.participants`, the three build functions, the two validation codes, and the *participation grants nothing* invariant)** **53 (the confirmation-breaker pass over the participants arc)** **54 (I-11 — the PHASE 2 PHASE GATE: every exit criterion re-derived, the phase attack list run end to end, one cross-cutting scenario over everything the phase built, and the whole `qa/` board re-run)** and **55 (I-15 — the mandatory adversarial pass over §2.1 **A-76**, *a build door asks the parser what a record may hold*: KD-100, the TOCTOU window, the two standing censuses, and the hunt for the eleventh unguarded door)** and **56 (I-16 — the mandatory adversarial pass over §2.1 **A-77**, *a door does not say what it wrote; the document says what changed*: the identity diff itself, the eighth record class, the replaced door census, and the third attempt at one class of bug)** and **57 (I-17 — the mandatory adversarial pass over §2.1 **A-78**, *the census reads the tree, not a list of files*: the fourth round on one class after an explicit claim of structural closure, and the fifth face, which went inward)** and **58 (I-18 — the mandatory adversarial pass over §2.1 **A-79**, *the census asks whether a door is reachable, not how it is declared*: the fifth round on one class, run against A-79 Part 11's three named exceptions, and the sixth face — the type constructors the walk cannot descend through)** and **59 (I-19 — the mandatory adversarial pass over §2.1 **A-80**, *the predicate descends every type constructor, and the closure claim becomes coverage rather than a list of exceptions*: the sixth round on one class, run against A-80 Part 10's own statement of what a seventh finding must look like, and the seventh face — the door that IS the union member)** and **60 (I-21 — the mandatory adversarial pass over §8.4 **A-82**, *a bundled gazetteer gives a typed city a real coordinate and no shipped row may contradict the country index*: the invariant re-derived from the pinned source, the quantisation question answered, and the first measured coverage hit rate for the capability Jacob asked for)**
+# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index), 23 (I-5b — A-27's forgiveness entry), 24 (I-5c — A-28's second arm for filter 2), 25 (the I-5 closure round), 26 (I-6 — the widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan), 27 (I-6a — A-29's stated-country gate and A-30's `refreshSummary`) 28 (I-7 — `travelStats` and the row's record census), 29 (I-7a — A-32's civil calendar, A-33's exit criterion 6, A-34's `provisional`) 30 (I-7b — A-35's span cap, A-36's executed port gate, A-37's row read gates) 31 (A-38 — the seeded double and `ensureReady`'s upcast) 32 (A-39 — the finite covering set and the boundary that closes the arc), 33 (I-8a — the tab shell, the world map, the token layer and the signal-collision fix), 34 (I-8c — A-45's calendar gate, A-44's lifecycle read gate, BLD-3's way out) 35 (I-8e — A-46's unreadable row, its rescue export, and R34-1's ordering fix) 36 (I-8d — A-41's atlas frame and A-42's withdrawn min-span claim; I-8d's first adversarial round) 37 (I-8g — A-48's `countryKeyPoint`, the connected-components partition, C9's paint order and the pane's `aspect`) 38 (I-8h — A-49's `countryParts`, C8′'s extent, C8″'s detached pane and A-50's symmetric pane box) 39 (I-8i — A-51's one-pane-per-cluster frame, A-52's ring filter and A-53's home/extent panes + I18) 40 (I-8f + I-8j together — A-47's `openFailures`/`rowUnopenable`, and A-54's G7′/G7″ layout, D/I19 ring guard and G5′ tie-break) 41 (I-8b — the Profile, the mobile-first shell, and `DESIGN.md` §5/§6's first rendered acceptance standard) 42 (I-8b's repair pass — the mandatory re-breaker over round 41's 3 MAJOR / 14 MINOR, `DESIGN.md` revision 2 §6.2's refusal-equivalence criterion, and the vacuous fault harness) and **43 (I-12 — A-56's `cities[].centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` 4 → 5, and `TravelStatsCity`'s city dates) 44 (I-12a — A-59's counted city-date fallback and nameable row, A-60's clamp-artefact fix) 45 (I-13 — the photo foundation: §10's record class, EXIF reader, byte stores and loading-state selectors, A-57/A-58/A-61) and **46 (I-13b — the confirmation round over the whole photo repair arc: A-62's `[tripId, photoId]` byte key, A-63's fourth `PhotoListing` phase, A-64's withdrawn provenance claim) 47 (I-13c — the confirmation round over the round-46 repair pass and revisions 45/46: A-62 Part 8 residue 4, A-65's refused deferred delete, A-66's five-armed failure union) 48 (I-13d — the confirmation round over §4.2 **A-67**, the store's generation guard, and revision 48's **Part 7a**) 49 (I-13e — the confirmation round over §4.2 **A-68**, the wiring at A-67's own call sites, and the required re-cut of `qa/r47-i13c.mjs`) 50 (I-13g + I-13h — the confirmation round over §4.2 **A-69**'s settling boundary and **A-70**'s sequence-stamped predicate, the required re-cut of `qa/r49-i13e.mjs`, and the close of the A-67…A-70 arc) 51 (I-13i — the confirmation round over §4.2 **A-71**'s subscriber-exception brand and one classifier, §10 **A-66 Part 11**'s `setBatch`, and the required re-cut of six assertions across three `qa/` probes)**** **52 (I-9 — participants in core: `Trip.participants`, the three build functions, the two validation codes, and the *participation grants nothing* invariant)** **53 (the confirmation-breaker pass over the participants arc)** **54 (I-11 — the PHASE 2 PHASE GATE: every exit criterion re-derived, the phase attack list run end to end, one cross-cutting scenario over everything the phase built, and the whole `qa/` board re-run)** and **55 (I-15 — the mandatory adversarial pass over §2.1 **A-76**, *a build door asks the parser what a record may hold*: KD-100, the TOCTOU window, the two standing censuses, and the hunt for the eleventh unguarded door)** and **56 (I-16 — the mandatory adversarial pass over §2.1 **A-77**, *a door does not say what it wrote; the document says what changed*: the identity diff itself, the eighth record class, the replaced door census, and the third attempt at one class of bug)** and **57 (I-17 — the mandatory adversarial pass over §2.1 **A-78**, *the census reads the tree, not a list of files*: the fourth round on one class after an explicit claim of structural closure, and the fifth face, which went inward)** and **58 (I-18 — the mandatory adversarial pass over §2.1 **A-79**, *the census asks whether a door is reachable, not how it is declared*: the fifth round on one class, run against A-79 Part 11's three named exceptions, and the sixth face — the type constructors the walk cannot descend through)** and **59 (I-19 — the mandatory adversarial pass over §2.1 **A-80**, *the predicate descends every type constructor, and the closure claim becomes coverage rather than a list of exceptions*: the sixth round on one class, run against A-80 Part 10's own statement of what a seventh finding must look like, and the seventh face — the door that IS the union member)** and **60 (I-21 — the mandatory adversarial pass over §8.4 **A-82**, *a bundled gazetteer gives a typed city a real coordinate and no shipped row may contradict the country index*: the invariant re-derived from the pinned source, the quantisation question answered, and the first measured coverage hit rate for the capability Jacob asked for)** and **61 (I-22 — the mandatory adversarial pass over §8.4 **A-83** Part 8, *`City.centre` may be `null` and a picked city carries the row it came from*: the `SCHEMA_VERSION` 3 → 4 migration attacked byte for byte, the near-Null-Island case constructed, the corpus regeneration diffed row by row against `dd19958`, and the browser read-back gate finally run)**
+
+> **Status (as of `master` @ `3b21a63`, independently verified 2026-09-09 — round 61, the
+> **mandatory adversarial pass** over ROADMAP **I-22** / `ARCHITECTURE.md` revision 64 §8.4
+> **A-83** Part 8 (*`City.centre` may be `null`, a picked city carries the gazetteer row it came
+> from, and Geneva ships*). Routed mandatory by `cairn/CLAUDE.md`'s delegation table twice over:
+> a core invariant **and** a `SCHEMA_VERSION` migration that runs over real stored documents.
+> Four new probes — `qa/r61-migration.mjs`, `qa/r61-precedence.mjs`, `qa/r61-corpus.mjs`,
+> `qa/r61-serial-rescan.mjs` — plus **one extension to `qa/i7a-idb-rowkeys.mjs`** (R61-5, the
+> browser gate the builder could not run). **Zero product-code edits, zero `src`, zero `.tsx`,
+> zero `apps/web`, zero `packages/client/src`, zero `docs/design/`, zero new dependency; the
+> generator was run only in throwaway `git worktree`s and the working tree holds only `qa/`.**
+>
+> **ASSESSMENT — SEND BACK, to the ARCHITECT. 0 BLOCKERS, 3 MAJOR, 8 MINOR.**
+>
+> **The migration is the thing that mattered most and it is CLEAN. I attacked it first and
+> hardest, and I could not make it lose a byte.** `qa/r61-migration.mjs` builds a version-3
+> document out of the committed Europe 2026 sample — six real cities, 16 days, 112 stops, 95
+> places, 21 bookings, participants, resolutions — downgraded the way a v3 build actually wrote it
+> (no `placeId` key, `{0,0}` where the current build writes `null`). Migrated: **conversion count
+> 1**, arrival at `schemaVersion` 4, **every located coordinate byte-identical** (asserted
+> pair-by-pair, not by a spot check), Vienna still `{"lat":48.2082,"lng":16.3738}`, the one `{0,0}`
+> city `null`, every city `placeId: null` — and **no field outside `cities[].centre` /
+> `cities[].placeId` moved anywhere in the document**, checked by stripping those two keys and
+> comparing the whole thing byte for byte. It reopens through `fromJSON` and a second round trip
+> is byte-identical. **The near-Null-Island case, which is the one I was told to construct and the
+> one that would have been a BLOCKER: `isOrigin` is `o.lat === 0 && o.lng === 0` and nothing
+> else, so São Tomé at `{0.3365, 6.7273}` survives byte-identical, and so do points 11 m north and
+> 11 m east of the origin (`{0.0001, 0}`, `{0, 0.0001}`).** Only the exact origin is nulled. There
+> is no shipped gazetteer row at `{0,0}` and **none within a whole degree of it** — the nearest
+> pickable rows are São Tomé (`0.3334, 6.7333`) and Port-Gentil (`-0.72, 8.78`), both far outside
+> the predicate — so the ruling's *"this also nulls a city genuinely at 0°N 0°E"* cost is
+> genuinely unpayable on this corpus. Migrating twice is **byte-identical to migrating once**; an
+> already-version-4 document is a **byte-identical no-op** reporting 0; a version-1 and a
+> version-2 document each climb the whole ladder and convert their one origin; `schemaVersion` 0,
+> `-1`, `1.5`, `NaN` and 5 are each refused loudly, **naming the original version**; the rung does
+> not write through to the caller's object and the tally is allocated per call. **Every fixture
+> under `fixtures/legacy/` opens** — there is exactly one, `trip-598cd7f.v1.json` at
+> `schemaVersion` 1, report `{"nulledOriginCentres":0}`, every stored coordinate intact, re-emit
+> stable. The builder's two headline migration numbers reproduce exactly.
+>
+> **The corpus regeneration is clean too, and this is the other place a byte could have been lost.**
+> `qa/r61-corpus.mjs` decodes `gazetteer.gen.ts` at **both** commits and pairs 7,244 rows by id:
+> **0 rows dropped, exactly 98 added, all 98 marked `indexAgrees: false`, every carried-over row
+> marked `true`, and NOT ONE COORDINATE MOVED** — every pre-existing row is byte-identical apart
+> from gaining the flag and the `ne:` id prefix. `EMITTED_BYTES` is **434,212** and that is the
+> file's real size on disk. The invariant walked with no allowlist: **6,808 agree, 436 the index
+> is silent on, 98 marked, 0 contradicted silently**, and **every marked row genuinely disagrees**
+> — the marking is a record, not a licence. The golden and the corpus agree on 98; every published
+> row is findable, marked, and carries the published stated code; Geneva, Jerusalem, Brazzaville,
+> Maastricht, Lugano, Niagara Falls and Arlon are all in it. **Determinism was measured over two
+> real fetches in a throwaway worktree and it is stronger than "twice identical": run 1 reproduced
+> the COMMITTED bytes exactly**, all three artefacts, from `19,359,003 bytes / sha256 `9b8e3de0…``
+> — A-82 Part 1's pin — and run 2 matched run 1.
+>
+> **N6's guard is real and it is bidirectional — I injected both directions.** Flipping Geneva's
+> shipped `indexAgrees` `0 → 1` in the artefact: `--audit-only` **exits 1** naming
+> `VIOLATION Geneva states CH, countryOf says FR`. Marking an agreeing row (Vienna) `false`:
+> **exits 1** naming `MIS-MARKED Vienna is marked indexAgrees:false and countryOf says AT`, and
+> `gazetteer.test.ts` reddens with it. That is not a printed line.
+>
+> **The browser gate the builder disclosed as a gap is CLOSED — and extending it found something.**
+> `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node --experimental-strip-types qa/i7a-idb-rowkeys.mjs`
+> → **ALL OK, exit 0, chromium**, all four phases. But the probe's shape assertion read
+> `if (c.centre === undefined) continue;` and then `Object.keys(c.centre)`, so a `centre: null` —
+> the 25th `ROW_PATHS` leaf this increment adds — would have **thrown** rather than been checked,
+> and no seeded row carried one. I added a second, unlocated city to the seeded row and the null
+> assertion beside it (**R61-5**); the gate is green in all three phases with the new leaf
+> crossing a real structured clone and a real `versionchange`. `ROW_KEYS` did not move, so A-36
+> Part 4's trigger genuinely did not fire and the builder read it correctly — but `ROW_PATHS` did,
+> and the gate had a hole exactly there.
+>
+> **Everything else I re-derived independently and it holds.** `ROW_PATHS` is **25** entries
+> gaining exactly `cities[].centre`; `ROW_KEYS` unmoved; `ROW_COUNT_FIELDS` **eight**. The fifth
+> union fixture is **non-vacuous by construction and by assertion** — it asserts the leaf is
+> produced, that the located branch is not, and that **exactly one** fixture reaches `centre: null`.
+> **A-39 Part 11, re-derived from the table rather than from the report: |S| = 7, |C| = 4, 28 rows,
+> and every one of the 28 S×C pairs appears exactly once — the lower bound `|S|×|C|` is achieved,
+> so the set is minimal.** Every other pair count the builder published reproduces exactly:
+> **14 V×S, 8 V×C, 21 B×S, 12 B×C, 6 V×B, 14 D×S, 8 D×C, 4 V×D**, arms **14/14**, exactly one
+> `b: 'none'` per generation, `D×B` exactly `{v1|none, v2|missing, v2|present}`. Items 1 and 3
+> fire; item 2 fires at zero new rows and the arithmetic is right **and now tight** — |D| = 4 at
+> `SCHEMA_VERSION` 4 gives 4×7 = 28 ≤ 28, so **the NEXT `SCHEMA_VERSION` bump breaks the
+> absorption and forces the table to grow**, which is worth knowing before it happens. Items 4–7
+> do not fire, and they are true by construction rather than by inspection: `git show --stat` for
+> this commit contains **no file under `apps/`**, so `DB_VERSION`, the port's write paths and
+> `onupgradeneeded` cannot have moved. Export surface, run rather than trusted: **87**, subpath
+> `['GAZETTEER']`, and all four pin sites read 87 (`surface.test.ts:129`, `:130`,
+> `generation.test.ts:574`, `index.ts:121`). `migrateDocWithReport` is on `serialize/migrate.ts`
+> and **not** on `index.ts`; `migrateDoc(doc: unknown): unknown` is **byte-identical** to the
+> signature at `dd19958`; the only non-test caller of the new export is none. Main chunk,
+> re-measured with the work stashed in a worktree at `dd19958`: **1,030.98 → 1,032.12 kB raw
+> (+1.14 kB), 333.21 → 333.55 kB gzip**, one chunk, `grep -c Brazzaville dist/assets/index-*.js`
+> → **0**. Regression: `npm run test:tap` **1,702 pass / 0 fail / 0 skipped / 0 cancelled**,
+> `npm run typecheck` **exit 0 on both projects**, `npm run web:build` succeeds. Product proof,
+> run myself: `node cli.ts cities "geneva"` →
+> `Geneva, Genève, Switzerland · 46.21,6.14 · CH  ⚑ our country index disagrees — it says this
+> point is elsewhere`; `node cli.ts cities "vienna" --limit 2` → `Vienna, Wien, Austria ·
+> 48.202,16.3647 · AT`, **no marker**. `SUMMARY_VERSION` 5 → 6 rides the **existing** rescan and
+> nothing new was invented: the trigger is still the single generic
+> `(row.summaryVersion ?? 0) < core.SUMMARY_VERSION` at `store.ts:72`, no version literal is
+> hard-coded, `packages/client/src` has a zero-line diff — and a planted stale generation-5 row
+> carrying `FR`/`coordinate`/`{0,0}`/a stale title is genuinely **re-derived from its document**
+> to `CH`/`picked`/`{46.21, 6.14}`, while a row already at 6 is left alone. The golden negative
+> controls are real: `travel-stats.json` is a **one-line** `summaryVersion` diff and the other
+> eleven goldens have zero-line diffs. `cairn-constraints` holds — `packages/core` has `{}`
+> dependencies, no `Date.now`/`Math.random`/`crypto.randomUUID` in any touched core file, no DOM
+> in `packages/client/src`, no lockfile change. **And the reader census is complete**: every one of
+> the eight readers of `City.centre` in `packages/core` and `packages/client` handles `null`
+> explicitly — `createTrip`, `toJSON`, `parseCentre`, the rung, `travelStats`, `tripSummary`,
+> `geoCheck`, `legacyDays` — with none left over.
+>
+> **What is wrong is one thing wearing three shapes, and it is the ruling, not the build.**
+> A-83 Part 8 clause 2 says the pair *"came from ONE shipped gazetteer row"* and that *"the row's
+> code is the answer"*. **`derive/summary.ts` never looks a row up.** It reads
+> `c.placeId !== null` and then hands **the city's own stored `countryCode` string** to
+> `acceptStatedCountry` — so the arm's whole safety argument, *"`placeId` is exactly that missing
+> provenance"*, rests on a field nothing validates, nothing pairs with a row, and nothing
+> invalidates when the pair is broken. Measured (`qa/r61-precedence.mjs` §C/§D): **`ne:zzzzzzzz`,
+> `gn:2761369`, `x`, `''`, `'   '`, `':'`, a 4 kB string and the literal `'null'` ALL fire the
+> picked arm**, and a city at Vienna's coordinate carrying `countryCode: 'HU'` and any one of them
+> reports `{HU, picked}` and puts **HU on the lifetime map's `countryCodes`**. That is A-29 Part 3
+> item 3's own stated harm — *"a mistyped `HU` on Vienna puts Hungary on the lifetime map
+> permanently"* — reached through the field that was supposed to prevent it. A-83 anticipates the
+> hand-edit (*"provenance, not authentication… their own map"*) and I accept that; what it does
+> not anticipate is that **a shipped `packages/core` door reaches it with no hand-editing at all**:
+> `setTripMeta(trip, {cities: […]})` replaces a city's `countryCode` while leaving `placeId` in
+> place, and I watched `{CH, picked}` become `{HU, picked}` in one call; the same door moved a
+> picked Geneva's `centre` to Vienna's coordinate and the row still said **`{CH, picked}` at
+> 48.2082, 16.3738**. There is no invalidation rule anywhere for *"the pick no longer describes
+> this city"*, and A-82 Part 6's fence is a rule about who may **write** `placeId`, not about what
+> happens to it afterwards. **This is a design defect and it routes to the architect** —
+> the empty-string half is a builder fix, the rest is a clause A-83 does not have.
+>
+> **§0.6 is satisfied, and I checked it rather than assuming it.** No country string is persisted
+> onto the city by this change: a stored `City` carries exactly `{key, name, countryCode, centre,
+> placeId, order}`, `countrySource` appears nowhere in the document, `TripSummaryCity.countryCode`
+> is derived on every read, and `placeId` is **not** on the summary row at all (`ROW_PATHS` has no
+> `cities[].placeId`), so the pick is stored once, as evidence, in the one place it was made.
+>
+> **The builder's third disclosure rests on a false measurement.** BUILD-NOTES says the picked
+> arm's step-4 drawability fall-through *"cannot fire on the committed corpus — 0 shipped rows
+> carry a code outside the index's 239"*. Measured: the index draws **239** codes, the corpus
+> carries **227**, and **six of them are outside** — `GP`, `GF`, `YT`, `MQ`, `SJ`, `RE`, on
+> **14 shipped rows**. It fires today, and for four of the six the fall-through does not reach the
+> parent either: picking **Basse-Terre**, **Dzaoudzi**, **Fort-de-France** or **St.-Benoît** out of
+> the shipped gazetteer reports **`{countryCode: null, countrySource: null}`** — no country at all
+> — because `countryOf` is silent there too. (Cayenne → `FR`, Longyearbyen → `NO`, which is the
+> conservative answer the builder described.) Nine more rows carry `countryCode: ''` (Hargeisa,
+> Berbera, Famagusta, Kyrenia…) and pick to `{null, null}` the same way. The **generator** half of
+> A-83 Part 8's second shipping condition is correctly I-23's (`ROADMAP.md:6111`), so this is not a
+> fence breach — but the architect was asked to judge a fall-through on the stated basis that it
+> is unreachable, and it is reachable fourteen times.
+>
+> **Adjudicating the builder's first disclosure: the builder is RIGHT and the ROADMAP prose is
+> wrong.** `TravelStats.unattributed`'s own type docstring says *"Never greater than `located`,
+> per class"*, and counting an **un**located city as unattributed breaks it the moment every city
+> in a trip is typed (`located 0`, `unattributed N`). The `[stated]` criterion — *"exactly one
+> unlocated city"* — is what shipped, `travelStats` measures it correctly (`located.cities` 1 of 2
+> rows, `unattributed.cities` 0, zero cities at `{0,0}`), and it matches the shape `add()` already
+> uses for a `Place` with no `at`. **The prose line is the thing to change and it is an architect's
+> edit, not a builder's.** One thing rides with it and is a real gap: **`travelStats` cannot report
+> *"unlocated, by count"* across a library at all.** There is no `unlocated` field, and the
+> subtraction a surface would have to do — `cities.length − located.cities` — is wrong, because
+> `TravelStats.cities` is grouped by `nameKey` across trips: two trips each holding an unlocated
+> Paris give `cities 1, located.cities 0` ⇒ **1**, and there are **2** unlocated city records.
+>
+> **Adjudicating the second disclosure: `migrateDocWithReport` is the smallest thing that could
+> work, and `migrateDoc`'s signature is genuinely byte-identical.** One new symbol, on a module
+> that is not on §2.10's surface, keeping the production call path unchanged; the alternatives —
+> widening `migrateDoc`'s return type, or a module-level counter — break a signature or the
+> module's purity. Accepted. The residue worth recording is that **nobody in production ever reads
+> the report**: the only callers are tests, so a user whose stored coordinate was rewritten is
+> never told and no record of the rewrite is kept anywhere.
+>
+> **The rename is complete in the product and incomplete in `qa/`.** No live path reference to
+> `gazetteer-refusals.json` survives in `tools/`, `packages/`, `test/` or `cli.ts` (the one
+> mention in `gen-gazetteer.mjs:551` is the narrative *"renamed from"* line and is correct), the
+> old golden is gone, the new one exists — but **`qa/r60-invariant.mjs:143` still opens the old
+> path and now throws on every invocation**. `qa/` was outside the builder's fence so this is not a
+> breach; it is an undisclosed consequence, and round 60's own invariant probe is unrunnable until
+> one string moves.
+>
+> **What I attacked and could NOT break.** The migration, every way listed above and several that
+> are not (`{lat:"0",lng:"0"}`, `{lat:0}`, `{lng:0,lat:0}`, a missing `cities` array, a non-object
+> city, prototype-shaped keys). `parseCentre`'s refusals: a string, a number, an array, `true`,
+> `{}`, `{lat}` alone, `{lat:"1"}`, `{lat:NaN}` are each refused at the right JSON path, and an
+> **absent** `centre` is refused rather than defaulted — the layering the builder claimed.
+> `placeId`'s refusals: a number, an object, an array and `true` are refused; `null`, a string and
+> `undefined` are accepted, `undefined` reading as `null`. `placeId` survives `toJSON` → `fromJSON`,
+> a three-way merge, and `setTripMeta`; `copyStopInto` carries **neither** a source city's
+> `placeId` nor its `centre` into the recipient and mints no city, so a pick cannot cross a person
+> boundary. A typed city's code loses to the coordinate for `HU`, `hu`, `' HU '`, `XX` and `''`,
+> from a build door and from storage alike. `geoCheck` takes no anchor from a city with no centre.
+> The corpus, the goldens, the export surface, the bundle, the rescan and the browser gate, all
+> above. I found no BLOCKER, no privacy leak, no cross-person exposure and no data loss.
+>
+> | id | sev | file:line | defect | repro | routing |
+> |---|---|---|---|---|---|
+> | **R61-1** | **MAJOR** | `packages/core/src/derive/summary.ts:459` | **Any** non-null `placeId` string — including `''`, `'   '`, `':'`, a stale id, a forged id and an id from a future dataset — makes the city's **hand-typed** `countryCode` outrank `countryOf` as `countrySource: 'picked'`, and `setTripMeta({cities})` reaches it with no hand-editing, so A-29 Part 3 item 3's *"mistyped `HU` on Vienna"* lands on the lifetime map through the field that was supposed to prevent it | `node --experimental-strip-types qa/r61-precedence.mjs` §C/§D | **architect** (design: A-83 Part 8 needs an invalidation clause and a shape rule for `placeId`; the `''` arm is a builder fix underneath it) |
+> | **R61-2** | **MAJOR** | `packages/core/src/derive/summary.ts:459`; `ARCHITECTURE.md` A-83 Part 8 clause 2 | The ruling says *"the ROW's code is the answer"*; the code answers with the **city's stored string** and never looks the row up — a city carrying Geneva's real `ne:j64n0x` and `countryCode: 'HU'` reports `{HU, picked}`. Core cannot look a row up (the gazetteer is lazy and off the write path), so the ruling's sentence is the thing that is wrong | `node --experimental-strip-types qa/r61-precedence.mjs` §D | **architect** (spec ↔ code mismatch; either the sentence changes or the pairing has to be enforced somewhere that can) |
+> | **R61-3** | **MAJOR** | `docs/BUILD-NOTES.md` I-22 addendum, *"The rule as built"* row | The disclosed step-4 fall-through is stated to be unreachable — *"0 shipped rows carry a code outside the index's 239"*. Measured: **6 codes on 14 rows** (`GP GF YT MQ SJ RE`), and picking Basse-Terre, Dzaoudzi, Fort-de-France or St.-Benoît yields **`{null, null}`** — no country — not the parent the disclosure promises | `node --experimental-strip-types qa/r61-precedence.mjs` §I | **builder** (correct the measurement) **+ architect** (judge the fall-through on the real number; the generator half is already I-23's, `ROADMAP.md:6111`) |
+> | **R61-4** | MINOR | `qa/r60-invariant.mjs:143` | Reads `fixtures/golden/gazetteer-refusals.json`, renamed by this commit, so round 60's invariant probe now throws on every invocation | `node --experimental-strip-types qa/r61-corpus.mjs --prev <worktree>` §A | **builder** (one string; `qa/` was outside I-22's fence, so it is owed rather than breached) |
+> | **R61-5** | MINOR | `qa/i7a-idb-rowkeys.mjs:302-320, 456-462` | Gate 6b-4 seeded no row with `centre: null`, and its shape assertion would have thrown `Object.keys(null)` on one — the 25th `ROW_PATHS` leaf was uncovered in a real browser. **Fixed in this round**; gate re-run **ALL OK, exit 0, chromium**, all four phases | `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node --experimental-strip-types qa/i7a-idb-rowkeys.mjs` | **closed by the breaker** (recorded so the builder's disclosed gap can be marked closed rather than open) |
+> | **R61-6** | MINOR | `packages/core/src/derive/travelStats.ts:106-114`; `ROADMAP.md` I-22 *user-visible outcome* | The prose asks for *"unattributed **and** unlocated, by count"* and the `[stated]` criterion asks for *"exactly one unlocated city"*. The builder took the criterion and was **right** — the prose breaks `unattributed`'s own *"never greater than `located`"* invariant. But **no count of unlocated cities is derivable from `TravelStats`**: `cities` is grouped by `nameKey` across trips, so two trips each holding an unlocated Paris subtract to **1** where there are **2** records | `node --experimental-strip-types qa/r61-precedence.mjs` §G | **architect** (the prose line and the type's invariant sentence move together, or a counted field is added) |
+> | **R61-7** | MINOR | `test/stats-storage.test.ts:1261-1265`; `qa/i7a-idb-rowkeys.mjs:508` | Axis D's own comments are stale twice over: *"absorbed into the existing **18**"* (the table is now **28**) and *"every database written after I-13 holds v2"* (`SCHEMA_VERSION` has moved to 3 and 4 since), and the browser probe still prints A-39's *"15 >= 3x5"* arithmetic. The **assignment** is correct — the probe seeds `{1, 3, 4}` = {floor, previous, current} and passes | `node --test test/stats-storage.test.ts` (green — this is a comment defect, not a behavioural one) | **builder** |
+> | **R61-8** | MINOR | `packages/core/src/serialize/migrate.ts:115` | `isOrigin`'s docstring says *"Exactly `{lat: 0, lng: 0}`, and nothing else — not near it, not `{0,0,extra}`"*; the predicate is `o.lat === 0 && o.lng === 0` and **does** null `{lat:0,lng:0,alt:5}`. The behaviour is right (`parseCentre` reads only `lat`/`lng`, so that value **is** the same fabrication) and the sentence is wrong | `node --experimental-strip-types qa/r61-migration.mjs` §H | **builder** |
+> | **R61-9** | MINOR | `packages/core/src/serialize/migrate.ts:207-215` | A document already stamped `schemaVersion: 4` that still carries `{lat:0,lng:0}` opens, parses, is counted as **located**, and reports a country — nothing sweeps it, because the ladder only climbs. Not reachable from any shipped write path today (`createTrip` writes `null`), so it is recorded rather than filed as broken | `node --experimental-strip-types qa/r61-serial-rescan.mjs` §B, `qa/r61-migration.mjs` §C | **builder** (a note in the rung's docstring; a sweep would be an architect's ruling) |
+> | **R61-10** | MINOR | `packages/core/src/derive/cluster.ts:199` + `apps/web/src/ports/map.ts:47-49` | `mapBounds([])` returns `centre: {lat:0, lng:0}` with `empty: true` and its own docstring says *"callers must not fit"*; the web map port then calls `setView([0, 0], 12)` on exactly that box — so a trip with no located stop opens its day map on the Gulf of Guinea at street zoom, which is the fabrication A-82 Part 7 exists to remove and the case A-83 Part 8's *"every map frame skips a null centre — which is what they do today"* claims is already handled | read-only; `cluster.ts:199` is in fence, `map.ts` is not | **architect** (the parenthetical in A-83 Part 8 is not true) **+ builder of the next `apps/web` increment** |
+> | **R61-11** | MINOR | `fixtures/legacy/` | Only one committed fixture exists (`trip-598cd7f.v1.json`, `schemaVersion` 1) and it carries no `{0,0}` city, so its conversion count is necessarily **0**. The 2 → 3 and 3 → 4 rungs are exercised only against documents constructed in-test; no **committed** v2 or v3 document pins them | `node --experimental-strip-types qa/r61-migration.mjs` §D | **builder** (commit a v3 fixture with a `{0,0}` city next time the ladder moves) |
+> | **R61-12** | MINOR | `packages/core/src/serialize/migrate.ts:185` | `migrateDocWithReport` has **no non-test caller**, so the conversion count the roadmap requires to be *"reported"* is reported to nobody: a user whose stored coordinate was rewritten is never told and no record of the rewrite is kept. Accepted as the smallest thing that could work, recorded so it is a decision rather than an oversight | `grep -rn migrateDocWithReport --include=*.ts packages apps test cli.ts` | **architect** (whether a migration owes the user a record) |
+>
+> **Out of fence, recorded as instructed:** `apps/web/src/views/PastTripForm.tsx:92-93` still says
+> *"`createTrip` supplies its default of `{0,0}`"*, which is now false — it supplies `null`. Not
+> edited. Separately, **no `.tsx` reads `City.centre` at all** (one grep; the only `.centre` in
+> `apps/web` is `map.ts`'s bounds centre), so the type change could not have broken a view and
+> A-83 Part 8's *"every map frame skips a null one"* is true **vacuously**, not by a guard.
+> **R60-5, R60-6 and R60-8 are confirmed to be I-23's** at `ROADMAP.md:6124`, `:6201` and `:6204`,
+> and A-83 Part 9's three label rules are I-23 item 6 at `ROADMAP.md:6109-6112` — the builder's
+> fence readings are all correct and none of them is a round-61 finding.
+>
+> **Doc-cost rows re-measured at this round, recorded here because `cairn/CLAUDE.md` is not a file
+> a breaker edits**: `QA-FINDINGS` 376k → **382k** with this round, `CAIRN_VISUAL_ROADMAP` 70k →
+> **71k** with its block, and `BUILD-NOTES` 270k → **276k** with I-22's addendum (that row moved
+> with `3b21a63`, not with this round). `ARCHITECTURE` **514k**, `ROADMAP` **203k** and `REVIEW`
+> **52k** were re-measured and did not move.
+
 
 > **Status (as of `master` @ `58858cb`, independently verified 2026-09-09 — round 60, the
 > **mandatory adversarial pass** over ROADMAP **I-21** / `ARCHITECTURE.md` revision 63 §8.4

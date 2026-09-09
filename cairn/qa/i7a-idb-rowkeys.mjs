@@ -307,9 +307,20 @@ const ROW = (id, ver) => ({
   // `City.centre`, copied verbatim) plus `firstDay`/`lastDay`. This literal is the CURRENT
   // shape, so it has to carry them or phase 2's "gen-current vs gen-1" pair stops being the
   // widest separation on Axis S that it claims to be.
+  //
+  // **QA round 61 (§8.4 A-83 Part 8, ROADMAP I-22) adds the SECOND entry, and it is the point.**
+  // `TripSummaryCity.centre` became `LatLng | null`, so `ROW_PATHS` went 24 → 25 with
+  // `cities[].centre` as a LEAF. `ROW_KEYS` did not move, so A-36 Part 4's trigger did not fire
+  // and I-22's builder correctly read it as not firing — but the new leaf had therefore never
+  // crossed structured clone. It does now: one located city and one nobody located, in the same
+  // row, so the null survives a real `versionchange` and comes back as `null` rather than as an
+  // absent key or an empty object.
   cities: [{
     key: 'hvar', name: 'Hvar', countryCode: 'HR', countrySource: 'stated',
     centre: { lat: 43.1729, lng: 16.4413 }, firstDay: '2026-08-07', lastDay: '2026-08-08',
+  }, {
+    key: 'typed', name: 'Typed', countryCode: null, countrySource: null,
+    centre: null, firstDay: null, lastDay: null,
   }],
   attribution: { places: { located: 9, attributed: 8 }, stops: { located: 7, attributed: 7 } },
   summaryVersion: ver,
@@ -456,6 +467,14 @@ function assertClean(result, where, expected = {}) {
   for (const rec of result.persisted) {
     for (const c of rec.cities ?? []) {
       if (c.centre === undefined) continue;
+      // **§8.4 A-83 Part 8 (round 61).** `null` is a first-class centre and a LEAF — it is the
+      // 25th `ROW_PATHS` entry. It is asserted as `null` and not merely tolerated: an absent key
+      // and an empty object are both wrong answers and both used to read as "not a coordinate".
+      if (c.centre === null) {
+        ok(c.centre === null && 'centre' in c,
+          `${where}: a null cities[].centre survives structured clone AS null`, c.centre);
+        continue;
+      }
       ok(Object.keys(c.centre).sort().join() === 'lat,lng',
         `${where}: cities[].centre is a bare {lat, lng} and nothing else`, Object.keys(c.centre));
     }

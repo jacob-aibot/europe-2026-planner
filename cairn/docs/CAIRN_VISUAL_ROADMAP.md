@@ -19,6 +19,53 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟥 TESTED: GENEVA IS BACK, NOTHING WAS LOST IN THE UPGRADE, AND ONE RULE IS TOO EASY TO
+> FOOL. As of 2026-09-09 this block is the newest and it supersedes every block below it,
+> including the two directly under it.** Nothing on your phone changes.
+>
+> **Two things were fixed and both work.** Geneva, Jerusalem and Brazzaville can be found again —
+> `cities geneva` now answers *"Geneva, Genève, Switzerland"* with a small flag saying our own
+> country map disagrees about that spot, which is honest rather than silent. And a city you typed
+> without a location no longer pretends to sit at 0°N 0°E in the Gulf of Guinea; it now records an
+> honest blank. All 98 previously-hidden cities ship, each carrying its disagreement, and I checked
+> the whole list against the previous version city by city: **not one city was dropped, and not one
+> coordinate moved by a single digit.**
+>
+> **The upgrade of your stored trips is the part I attacked hardest, and it is clean.** Changing
+> how a trip file is stored is the one change that can silently lose a real person's data, so I
+> rebuilt a full trip file in the old format — six cities, sixteen days, 112 stops, 95 places, 21
+> bookings, the people on the trip — ran the upgrade, and compared **every single field**. Vienna's
+> coordinate came through untouched. Exactly one city was changed: the one that was pretending to
+> be at 0°N 0°E. Nothing else in the file moved at all. Running the upgrade twice gives an identical
+> result, running it on an already-upgraded file does nothing, and the one old trip file this
+> project keeps as a permanent test still opens perfectly. I also checked the case worth worrying
+> about: there **is** real land near 0°N 0°E — São Tomé is about 40 km away — and a city there
+> survives the upgrade untouched. Only the exact fake value is cleared.
+>
+> **The one real problem is a rule that trusts a label nobody checks.** When you *pick* a city from
+> Cairn's list rather than typing it, Cairn now trusts that city's country over its own map — which
+> is right, because the list is more accurate near borders. But the mark that says *"this was
+> picked"* is never verified: I put in a made-up mark, an empty one, and a mark pointing at a city
+> that does not exist, and every one of them made Cairn trust a **hand-typed** country. So a
+> mistyped "Hungary" on Vienna can end up on your lifetime map permanently — which is exactly the
+> thing the original rule was written to prevent. Worse, an ordinary edit does it: change a picked
+> city's country, or move it, and the "picked" mark stays behind and keeps winning. This needs one
+> more sentence from the designer, not a patch.
+>
+> **Two smaller things.** Fourteen cities in the shipped list carry a country code our map cannot
+> draw — French Guiana, Guadeloupe, Martinique, Mayotte, Réunion, Svalbard — and picking four of
+> them records **no country at all**. The builder's notes say this cannot happen; it can, fourteen
+> times. And the report saying how many fake coordinates were cleared during your upgrade is
+> written to nobody — no log, no screen — so if it ever cleared something it should not have, there
+> would be no record.
+>
+> **What happens next.** The tester's verdict is **send back to the designer**. **Zero blockers, no
+> data lost, no privacy problem, nothing of yours at risk** — everything the upgrade touches was
+> checked byte for byte and it is right. Three things need a decision: how a "picked" mark is
+> verified, what happens to it when you then edit the city, and the fourteen countries the map
+> cannot draw. The full engineering test — 1,702 checks — passes, and the browser-level storage
+> check that had never been run for this change was run this round and is green.
+
 > **🟥 TESTED: IT WORKS EXACTLY AS DESIGNED, AND IT FINDS ONE PLACE IN FIVE. As of 2026-09-09
 > this block is the newest and it supersedes every block below it, including the builder's block
 > directly under it.** Nothing on your phone changes.

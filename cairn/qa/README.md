@@ -4165,3 +4165,60 @@ KD-113's replacement claim, also wrong)**. The `İ` pair pins nothing about the 
 None of the four writes to the repo. `r60-invariant.mjs` writes only to `/tmp` (or reuses
 `R60_SOURCE`); the generator determinism and checksum-refusal runs behind round 60's status note were
 done in a throwaway `git worktree`, never in the live tree.
+
+---
+
+**Round 61 — the mandatory adversarial pass over I-22 / §8.4 A-83 Part 8** (`City.centre: LatLng
+| null`, `City.placeId`, `SCHEMA_VERSION` 3 → 4, `SUMMARY_VERSION` 5 → 6, and the disagreeing
+gazetteer rows shipping marked). Four new probes, plus one extension to an existing gate. All run
+from `cairn/`:
+
+```bash
+node --experimental-strip-types qa/r61-migration.mjs        # the 3 -> 4 rung, byte for byte
+node --experimental-strip-types qa/r61-precedence.mjs       # the picked arm, and what a dangling placeId buys
+node --experimental-strip-types qa/r61-serial-rescan.mjs    # parser refusals + the SUMMARY_VERSION rescan
+node --experimental-strip-types qa/r61-corpus.mjs --prev <worktree-of-dd19958>
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node --experimental-strip-types qa/i7a-idb-rowkeys.mjs
+```
+
+**`r61-migration.mjs` is the one to reach for on any future `SCHEMA_VERSION` bump.** It does not
+hand-write a document: it takes the committed Europe 2026 sample and **downgrades** it to the
+previous version the way an older build actually wrote it, which is the only fixture shape that
+proves anything about a real user's file. Eight sections: §A a rich v3 document (every located
+coordinate compared pair by pair, and the whole document compared with `cities[].centre` /
+`cities[].placeId` stripped, so *"nothing else moved"* is measured rather than asserted); §B
+**near-Null-Island** — São Tomé and five other coordinates within a degree of the origin, which is
+the case that would have made this a BLOCKER and does not; §C idempotence, a v4 no-op, and v1/v2
+climbing the whole ladder; §D every `fixtures/legacy/` fixture; §E the ladder's refusals naming the
+**original** version; §F input mutation and per-call tally allocation; §G whether any pickable
+gazetteer row is near the origin (**none within 1°**); §H the two shapes `migrate.ts:115`'s own
+docstring is wrong about (**R61-8**, the only FAIL it prints, and the behaviour is right).
+
+**`r61-precedence.mjs` is the round's headline and it exits 6.** §A a typed code losing to the
+coordinate five ways; §B the picked-Geneva / typed-Geneva pair plus what reaches `countryCodes`;
+§C **eight dangling `placeId` shapes, every one of which fires the picked arm** (R61-1); §D a
+`placeId` naming a real row the city then contradicts, and the same thing reached through
+`setTripMeta` with no hand-editing (R61-1/R61-2); §E `placeId`'s transports — round trip, merge,
+`copyStopInto`, and the null centre with it; §F §0.6, that no country string is persisted onto the
+city; §G the census, the disclosure-1 adjudication and the *"unlocated by count"* gap (R61-6);
+§H `geoCheck`; §I the drawability fall-through, which fires on **14 shipped rows** and not on zero
+(R61-3). Its FAILs are the findings, not a broken probe — read the round-61 note first.
+
+**`r61-corpus.mjs` needs a worktree and says so rather than passing without one.** `git worktree
+add <dir> dd19958`, then `--prev <dir>`; §B decodes the corpus at both commits and pairs 7,244 rows
+by id, which is how *"no row changed except by gaining the flag"* and *"not one coordinate moved"*
+become measurements. §F checks the shape of the generator's audit; the **injection** behind
+round 61's N6 claim was run separately, in a throwaway worktree with its own `node_modules`
+(a symlinked `node_modules` resolves `@cairn/core` back to the live tree and silently audits the
+wrong bytes — that cost one wrong answer, and the worktree needs real symlinks under
+`node_modules/@cairn`). Both directions fire: `indexAgrees` `0 → 1` on Geneva → exit 1,
+`VIOLATION Geneva states CH, countryOf says FR`; `1 → 0` on Vienna → exit 1, `MIS-MARKED`.
+
+**`qa/i7a-idb-rowkeys.mjs` gained a second seeded city with `centre: null` (R61-5).** `ROW_KEYS`
+did not move at I-22 so A-36 Part 4's trigger did not fire, but `ROW_PATHS` did — and the probe's
+shape assertion would have thrown `Object.keys(null)` on the new leaf. It now asserts the null
+**as** null in all three phases. The gate runs **ALL OK, exit 0, chromium**, closing the gap
+I-22's builder disclosed.
+
+None of the four writes to the repo; the two generator runs and the N6 injections were done in
+throwaway `git worktree`s, never in the live tree.
