@@ -15,6 +15,30 @@ adding, moving or trusting one.
 
 ## Document cost map
 
+**Every row re-measured at revision 69/72 (2026-09-09)** — `ARCHITECTURE` 547k → **555k** with §8.4's
+**A-88**, its amendment banner on **A-87**, its inline corrections in **A-87 Parts 6 and 7** and its banner
+on **A-59 Part 4** (§8 alone 145k → **152k**), plus **§0's new position 10** (1k → **2k**); §2, §4 and §10
+did not move. `ROADMAP` 231k → **236k** with **I-28**, the BUILT-and-SENT-BACK banner on **I-26**,
+**Sequencing rule 10** and the revision-72 ledger entry (Phase 2 alone 167k → **170k** as `doc-section`
+reports it). **A-88 is ~6k and it is READ WITH A-87, never instead of it** — A-87 states the derive-path
+read rule, A-88 corrects it at five points. **A builder of `I-28` reads A-88 whole, then A-87 Parts 2, 3, 6
+and 7, then A-59 Part 4, and nothing else** — not A-86, not A-85, not A-84, not A-83, not §2 whole, §4 or
+§10. `I-22b`'s and `I-23`'s reads are unchanged. This revision is a **QA consequence** — round 65 confirmed
+`I-26`'s own subject works and found **two MAJORs beside it, both the architect's**: the ruling widened
+`rowStatsReadable` in place without naming its one production caller, which regressed the named-row banner
+a user actually reads (**R65-1**), and its coverage claim denominates two of the four stored record classes
+its reader descends into (**R65-2**). **`I-28` is routed builder + breaker with a round of its own — and
+that round does NOT gate `I-23`**, which shares no file with it. **The standing sequence is `I-28` →
+`I-22b` → `I-23` → `I-27`**, and **`I-28` is the last increment of the read-gate arc**: §0 position 10 and
+ROADMAP sequencing rule 10 now say that a finding about the *strength of a claim* is answered by narrowing
+the sentence and does not gate a product increment. **Two rows moved with QA round 65's commit rather than
+with this revision** (measured here at `8048d52`, because `cairn/CLAUDE.md` is not a file a breaker edits):
+`QA-FINDINGS` 396k → **402k**, and **`BUILD-NOTES` re-measures at 295k, not the 292k the row below records**
+— it moved with `I-26`'s addendum. `CAIRN_VISUAL_ROADMAP` is unmoved at **72k**: this revision opens no
+`.tsx` and adds no screen, and its one rendered consequence is `WorldMap.tsx`'s existing named-row arm
+becoming reachable again — a sentence that surface already ships, restored rather than designed, with zero
+`.tsx` diff. `REVIEW` is unmoved at **52k**.
+
 **Every row re-measured at revision 68/71 (2026-09-09)** — `ARCHITECTURE` 536k → **547k** with §8.4's
 **A-87**, its amendment banner on **A-86**, its corrections in place to **A-86 Part 8 residues 1 and 2**
 and its pointer banners on **A-59 Parts 5 and 7** and **A-31 Part 3** (§8 alone 136k → **145k**; §2, §4 and
