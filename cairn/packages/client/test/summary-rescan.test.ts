@@ -544,7 +544,7 @@ function gen4Row(doc: core.Trip): TripSummaryRow {
   };
 }
 
-test('A-56: a stored version-4 row is stale on boot, and the GENERIC rescan brings it to 5', async () => {
+test('A-56 / A-83: a stored version-4 row is stale on boot, and the GENERIC rescan brings it to SUMMARY_VERSION', async () => {
   const storage = memoryStorage();
   const docs = [makeTrip('v4-at', 'vienna'), makeTrip('v4-hr', 'dubrovnik'), makeTrip('v4-cz', 'prague')];
   for (const d of docs) await seed(storage, d, gen4Row(d));
@@ -581,9 +581,13 @@ test('A-56: a stored version-4 row is stale on boot, and the GENERIC rescan brin
   assert.equal(after.phase, 'complete');
   assert.deepEqual(after.outdated, []);
   for (const r of await storage.listTrips()) {
-    assert.equal(r.summaryVersion, 5, `${r.id} was left below the version`);
+    // **The number moved 5 → 6 at ROADMAP I-22 (§8.4 A-83 Part 8) and the mechanism did not.**
+    // This is the EXISTING rescan carrying its second real load, and it is asserted against the
+    // constant so it cannot go stale a third time.
+    assert.equal(r.summaryVersion, core.SUMMARY_VERSION, `${r.id} was left below the version`);
+    assert.equal(r.summaryVersion, 6, 'INCONCLUSIVE: SUMMARY_VERSION is not 6, so this fixture is no longer a version-4 row two generations back');
     assert.equal(r.cities.length, 1, `${r.id} lost its city`);
-    assert.ok(r.cities[0].centre, `${r.id} was brought to version 5 with no centre`);
+    assert.ok(r.cities[0].centre, `${r.id} was brought to the current version with no centre`);
   }
 });
 
@@ -621,7 +625,7 @@ test('A-56 Part 3: the recomputed row comes from the DOCUMENT, never from the ve
   const [row] = await storage.listTrips();
   assert.deepEqual(row, expected, 'the rescanned row is not what tripSummary makes of the document');
   // Said again field by field, so a red names which claim broke.
-  assert.equal(row.summaryVersion, 5);
+  assert.equal(row.summaryVersion, core.SUMMARY_VERSION);
   assert.equal(row.title, doc.title, 'the stale title survived');
   assert.deepEqual(row.countryCodes, ['AT'], 'the stale countryCodes survived');
   assert.equal(row.cityCount, 1, 'the stale cityCount survived');
@@ -631,7 +635,7 @@ test('A-56 Part 3: the recomputed row comes from the DOCUMENT, never from the ve
   assert.deepEqual(row.cities[0].centre, { lat: 48.2082, lng: 16.3738 });
 });
 
-test('A-56 Part 3: the trigger is NOT vacuous — a row already at version 5 is complete and is not rewritten', async () => {
+test('A-56 Part 3: the trigger is NOT vacuous — a row already at the CURRENT version is complete and is not rewritten', async () => {
   // The control. Without it, the two tests above could be green because every library is
   // rescanned unconditionally, which would say nothing about the version comparison.
   const storage = memoryStorage();

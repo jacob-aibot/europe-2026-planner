@@ -24,8 +24,15 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const GENERATED = resolve(HERE, '..', 'src', 'geo', 'gazetteer.gen.ts');
 
 /**
- * Bytes written by `node tools/gen-gazetteer.mjs`, as the generator reported them on 2026-09-09:
- * **7,244 rows shipped, 98 refused**, 2,500 admin-1 names, 223 country names.
+ * Bytes written by `node tools/gen-gazetteer.mjs`, as the generator reported them on 2026-09-09
+ * after ROADMAP I-22: **7,342 rows shipped, 98 of them marked `indexAgrees: false`**, 2,500
+ * admin-1 names, 223 country names.
+ *
+ * **391,756 → 434,212, and the 42,456 bytes are three named things rather than drift** (§8.4
+ * **A-83** Part 8): the **98 disagreeing rows now ship** instead of being dropped, every row id
+ * gained its three-character `'ne:'` source prefix so a persisted `City.placeId` names its own
+ * dataset, and every row gained a one-character `indexAgrees` field. None of it is a
+ * representation change — the shard/JSON move is I-23's and is deliberately not here.
  *
  * **A-82 Part 9 records the architect's prototype at 306,531 bytes and this measurement is above
  * it, by 85,225.** The difference is one deliberate representation choice, stated here so it is not
@@ -39,7 +46,7 @@ const GENERATED = resolve(HERE, '..', 'src', 'geo', 'gazetteer.gen.ts');
  *
  * Re-run the generator to move this number; do not guess it, and never shave the dataset to fit it.
  */
-const EMITTED_BYTES = 391_756;
+const EMITTED_BYTES = 434_212;
 
 /**
  * The ceiling the *budget itself* is measured against, and it is **the same 1,048,576 bytes**
@@ -82,9 +89,16 @@ test('I-21: the generated module declares its generator, source, pinned tag and 
   assert.match(head, /v5\.1\.2/, 'the pinned tag is not named');
   assert.match(head, /ne_10m_populated_places\.geojson/, 'the source layer is not named');
   assert.match(head, /[0-9a-f]{64}/, 'the source checksum is not recorded');
-  // The refusal count is provenance too: it is the one number in this artefact that says a
-  // deliberate hole was cut, and a reader who cannot see it will not go looking for the golden.
-  assert.match(head, /Refused: \d+/, 'the refusal count is not recorded in the header');
+  // **The disagreement count is provenance too** (§8.4 A-83 Part 8, ROADMAP I-22). It used to be
+  // `Refused: N` — the number of rows a deliberate hole cut out. It is now `Marked: N rows carry
+  // indexAgrees: false`, the number of rows that ship carrying a contradiction, which is the one
+  // number in this artefact that says the invariant fired at all; a reader who cannot see it will
+  // not go looking for the golden. **Zero is a failure**, and that is asserted rather than left to
+  // the regex: the marking that never fires is the marking that was deleted.
+  const marked = /Marked : (\d+) rows carry/.exec(head);
+  assert.ok(marked, 'the disagreement count is not recorded in the header');
+  assert.ok(Number(marked[1]) > 0, 'the header records ZERO disagreements, so the marking is gone');
+  assert.match(head, /gazetteer-disagreements\.json/, 'the header does not name the golden the marked rows are published in');
 });
 
 /**

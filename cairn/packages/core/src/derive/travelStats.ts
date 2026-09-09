@@ -175,6 +175,22 @@ const inDomain = (n: number): number => Math.min(DOMAIN_MAX, Math.max(DOMAIN_MIN
 const isMintedCode = (v: unknown): v is CountryCode => typeof v === 'string' && /^[A-Z]{2}$/.test(v);
 
 /**
+ * **§8.4 A-83 Part 8 + A-37 Part 3's idiom.** Whether a stored `cities[].centre` is a coordinate.
+ *
+ * A stored summary row is not a validated document, so this is a check on **shape** and not on
+ * presence: `null` (a version-6 row for a city nobody located), `undefined` (a version-4 row,
+ * which had no such key at all), a string, an array and `{lat: NaN}` are all **one answer** —
+ * *this row does not say where the city is*, therefore the city is not located. Module-private:
+ * §2.10's export surface does not move for it, and it is reachable through `travelStats`.
+ */
+const isLocatedCentre = (v: unknown): boolean => {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
+  const o = v as { lat?: unknown; lng?: unknown };
+  return typeof o.lat === 'number' && Number.isFinite(o.lat)
+    && typeof o.lng === 'number' && Number.isFinite(o.lng);
+};
+
+/**
  * §8.4 **A-59** Part 2 — the third read gate, and the one A-37 never reached.
  *
  * A stored `cities[].firstDay`/`lastDay` that is **present and not an `IsoDate`** is read as
@@ -393,10 +409,28 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
         unattributedStops += Math.max(0, census.stops.located - census.stops.attributed);
       }
     }
-    // `City.centre` is non-nullable, so every city entry is a located record and the city census
-    // is derivable from `cities[]` alone. That is why the row carries no city census.
+    // The city census is derivable from `cities[]` alone, which is why the row carries no city
+    // census of its own.
+    //
+    // **§8.4 A-83 Part 8: a city with no `centre` is UNLOCATED**, and this used to be
+    // `locatedCities++` unconditionally on the stated ground that `City.centre` was
+    // non-nullable. It is not, and `{lat: 0, lng: 0}` was never a measurement — so the census
+    // now takes exactly the shape `add()` already uses for a `Place` with no `at` one screen
+    // down: a record with no coordinate is neither located nor unattributed. It is not in the
+    // denominator, so it cannot be in the numerator, and `unattributed` stays *"never greater
+    // than `located`, per class"* by construction.
+    //
+    // **§8.4 A-37 Part 3's idiom, read 2 of 2, and it is a check on SHAPE.** A stored row is not
+    // a validated document: a version-4 row carries no `centre` key at all and a hand-edited one
+    // can carry anything. A centre counts as located when it is a plain object with two finite
+    // numbers, and `null`, `undefined`, `'0,0'` and `{}` are all one answer — unlocated. A
+    // version-4 row therefore reports its cities as unlocated until the `SUMMARY_VERSION` 6
+    // rescan reaches it, which is the honest answer for a row that does not say where the city
+    // is (§8.4 clause 3's rescan is what closes the gap, and it runs before anything claims the
+    // lifetime map is complete).
     for (const c of row.cities) {
-      locatedCities++;
+      const located = isLocatedCentre((c as { centre?: unknown }).centre);
+      if (located) locatedCities++;
       // **QA R28-5.** `null` and `undefined` are ONE answer, read once, here. The two used to
       // disagree — `=== null` decided this count while `?? NO_COUNTRY` decided the group key —
       // so an `undefined` code was grouped as unattributed without being counted as one, and
@@ -408,7 +442,7 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
       // composite key's sentinel), `''` (grouped as unattributed without being counted as one),
       // `'A|'` (which made two different rows one), `'hr'` or a `42` is **null**.
       const countryCode = isMintedCode(c.countryCode) ? c.countryCode : null;
-      if (countryCode === null) unattributedCities++;
+      if (located && countryCode === null) unattributedCities++;
       const nameKey = normalizeCityName(c.name);
       // A name that folds to `''` is **not an identity** (§2.14 A-14 assertion 5). Grouping on
       // it would put every blank city in every trip into one row labelled with nothing; skipping

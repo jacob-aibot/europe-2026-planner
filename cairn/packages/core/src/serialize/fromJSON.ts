@@ -15,7 +15,7 @@
  * parser is the invariant* and a parser edited "for the doors" would break that on the spot.
  */
 import type {
-  Booking, City, CostEstimate, DatePrecision, Day, Money, OpeningHours, Participant, PhotoAsset,
+  Booking, City, CostEstimate, DatePrecision, Day, LatLng, Money, OpeningHours, Participant, PhotoAsset,
   PhotoAttachRef, PhotoDerivative, Place, PlaceLink,
   Provenance, Stop, StopPlacement, Ticket, Trip, ConflictResolution,
 } from '../model/types.ts';
@@ -325,15 +325,34 @@ export function parseDay(v: unknown, path: string): Day {
   };
 }
 
+/**
+ * **§8.4 A-83 Part 8: `centre` may be `null` and that is a value, not an absence.**
+ *
+ * `null` is accepted and passed through; an object is parsed field by field as before; anything
+ * else — a string, a number, an array, `undefined` — is refused at `$.cities[i].centre` with the
+ * same named reason a malformed coordinate has always earned. **`undefined` is refused rather
+ * than defaulted**: `migrateDoc` runs in front of this parser and is the layer that supplies a
+ * missing field, and duplicating that here would give the rule two homes (`withDefaults`' reason,
+ * verbatim).
+ */
+function parseCentre(v: unknown, path: string): LatLng | null {
+  if (v === null) return null;
+  const centre = obj(v, path);
+  return { lat: numOf(centre.lat, `${path}.lat`), lng: numOf(centre.lng, `${path}.lng`) };
+}
+
 export function parseCity(v: unknown, path: string): City {
   const o = obj(v, path);
-  const centre = obj(o.centre, `${path}.centre`);
   const meta = o.meta === undefined ? undefined : obj(o.meta, `${path}.meta`);
   return {
     key: str(o.key, `${path}.key`),
     name: str(o.name, `${path}.name`),
     countryCode: str(o.countryCode, `${path}.countryCode`),
-    centre: { lat: numOf(centre.lat, `${path}.centre.lat`), lng: numOf(centre.lng, `${path}.centre.lng`) },
+    centre: parseCentre(o.centre, `${path}.centre`),
+    // §8.4 A-83 Part 8. A string or `null`, and nothing else — which is A-74 Part 4's reason
+    // there is no `validateTrip` code for it: the parser already refuses everything that is not
+    // one of those two, and a cast is not a producer.
+    placeId: strOrNull(o.placeId, `${path}.placeId`),
     order: numOf(o.order, `${path}.order`),
     ...(meta
       ? {

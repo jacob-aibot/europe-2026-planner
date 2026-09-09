@@ -172,8 +172,16 @@ export function cityRange(trip: Trip, cityKey: CityKey): string | null {
  *     `City.centre`, copied verbatim — and `firstDay`/`lastDay`, the ends of the days that
  *     city occupies. No existing field's derivation moved. `ROW_KEYS` does not grow, because
  *     the widening is *inside* `cities[]` rather than beside it; `ROW_PATHS` goes 20 → 24.
+ *   - **6** — ROADMAP I-22 (§8.4 **A-83** Part 8): `cities[].centre` becomes `LatLng | null`,
+ *     because `City.centre` does — A-56's stated ground for a non-nullable copy is **withdrawn**
+ *     — and `countrySource` gains a **third** value, `'picked'`. A version-5 row over the same
+ *     document can therefore differ in two ways: a city nobody located carried `{0,0}` and now
+ *     carries `null`, and a city the user PICKED out of the gazetteer now reports the picked
+ *     row's own country where the coarse ring would have overruled it. No top-level key moves;
+ *     `ROW_KEYS` does not grow and `ROW_PATHS` goes 24 → 25 (`cities[].centre` is a leaf when it
+ *     is null and two leaves when it is not).
  */
-export const SUMMARY_VERSION = 5;
+export const SUMMARY_VERSION = 6;
 
 /**
  * A city's **stated** country code, accepted or refused — §8.4 **A-29** Part 3. Module-private:
@@ -230,11 +238,13 @@ export type TripSummaryCity = {
    * surface in this increment (§8.1's precedent for `datePrecision`); nothing may ever *gate* a
    * country's inclusion on it, because inclusion is decided here.
    */
-  countrySource: 'coordinate' | 'stated' | null;
+  countrySource: 'coordinate' | 'stated' | 'picked' | null;
   /**
-   * The document's own `City.centre`, copied verbatim — §8.4 **A-56**. Non-nullable, because
-   * `City.centre` is (§2.2), which is also why the city census needs no `AttributionCensus`
-   * (A-31 Part 2).
+   * The document's own `City.centre`, copied verbatim — §8.4 **A-56**, **nullable since A-83
+   * Part 8**. A-56 widened this row with a non-nullable `centre` on the stated ground that *"a
+   * `City.centre` is non-nullable"*; that ground is **withdrawn**, because `{0,0}` was a
+   * fabrication wearing the shape of a measurement. **Every frame that reads a city centre skips
+   * a null one rather than drawing it at 0°N 0°E.**
    *
    * This is the **same coordinate the document already stores, in the same database, on the
    * same device**. It is not new exposure and §8.4 clause 3's *"a country code is not location
@@ -248,7 +258,7 @@ export type TripSummaryCity = {
    * job and `countrySource` is the field that records which evidence won. A reviewer who finds
    * `centre` feeding an attribution has found a defect.
    */
-  centre: LatLng;
+  centre: LatLng | null;
   /**
    * The first and last `Day.date` of the days this city occupies — `trip.days.filter(d =>
    * d.cities.includes(key))`, first and last, **in document order**. Exactly the days
@@ -329,8 +339,9 @@ export type TripSummaryRow = {
    * A count *about this one document*, minted inside the write that carries it and stamped
    * with `summaryVersion` — which is what separates it from a lifetime statistic, and why
    * A-31 Part 6's rule permits it to be stored at all. Cities are absent on purpose:
-   * `City.centre` is non-nullable, so `located` is `cities.length` and `attributed` is the
-   * count of non-null `cities[].countryCode`.
+   * `cities[]` carries `centre` and `countryCode` per entry, so **`travelStats` derives the
+   * city census from `cities[]` alone** — `located` is the entries with a `centre` (nullable
+   * since A-83 Part 8) and `attributed` is the ones with a `countryCode`.
    *
    * The two walks are **the same records `countryCodes` unions over**, record for record:
    * `trip.places` with an `at`, and every scheduled *and* pooled stop with a `stopLatLng`. A
@@ -370,6 +381,12 @@ export type TripSummaryRow = {
  * never overrides a coordinate, it is never read for any record other than the `City` that
  * carries it, and it reaches `countryCodes` only through that city's own entry.
  *
+ * **§8.4 A-83 Part 8 amends that by exactly one clause, and only for a city the user PICKED.**
+ * `City.placeId` is the provenance A-29 Part 3 item 3 said was missing: where it is non-null the
+ * `(centre, countryCode)` pair came from one shipped gazetteer row a human chose, and the row's
+ * code outranks `countryOf` as `countrySource: 'picked'`. Where it is `null`, A-29 stands
+ * verbatim — see the block comment at the per-city map below, which is where the rule lives.
+ *
  * @throws {Error} programmer error only: a missing country index.
  */
 export function tripSummary(trip: Trip, index: CountryIndex): TripSummaryRow {
@@ -407,14 +424,52 @@ export function tripSummary(trip: Trip, index: CountryIndex): TripSummaryRow {
       // `c.centre` itself made the stored row a view into the live document, so a write to
       // `row.cities[i].centre.lat` landed in `trip.cities[i].centre.lat`. Every other field
       // on the row is a primitive or freshly allocated, and this one now is too.
-      centre: { lat: c.centre.lat, lng: c.centre.lng },
+      //
+      // **A-83 Part 8: `null` is copied as `null`.** A city nobody located has no coordinate,
+      // and substituting one here is the exact fabrication this increment removes.
+      centre: c.centre === null ? null : { lat: c.centre.lat, lng: c.centre.lng },
       firstDay: range === null ? null : range.first,
       lastDay: range === null ? null : range.last,
     };
+    // ---------------------------------------------------------------------
+    // §8.4 **A-83 Part 8**'s precedence, in order, and it is A-29's FIRST amendment.
+    //
+    //   1. `centre === null`  ⇒ there is no coordinate attribution to be had.
+    //   2. `placeId !== null` ⇒ the pair (`centre`, `countryCode`) came from ONE shipped
+    //      gazetteer row that a HUMAN PICKED, and the row's code is the answer. It outranks
+    //      `countryOf`, and `countrySource` is `'picked'`.
+    //   3. `placeId === null` ⇒ **A-29 stands verbatim and unamended**: `countryOf` first, and
+    //      only in its silence is the stated code admitted through the four-step gate.
+    //
+    // **Why 2 is not the drift A-29 Part 3 item 3 refuses, and the difference is the field.**
+    // Item 3's stated reason for refusing *"the stated code wins"* is that *"`derive/summary.ts`
+    // cannot tell a gazetteer-supplied `countryCode` from a hand-typed one, because `City`
+    // carries no provenance for it"*. `placeId` is exactly that provenance, it is written only
+    // by a human's pick (A-82 Part 6's fence, now load-bearing), and **a mistyped `HU` on a
+    // typed Vienna still loses to `countryOf` under clause 3, forever.** A reviewer who finds
+    // this arm firing for a city with `placeId: null` has found the defect the whole ruling is
+    // written around.
+    //
+    // The gazetteer wins over the ring because the disagreement is not symmetric: A-26 Part 2
+    // chose the base scale for being *"the most forgiving of the error that dominates this
+    // dataset's use"* rather than for accuracy, and a coarse ring bulges outward — so the
+    // polygon is wrong about a town two kilometres from a frontier and the gazetteer is right.
+    // ---------------------------------------------------------------------
+    if (c.placeId !== null) {
+      const picked = acceptStatedCountry(c.countryCode, drawable);
+      if (picked !== null) {
+        return { key: c.key, name: c.name, countryCode: picked, countrySource: 'picked', ...place };
+      }
+      // A picked row whose code the shipped index cannot DRAW falls through to clause 3, which
+      // is A-29 step 4's own reasoning: the gate's alphabet is the set of countries this product
+      // can draw, and a code outside it would name a country the map silently omits.
+    }
     // §8.4 A-29: the coordinate is asked first and its answer is final when it has one. Only
     // where it is `null` — the dataset has no evidence, which A-26 ruled is the *correct*
     // answer rather than a hole to fill by snapping — is the city's own stated code consulted.
-    const derived = countryOf(c.centre, index);
+    // **A-83 Part 8 clause 1**: a city with no centre has no coordinate answer at all, which is
+    // the same silence one step earlier.
+    const derived = c.centre === null ? null : countryOf(c.centre, index);
     if (derived !== null) {
       return { key: c.key, name: c.name, countryCode: derived, countrySource: 'coordinate', ...place };
     }

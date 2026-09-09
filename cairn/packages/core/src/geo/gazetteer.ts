@@ -43,8 +43,34 @@ export type GazetteerRow = {
   /** `POP_MAX`, **for ranking only**. Never displayed as a fact about a city (A-82 Part 4). */
   readonly population: number;
   readonly centre: LatLng;
-  /** The source's stable row id (`NE_ID`), base-36. It is what makes a regeneration diff readable. */
+  /**
+   * The source's stable row id, **prefixed with the dataset that minted it**: `'ne:<NE_ID base 36>'`
+   * today, `'gn:…'` after I-23 (§8.4 **A-83** Part 8).
+   *
+   * The prefix is not decoration. This value is what a `City.placeId` persists, so a stored pick
+   * has to say **which corpus** it came from — otherwise a regeneration onto a different source
+   * turns every stored id into a collision waiting to be misread. It is also still what makes a
+   * regeneration diff readable, which is A-82 Part 2's own reason for carrying it.
+   */
   readonly id: string;
+  /**
+   * **Whether `countryOf(centre, COUNTRY_INDEX)` agrees with `countryCode`** — §8.4 **A-83**
+   * Part 8, and it is the field that restated A-82 Part 5's invariant rather than weakening it.
+   *
+   * > **No shipped row may *silently* contradict the country index.**
+   *
+   * `true` when the index agrees or is silent. `false` when both answers are non-null and
+   * **differ** — 98 rows today, among them Brazzaville, Geneva, Jerusalem, Maastricht, Lugano
+   * and Arlon, every one of which A-82 Part 5 refused outright. A row that would contradict the
+   * index *without* carrying this record is still **REFUSED**; what changed is that carrying it
+   * is now possible, because `City.placeId` lets `derive/summary.ts` tell a picked pair from a
+   * typed field.
+   *
+   * A coarse ring bulges outward (A-26 Part 2), so where the two disagree the gazetteer is
+   * generally right and the polygon is generally wrong about a town near a frontier — which is
+   * why a **picked** row's country outranks `countryOf` and a typed one's still does not.
+   */
+  readonly indexAgrees: boolean;
 };
 
 /**
@@ -283,12 +309,18 @@ export function searchGazetteer(
  * line 0            nAdmin1|nCountries|nRows
  * next nAdmin1      one admin-1 name per line (the dictionary)
  * next nCountries   "CC Country Name"  (A-82 Part 4's code→name table, from ADM0NAME)
- * next nRows        name|fold|alts|iso|admin1Index|population|lat|lng|id
+ * next nRows        name|fold|alts|iso|admin1Index|population|lat|lng|id|agrees
  * ```
  *
  * `alts` is comma-joined and already folded, so it can contain no `|` and no `,`. `admin1Index`,
- * `population`, `lat`, `lng` and `id` are **base 36**; `lat` and `lng` are the coordinate times
+ * `population`, `lat` and `lng` are **base 36**; `lat` and `lng` are the coordinate times
  * 10⁴ (~11 m), rounded — two orders of magnitude finer than any question a city centre answers.
+ * `id` is the source prefix, a colon and the source's own row id in base 36.
+ *
+ * **`agrees` is `'1'` or `'0'`** — §8.4 A-83 Part 8's `indexAgrees`, one character per row so a
+ * regeneration diff on it is one visible character on one stable id. It is written explicitly
+ * rather than by omission: a field whose *absence* means `true` is a field a truncated line turns
+ * into a silent claim, and the whole point of this one is that nothing is silent.
  *
  * Pure. Throws `Error` on a payload whose declared counts do not match its lines — that is a
  * programmer error (a hand-edited generated module), which §2.1 says is the one thing core throws
@@ -332,6 +364,7 @@ export function decodeGazetteer(meta: { source: string }, packed: string): Gazet
       population: parseInt(f[5], 36),
       centre: { lat: parseInt(f[6], 36) / 1e4, lng: parseInt(f[7], 36) / 1e4 },
       id: f[8],
+      indexAgrees: f[9] !== '0',
     });
   }
   return { source: meta.source, countryNames, rows };

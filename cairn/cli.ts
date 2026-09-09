@@ -432,7 +432,9 @@ function cmdPhotos() {
  *
  * **Picking is not implemented here and that is deliberate.** A-82 Part 6 forbids matching a typed
  * name to a row without a human choosing it — this command prints candidates, and nothing in this
- * repository turns the top hit into a `City`.
+ * repository turns the top hit into a `City`. §8.4 **A-83** Part 8 makes that fence load-bearing
+ * rather than merely stated: a picked row's country now outranks `countryOf`, so a system that
+ * picked on a user's behalf would be putting a country on their lifetime map.
  */
 async function cmdCities() {
   const query = argv.slice(1).find((a) => !a.startsWith('--'));
@@ -457,7 +459,13 @@ async function cmdCities() {
     return;
   }
   for (const h of hits) {
-    out(`${h.label} · ${h.centre.lat},${h.centre.lng} · ${h.countryCode || '—'}`);
+    // **§8.4 A-83 Part 8's marker, and it is why this command is the increment's product proof.**
+    // A row whose stated country and `countryOf(row.centre)` disagree ships carrying that
+    // disagreement rather than being dropped, so the line says so — *no shipped row may SILENTLY
+    // contradict the country index*. A tester sees the whole of I-22 here with no browser and no
+    // UI: `geneva` used to answer `no match`.
+    const mark = h.indexAgrees ? '' : '  ⚑ our country index disagrees — it says this point is elsewhere';
+    out(`${h.label} · ${h.centre.lat},${h.centre.lng} · ${h.countryCode || '—'}${mark}`);
   }
 }
 

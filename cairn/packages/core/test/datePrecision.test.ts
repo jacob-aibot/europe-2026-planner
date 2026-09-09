@@ -177,8 +177,10 @@ test('QA P2-6: the summary row the Library lists carries datePrecision', () => {
 /**
  * **`datePrecision` still earns no bump of its own** — the point of this test is unchanged, and
  * what moved is the number underneath it. `SCHEMA_VERSION` went 1 → 2 at Phase 2 I-13 for
- * `Trip.photos` (§10.3, A-57 Part 5) and 2 → 3 at I-9a for `Trip.participants` (§8.3, **A-72**);
- * both are *records* widenings. `datePrecision` is a field with a total default and would still be
+ * `Trip.photos` (§10.3, A-57 Part 5), 2 → 3 at I-9a for `Trip.participants` (§8.3, **A-72**) and
+ * 3 → 4 at I-22 for `City.centre: LatLng | null` (§8.4, **A-83** Part 8); the first two are
+ * *records* widenings and the third is a *value-domain* widening, which is `migrate.ts`'s second
+ * clause. `datePrecision` is a field with a total default and would still be
  * riding version 1 if neither had arrived — that is `migrate.ts`'s **first** clause, and it is the
  * clause A-72 Part 4 left exactly as it was.
  *
@@ -191,7 +193,7 @@ test('no schemaVersion bump for datePrecision — the field is additive with a t
   assert.equal(base().schemaVersion, SCHEMA_VERSION);
   assert.equal(JSON.parse(toJSON(base())).schemaVersion, SCHEMA_VERSION);
   // The bumps that DID happen are photos' and participants', each stated where it is decided.
-  assert.equal(SCHEMA_VERSION, 3);
+  assert.equal(SCHEMA_VERSION, 4);
 });
 
 /**

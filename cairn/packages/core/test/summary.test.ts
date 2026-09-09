@@ -38,7 +38,12 @@ type GoldenCountries = { countries: Array<{ code: string }> };
 /** Every coordinate the trip itself states, in the order the summary must consider them. */
 function tripCoordinates(trip: Trip): LatLng[] {
   const out: LatLng[] = [];
-  for (const c of trip.cities) out.push(c.centre);
+  // §8.4 A-83 Part 8: `City.centre` may be null. The reference trip's six all have one, and
+  // asserting that here is what keeps this helper honest rather than casting past it.
+  for (const c of trip.cities) {
+    assert.ok(c.centre !== null, `INCONCLUSIVE: ${c.name} has no centre, so it states no coordinate`);
+    out.push(c.centre);
+  }
   for (const p of trip.places) if (p.at) out.push(p.at);
   for (const d of trip.days) for (const s of d.stops) {
     const at = stopLatLng(s, trip);
@@ -99,7 +104,9 @@ test('I-6: `cities` carries key, NAME and countryCode — never a bare CityKey (
     // Derived from the city's own coordinate through the injected index. §8.4 **A-29** lets a
     // *stated* `City.countryCode` fill a gap the coordinate cannot answer — but never override
     // one, so on every city the index can attribute this is still the coordinate's answer.
-    assert.equal(row.cities[i].countryCode, countryOf(cities[i].centre, COUNTRY_INDEX));
+    const at = cities[i].centre;
+    assert.ok(at !== null, `INCONCLUSIVE: ${cities[i].name} has no centre`);
+    assert.equal(row.cities[i].countryCode, countryOf(at, COUNTRY_INDEX));
     assert.equal(row.cities[i].countrySource, 'coordinate');
   }
 });
@@ -390,8 +397,8 @@ test('A-29: a stated code on a city does NOT rescue that city\'s places and stop
   assert.equal(row.stopCount, 0, 'INCONCLUSIVE: the fixture grew stops');
 });
 
-test('A-56: SUMMARY_VERSION is 5 — the city entry gained a place and dates, so the stamp moves', () => {
-  assert.equal(SUMMARY_VERSION, 5);
+test('A-83 Part 8: SUMMARY_VERSION is 6 — `centre` became nullable and `countrySource` gained `picked`', () => {
+  assert.equal(SUMMARY_VERSION, 6);
 });
 
 test('A-29 non-regression: the reference trip does not move, and every city is coordinate-derived', () => {
@@ -402,6 +409,7 @@ test('A-29 non-regression: the reference trip does not move, and every city is c
   // …and every one of the six *states* the same code its coordinate derives, which is why the
   // stated branch is unreachable on the only real trip we have and its tests are hand-built.
   for (const c of orderedCities(trip)) {
+    assert.ok(c.centre !== null, `INCONCLUSIVE: ${c.name} has no centre`);
     assert.equal(c.countryCode.toUpperCase(), countryOf(c.centre, COUNTRY_INDEX));
   }
 });
@@ -587,7 +595,7 @@ test('A-56: every city entry\'s `centre` IS the document\'s own City.centre — 
   }
   // …and the six are pairwise distinct, so "every entry equals the source" is a claim these
   // assertions could have caught being false by carrying one city's centre six times.
-  const seen = new Set(row.cities.map((c) => `${c.centre.lat},${c.centre.lng}`));
+  const seen = new Set(row.cities.map((c) => (c.centre === null ? 'null' : `${c.centre.lat},${c.centre.lng}`)));
   assert.equal(seen.size, cities.length, 'two city entries share one coordinate');
 });
 
@@ -598,6 +606,7 @@ test('A-56: `centre` is the CITY\'s centre and never the country\'s — residue 
   const { trip } = europe2026();
   const row = tripSummary(trip, COUNTRY_INDEX);
   for (const c of row.cities) {
+    assert.ok(c.centre !== null, `INCONCLUSIVE: ${c.name} has no centre on the reference trip`);
     assert.equal(typeof c.centre.lat, 'number');
     assert.equal(typeof c.centre.lng, 'number');
   }
@@ -605,7 +614,7 @@ test('A-56: `centre` is the CITY\'s centre and never the country\'s — residue 
   // could not do.
   const byCountry = new Map<string, Set<string>>();
   for (const c of row.cities) {
-    if (c.countryCode === null) continue;
+    if (c.countryCode === null || c.centre === null) continue;
     const hit = byCountry.get(c.countryCode) ?? new Set<string>();
     hit.add(`${c.centre.lat},${c.centre.lng}`);
     byCountry.set(c.countryCode, hit);
@@ -770,12 +779,14 @@ test('A-56 / R43-1: `centre` is COPIED verbatim, not aliased — a row is a valu
   }
 
   // Direction 1 — mutating the row cannot reach the trip.
+  assert.ok(row.cities[0].centre !== null && source[0].centre !== null, 'INCONCLUSIVE: the aliasing fixture lost its coordinates');
   row.cities[0].centre.lat = 0;
   row.cities[0].centre.lng = 0;
   assert.deepEqual(source[0].centre, { lat: 10, lng: 10 }, 'writing to the row wrote through to the trip document');
 
   // Direction 2 — mutating the trip cannot reach a row already minted from it.
   const fresh = tripSummary(trip, TWO_POLYGONS);
+  assert.ok(source[1].centre !== null && fresh.cities[1].centre !== null, 'INCONCLUSIVE: the aliasing fixture lost its coordinates');
   source[1].centre.lat = 99;
   source[1].centre.lng = 99;
   assert.deepEqual(fresh.cities[1].centre, { lat: 50, lng: 50 }, 'writing to the trip wrote through to a minted row');

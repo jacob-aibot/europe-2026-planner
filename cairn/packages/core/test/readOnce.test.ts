@@ -218,7 +218,8 @@ const CENSUS_PLACE_FIELDS: Record<keyof Place, true> = {
   id: true, cityKey: true, name: true, at: true, category: true, note: true, links: true, hours: true,
 };
 const CENSUS_CITY_FIELDS: Record<keyof City, true> = {
-  key: true, name: true, countryCode: true, centre: true, order: true, meta: true,
+  // `placeId` joins at ROADMAP I-22 (§8.4 A-83 Part 8) — the gazetteer row a human picked.
+  key: true, name: true, countryCode: true, centre: true, placeId: true, order: true, meta: true,
 };
 
 /** Row 14 is deliberately minimal (A-24 Part 2), and its minimality is PINNED rather than assumed:
@@ -292,7 +293,10 @@ function sourceTrip(opts: { link?: PlaceLink; at?: LatLng | null; pool?: boolean
       id: 'trip-src', title: 'Marta in Vienna', ownerId: 'user:marta',
       startDate: '2026-08-07', endDate: '2026-08-09',
       homeBase: HOME_BASE(), meta: TRIP_META(SRC_CITY),
-      cities: [{ key: SRC_CITY, name: 'Vienna', countryCode: 'AT', centre: VIENNA, order: 0, meta: { ...CITY_META } }],
+      // `placeId` is POPULATED rather than declared in `DECLARED_NULLS`, on `bookingId`'s own
+      // reasoning one record over: it is a scalar, a null scalar hides no subtree, and populating
+      // it is what makes the census measure the field instead of stepping over it (§8.4 A-83).
+      cities: [{ key: SRC_CITY, name: 'Vienna', countryCode: 'AT', centre: VIENNA, placeId: 'ne:j64c4z', order: 0, meta: { ...CITY_META } }],
     },
     CTX('src-'),
   );
@@ -349,7 +353,10 @@ function minimalSourceTrip(): Trip {
       // A-25 Part 1: row 14 is minimal in its STOP and its PLACE, never in its `Trip` — a `Trip`
       // field the fixture omits is invisible to the census on every row this document appears in.
       homeBase: HOME_BASE(), meta: TRIP_META(SRC_CITY),
-      cities: [{ key: SRC_CITY, name: 'Vienna', countryCode: 'AT', centre: VIENNA, order: 0, meta: { ...CITY_META } }],
+      // `placeId` is POPULATED rather than declared in `DECLARED_NULLS`, on `bookingId`'s own
+      // reasoning one record over: it is a scalar, a null scalar hides no subtree, and populating
+      // it is what makes the census measure the field instead of stepping over it (§8.4 A-83).
+      cities: [{ key: SRC_CITY, name: 'Vienna', countryCode: 'AT', centre: VIENNA, placeId: 'ne:j64c4z', order: 0, meta: { ...CITY_META } }],
     },
     CTX('min-'),
   );
@@ -378,7 +385,8 @@ function targetTrip(cfg: {
       startDate: '2026-08-07', endDate: '2026-08-09',
       homeBase: HOME_BASE(), meta: TRIP_META(TGT_CITY),
       cities: (cfg.cities ?? [{ key: TGT_CITY, name: cfg.city ?? 'Vienna', order: 0 }]).map((c) => ({
-        key: c.key, name: c.name, countryCode: 'AT', centre: VIENNA, order: c.order,
+        // Populated, not declared — see the source trip's own city, and `bookingId`'s reasoning.
+        key: c.key, name: c.name, countryCode: 'AT', centre: VIENNA, placeId: 'ne:j64c4z', order: c.order,
         meta: { ...CITY_META },
       })),
     },

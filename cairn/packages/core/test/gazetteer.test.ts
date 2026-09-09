@@ -110,6 +110,9 @@ const row = (r: Partial<GazetteerRow> & { name: string; id: string }): Gazetteer
   population: r.population ?? 0,
   centre: r.centre ?? { lat: 0, lng: 0 },
   id: r.id,
+  // §8.4 A-83 Part 8. `true` by default: a hand-built fixture states no disagreement, and a
+  // fixture that silently claimed one would make the marking's own tests vacuous.
+  indexAgrees: r.indexAgrees ?? true,
 });
 
 /**
@@ -259,13 +262,15 @@ const shipped = async (): Promise<Gazetteer> => (await import('@cairn/core/gazet
  * put Maastricht in Belgium on a user's lifetime map, and the point of refusing at generation time
  * is that A-29's precedence never has to arbitrate: wherever `countryOf` speaks, it now agrees.
  */
-test('A-82 Part 5: no shipped row contradicts countryOf — every row, no allowlist', async () => {
+test('A-82 Part 5 / A-83 Part 8: no shipped row with `indexAgrees: true` contradicts countryOf — every row, no allowlist', async () => {
   const { countryOf, COUNTRY_INDEX } = await import('../src/index.ts');
   const gaz = await shipped();
   const contradicted: string[] = [];
   let agree = 0;
   let silent = 0;
+  let marked = 0;
   for (const r of gaz.rows) {
+    if (r.indexAgrees === false) { marked += 1; continue; }
     const derived = countryOf(r.centre, COUNTRY_INDEX);
     if (derived === null) silent += 1;
     else if (derived === r.countryCode) agree += 1;
@@ -274,12 +279,58 @@ test('A-82 Part 5: no shipped row contradicts countryOf — every row, no allowl
   assert.deepEqual(
     contradicted,
     [],
-    'a shipped row contradicts the index we already ship — the generator\'s refusal filter is gone',
+    'a shipped row claims `indexAgrees: true` and contradicts the index we already ship — the ' +
+      'generator\'s consistency filter is gone. A-83 restated the invariant; it did not weaken it.',
   );
   // Both halves are counted rather than merely summed, because a filter that refused EVERYTHING
   // would also satisfy the assertion above.
-  assert.equal(agree + silent, gaz.rows.length);
+  assert.equal(agree + silent + marked, gaz.rows.length);
   assert.ok(agree > 6_000, `only ${agree} rows have a derived country at all`);
+  // **A disagreement count of zero is itself a failure** (ROADMAP I-22): the marking that never
+  // fires is the marking that was deleted.
+  assert.ok(marked > 0, 'ZERO rows carry `indexAgrees: false`, so the marking is gone');
+});
+
+/**
+ * **§8.4 A-83 Part 8, and it is the half of the restated invariant that is NOT a refusal.**
+ *
+ * > **No shipped row may *silently* contradict the country index.** A row whose derived country
+ * > and stated country are both non-null and differ ships **only** with `indexAgrees: false`
+ * > recorded on the row, published by name with both answers, and counted in the header.
+ *
+ * The measured cost of the old remedy was Brazzaville (a national capital), Geneva (1.24 M) and
+ * Jerusalem (1.03 M) — QA round 60 — so the three of them are named here rather than left to a
+ * count. They are only safe to ship because `City.placeId` exists to tell a picked pair from a
+ * typed field; A-82 Part 6's fence is what keeps that true.
+ */
+test('A-83 Part 8: every marked row genuinely disagrees, and Geneva, Jerusalem and Brazzaville ship', async () => {
+  const { countryOf, COUNTRY_INDEX } = await import('../src/index.ts');
+  const gaz = await shipped();
+  const marked = gaz.rows.filter((r) => r.indexAgrees === false);
+  assert.ok(marked.length > 0, 'ZERO marked rows');
+  for (const r of marked) {
+    const derived = countryOf(r.centre, COUNTRY_INDEX);
+    assert.notEqual(derived, null, `${r.name} is marked as disagreeing and countryOf is SILENT about it`);
+    assert.notEqual(derived, r.countryCode, `${r.name} is marked as disagreeing and countryOf AGREES with it`);
+    assert.match(r.countryCode, /^[A-Z]{2}$/, `${r.name} is marked and states no ISO code`);
+  }
+  for (const [name, code] of [['Geneva', 'CH'], ['Jerusalem', 'IL'], ['Brazzaville', 'CG']] as const) {
+    const hit = gaz.rows.find((r) => r.name === name && r.countryCode === code);
+    assert.ok(hit, `${name} does not ship — A-83 Part 8 is what makes it recordable`);
+    assert.equal(hit.indexAgrees, false, `${name} ships UNMARKED, which is the silent contradiction A-83 forbids`);
+  }
+});
+
+/**
+ * **A-83 Part 8: `GazetteerRow.id` carries its source prefix**, so a persisted `City.placeId`
+ * says which dataset minted it — `'ne:…'` today, `'gn:…'` after I-23. A stored pick that cannot
+ * name its dataset is a pick nobody can re-resolve after a regeneration.
+ */
+test('A-83 Part 8: every shipped row id carries its source prefix', async () => {
+  const gaz = await shipped();
+  const wrong = gaz.rows.filter((r) => !/^ne:[0-9a-z]+$/.test(r.id)).slice(0, 5).map((r) => `${r.name}: ${r.id}`);
+  assert.deepEqual(wrong, [], 'a shipped row id has no source prefix');
+  assert.equal(new Set(gaz.rows.map((r) => r.id)).size, gaz.rows.length, 'two shipped rows share an id');
 });
 
 /**
@@ -287,40 +338,48 @@ test('A-82 Part 5: no shipped row contradicts countryOf — every row, no allowl
  * fires is the filter that was deleted."* The refusals golden is the `[snapshot]` half; this is its
  * paired `[stated]` assertion, and it names the ruling's own four examples.
  */
-test('A-82 Part 5: the refusals golden names 98 border towns, and none of them ships', async () => {
-  const refusals = JSON.parse(
-    readFileSync(resolve(HERE, '..', '..', '..', 'fixtures', 'golden', 'gazetteer-refusals.json'), 'utf8'),
-  ) as { total: number; refused: Array<{ id: string; name: string; statedCountry: string; derivedCountry: string }> };
+test('A-83 Part 8: the disagreements golden names every marked row with BOTH answers, and every one of them SHIPS', async () => {
+  const dis = JSON.parse(
+    readFileSync(resolve(HERE, '..', '..', '..', 'fixtures', 'golden', 'gazetteer-disagreements.json'), 'utf8'),
+  ) as { total: number; disagreements: Array<{ id: string; name: string; statedCountry: string; derivedCountry: string }> };
 
-  assert.ok(refusals.total > 0, 'ZERO refusals: the consistency filter never fired, so it is gone');
-  assert.equal(refusals.total, refusals.refused.length);
-  assert.equal(refusals.total, 98, 'A-82 Part 1 measured 98 contradicted rows against the committed index');
+  assert.ok(dis.total > 0, 'ZERO disagreements: the marking never fired, so it is gone');
+  assert.equal(dis.total, dis.disagreements.length);
+  assert.equal(dis.total, 98, 'A-82 Part 1 measured 98 contradicted rows against the committed index');
 
-  for (const r of refusals.refused) {
-    assert.notEqual(r.statedCountry, r.derivedCountry, `${r.name} is in the refusals and does not disagree`);
+  for (const r of dis.disagreements) {
+    assert.notEqual(r.statedCountry, r.derivedCountry, `${r.name} is published as a disagreement and does not disagree`);
     assert.match(r.statedCountry, /^[A-Z]{2}$/);
     assert.match(r.derivedCountry, /^[A-Z]{2}$/);
   }
 
-  // A-82's own worked examples. Two of the four it names are here; the ruling's other two
-  // (Niagara Falls, Lugano) are checked below by absence from the shipped rows, which is the
-  // property that actually matters.
-  const byName = new Map(refusals.refused.map((r) => [r.name, r]));
+  const byName = new Map(dis.disagreements.map((r) => [r.name, r]));
   assert.equal(byName.get('Maastricht')?.derivedCountry, 'BE');
   assert.equal(byName.get('Arlon')?.derivedCountry, 'LU');
 
+  // **The job of this file changed at A-83 Part 8 and this is the assertion that says so.** It
+  // used to publish rows that were DROPPED; it now publishes rows that SHIP, carrying their
+  // disagreement, and every published row must be findable in the shipped corpus marked
+  // `indexAgrees: false` — which is what stops the golden becoming a list nobody can act on.
   const gaz = await shipped();
-  const shippedIds = new Set(gaz.rows.map((r) => r.id));
-  for (const r of refusals.refused) {
-    assert.equal(shippedIds.has(r.id), false, `${r.name} is refused AND shipped`);
+  const shippedById = new Map(gaz.rows.map((r) => [r.id, r]));
+  for (const r of dis.disagreements) {
+    const row = shippedById.get(r.id);
+    assert.ok(row, `${r.name} is published as a disagreement and does NOT ship`);
+    assert.equal(row.indexAgrees, false, `${r.name} ships but is not marked`);
+    assert.equal(row.countryCode, r.statedCountry, `${r.name}'s shipped code is not the one published`);
   }
-  for (const name of ['Maastricht', 'Niagara Falls', 'Lugano', 'Arlon']) {
-    assert.equal(
+  assert.equal(
+    gaz.rows.filter((r) => r.indexAgrees === false).length, dis.total,
+    'the corpus and the golden disagree about how many rows disagree',
+  );
+
+  for (const name of ['Maastricht', 'Niagara Falls', 'Lugano', 'Arlon', 'Geneva', 'Jerusalem', 'Brazzaville']) {
+    assert.ok(
       gaz.rows.some((r) => r.name === name),
-      false,
-      `${name} ships, and A-82 Part 5 refuses it — the invariant has been relaxed`,
+      `${name} does not ship — A-83 Part 8 restated the invariant so that it would`,
     );
-    assert.ok(byName.has(name), `${name} is not in the refusals golden`);
+    assert.ok(byName.has(name), `${name} is not in the disagreements golden`);
   }
 });
 
@@ -348,8 +407,10 @@ test('A-82 Part 2: the shipped rows are in the emitted total order, and that ord
     if (a.fold !== b.fold) return a.fold < b.fold;
     if (a.population !== b.population) return a.population > b.population;
     if (a.countryCode !== b.countryCode) return a.countryCode < b.countryCode;
-    // The ids are base-36 NE_IDs, so the emitted key is numeric, not lexicographic.
-    return parseInt(a.id, 36) < parseInt(b.id, 36);
+    // The ids are `<source>:<base-36 NE_ID>` (§8.4 A-83 Part 8), so the emitted key is the
+    // NUMERIC value of the part after the colon — `parseInt` on the whole string would read the
+    // shared `'ne'` prefix as digits and answer the same number for every row.
+    return parseInt(a.id.split(':')[1], 36) < parseInt(b.id.split(':')[1], 36);
   };
   for (let i = 1; i < gaz.rows.length; i += 1) {
     assert.ok(before(gaz.rows[i - 1], gaz.rows[i]), `rows ${i - 1} and ${i} are out of emitted order`);
@@ -492,7 +553,8 @@ test('A-82 Part 10: the probes golden reproduces exactly, query for query', asyn
   assert.ok(golden.probes.length >= 13, 'A-82 Part 10 names thirteen probe queries "at minimum"');
   for (const p of golden.probes) {
     const live = searchGazetteer(p.query, gaz, { limit: golden.probeDepth }).map((h) => ({
-      id: h.id, name: h.name, label: h.label, countryCode: h.countryCode, admin1: h.admin1, centre: h.centre,
+      id: h.id, name: h.name, label: h.label, countryCode: h.countryCode, admin1: h.admin1,
+      centre: h.centre, indexAgrees: h.indexAgrees,
     }));
     assert.deepEqual(live, p.hits, `the "${p.query}" probe no longer reproduces`);
   }
@@ -501,6 +563,16 @@ test('A-82 Part 10: the probes golden reproduces exactly, query for query', asyn
   assert.equal(q('zurich').hits[0].label, 'Zürich, Switzerland');
   assert.equal(q('hvar').hits.length, 0);
   assert.equal(new Set(q('London').hits.slice(0, 3).map((h) => h.countryCode)).size, 3);
+  // **§8.4 A-83 Part 8, in the committed answer rather than only in a count.** `maastricht` used
+  // to be A-82 Part 5's worked example of a row that was GONE; it is now found, and it is found
+  // MARKED. Geneva, Jerusalem and Brazzaville are the three the ruling names as the old remedy's
+  // measured cost, and the golden is where a reader can see that they came back.
+  for (const [query, code] of [['maastricht', 'NL'], ['geneva', 'CH'], ['jerusalem', 'IL'], ['brazzaville', 'CG']] as const) {
+    const top = q(query).hits[0];
+    assert.ok(top, `the "${query}" probe has no hit — A-83 Part 8 is what makes it findable`);
+    assert.equal(top.countryCode, code, `"${query}" resolves to the wrong country`);
+    assert.equal(top.indexAgrees, false, `"${query}" is published UNMARKED, which is the silent contradiction A-83 forbids`);
+  }
 });
 
 /**

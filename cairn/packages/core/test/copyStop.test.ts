@@ -1711,7 +1711,7 @@ test('A-16 step 1 stays first: a key only the TARGET can resolve still takes ste
   let target = mintedTrip('trip-gain', 'user:jacob', 'gn', [{ name: 'Vienna', centre: VIENNA }]);
   target = {
     ...target,
-    cities: [...target.cities, { key: GAINED, name: 'Prague', countryCode: 'CZ', centre: PRAGUE, order: 1 }],
+    cities: [...target.cities, { key: GAINED, name: 'Prague', countryCode: 'CZ', centre: PRAGUE, placeId: null, order: 1 }],
   };
   // The snapshot the Browse pane still holds: no such city, but a place already filed under it.
   let stale: Trip = { ...target, cities: target.cities.filter((c) => c.key !== GAINED) };

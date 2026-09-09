@@ -163,7 +163,13 @@ function finding(
  */
 export function geoCheck(trip: Trip): GeoFinding[] {
   const out: GeoFinding[] = [];
-  const centres = new Map<CityKey, LatLng>(trip.cities.map((c) => [c.key, c.centre]));
+  // **§8.4 A-83 Part 8.** Built from the cities that HAVE a centre. A city nobody located
+  // contributes no anchor — it contributed a useless one at 0°N 0°E before, which was harmless
+  // only because nothing in this trip is ever within the outlier radius of the Gulf of Guinea,
+  // and it stops being possible here rather than staying harmless by luck.
+  const centres = new Map<CityKey, LatLng>(
+    trip.cities.flatMap((c) => (c.centre === null ? [] : [[c.key, c.centre] as [CityKey, LatLng]])),
+  );
   const homeBase: Anchored[] = trip.homeBase ? [{ at: trip.homeBase.at, anchor: { kind: 'home_base' } }] : [];
 
   /** Coordinates of a stop, resolved through `trip.places`. */

@@ -6,7 +6,7 @@
   "tripIds": [
     "trip-europe-2026"
   ],
-  "summaryVersion": 5,
+  "summaryVersion": 6,
   "clocks": {
     "fixtureToday": {
       "today": "2026-08-01",

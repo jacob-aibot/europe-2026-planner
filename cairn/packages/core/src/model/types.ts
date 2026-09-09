@@ -197,7 +197,33 @@ export type City = {
   key: CityKey;
   name: string;
   countryCode: string;
-  centre: LatLng;
+  /**
+   * Where the city is — **`null` when nobody located it** (§8.4 **A-83** Part 8, A-82 Part 7).
+   *
+   * `{lat: 0, lng: 0}` used to stand here for a city typed into a form, and it is *"a value nobody
+   * measured, wearing the shape of one"*: it is a real place in the Gulf of Guinea, `countryOf`
+   * answers `null` for it only because the Atlantic is empty, and the first surface to draw city
+   * pins would have drawn every hand-entered city there. `null` is A-26 Part 1's honest hole and
+   * this field now carries it. **Every reader skips a null centre rather than substituting one.**
+   */
+  centre: LatLng | null;
+  /**
+   * The gazetteer row the user **PICKED**, `'<source>:<row>'` — `'ne:j63zkv'` today, `'gn:…'`
+   * after I-23. `null` for a city they typed.
+   *
+   * **What a human picked, never what a system matched.** A-82 Part 6 forbids matching a typed
+   * name to a row without a human choosing it — no bulk import, no *"we think you meant Paris"*,
+   * no auto-select-the-top-hit on blur — and **that fence is what makes the precedence in §8.4
+   * A-83 Part 8 safe**. With it, `derive/summary.ts` can tell a gazetteer-supplied `countryCode`
+   * from a hand-typed one, which is exactly the provenance A-29 Part 3 item 3 said was missing;
+   * so a picked city's own code outranks `countryOf`, and a **typed** city's code still loses to
+   * it, permanently. Write this field from anything other than a human's pick and a mistyped `HU`
+   * on Vienna puts Hungary on a lifetime map forever.
+   *
+   * It is **provenance, not authentication**: a user who hand-edits their own document to invent
+   * one puts a country on their own map, which is the trust boundary §2.1 already draws.
+   */
+  placeId: string | null;
   order: number;
   meta?: { flagEmoji?: string; color?: string };
 };
@@ -465,8 +491,15 @@ export type DisplayStatus = 'own' | 'suggested' | 'candidate' | 'imported' | 're
  *     drops the field it has never heard of, and writes the trip back without its people on the
  *     next save. Photos' equivalent channel was closed by `DB_VERSION` as well; participants add
  *     no object store, so **this constant is the only thing standing there**.
+ *   - **4** — `City.centre` becomes `LatLng | null` and `City.placeId` arrives (§8.4 **A-83**
+ *     Part 8, ROADMAP I-22). `placeId` alone would not earn a bump on A-72's rule — it is a new
+ *     scalar with a total default. `centre` does: it is **a widening of an existing field's value
+ *     domain**, which is clause 2 verbatim, and an older build that opened such a document would
+ *     read `centre: null` into a type that says it cannot be null and draw the city at 0°N 0°E or
+ *     crash reading `.lat`. The 3 → 4 rung also converts: a stored `{lat: 0, lng: 0}` becomes
+ *     `null`, because that value was never a measurement.
  */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export type TripMeta = {
   /** Pool section headings, carried over from `OPTIONAL[city].title/note`. */
@@ -538,7 +571,7 @@ export type Trip = {
    */
   participants: Participant[];
   revision: number;
-  schemaVersion: 3;
+  schemaVersion: 4;
   meta?: TripMeta;
 };
 

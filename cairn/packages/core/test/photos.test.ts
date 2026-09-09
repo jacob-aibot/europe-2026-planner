@@ -50,8 +50,8 @@ const basePhoto = {
  * Part 4's rule catch its own violation: a records class added without a bump reddens nothing at
  * all if these two stop naming a literal.
  */
-test('SCHEMA_VERSION is 3 — A-57 Part 5 put it at 2, A-72 moved it for `participants`', () => {
-  assert.equal(SCHEMA_VERSION, 3);
+test('SCHEMA_VERSION is 4 — A-57 Part 5 put it at 2, A-72 at 3, A-83 Part 8 at 4 for `City.centre`', () => {
+  assert.equal(SCHEMA_VERSION, 4);
 });
 
 test('a new trip carries an empty photos array', () => {
@@ -247,13 +247,13 @@ test('P11: a v1 document migrates to photos: [], and a document from a later ver
   delete v1.photos;
   delete v1.participants;
   const migrated = migrateDoc(v1) as { schemaVersion: number; photos: unknown[]; participants: unknown[] };
-  assert.equal(migrated.schemaVersion, 3, 'the ladder stopped at photos\' rung');
+  assert.equal(migrated.schemaVersion, 4, 'the ladder stopped short of the current version');
   assert.deepEqual(migrated.photos, []);
   assert.deepEqual(migrated.participants, []);
   assert.equal(fromJSON(migrated).photos.length, 0);
-  // The other half: a build that reads up to 3 refuses a 4. `migrateDoc` states that in the
+  // The other half: a build that reads up to 4 refuses a 5. `migrateDoc` states that in the
   // message the existing "Update the app." sentence was written for.
-  assert.throws(() => migrateDoc({ ...current, schemaVersion: 4 }), /this build reads up to 3\. Update the app\./);
+  assert.throws(() => migrateDoc({ ...current, schemaVersion: 5 }), /this build reads up to 4\. Update the app\./);
 });
 
 /**
@@ -288,7 +288,7 @@ test('R45-1: fromJSON reads a document written by the previous release, with no 
 test('R45-1: a document from a newer build is still refused, with the "Update the app." message', () => {
   const { trip, c } = tripWithDays();
   const doc = JSON.parse(toJSON(addPhoto(trip, { attach: { kind: 'trip' }, ...basePhoto }, c)));
-  assert.throws(() => fromJSON(JSON.stringify({ ...doc, schemaVersion: 4 })), /Update the app\./);
+  assert.throws(() => fromJSON(JSON.stringify({ ...doc, schemaVersion: 5 })), /Update the app\./);
   assert.throws(() => fromJSON(JSON.stringify({ ...doc, schemaVersion: 0 })), /no migration path from schemaVersion 0/);
   const noVersion = { ...doc };
   delete noVersion.schemaVersion;

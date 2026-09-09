@@ -62,7 +62,18 @@ export type CityInit = {
   key?: CityKey;
   name: string;
   countryCode?: string;
-  centre?: { lat: number; lng: number };
+  /**
+   * **Optional, and its default is `null` since §8.4 A-83 Part 8 (I-22).** It used to be
+   * `{lat: 0, lng: 0}`, which is a real place in the Gulf of Guinea and was never a measurement.
+   * A form that collects a name and no coordinate now records an honest hole.
+   */
+  centre?: { lat: number; lng: number } | null;
+  /**
+   * The gazetteer row the user **picked** (§8.4 A-83 Part 8). Defaults to `null`, which is what
+   * a typed city has. **Nothing in this repository may fill it from a name match** — A-82 Part 6
+   * forbids it and `summary.ts`'s precedence is why the fence has to hold.
+   */
+  placeId?: string | null;
   order?: number;
   meta?: { flagEmoji?: string; color?: string };
 };
@@ -108,7 +119,11 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
     key: c.key ?? ctx.ids.newId('city'),
     name: c.name,
     countryCode: c.countryCode ?? '',
-    centre: c.centre ?? { lat: 0, lng: 0 },
+    // §8.4 A-83 Part 8 / A-82 Part 7. `{0,0}` used to stand here; it is *"a value nobody
+    // measured, wearing the shape of one"*, and every hand-entered city was a summary row
+    // claiming 0°N 0°E. `??` and not `||` for the same reason the key above uses it.
+    centre: c.centre ?? null,
+    placeId: c.placeId ?? null,
     order: c.order ?? i,
     ...(c.meta ? { meta: c.meta } : {}),
   }));

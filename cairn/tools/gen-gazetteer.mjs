@@ -3,7 +3,7 @@
  * populated-places layer (ARCHITECTURE §8.4 **A-82**, ROADMAP Phase 2 **I-21**).
  *
  * Run:
- *   node tools/gen-gazetteer.mjs               # fetch, verify, build, write the module + refusals
+ *   node tools/gen-gazetteer.mjs               # fetch, verify, build, write the module + goldens
  *   node tools/gen-gazetteer.mjs --dry-run     # measure and audit, write nothing
  *   node tools/gen-gazetteer.mjs --audit-only  # audit the COMMITTED module, fetch nothing
  *   node tools/gen-gazetteer.mjs --audit-only --write
@@ -16,26 +16,35 @@
  * The ease of that is key as well since many people will want to upload where they've been.
  * Otherwise it's not a true sign of their travels."* Two requirements: **easy**, and **true**.
  *
- * **The consistency invariant is the whole point of this generator and it is A-82 Part 5.** The
- * shipped `COUNTRY_INDEX` and this dataset disagree about **98 named cities** — Maastricht→`BE`,
- * Niagara Falls→`CA`, Lugano→`IT`, Arlon→`LU` — and every one of them is a border town, because
- * §8.4 A-26 Part 2 chose the base scale for being *"the most forgiving of the error that dominates
- * this dataset's use"* rather than for accuracy, and a coarse ring bulges outward. Shipping those
- * rows would put Maastricht in Belgium on a user's lifetime map. So:
+ * **The consistency invariant is the whole point of this generator, and §8.4 A-83 Part 8 RESTATED
+ * it rather than weakening it (ROADMAP I-22).** The shipped `COUNTRY_INDEX` and this dataset
+ * disagree about **98 named cities** — and QA round 60 measured what A-82 Part 5's original remedy
+ * cost: ranked by population the refused set opens **Brazzaville (a national capital, 1.36 M),
+ * Geneva (1.24 M) and Jerusalem (a national capital, 1.03 M)**; 19 are above 100,000. Every one is
+ * a border town, because §8.4 A-26 Part 2 chose the base scale for being *"the most forgiving of
+ * the error that dominates this dataset's use"* rather than for accuracy, and a coarse ring bulges
+ * outward. So:
  *
- * > **A row is emitted only if `countryOf(row.centre, COUNTRY_INDEX)` is either the row's own
- * > country code or `null`.** A row where both are non-null and disagree is **REFUSED**, named, and
- * > published in `fixtures/golden/gazetteer-refusals.json`. Where the source carries no code
- * > (`-99`), the derived answer is used if there is one and `''` is stored if there is not.
+ * > **No shipped row may *silently* contradict the country index.** A row where the derived and
+ * > stated countries are both non-null and **differ** ships **only** with `indexAgrees: false`
+ * > recorded on the row, published by name with **both** answers in
+ * > `fixtures/golden/gazetteer-disagreements.json`, and counted in the generated header. **A row
+ * > that would contradict the index without carrying that record is still REFUSED.** Where the
+ * > source carries no code (`-99`), the derived answer is used if there is one and `''` is stored
+ * > if there is not.
  *
- * `countryOf` stays authoritative, because wherever it speaks it now agrees; A-29's four-step gate
- * is untouched, `countrySource` gains no value and `SUMMARY_VERSION` does not move. What it costs
- * is stated rather than buried: **98 real cities become unfindable**, 1.3 % of the layer, published
- * by name rather than silently dropped. Restoring them needs a field on `City` and a schema
- * migration — ROADMAP **I-22**, deliberately not this increment.
+ * The zero-exception check is unmoved and is now quantified over the rows that claim to agree:
+ * for every shipped row with `indexAgrees: true`, `countryOf(row.centre, COUNTRY_INDEX)` is either
+ * the row's own code or `null`. That is round 60's own test, carried across unchanged.
  *
- * **A refusal count of zero is a FAILURE, not a clean run**: the filter that never fires is the
- * filter that was deleted.
+ * **This is only safe because `City.placeId` exists** (§8.4 A-83 Part 8): `derive/summary.ts` can
+ * now tell a gazetteer row a human PICKED from a hand-typed country code, so a picked row's
+ * country outranks `countryOf` and a typed one's still does not. Without that field, shipping a
+ * disagreeing row would put Maastricht in Belgium on a lifetime map, which is exactly why A-82
+ * Part 5 refused it and why restoring it needed a schema migration first.
+ *
+ * **A disagreement count of zero is a FAILURE, not a clean run**: the marking that never fires is
+ * the marking that was deleted.
  *
  * **This runs at generation time, by a human, once. Nothing in the shipped product runs it.**
  * `packages/core`, `packages/client`, `apps/web` and `cli.ts` never fetch anything for this
@@ -68,7 +77,7 @@ import { dirname, resolve } from 'node:path';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CAIRN = resolve(HERE, '..');
 const OUT = resolve(CAIRN, 'packages/core/src/geo/gazetteer.gen.ts');
-const REFUSALS_OUT = resolve(CAIRN, 'fixtures/golden/gazetteer-refusals.json');
+const DISAGREEMENTS_OUT = resolve(CAIRN, 'fixtures/golden/gazetteer-disagreements.json');
 const PROBES_OUT = resolve(CAIRN, 'fixtures/golden/gazetteer-probes.json');
 
 const TAG = 'v5.1.2';
@@ -91,6 +100,13 @@ const PIN = {
 const DECIMALS = 4;
 
 /**
+ * The prefix every emitted row id carries — §8.4 **A-83** Part 8. `'ne'` is Natural Earth; I-23
+ * swaps the corpus and this becomes `'gn'`. A persisted `City.placeId` is this id verbatim, so it
+ * has to name its own dataset.
+ */
+const ID_PREFIX = 'ne';
+
+/**
  * A-82 Part 10's probe list, *"at minimum"* its thirteen queries. These become
  * `fixtures/golden/gazetteer-probes.json`, which pins **the answer, not the mechanism**: a fold
  * that stops handling `ł`, a comparator whose tie moves, or a coordinate that shifted between
@@ -100,8 +116,13 @@ const PROBES = [
   'zurich', 'Zürich', 'sao paulo', 'London', 'Paris', 'springfield', 'york',
   'lodz', 'istanbul', 'bac kan', 'vatican', 'nara', 'hvar',
   // Two more, because they are the two claims A-82 makes that a reader is most likely to doubt:
-  // the micro-states resolve correctly (Part 1 measurement 2), and a refused border town is gone.
+  // the micro-states resolve correctly (Part 1 measurement 2), and — until §8.4 A-83 Part 8 —
+  // a disagreeing border town was gone. `maastricht` now FINDS it, marked, which is the whole
+  // of I-22 visible in one committed line.
   'monaco', 'maastricht',
+  // §8.4 A-83 Part 8's three named costs of the old remedy, pinned as answers rather than as a
+  // count: a national capital, the second city of Switzerland, and a second national capital.
+  'geneva', 'jerusalem', 'brazzaville',
 ];
 const PROBE_DEPTH = 5;
 
@@ -164,12 +185,12 @@ async function main() {
   console.log(`A-82 Part 1's census, re-derived against the COMMITTED index (${COUNTRY_INDEX.scale}):`);
   console.log(`  agrees with ISO_A2      ${String(built.census.agree).padStart(5)}`);
   console.log(`  countryOf returns null  ${String(built.census.silent).padStart(5)}   (A-26's honest hole)`);
-  console.log(`  a DIFFERENT country     ${String(built.census.disagree).padStart(5)}   REFUSED — border towns`);
+  console.log(`  a DIFFERENT country     ${String(built.census.disagree).padStart(5)}   SHIPPED, marked indexAgrees:false — border towns`);
   console.log(`  no ISO_A2 at all (-99)  ${String(built.census.noCode).padStart(5)}`);
   console.log('');
   console.log(`rows read      ${geo.features.length}`);
   console.log(`rows shipped   ${built.rows.length}`);
-  console.log(`rows refused   ${built.refusals.length}   (reason: countryOf contradicts the source's own ISO code)`);
+  console.log(`rows marked    ${built.disagreements.length}   (indexAgrees: false — countryOf contradicts the source's own ISO code)`);
   console.log(`admin-1 dict   ${built.admin1.length}`);
   console.log(`country names  ${Object.keys(built.countryNames).length}`);
   if (built.derivedOnly.length) {
@@ -185,16 +206,17 @@ async function main() {
     for (const r of built.codeless) console.log(`    ${r.name} (${r.adm0})`);
   }
   console.log('');
-  for (const r of built.refusals) {
-    console.log(`  refused  ${r.name.padEnd(24)} states ${r.statedCountry}  countryOf says ${r.derivedCountry}`);
+  for (const r of built.disagreements) {
+    console.log(`  marked   ${r.name.padEnd(24)} states ${r.statedCountry}  countryOf says ${r.derivedCountry}`);
   }
 
-  // **A refusal count of 0 is itself a failure** (ROADMAP I-21, and it is one of that increment's
-  // two stop-and-report conditions): the filter that never fires is the filter that was deleted.
-  if (built.refusals.length === 0) {
+  // **A disagreement count of 0 is itself a failure** (ROADMAP I-22, and it is one of that
+  // increment's two stop-and-report conditions): the marking that never fires is the marking
+  // that was deleted.
+  if (built.disagreements.length === 0) {
     throw new Error(
-      'ZERO refusals. A-82 Part 5 measured 98 border towns the shipped index contradicts; a run ' +
-        'that refuses none has lost its consistency filter, not found a clean dataset.',
+      'ZERO disagreements. A-83 Part 8 measured 98 border towns the shipped index contradicts; a ' +
+        'run that marks none has lost its consistency check, not found a clean dataset.',
     );
   }
 
@@ -217,7 +239,7 @@ async function main() {
   console.log(`  ^ this is the number that goes in EMITTED_BYTES in`);
   console.log(`    packages/core/test/0-gazetteerBudget.test.ts, and in no document.`);
 
-  writeRefusals(built, sha);
+  writeDisagreements(built, sha);
 
   // Audit the module that was actually written, decoded the way the product decodes it — not the
   // in-memory build, and in a CHILD PROCESS, because this process has already imported
@@ -258,7 +280,7 @@ const isIso = (c) => typeof c === 'string' && /^[A-Z]{2}$/.test(c);
 const isLatinFold = (s) => /^[a-z0-9 ]+$/.test(s);
 
 /**
- * GeoJSON features → the shipped rows, the refusals and the census.
+ * GeoJSON features → the shipped rows, the disagreements and the census.
  *
  * `countryOf` is evaluated against the **quantised** centre, not the raw one, because the
  * quantised centre is what ships and therefore what the invariant test will ask about. Eleven
@@ -268,7 +290,7 @@ const isLatinFold = (s) => /^[a-z0-9 ]+$/.test(s);
 function build(geo, countryOf, index) {
   const census = { agree: 0, silent: 0, disagree: 0, noCode: 0 };
   const rows = [];
-  const refusals = [];
+  const disagreements = [];
   const derivedOnly = [];
   const codeless = [];
   const adm0Counts = new Map();   // code -> Map(ADM0NAME -> count), stated codes only
@@ -286,8 +308,11 @@ function build(geo, countryOf, index) {
 
     const stated = isIso(p.ISO_A2) ? p.ISO_A2 : null;
     const derived = countryOf({ lat, lng }, index);
+    const id = `${ID_PREFIX}:${(p.NE_ID >>> 0).toString(36)}`;
 
     let code;
+    // §8.4 **A-83 Part 8**. `true` unless the two answers are both non-null and differ.
+    let indexAgrees = true;
     if (stated !== null) {
       if (derived === null) {
         census.silent += 1;
@@ -296,15 +321,15 @@ function build(geo, countryOf, index) {
         census.agree += 1;
         code = stated;
       } else {
-        // A-82 Part 5. Refused, named, published — never shipped and contradicted later.
+        // **A-83 Part 8, and this is the clause that changed.** The row SHIPS, carrying the
+        // disagreement, and is published by name with both answers. A-82 Part 5 dropped it here
+        // (`continue`), which cost Brazzaville, Geneva and Jerusalem; the invariant is restated —
+        // *no shipped row may SILENTLY contradict the index* — not relaxed. The row is only safe
+        // to ship because `City.placeId` exists to tell a picked pair from a typed field.
         census.disagree += 1;
-        refusals.push({
-          id: (p.NE_ID >>> 0).toString(36),
-          name: String(p.NAME),
-          statedCountry: stated,
-          derivedCountry: derived,
-        });
-        continue;
+        code = stated;
+        indexAgrees = false;
+        disagreements.push({ id, name: String(p.NAME), statedCountry: stated, derivedCountry: derived });
       }
     } else {
       census.noCode += 1;
@@ -346,7 +371,8 @@ function build(geo, countryOf, index) {
       name, fold, alts, countryCode: code, admin1,
       population: Math.max(0, Math.round(p.POP_MAX ?? 0)),
       lat, lng,
-      id: (p.NE_ID >>> 0).toString(36),
+      id,
+      indexAgrees,
       neId: p.NE_ID,
     });
   }
@@ -360,7 +386,7 @@ function build(geo, countryOf, index) {
     a.fold < b.fold ? -1 : a.fold > b.fold ? 1 :
     b.population - a.population ||
     (a.countryCode < b.countryCode ? -1 : a.countryCode > b.countryCode ? 1 : a.neId - b.neId));
-  refusals.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : a.id < b.id ? -1 : 1));
+  disagreements.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : a.id < b.id ? -1 : 1));
 
   // The admin-1 dictionary: distinct names, sorted, so its indices are a property of the data and
   // not of the order the features happened to arrive in.
@@ -393,7 +419,7 @@ function build(geo, countryOf, index) {
     .map((r) => ({ name: r.name, code: r.countryCode }));
 
   return {
-    rows, refusals, census, admin1, admin1At,
+    rows, disagreements, census, admin1, admin1At,
     countryNames: sortedNames, derivedOnly, codeless, unnamed: unnamed2,
   };
 }
@@ -414,6 +440,9 @@ function pack(built) {
       Math.round(r.lat * 1e4).toString(36),
       Math.round(r.lng * 1e4).toString(36),
       r.id,
+      // §8.4 A-83 Part 8. One character, written explicitly for both states — see
+      // `decodeGazetteer`'s grammar for why absence may not mean `true` here.
+      r.indexAgrees ? '1' : '0',
     ].join('|')),
   ];
   return lines.join('\n');
@@ -427,6 +456,7 @@ function gazetteerOf(built, sha) {
     rows: built.rows.map((r) => ({
       name: r.name, fold: r.fold, alts: r.alts, countryCode: r.countryCode,
       admin1: r.admin1, population: r.population, centre: { lat: r.lat, lng: r.lng }, id: r.id,
+      indexAgrees: r.indexAgrees,
     })),
   };
 }
@@ -454,22 +484,27 @@ function emit(built, sha) {
  *          (Natural Earth populated places, public domain — see the generator's header for the
  *          licence citation and why the tag is pinned rather than tracking \`master\`.)
  * sha256 : ${FILE} ${sha}
- * Rows   : ${built.rows.length} shipped of ${built.rows.length + built.refusals.length} coded source rows · ${built.admin1.length} admin-1 names · ${codes.length} country names
- * Refused: ${built.refusals.length} — ARCHITECTURE §8.4 **A-82** Part 5, the consistency invariant. A row ships only
- *          where \`countryOf(row.centre, COUNTRY_INDEX)\` is the row's own ISO code or \`null\`. The
- *          refused rows are border towns the shipped index draws on the wrong side of a frontier
- *          (Maastricht, Niagara Falls, Lugano, Arlon…), and shipping one would put it in the wrong
- *          country on a user's lifetime map. Every one is named in
- *          \`fixtures/golden/gazetteer-refusals.json\`, and ROADMAP **I-22** is what would restore
- *          them.
+ * Rows   : ${built.rows.length} shipped · ${built.admin1.length} admin-1 names · ${codes.length} country names
+ * Marked : ${built.disagreements.length} rows carry \`indexAgrees: false\` — ARCHITECTURE §8.4 **A-83** Part 8, the
+ *          consistency invariant RESTATED: *no shipped row may SILENTLY contradict the country
+ *          index*. Those rows are border towns the shipped index draws on the wrong side of a
+ *          frontier (Geneva, Jerusalem, Brazzaville, Maastricht, Lugano, Arlon…). A-82 Part 5
+ *          refused them outright, which cost a national capital and the second city of
+ *          Switzerland; they now SHIP carrying the disagreement, and every one is published with
+ *          both answers in \`fixtures/golden/gazetteer-disagreements.json\`. **A row that would
+ *          contradict the index without carrying that record is still REFUSED.** Safe only because
+ *          \`City.placeId\` exists (ROADMAP I-22): a PICKED row's country outranks \`countryOf\`, and
+ *          a hand-typed one's does not.
  * Census : ${built.census.agree} agree with ISO_A2 · ${built.census.silent} countryOf-silent (A-26's honest hole) ·
- *          ${built.census.disagree} contradicted (refused) · ${built.census.noCode} carry no ISO_A2 at all
+ *          ${built.census.disagree} contradicted (shipped, marked) · ${built.census.noCode} carry no ISO_A2 at all
  * Order  : ascending folded name, then descending population, then ascending ISO code, then
  *          ascending NE_ID. A **total** order, so a regeneration cannot reshuffle the list, and it
  *          is a property of THIS FILE — \`decodeGazetteer\` preserves it and does not re-derive it.
  * Coords : ${DECIMALS} decimal places (~11 m), stored as base-36 tenth-thousandths. \`countryOf\` was
  *          evaluated against the QUANTISED coordinate, so the invariant holds for the bytes that
  *          ship rather than for the ones that were measured.
+ * Ids    : every row id is \`${ID_PREFIX}:<base-36 NE_ID>\`. The prefix names the dataset that minted it,
+ *          because this value is what a \`City.placeId\` persists (§8.4 A-83 Part 8).
  * Fold   : A-82 Part 3's five ordered steps. Each row carries its own fold, and
  *          \`packages/core/test/gazetteer.test.ts\` asserts core's \`foldPlaceName(row.name)\`
  *          reproduces it for every row — which is what makes the generator's own copy of that
@@ -513,35 +548,43 @@ function roundTrip(text, built) {
 // ---------------------------------------------------------------- the goldens
 
 /**
- * `fixtures/golden/gazetteer-refusals.json` — every row the consistency invariant refused, by name.
- * The analogue of `country-holes.json`, doing the same job: it makes a deliberate hole
- * **countable, nameable and reviewable** instead of invisible, and it is the input I-22 restores
- * from. A refusal count that changes when the country index next changes is a diff a reviewer must
- * look at, which is the point.
+ * `fixtures/golden/gazetteer-disagreements.json` — **renamed from `gazetteer-refusals.json` at
+ * §8.4 A-83 Part 8, and its JOB changed with its name.** It used to publish rows that were
+ * DROPPED; it now publishes rows that **SHIP**, each carrying `indexAgrees: false`, with **both**
+ * country answers beside it. That is what *"no shipped row may SILENTLY contradict the index"*
+ * means in a file: the contradiction is on the record, by name, countable and reviewable, and a
+ * count that changes when the country index next changes is a diff a reviewer must look at.
  *
- * **Coordinates are NOT in this file and that is not a redaction** — `{id, name, statedCountry,
- * derivedCountry}` is A-82 Part 10's stated shape for it, and a refused row has no shipped
- * coordinate to publish. `country-holes.json`'s `NO COORDINATES` line does not transfer to the
- * probes golden, which does carry them (A-82 Part 10: that line's subject is the live planner's own
- * records under §6.6, and this one's is a public-domain dataset already committed in full).
+ * **Coordinates are NOT in this file and that is still not a redaction** — `{id, name,
+ * statedCountry, derivedCountry}` is A-82 Part 10's stated shape for it, and every one of these
+ * rows now ships with its coordinate in `GAZETTEER` anyway, so publishing it twice would add
+ * nothing. `country-holes.json`'s `NO COORDINATES` line does not transfer to the probes golden,
+ * which does carry them (A-82 Part 10: that line's subject is the live planner's own records
+ * under §6.6, and this one's is a public-domain dataset already committed in full).
  */
-function writeRefusals(built, sha) {
+function writeDisagreements(built, sha) {
   const out = {
     $generatedBy: 'cairn/tools/gen-gazetteer.mjs',
     $source: sourceString(),
     $sourceSha256: sha,
     $what:
-      'Every row of the pinned populated-places layer that ARCHITECTURE §8.4 A-82 Part 5\'s ' +
-      'consistency invariant REFUSED: the row states an ISO country code, and countryOf(row.centre, ' +
-      'COUNTRY_INDEX) returns a DIFFERENT one. Every one is a border town the shipped index draws on ' +
-      'the wrong side of a frontier, and shipping it would put the city in the wrong country on a ' +
-      "user's lifetime map. They are named here rather than dropped silently. ROADMAP I-22 is what " +
-      'would restore them. statedCountry is the source\'s ISO_A2; derivedCountry is what countryOf says.',
-    total: built.refusals.length,
-    refused: built.refusals,
+      'Every row of the pinned populated-places layer whose stated ISO country code and ' +
+      'countryOf(row.centre, COUNTRY_INDEX) are both non-null and DISAGREE. ARCHITECTURE §8.4 ' +
+      "A-82 Part 5 refused these rows outright, which cost Brazzaville (a national capital), " +
+      'Geneva and Jerusalem; §8.4 A-83 Part 8 RESTATES the invariant as "no shipped row may ' +
+      'SILENTLY contradict the country index", so every row listed here SHIPS in ' +
+      'packages/core/src/geo/gazetteer.gen.ts carrying indexAgrees: false, and is named here with ' +
+      'BOTH answers. A row that would contradict the index without carrying that record is still ' +
+      'REFUSED. Every one is a border town the shipped index draws on the wrong side of a ' +
+      'frontier, because A-26 Part 2 chose a coarse base scale and a coarse ring bulges outward. ' +
+      "statedCountry is the source's ISO_A2 and is what the row ships; derivedCountry is what " +
+      'countryOf says. A picked city takes the former (City.placeId, A-83 Part 8); a typed one ' +
+      'still takes the latter.',
+    total: built.disagreements.length,
+    disagreements: built.disagreements,
   };
-  writeFileSync(REFUSALS_OUT, `${JSON.stringify(out, null, 2)}\n`);
-  console.log(`wrote fixtures/golden/gazetteer-refusals.json  (${built.refusals.length} rows)`);
+  writeFileSync(DISAGREEMENTS_OUT, `${JSON.stringify(out, null, 2)}\n`);
+  console.log(`wrote fixtures/golden/gazetteer-disagreements.json  (${built.disagreements.length} rows)`);
 }
 
 // ---------------------------------------------------------------- the audit
@@ -558,16 +601,31 @@ async function audit(gaz, { writeProbes }) {
 
   let agree = 0;
   let silent = 0;
+  let marked = 0;
   const violations = [];
+  const misMarked = [];
   for (const r of gaz.rows) {
     const derived = countryOf(r.centre, COUNTRY_INDEX);
+    const disagrees = derived !== null && derived !== r.countryCode;
+    if (r.indexAgrees === false) {
+      marked += 1;
+      // A row may not claim a disagreement it does not have: the marking is a record of a
+      // measurement, and a marking that fires where the index agrees is a licence, not a record.
+      if (!disagrees) misMarked.push(`${r.name} is marked indexAgrees:false and countryOf says ${derived ?? 'nothing'}`);
+      continue;
+    }
     if (derived === null) silent += 1;
     else if (derived === r.countryCode) agree += 1;
     else violations.push(`${r.name} states ${r.countryCode || "''"}, countryOf says ${derived}`);
   }
-  console.log(`  invariant: ${agree} rows agree with countryOf, ${silent} it is silent on, ${violations.length} contradicted`);
+  console.log(`  invariant: ${agree} rows agree with countryOf, ${silent} it is silent on, ${marked} ship MARKED, ${violations.length} contradicted SILENTLY`);
   for (const v of violations.slice(0, 20)) console.log(`    VIOLATION ${v}`);
-  if (violations.length) throw new Error(`${violations.length} shipped rows contradict countryOf`);
+  if (violations.length) throw new Error(`${violations.length} shipped rows SILENTLY contradict countryOf`);
+  for (const v of misMarked.slice(0, 20)) console.log(`    MIS-MARKED ${v}`);
+  if (misMarked.length) throw new Error(`${misMarked.length} shipped rows are marked and do not disagree`);
+  // ROADMAP I-22's stop-and-report condition, re-derived from the ARTEFACT rather than from the
+  // build's own bookkeeping: a marking that never fires is a marking that was deleted.
+  if (marked === 0) throw new Error('ZERO rows ship with indexAgrees:false — the marking is gone');
 
   const ambiguous = new Map();
   for (const r of gaz.rows) ambiguous.set(r.fold, (ambiguous.get(r.fold) ?? 0) + 1);
@@ -577,7 +635,7 @@ async function audit(gaz, { writeProbes }) {
     query,
     hits: searchGazetteer(query, gaz, { limit: PROBE_DEPTH }).map((h) => ({
       id: h.id, name: h.name, label: h.label, countryCode: h.countryCode,
-      admin1: h.admin1, centre: h.centre,
+      admin1: h.admin1, centre: h.centre, indexAgrees: h.indexAgrees,
     })),
   }));
   console.log('  probes:');

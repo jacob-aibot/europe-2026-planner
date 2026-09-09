@@ -21,7 +21,10 @@ function city(c: City) {
     key: c.key,
     name: c.name,
     countryCode: c.countryCode,
-    centre: { lat: c.centre.lat, lng: c.centre.lng },
+    // §8.4 A-83 Part 8. `null` is a value and is emitted as one — `omitUndef` drops only
+    // `undefined`, so a null centre survives the write and comes back through `parseCentre`.
+    centre: c.centre === null ? null : { lat: c.centre.lat, lng: c.centre.lng },
+    placeId: c.placeId,
     order: c.order,
     meta: c.meta ? omitUndef({ flagEmoji: c.meta.flagEmoji, color: c.meta.color }) : undefined,
   });

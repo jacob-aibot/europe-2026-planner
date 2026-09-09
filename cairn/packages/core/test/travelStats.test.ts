@@ -38,9 +38,12 @@ function city(
     name,
     countryCode,
     countrySource: countryCode === null ? null : 'coordinate',
-    // A-56. A stored row carries the document's own `City.centre`; nothing in `travelStats`
-    // reads it, and this test file asserts that (residue 2 is a ceiling, not a feature).
-    centre: { lat: 0, lng: 0 },
+    // A-56. A stored row carries the document's own `City.centre`. **§8.4 A-83 Part 8 narrows
+    // residue 2's ceiling by exactly one clause and this helper is where it shows**: `centre`'s
+    // VALUE still feeds no answer (the test below pins that), but its SHAPE now decides whether
+    // the city is counted as located. A real coordinate, not `{0,0}` — the whole increment is
+    // that `{0,0}` was never a measurement, and a fixture should not keep saying it was.
+    centre: { lat: 38.7223, lng: -9.1393 },
     firstDay: days === null ? null : days.first,
     lastDay: days === null ? null : days.last,
   };
@@ -309,7 +312,9 @@ test('R28-4: the clamp is per ROW, so one impossible row cannot cancel another r
  * are now one answer everywhere the field is read.
  */
 test('R28-5: an `undefined` countryCode is treated exactly as `null`, everywhere', () => {
-  const undef = { key: 'k-u' as CityKey, name: 'Paris', countryCode: undefined, countrySource: null };
+  // `centre` is present and well-formed: this test's subject is `countryCode`, and a city with
+  // no centre is unlocated for a different reason (§8.4 A-83 Part 8), which would confound it.
+  const undef = { key: 'k-u' as CityKey, name: 'Paris', countryCode: undefined, countrySource: null, centre: { lat: 48.8566, lng: 2.3522 } };
   const a = row({ id: 'a', startDate: '2024-04-01', endDate: '2024-04-02' });
   a.cities = [undef as unknown as TripSummaryCity];
   const s = travelStats([a], TODAY);
@@ -324,7 +329,7 @@ test('R28-5: an `undefined` countryCode is treated exactly as `null`, everywhere
 
 test('R28-5: an `undefined` and a `null` code with the same name are ONE row, and it is null', () => {
   const a = row({ id: 'a', startDate: '2024-04-01', endDate: '2024-04-02' });
-  a.cities = [{ key: 'k-a' as CityKey, name: 'Paris', countryCode: undefined, countrySource: null } as unknown as TripSummaryCity];
+  a.cities = [{ key: 'k-a' as CityKey, name: 'Paris', countryCode: undefined, countrySource: null, centre: { lat: 48.8566, lng: 2.3522 } } as unknown as TripSummaryCity];
   const b = row({ id: 'b', startDate: '2024-05-01', endDate: '2024-05-02', cities: [city('Paris', null)] });
   const s = travelStats([a, b], TODAY);
   assert.equal(s.cities.length, 1);
@@ -1053,7 +1058,15 @@ test('A-56: a gen-4 row with no firstDay/lastDay KEY AT ALL falls back, exactly 
   assert.deepEqual(s.cities.map((c) => [c.firstVisit, c.lastVisit]), [['2020-02-01', '2020-02-09']]);
 });
 
-test('A-56 residue 2: travelStats never reads `centre` — a city with a wrong centre is unaffected', () => {
+/**
+ * **A-56 residue 2, as narrowed by §8.4 A-83 Part 8.** `centre`'s *value* still feeds no answer —
+ * two located cities at opposite ends of the earth produce identical statistics. What A-83 adds
+ * is that a centre's **presence** decides `located.cities`, which is a census of *what there was
+ * to attribute* and not an attribution. The ceiling residue 2 actually states — *"it may never be
+ * used to answer which country was this record in"* — is unmoved, and this is the test that says
+ * so with two different values.
+ */
+test('A-56 residue 2: travelStats never reads `centre`\'s VALUE — a city with a wrong centre is unaffected', () => {
   const good = city('Lisbon', 'PT' as CountryCode, { first: '2023-07-02', last: '2023-07-06' });
   const bad: TripSummaryCity = { ...good, key: `${good.key}-b` as CityKey, centre: { lat: 89, lng: -179 } };
   const mk = (c: TripSummaryCity) =>

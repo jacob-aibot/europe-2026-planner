@@ -9,7 +9,7 @@
       "query": "zurich",
       "hits": [
         {
-          "id": "j64muf",
+          "id": "ne:j64muf",
           "name": "Zürich",
           "label": "Zürich, Switzerland",
           "countryCode": "CH",
@@ -17,7 +17,8 @@
           "centre": {
             "lat": 47.3819,
             "lng": 8.5481
-          }
+          },
+          "indexAgrees": true
         }
       ]
     },
@@ -25,7 +26,7 @@
       "query": "Zürich",
       "hits": [
         {
-          "id": "j64muf",
+          "id": "ne:j64muf",
           "name": "Zürich",
           "label": "Zürich, Switzerland",
           "countryCode": "CH",
@@ -33,7 +34,8 @@
           "centre": {
             "lat": 47.3819,
             "lng": 8.5481
-          }
+          },
+          "indexAgrees": true
         }
       ]
     },
@@ -41,7 +43,7 @@
       "query": "sao paulo",
       "hits": [
         {
-          "id": "j64n45",
+          "id": "ne:j64n45",
           "name": "São Paulo",
           "label": "São Paulo, Brazil",
           "countryCode": "BR",
@@ -49,7 +51,8 @@
           "centre": {
             "lat": -23.5567,
             "lng": -46.627
-          }
+          },
+          "indexAgrees": true
         }
       ]
     },
@@ -57,7 +60,7 @@
       "query": "London",
       "hits": [
         {
-          "id": "j64n2x",
+          "id": "ne:j64n2x",
           "name": "London",
           "label": "London, Westminster, United Kingdom",
           "countryCode": "GB",
@@ -65,10 +68,11 @@
           "centre": {
             "lat": 51.5019,
             "lng": -0.1187
-          }
+          },
+          "indexAgrees": true
         },
         {
-          "id": "j647kv",
+          "id": "ne:j647kv",
           "name": "London",
           "label": "London, Ontario, Canada",
           "countryCode": "CA",
@@ -76,10 +80,11 @@
           "centre": {
             "lat": 42.97,
             "lng": -81.25
-          }
+          },
+          "indexAgrees": true
         },
         {
-          "id": "j642r1",
+          "id": "ne:j642r1",
           "name": "London",
           "label": "London, Kentucky, United States of America",
           "countryCode": "US",
@@ -87,10 +92,11 @@
           "centre": {
             "lat": 37.1289,
             "lng": -84.0834
-          }
+          },
+          "indexAgrees": true
         },
         {
-          "id": "j64acx",
+          "id": "ne:j64acx",
           "name": "Londonderry/Derry",
           "label": "Londonderry/Derry, Derry, United Kingdom",
           "countryCode": "GB",
@@ -98,10 +104,11 @@
           "centre": {
             "lat": 55.0004,
             "lng": -7.3333
-          }
+          },
+          "indexAgrees": true
         },
         {
-          "id": "j64lhn",
+          "id": "ne:j64lhn",
           "name": "East London",
           "label": "East London, Eastern Cape, South Africa",
           "countryCode": "ZA",
@@ -109,7 +116,8 @@
           "centre": {
             "lat": -32.97,
             "lng": 27.87
-          }
+          },
+          "indexAgrees": true
         }
       ]
     },
@@ -117,7 +125,7 @@
       "query": "Paris",
       "hits": [
         {
-          "id": "j64n3x",
+          "id": "ne:j64n3x",
           "name": "Paris",
           "label": "Paris, Île-de-France, France",
           "countryCode": "FR",
@@ -125,7 +133,8 @@
           "centre": {
             "lat": 48.8686,
             "lng": 2.3314
-          }
+          },
+          "indexAgrees": true
         }
       ]
     },
@@ -133,7 +142,7 @@
       "query": "springfield",
       "hits": [
         {
-          "id": "j6429p",
+          "id": "ne:j6429p",
           "name": "Springfield",
           "label": "Springfield, Massachusetts, United States of America",
           "countryCode": "US",
@@ -141,10 +150,11 @@
           "centre": {
             "lat": 42.12,
             "lng": -72.58
-          }
+          },
+          "indexAgrees": true
         },
         {
-          "id": "j64juj",
+          "id": "ne:j64juj",
           "name": "Springfield",
           "label": "Springfield, Missouri, United States of America",
           "countryCode": "US",
@@ -152,10 +162,11 @@
           "centre": {
             "lat": 37.18,
             "lng": -93.32
-          }
+          },
+          "indexAgrees": true
         },
         {
-          "id": "j64izj",
+          "id": "ne:j64izj",
           "name": "Springfield",
           "label": "Springfield, Illinois, United States of America",
           "countryCode": "US",
@@ -163,10 +174,11 @@
           "centre": {
             "lat": 39.82,
             "lng": -89.65
-          }
+          },
+          "indexAgrees": true
         },
         {
-          "id": "j642ud",
+          "id": "ne:j642ud",
           "name": "Springfield",
           "label": "Springfield, Ohio, United States of America",
           "countryCode": "US",
@@ -174,10 +186,11 @@
           "centre": {
             "lat": 39.92,
             "lng": -83.8
-          }
+          },
+          "indexAgrees": true
         },
         {
-          "id": "j641jn",
+          "id": "ne:j641jn",
           "name": "Springfield",
           "label": "Springfield, Oregon, United States of America",
           "countryCode": "US",
@@ -185,7 +198,8 @@
           "centre": {
             "lat": 44.0519,
             "lng": -122.978
-          }
+          },
+          "indexAgrees": true
         }
       ]
     },
@@ -193,7 +207,7 @@
       "query": "york",
       "hits": [
         {
-          "id": "j6497z",
+          "id": "ne:j6497z",
           "name": "York",
           "label": "York, Pennsylvania, United States of America",
           "countryCode": "US",
@@ -201,10 +215,11 @@
           "centre": {
             "lat": 39.9629,
             "lng": -76.728
-          }
+          },
+          "indexAgrees": true
         },
         {
-          "id": "j64adb",
+          "id": "ne:j64adb",
           "name": "York",
           "label": "York, United Kingdom",
           "countryCode": "GB",
@@ -212,10 +227,11 @@
           "centre": {
             "lat": 53.9704,
             "lng": -1.08
-          }
+          },
+          "indexAgrees": true
         },
         {
-          "id": "j64gyn",
+          "id": "ne:j64gyn",
           "name": "Yorkton",
           "label": "Yorkton, Saskatchewan, Canada",
           "countryCode": "CA",
@@ -223,10 +239,11 @@
           "centre": {
             "lat": 51.2171,
             "lng": -102.4665
-          }
+          },
+          "indexAgrees": true
         },
         {
-          "id": "j64n2v",
+          "id": "ne:j64n2v",
           "name": "New York",
           "label": "New York, United States of America",
           "countryCode": "US",
@@ -234,10 +251,11 @@
           "centre": {
             "lat": 40.7519,
             "lng": -73.982
-          }
+          },
+          "indexAgrees": true
         },
         {
-          "id": "j64j2p",
+          "id": "ne:j64j2p",
           "name": "Leeds",
           "label": "Leeds, West Yorkshire, United Kingdom",
           "countryCode": "GB",
@@ -245,7 +263,8 @@
           "centre": {
             "lat": 53.832,
             "lng": -1.582
-          }
+          },
+          "indexAgrees": true
         }
       ]
     },
@@ -253,7 +272,7 @@
       "query": "lodz",
       "hits": [
         {
-          "id": "j64kht",
+          "id": "ne:j64kht",
           "name": "Łódź",
           "label": "Łódź, Lódz, Poland",
           "countryCode": "PL",
@@ -261,7 +280,8 @@
           "centre": {
             "lat": 51.7769,
             "lng": 19.4494
-          }
+          },
+          "indexAgrees": true
         }
       ]
     },
@@ -269,7 +289,7 @@
       "query": "istanbul",
       "hits": [
         {
-          "id": "j64n2z",
+          "id": "ne:j64n2z",
           "name": "Istanbul",
           "label": "Istanbul, Turkey",
           "countryCode": "TR",
@@ -277,7 +297,8 @@
           "centre": {
             "lat": 41.1069,
             "lng": 29.0081
-          }
+          },
+          "indexAgrees": true
         }
       ]
     },
@@ -285,7 +306,7 @@
       "query": "bac kan",
       "hits": [
         {
-          "id": "j63tan",
+          "id": "ne:j63tan",
           "name": "Bắc Kạn",
           "label": "Bắc Kạn, Ðông B?c, Vietnam",
           "countryCode": "VN",
@@ -293,7 +314,8 @@
           "centre": {
             "lat": 22.1333,
             "lng": 105.8333
-          }
+          },
+          "indexAgrees": true
         }
       ]
     },
@@ -301,7 +323,7 @@
       "query": "vatican",
       "hits": [
         {
-          "id": "j644az",
+          "id": "ne:j644az",
           "name": "Vatican City",
           "label": "Vatican City, Lazio, Vatican",
           "countryCode": "VA",
@@ -309,7 +331,8 @@
           "centre": {
             "lat": 41.9033,
             "lng": 12.4534
-          }
+          },
+          "indexAgrees": true
         }
       ]
     },
@@ -317,7 +340,7 @@
       "query": "nara",
       "hits": [
         {
-          "id": "j64krt",
+          "id": "ne:j64krt",
           "name": "Nara",
           "label": "Nara, Bamako, Mali",
           "countryCode": "ML",
@@ -325,10 +348,11 @@
           "centre": {
             "lat": 15.18,
             "lng": -7.28
-          }
+          },
+          "indexAgrees": true
         },
         {
-          "id": "j64hrf",
+          "id": "ne:j64hrf",
           "name": "Narayanganj",
           "label": "Narayanganj, Dhaka, Bangladesh",
           "countryCode": "BD",
@@ -336,10 +360,11 @@
           "centre": {
             "lat": 23.6204,
             "lng": 90.5
-          }
+          },
+          "indexAgrees": true
         },
         {
-          "id": "j64a0b",
+          "id": "ne:j64a0b",
           "name": "Narathiwat",
           "label": "Narathiwat, Thailand",
           "countryCode": "TH",
@@ -347,7 +372,8 @@
           "centre": {
             "lat": 6.4318,
             "lng": 101.8214
-          }
+          },
+          "indexAgrees": true
         }
       ]
     },
@@ -359,7 +385,7 @@
       "query": "monaco",
       "hits": [
         {
-          "id": "j64l5h",
+          "id": "ne:j64l5h",
           "name": "Monaco",
           "label": "Monaco, Monaco",
           "countryCode": "MC",
@@ -367,13 +393,78 @@
           "centre": {
             "lat": 43.7396,
             "lng": 7.4069
-          }
+          },
+          "indexAgrees": true
         }
       ]
     },
     {
       "query": "maastricht",
-      "hits": []
+      "hits": [
+        {
+          "id": "ne:j63vld",
+          "name": "Maastricht",
+          "label": "Maastricht, Limburg, Netherlands",
+          "countryCode": "NL",
+          "admin1": "Limburg",
+          "centre": {
+            "lat": 50.853,
+            "lng": 5.677
+          },
+          "indexAgrees": false
+        }
+      ]
+    },
+    {
+      "query": "geneva",
+      "hits": [
+        {
+          "id": "ne:j64n0x",
+          "name": "Geneva",
+          "label": "Geneva, Genève, Switzerland",
+          "countryCode": "CH",
+          "admin1": "Genève",
+          "centre": {
+            "lat": 46.21,
+            "lng": 6.14
+          },
+          "indexAgrees": false
+        }
+      ]
+    },
+    {
+      "query": "jerusalem",
+      "hits": [
+        {
+          "id": "ne:j64msj",
+          "name": "Jerusalem",
+          "label": "Jerusalem, Israel",
+          "countryCode": "IL",
+          "admin1": "Jerusalem",
+          "centre": {
+            "lat": 31.7784,
+            "lng": 35.2066
+          },
+          "indexAgrees": false
+        }
+      ]
+    },
+    {
+      "query": "brazzaville",
+      "hits": [
+        {
+          "id": "ne:j64mmp",
+          "name": "Brazzaville",
+          "label": "Brazzaville, Pool, Congo (Brazzaville)",
+          "countryCode": "CG",
+          "admin1": "Pool",
+          "centre": {
+            "lat": -4.2572,
+            "lng": 15.2827
+          },
+          "indexAgrees": false
+        }
+      ]
     }
   ]
 }

@@ -77,7 +77,7 @@ test('cli export still writes a file inside cairn/', () => {
 
 test('cli export with no target still prints to stdout', () => {
   const r = cli('export');
-  assert.match(r.out.slice(0, 60), /^\{\s*"schemaVersion": 3/);
+  assert.match(r.out.slice(0, 60), /^\{\s*"schemaVersion": 4/);
 });
 
 test('the live planner is not writable through any cli command', () => {
@@ -161,7 +161,7 @@ test('cli export --force overwrites deliberately', () => {
     writeFileSync(target, 'STALE');
     const r = cli('export', target, '--force');
     assert.equal(r.code, 0, r.err);
-    assert.match(readFileSync(target, 'utf8').slice(0, 40), /^\{\s*"schemaVersion": 3/);
+    assert.match(readFileSync(target, 'utf8').slice(0, 40), /^\{\s*"schemaVersion": 4/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -366,7 +366,7 @@ test('A-56 Part 5: cli stats prints city DATES and no coordinate of any kind', (
  * it without failing this test. **Editing this test was outside ROADMAP I-21's file fence and is
  * disclosed as KD-114 rather than treated as a routine edit.**
  */
-const GAZETTEER_GOLDENS = ['gazetteer-probes.json', 'gazetteer-refusals.json'];
+const GAZETTEER_GOLDENS = ['gazetteer-probes.json', 'gazetteer-disagreements.json'];
 
 test('A-56 Part 5: `centre` reached no committed golden, and travel-stats.json carries the city DATES', () => {
   const dir = join(CAIRN, 'fixtures', 'golden');
@@ -390,7 +390,7 @@ test('A-56 Part 5: `centre` reached no committed golden, and travel-stats.json c
   // which are not coordinates, and which the "NO COORDINATES" header does not forbid.
   const stats = readFileSync(join(dir, 'travel-stats.json'), 'utf8');
   assert.match(stats, /"firstVisit": "2026-08-08"/, 'travel-stats.json has no city dates in it');
-  assert.match(stats, /"summaryVersion": 5/, 'travel-stats.json was not regenerated at SUMMARY_VERSION 5');
+  assert.match(stats, /"summaryVersion": 6/, 'travel-stats.json was not regenerated at SUMMARY_VERSION 6');
 });
 
 test('cli stats prints no marker and no legend when the trip is over', () => {
@@ -570,8 +570,35 @@ test('I-21: `cli cities` with no query refuses rather than dumping the dataset',
   assert.match(r.out + r.err, /usage/i);
 });
 
-test('I-21: --limit truncates, and a refused border town is simply not there', () => {
+test('I-22: --limit truncates, and a DISAGREEING border town is there and is MARKED', () => {
   assert.equal(cli('cities', 'london', '--limit', '1').out.trim().split('\n').length, 1);
-  // A-82 Part 5: Maastricht is refused at generation time and published in the refusals golden.
-  assert.match(cli('cities', 'maastricht').out, /no match: maastricht/);
+  // **§8.4 A-83 Part 8 inverts this assertion and that is the increment.** A-82 Part 5 refused
+  // Maastricht at generation time and this test asserted `no match`; the invariant is restated —
+  // *no shipped row may SILENTLY contradict the index* — so the row ships carrying the
+  // disagreement, and the CLI line says so. A tester sees the whole of I-22 in one command.
+  const maastricht = cli('cities', 'maastricht').out;
+  assert.match(maastricht, /^Maastricht, Limburg, Netherlands · /m);
+  assert.match(maastricht, /our country index disagrees/);
+});
+
+/**
+ * **ROADMAP I-22's product proof, and it is one command.** `node cli.ts cities geneva` answered
+ * `no match: geneva` for the second city of Switzerland; A-83 Part 8 is why it does not any more.
+ * The three names are the ruling's own measured cost of A-82 Part 5's remedy — a national capital,
+ * a city of 1.24 M, and a second national capital.
+ */
+test('I-22: `cli cities` finds Geneva, Jerusalem and Brazzaville, each marked as a disagreement', () => {
+  for (const [query, expect] of [
+    ['geneva', /^Geneva, Genève, Switzerland · /m],
+    ['jerusalem', /^Jerusalem, Israel · /m],
+    ['brazzaville', /^Brazzaville, Pool, Congo \(Brazzaville\) · /m],
+  ] as const) {
+    const out = cli('cities', query).out;
+    assert.match(out, expect, `\`cli cities ${query}\` does not find it`);
+    assert.match(out, /our country index disagrees/, `\`cli cities ${query}\` does not mark the disagreement`);
+  }
+  // The control: a row the index AGREES with carries no marker, so the marker means something.
+  const vienna = cli('cities', 'vienna', '--limit', '1').out;
+  assert.match(vienna, /^Vienna, Wien, Austria · /m);
+  assert.equal(/disagrees/.test(vienna), false, 'every line carries the marker, so the marker says nothing');
 });
