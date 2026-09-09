@@ -1,5 +1,45 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — ROADMAP `I-20`: the leaf test moves inside the distribution, both censuses share one
+> walk, and this arc ENDS (`ARCHITECTURE.md` revision 62 §2.1 **A-81**; QA **R59-1/R59-2/R59-3**
+> MAJOR, with **R59-4/R59-6** riding along and **R59-7** as one clause).** Builds on `d99306b`.
+> `I-19` is upheld — round 59 confirmed A-80 Part 2's block was implemented character-for-character,
+> that `DESCENT_CENSUS` is non-vacuous, and that the `abstract new` arm is correct against five
+> variations it was never measured on. **What was wrong is where the ruling put the leaf test.**
+> **Edited, 2 files:** `packages/core/test/storable.test.ts` and this document (this addendum, KD-110
+> and KD-111). **Zero `src` files, zero `tsconfig.json`, zero `qa/`, zero `.tsx`, zero
+> `docs/design/`, zero `ARCHITECTURE.md`/`ROADMAP.md`, zero `package.json`, zero lockfile, zero new
+> dependency, zero change to `IsDoor`/`IsIllegal`/`TripishReturn`/`ProducesTrip`/`Down`, zero
+> movement of the 12-hop bound, zero new census row beyond A-81 Part 4's five, zero second copy of
+> the walk, zero `IssueCode`, zero version movement.** §2.10's surface was **re-counted by running
+> the command** and is **86**. **No shipped behaviour changes at all** — every part is a type, a
+> census row or a docstring.
+>
+> | | |
+> |---|---|
+> | **THE STOP-AND-REPORT CONDITION, MEASURED FIRST AND BEFORE ANY OTHER CHANGE — IT PASSED CLEAN** | A-81 Part 3 requires the widened illegal-reach walk to be **GREEN over the unmodified shipped tree**, and rules that a red there is a **live finding that stops the increment**. Built in this order: the tagged walk + `IllegalOf` mapping `Carries<'illegal', M[K]>` + the template-literal census line, and **nothing else**, then `npx tsc -p tsconfig.json --noEmit` against a `packages/core/src` with **zero modifications** (`git status` showed one modified file: the test). **Result: exit 0, 5.27 s, `AllIllegal` still `never`.** `derive/cost.ts`'s `RollUpScope = Trip \| Day \| readonly Stop[]` — the only union-with-`Trip` in the tree — is **not** flagged, exactly as the ruling predicted: it appears only in parameter position (`scopeStops(scope)`, `rollUpCost(scope, opts)`) and the walk does not descend into one. **The green is not vacuous**, and that was measured rather than assumed in the same pass: the first fault injected against the same walk (R59-3a) reddened it naming `r59nested`. |
+> | **What runs, and the exact commands** | `cd cairn && npm run test:tap` → **1637 pass / 0 fail / 0 skipped / 0 cancelled**, the same figure measured on this tree **before** the change. **No test was edited and no message pin moved.** `cd cairn && npm run typecheck` → **exit 0 on both projects**. `cd cairn && npm run web:build` → **succeeds**. Export re-count, run rather than quoted: `node -e "import('./packages/core/src/index.ts').then(m=>console.log(Object.keys(m).length))"` → **86**. **`DESCENT_CENSUS`, `HIDDEN_DOOR_CENSUS` and `ILLEGAL_SHAPE_CENSUS` are enforced by `npm run typecheck`, NOT by `npm test`** — see R59-7 below. |
+> | **Part 1 — the repaired walk, A-81 Part 2's block verbatim** | `Leaf<Tag, T>`; `Members<Tag, T, D>` walking **bare `T[K]`**; `Carries<Tag, T, D>` asking `Leaf` **inside** the distribution (`T extends unknown ? (Leaf<Tag, T> extends true ? true : CarriesOne<Tag, T, D>) : never`); `CallSide` and `CtorSide` as **separate aliases that answer `false`** rather than falling through; `CarriesOne` asking all three arms **disjunctively**. **A-80's outer standalone `IsDoor<T>` above the distribution is DELETED, not kept as well** (A-81 Part 2 point 1). **`NonNullable<T[K]>` is DELETED** (Part 1, R59-4). `ProducesTrip`'s pre-test, the bracket forms, `Down`, the 12-hop bound and the depth accounting are **untouched**. |
+> | **Part 2 — `ILLEGAL_SHAPE_CENSUS` gains reach through the SAME walk, not a second copy** | `IllegalOf<M>` maps `Carries<'illegal', M[K]>`; `Hides<T>` becomes `Carries<'door', T>`; the census line moves from `IsExact<AllIllegal, never>` to the **template-literal** form so it names the offending exports. A-81 Part 3 refuses a duplicated predicate by name and the file says why where the code is. **Third consequence confirmed by measurement, not assumed:** because `CtorSide`'s `ProducesTrip` pre-test is now shared, R59-2's second shape reddens **both** censuses — the ruling calls that deliberate and not worth a tag-conditional. |
+> | **Part 3 — five `DESCENT_CENSUS` rows, 35 → 40** | `union-member-is-door`, `union-member-is-door-nested`, `call-and-construct`, `illegal-nested-method`, `illegal-optional-method` — labels and fixtures exactly as A-81 Part 4's table rules them. The last two go through an **`IllegalReach<Label, Pos, Neg>`** row alias (the same shape as `Descent` with the tag changed) and join the **same** `DESCENTS` tuple and the **same** census line. Row count verified by counting the tuple: **40**. **The existing 35 rows do not change** — labels, fixtures and order all verified unmoved. **No sixth row, and the general two-fixtures-per-constructor rule is NOT implemented** — A-81 Part 4 refuses it as open-ended and the file says so where a future builder will read it. One new type, `Inert = (t: Trip) => void`, which is R59-1's other union member. |
+> | **Part 4 — docstrings** | `Members`, `Carries`, `CallSide`/`CtorSide`, `CarriesOne`, `ILLEGAL_SHAPE_CENSUS` and `HIDDEN_DOOR_CENSUS` rewritten to A-81 Parts 1–3. **A-80's *"asked of every member of a union, and answered `true` if ANY member says so"* was false of the door test and is the sentence that produced R59-1**; the replacement says which layer asks what and names the three load-bearing properties. The `NonNullable` block goes with the token — but **A-80 Part 2 point 1's `M1`/`M2` mechanism is kept**, because it is still true and it is still why the pre-A-80 predicate missed optional properties; what is struck is the claim of **necessity**. |
+> | **Part 5 — R59-6, one sentence corrected in the file** | The header's parameter-position residue now reads as A-81 Part 6 words it: **the walk never *descends into* a parameter position, because `keyof` a bare function type is `never`; the one case where a parameter's type is nonetheless reached is `Awaited` resolving a thenable's `then` callback, which is the output side arriving by another route and is caught on purpose.** **Both halves measured, not quoted:** a temporary probe asserted `IsExact<Carries<'door', () => { then(cb: (v: {run: Door}) => void): void }>, true>` and `IsExact<Carries<'door', (cb: Door) => void>, false>` — both compiled at exit 0, and the probe was removed. The `parameter-position` row keeps its `false` and its fixture. |
+> | **Part 6 — the header fault list, plus R59-7** | N14 and N15 added. **R59-7's clause is in**: N13's header line now says *"it fails `npm run typecheck`; `npm test` cannot see it"*, with the reason (after type stripping the runtime assertion compares `true` to `true` whatever the type says) at the point a builder reads the criterion rather than 1,000 lines below beside the assertion. The R59-2 and R59-3 pairs are written into the same list, each with *"GREEN at `386c459`"* so the next reader can re-derive the red-before. An **A-81 header block** was added above A-80's, in the same read-A-81-first-and-never-instead-of-A-80 form the file already uses, and A-80's *"two lines answer all three"* sentence carries a one-bracket amendment banner. |
+> | **N14 — red-before / green-after** | `autofix?: ((t: Trip, c: Conflict) => Trip) \| ((t: Trip) => void)` on the `Rule` type. **At `386c459`: exit 0 — GREEN, the defect.** After: **`HIDDEN_DOOR_CENSUS` RED naming eleven** — `legacyFlag`, `overlap`, `RULES`, `bookingVsPlan`, `duplicateBooking`, `geoOutlier`, `impossibleTransfer`, `missingLodging`, `supersededBooking`, `unbookedTicketed`, `unverifiedReference`. `NEGATIVE_CONTROLS` also reddens, correctly and for the same reason it does under N9/N11: the injected fault genuinely makes `overlap` a carrier. |
+> | **N15 — red-before / green-after** | `autofix?: (t: Trip, c: Conflict) => Trip \| Day` on the `Rule` type. **At `386c459`: exit 0 — GREEN.** After: **`ILLEGAL_SHAPE_CENSUS` RED naming the same eleven — and NOT `HIDDEN_DOOR_CENSUS`**, which was the other half of the criterion. It fails **with the names in the message**, which is the test of Part 2's template-literal form. |
+> | **The R59-2 pair — red-before / green-after** | `export const c: { (): string; new (): { archive: Door } }` and `{ (): string; new (t: Trip, r: ConflictResolution): Trip }`, both appended to `derive/lifecycle.ts`. **Both exit 0 at `386c459`.** After: **both RED naming `c`** — the first at `HIDDEN_DOOR_CENSUS`, the second at `HIDDEN_DOOR_CENSUS` **and** `ILLEGAL_SHAPE_CENSUS` (the shared `ProducesTrip` pre-test, per Part 2 above). |
+> | **The R59-3 pair — red-before / green-after** | `export const r59nested = { mix(t: Trip): Trip \| Day { … } }` (one hop down on an exported object literal) and the `Rule.autofix?` shape. **Both exit 0 at `386c459`.** After: **both RED at `ILLEGAL_SHAPE_CENSUS` naming the export** — `r59nested`, and the eleven. |
+> | **N13 — eight breaks, six rows and two arms, and it exceeds what was asked** | The gate asks for **at least three rows, at least one of them new**. Measured: **all five new rows** (`union-member-is-door`, `union-member-is-door-nested`, `call-and-construct`, `illegal-nested-method`, `illegal-optional-method`) and one existing row (`readonly-set`) each break their positive fixture and each make `DESCENT_CENSUS` RED **naming exactly that label**. Breaking **`CtorSide`'s arm** reddens naming `construct-signature-instance`, `construct-signature-produces-trip` **and `call-and-construct`** — which is the row that measures R59-2's fix specifically. Breaking **`CallSide`'s arm** reddens naming eleven labels. **No new row is vacuous.** |
+> | **Carried criteria, re-run rather than assumed** | **N9** and **N11** both still RED naming the same eleven at `HIDDEN_DOOR_CENSUS` — so **N9, N11 and N14 are three spellings of one feature and all three redden**, which is A-81 Part 7's requirement. **N12** RED naming `hook` **and** `h` (see **KD-111** — the `export type H` half of N12 as A-80 Part 9 literally writes it is not measurable, and a value of that type is what makes it measurable). |
+> | **Negative controls, all still green** | `NEGATIVE_CONTROLS` (the shipped `Rule` objects, `sequentialIds`, `toDoc`, `legacyFlag`/`overlap`), `WRAPPER_PRODUCERS_ARE_NOT_DOORS`, `NON_DOORS_ARE_LIVE`, **every `Neg` fixture in all 40 rows** — including `illegal-optional-method`'s twin, which is a **door** and which the illegal leaf must answer `false` on — and **both deliberately-`false` `NonDescent` rows, confirmed still `false`**. All of these are compile-time assertions inside a `tsc` run that exits 0, so a red in any of them would have failed the build. |
+> | **Cost, measured and published as a measurement** | Core project, `npx tsc -p tsconfig.json --noEmit`, three runs each, same machine, back to back. **I-20: 4.37 / 4.52 / 4.34 s.** **`386c459`'s file on the same tree and machine: 4.25 / 4.21 / 4.18 s.** Delta **≈ +0.15 s** — the tagged walk traverses the same members twice and the arms no longer short-circuit, so a rise was expected and this is it. **Under `I-19`'s 7.0 s budget, which is unchanged.** These absolute numbers sit **below** the I-19 builder's 5.19–5.41 s and round 59's 5.54–5.79 s; that is a machine difference, not a speed-up, which is why the before-figure was re-measured here rather than quoted. |
+> | **What I did NOT build, named so nobody adds it** | No second copy of the walk. No sixth census row and no two-fixtures-per-constructor rule. No arm per carrier. No change to `IsDoor`, `IsIllegal`, `TripishReturn`, `ProducesTrip`, `Down` or the 12-hop bound. No new probe under `qa/` and no edit to an existing one. No `src` file, no `.tsx`, no `docs/design/`, no `tsconfig.json`, no `package.json`, no lockfile, no dependency. |
+> | **Objections to the design** | **None to the mechanism, which is right, and I have no reservation about A-81 Part 8's closure either — it is the only closure in this arc that claims nothing it cannot hold.** Two adaptations are disclosed as KD entries rather than smoothed over: **KD-110**, `DESCENT_CENSUS`'s failure sentence still opens *"A-80:"* and still speaks of *"this type constructor"* while two of its forty rows are now illegal-reach rows — I left the census line byte-identical because A-81 Part 4 says the new rows join *"the same census line"* and ROADMAP `I-20` part 4 lists the five docstrings that are rewritten and this is not one of them, but a builder who breaks `illegal-nested-method` gets a sentence that is only approximately about their failure; and **KD-111**, N12's `export type H` half is **unmeasurable as written** because a type-only export never appears in `typeof M`. Neither is a defect in A-81. **One residue I am adding nothing to, deliberately:** A-81 Part 8 closes this class, and the honest thing a builder can say at the end of it is that the walk is now the same walk for both questions, the five new rows all fail when broken, the shipped tree is green, and nobody has ever observed the bug this arc exists to prevent. |
+>
+> **Route.** Builder only, then the manager — A-81 Part 8 is the authority and `I-20`'s ROADMAP entry
+> states it. **Nothing in this pass met the condition that reopens the arc**: `ILLEGAL_SHAPE_CENSUS`
+> was green over the unmodified tree, and no negative control reddened.
+
 > **Addendum — ROADMAP `I-19`: the predicate descends every type constructor, and the closure claim
 > becomes a compiler-checked coverage census (`ARCHITECTURE.md` revision 61 §2.1 **A-80**; QA
 > **R58-1** MAJOR, with **R58-2/R58-5** riding along and **R58-3/R58-4** as one line each).** Builds
@@ -5132,6 +5172,65 @@ tuple as Part 4 requires rather than being split into a second census.
 **For the architect:** if the wording is part of the ruling, this is the clause it needs. The
 alternative I rejected was a second constant — it keeps the sentence verbatim and breaks *"written
 into the same table"*, which is the property Part 4 gives the reason for.
+
+### KD-110 — `DESCENT_CENSUS`'s failure sentence is left byte-identical, and it is now only approximately true of two of its forty rows (adaptation recorded per ROADMAP I-20, architect to bless or correct)
+
+`packages/core/test/storable.test.ts`
+
+A-81 Part 4 adds five rows and says the two `'illegal'` ones *"join the **same** `DESCENTS` tuple and
+the **same** census line"*. They do. What the ruling does not say is whether the census **line** —
+which KD-109 last touched — should move with them, and ROADMAP `I-20` part 4 enumerates the five
+docstrings that are rewritten (`Members`, `Carries`, `CarriesOne`, `ILLEGAL_SHAPE_CENSUS`,
+`HIDDEN_DOOR_CENSUS`) without naming it.
+
+**What I did: nothing.** The line still reads *"**A-80**: this type constructor no longer behaves as
+the coverage claim says — the predicate has stopped descending it, its doorless twin now
+false-positives, or a ruled NON-descent has started descending: `${UNCOVERED}`"*. I chose the
+conservative reading, because `I-20`'s ship gate says *nothing else moves* and because the sentence
+is still **substantially** true of the two new rows: `illegal-nested-method` and
+`illegal-optional-method` do measure a descent — the same descent, reaching a different leaf test —
+and a break in either really is the predicate having stopped reaching that constructor.
+
+**Where it is only approximate:** the label says `A-80`, and these two rows are A-81; and *"this type
+constructor"* names the descent rather than the leaf, so a builder who breaks `illegal-nested-method`
+reads a sentence about coverage of a type constructor when what they have actually broken is the
+illegal leaf's reach through one. Measured, the failure still names the row (`illegal-nested-method`),
+which is the property the form exists for, so this costs a builder one indirection and not a
+diagnosis.
+
+**For the architect:** if the wording is meant to move, the smallest correct change is *"A-80/A-81"*
+and *"this type constructor no longer behaves as the coverage claim says, for the door leaf or the
+illegal one"*. I did not make it unilaterally because a census line that has now been reworded by
+two consecutive builders is exactly the drift this arc keeps producing.
+
+### KD-111 — N12's `export type H` half is unmeasurable as A-80 Part 9 writes it, because a type-only export never appears in `typeof M` (measurement note, no code change, architect to correct the criterion)
+
+`packages/core/test/storable.test.ts`, and A-80 Part 9's N12 row.
+
+A-80 Part 9's N12 reads: *"`export const hook: { archive: Door } | undefined` and `export type H =
+{kind:'a'; run: Door} | {kind:'n'; why: string}` appended to `derive/lifecycle.ts` → **both redden,
+each naming the export**."*
+
+Every census in this file maps over `typeof CENSUS[number]`, whose second element is a **namespace
+object type** obtained by `import * as M`. A namespace object type holds a module's **values**. A
+type-only export contributes no key to it, so `keyof` never reaches `H` and no census can name it —
+this is true at `386c459`, at `77ef3ba`, and after `I-20`. Measured: appending exactly the two
+declarations the criterion names reddens `HIDDEN_DOOR_CENSUS` naming **`hook`** and nothing else.
+
+**What I did:** re-ran N12 with one extra line, `export const h = undefined as unknown as H;`, and
+the census then reddens naming **`h` and `hook`** — so the *shape* the criterion is about (a
+discriminated union of object types, one arm carrying a door) is genuinely caught, and it is the
+`export type` spelling and not the shape that is invisible. The `discriminated-union`
+`DESCENT_CENSUS` row covers the same shape from the other side and is green.
+
+**This is not a hole.** A type alias is not a value, so nothing can be written *through* it and no
+document can be produced *by* it; a door reachable only from a type-only export is unreachable at
+runtime by construction. The defect is in the criterion's wording, not in the mechanism.
+
+**For the architect:** N12's second half should name a **value** of that type — `export const h: H`
+— or say explicitly that the type declaration is there to make the `hook` case's union shape
+readable rather than as a second thing that must redden. As written it is a criterion that cannot be
+discharged, and a criterion nobody can discharge is the failure §0.5 exists to prevent.
 
 
 ## 2. How to run it
