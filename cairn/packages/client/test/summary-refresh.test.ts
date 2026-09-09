@@ -76,6 +76,7 @@ function staleRow(doc: core.Trip): TripSummaryRow {
     dayCount: doc.days.length,
     stopCount: 0,
     poolCount: 0,
+    placeCount: 0,
     revision: doc.revision,
   } as unknown as TripSummaryRow;
 }

@@ -17,7 +17,7 @@
  * Zero dependencies, no ambient clock: `today` is injected, exactly as `lifecycle`'s is.
  */
 import type { CountryCode, IsoDate } from '../model/ids.ts';
-import type { TripSummaryRow } from './summary.ts';
+import type { TripSummaryCity, TripSummaryRow } from './summary.ts';
 import { dayNumber, fromDayNumber } from './summary.ts';
 import { lifecycle } from './lifecycle.ts';
 // By module path, exactly as `normalizeCityName` below is: `isIsoDate` is already on §2.10's
@@ -118,13 +118,13 @@ export type TravelStats = {
    * The type's own invariant is `unattributed <= located <= seen`, per class, and it holds by
    * construction: every summand below is clamped to the `located` it sits beside.
    *
-   * **`places` is a LOWER BOUND today, and that is disclosed rather than hidden.** A
-   * `TripSummaryRow` carries `cityCount`, `dayCount`, `stopCount` and `poolCount` but **no total
-   * place count**, so an unlocated `Place` is invisible to this census and `seen.places` equals
-   * `located.places`. Cities are exact (`cities[]` is on the row, record by record) and stops are
-   * exact (`stopCount + poolCount` is every stop the census walks). Closing the place hole needs
-   * a field on the stored row, which is an architect's ruling and A-84 does not make it —
-   * BUILD-NOTES **KD-115**.
+   * **All three classes are exact, from generation 8 (§8.4 A-85 Part 3, QA R62-1).** Cities come
+   * from `cities[]`, record by record; stops from `stopCount + poolCount`; and places from
+   * **`placeCount`**, which the row gained precisely because the *"`places` is a lower bound"*
+   * disclosure that stood here was a column whose denominator the row did not hold — so
+   * `seen − located` for places was `0` always, the one number `seen` exists to make derivable.
+   * A row minted before generation 8 carries no `placeCount`, reads 0 through `countOf`, and is
+   * held at its own `located` by the clamp until the rescan reaches it.
    *
    * **No version moves for this field.** `TravelStats` is derived and never stored (A-34's
    * precedent, already load-bearing for `provisional` and `unnamedCities`), and
@@ -419,6 +419,7 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
   let seenStops = 0;
   let locatedCities = 0;
   let unattributedCities = 0;
+  let seenPlaces = 0;
   let locatedPlaces = 0;
   let unattributedPlaces = 0;
   let locatedStops = 0;
@@ -437,10 +438,17 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
     // that claims more located records than it carries would otherwise break
     // `located <= seen` for the whole library rather than for itself.
     const stopRecords = countOf(row.stopCount) + countOf(row.poolCount);
+    // **§8.4 A-85 Part 3 (QA R62-1).** `placeCount` is the row's own total place count and it is
+    // read exactly as `stopCount`/`poolCount` are: through `countOf`, so a row from before
+    // generation 8 — which has no such key — contributes 0 and is floored at its own `located`
+    // below, and a hand-edited `'95'`, `-1` or `NaN` does the same.
+    const placeRecords = countOf(row.placeCount);
     let rowLocatedStops = 0;
+    let rowLocatedPlaces = 0;
     const census = row.attribution;
     if (census) {
       if (census.places) {
+        rowLocatedPlaces = census.places.located;
         locatedPlaces += census.places.located;
         // **QA R28-4**, A-31 Part 2's clamp, applied per row rather than to the total: a row out
         // of storage with `attributed > located` (hand-edited, half-migrated) would otherwise
@@ -454,6 +462,7 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
       }
     }
     seenStops += Math.max(stopRecords, rowLocatedStops);
+    seenPlaces += Math.max(placeRecords, rowLocatedPlaces);
     // The city census is derivable from `cities[]` alone, which is why the row carries no city
     // census of its own.
     //
@@ -473,8 +482,15 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
     // rescan reaches it, which is the honest answer for a row that does not say where the city
     // is (§8.4 clause 3's rescan is what closes the gap, and it runs before anything claims the
     // lifetime map is complete).
-    seenCities += Array.isArray(row.cities) ? row.cities.length : 0;
-    for (const c of row.cities) {
+    //
+    // **QA R62-6, ROADMAP I-24 Part 4.** The `Array.isArray` guard was dead code: it stood beside
+    // an unguarded `for…of` over the same expression, so a row whose `cities` was not an array
+    // threw one line later and the guard could never be the thing that answered. The guarded
+    // value is now bound **once** and both readers use it — A-37 Part 3's *a stored row is not a
+    // validated document*, applied to the whole read rather than to half of it.
+    const rowCities: readonly TripSummaryCity[] = Array.isArray(row.cities) ? row.cities : [];
+    seenCities += rowCities.length;
+    for (const c of rowCities) {
       const located = isLocatedCentre((c as { centre?: unknown }).centre);
       if (located) locatedCities++;
       // **QA R28-5.** `null` and `undefined` are ONE answer, read once, here. The two used to
@@ -630,12 +646,13 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
     cities,
     trips,
     daysTravelled,
-    // **A-84 Part 7 item 1.** `places` is `located` exactly: no stored row carries a total place
-    // count, so an unlocated place is invisible here. The `Math.max` is what keeps
-    // `located <= seen` true for every class rather than for two of them.
+    // **A-84 Part 7 item 1, completed by A-85 Part 3.** All three classes now have a
+    // denominator on the row — `cities[]`, `placeCount`, `stopCount + poolCount` — and each is
+    // clamped at the `located` beside it, which is what keeps `located <= seen` true for every
+    // class rather than for two of them.
     seen: {
       cities: Math.max(seenCities, locatedCities),
-      places: locatedPlaces,
+      places: Math.max(seenPlaces, locatedPlaces),
       stops: Math.max(seenStops, locatedStops),
     },
     located: { cities: locatedCities, places: locatedPlaces, stops: locatedStops },

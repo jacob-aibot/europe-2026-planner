@@ -165,6 +165,19 @@ function isOrigin(v: unknown): boolean {
  *
  * The rung **counts** what it converted, into the run's tally, and `migrateDocWithReport`
  * returns it.
+ *
+ * **What it does NOT count, and why that is not an omission — §8.4 A-85 Part 5 (QA R62-5).** A
+ * hand-written v3 city at `{0, 0}` that also carries a `pick` (an unknown key riding the spread
+ * above) arrives at v5 with `centre: null`, the pick kept and inert, and only the centre counted.
+ * A-84 Part 7 item 3's rule — *"a rung that rewrites or discards a value a person picked owes the
+ * user a record"* — does not fire, by measurement: either `pick.centre` is not `{0, 0}`, in which
+ * case the pick was already stale at v3 and this rung invalidated nothing, or it is `{0, 0}`, in
+ * which case the pick cannot have come from `cityPickFromRow` — **no shipped gazetteer row lies
+ * within a whole degree of the origin** (nearest: São Tomé `0.3334, 6.7333`, Port-Gentil
+ * `-0.72, 8.78`), so it is a fabricated record in a hand-written document, which is A-83 Part 8's
+ * *"provenance, not authentication"* boundary and not this rung's business. **What reopens it:**
+ * a shipped row at the origin, or the first rung that can discard a pick whose liveness is not
+ * decidable from the corpus.
  */
 function v3ToV4(doc: Record<string, unknown>, tally: MigrationReport): Record<string, unknown> {
   const cities = Array.isArray(doc.cities) ? doc.cities : null;

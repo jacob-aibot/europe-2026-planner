@@ -60,9 +60,13 @@ test('I-22a: the two shipped rows this file rests on are what A-84 says they are
   );
 });
 
-test('I-22a A-84 Part 8: SCHEMA_VERSION is 5 and SUMMARY_VERSION is 7', () => {
-  assert.equal(SCHEMA_VERSION, 5);
-  assert.equal(SUMMARY_VERSION, 7);
+test('I-22a A-84 Part 8: SCHEMA_VERSION is 5 and SUMMARY_VERSION is 8 (7 at I-22a, 8 at I-24)', () => {
+  assert.equal(SCHEMA_VERSION, 5, 'I-22a took SCHEMA_VERSION to 5 and I-24 does NOT move it — no record shape changed');
+  // **7 → 8 at ROADMAP I-24 (§8.4 A-85 Part 3, QA R62-1)**: `TripSummaryRow` gains `placeCount`.
+  // Nothing else in this file moves — A-84 Part 3 clause 3's staleness rule is untouched, and
+  // A-85 Part 8 records that round 62 attacked it over all 7,342 shipped rows and could not
+  // break it.
+  assert.equal(SUMMARY_VERSION, 8);
 });
 
 // ---------------------------------------------------------------------------

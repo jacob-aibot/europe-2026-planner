@@ -295,10 +295,11 @@ test('I-22 A-83 Part 8 clause 1: a null centre means no coordinate attribution, 
 // `null` is a first-class centre, as a ceiling (verification rule 4).
 // ---------------------------------------------------------------------------
 
-test('I-22 / I-22a: SUMMARY_VERSION is 7', () => {
+test('I-22 / I-22a / I-24: SUMMARY_VERSION is 8', () => {
   // 6 at I-22 (`centre` nullable, `countrySource` gained `'picked'`); **7 at I-22a** (§8.4 A-84
-  // Part 3 — the picked DERIVATION changes and no key moves).
-  assert.equal(SUMMARY_VERSION, 7);
+  // Part 3 — the picked DERIVATION changes and no key moves); **8 at I-24** (§8.4 A-85 Part 3 —
+  // the row gains the TOP-LEVEL key `placeCount`, the first such widening since A-33).
+  assert.equal(SUMMARY_VERSION, 8);
 });
 
 test('I-22 ceiling: one located and one unlocated city — two rows, exactly one null centre, exactly one unlocated, ZERO cities at {0,0}', () => {

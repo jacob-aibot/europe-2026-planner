@@ -6,7 +6,7 @@
   "tripIds": [
     "trip-europe-2026"
   ],
-  "summaryVersion": 7,
+  "summaryVersion": 8,
   "clocks": {
     "fixtureToday": {
       "today": "2026-08-01",
@@ -184,7 +184,7 @@
         "daysTravelled": 16,
         "seen": {
           "cities": 6,
-          "places": 94,
+          "places": 95,
           "stops": 143
         },
         "located": {

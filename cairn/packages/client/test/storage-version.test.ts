@@ -54,7 +54,7 @@ function saveIndicator(store: ReturnType<typeof createStore>): string {
 function summaryFor(id: string, revision: number): TripSummaryRow {
   return {
     id, title: 'T', startDate: '2026-08-07', endDate: '2026-08-08', datePrecision: 'exact',
-    cityCount: 0, dayCount: 2, stopCount: 0, poolCount: 0, revision,
+    cityCount: 0, dayCount: 2, stopCount: 0, poolCount: 0, placeCount: 0, revision,
     countryCodes: [], cities: [],
     attribution: { places: { located: 0, attributed: 0 }, stops: { located: 0, attributed: 0 } },
     summaryVersion: core.SUMMARY_VERSION,

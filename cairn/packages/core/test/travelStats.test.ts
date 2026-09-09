@@ -56,6 +56,8 @@ function row(init: {
   endDate: IsoDate;
   countryCodes?: CountryCode[];
   cities?: TripSummaryCity[];
+  /** **§8.4 A-85 Part 3.** The row's total place count; the census below is the located pair. */
+  placeCount?: number;
   places?: { located: number; attributed: number };
   stops?: { located: number; attributed: number };
 }): TripSummaryRow {
@@ -67,6 +69,7 @@ function row(init: {
     datePrecision: 'exact',
     cityCount: (init.cities ?? []).length,
     dayCount: 0,
+    placeCount: init.placeCount ?? init.places?.located ?? 0,
     stopCount: 0,
     poolCount: 0,
     revision: 1,
@@ -1607,4 +1610,89 @@ test('A-60 Part 6.5: the reference trip mid-trip is byte-identical to Part 2\'s 
     'Split 2026-08-12→2026-08-12',
     'Vienna 2026-08-08→2026-08-10',
   ]);
+});
+
+// ===========================================================================
+// **ROADMAP I-24 Part 2 — §8.4 A-85 Part 3 (QA R62-1, MAJOR): the place census gains its
+// denominator.**
+//
+// What round 62 measured: `TripSummaryRow` carried `cityCount`, `dayCount`, `stopCount` and
+// `poolCount` and **no total place count**, so `seen.places === located.places` by construction
+// and `seen − located` for places was **0 always** — precisely the number `seen` was added
+// (A-84 Part 7 item 1, R61-6) to make derivable. On the reference trip, which holds 95 place
+// records, the shipped CLI printed `seen … places 94` beside `located … places 94`.
+//
+// `TripSummaryRow.placeCount` is `trip.places.length`, minted beside its three neighbours, and
+// `seen.places` becomes `Math.max(countOf(row.placeCount), locatedPlaces)` — the same clamp the
+// other two columns already carry.
+// ===========================================================================
+
+test('I-24 Part 2 (A-85 Part 3, QA R62-1): `seen.places` EXCEEDS `located.places` on the reference trip', () => {
+  const { trip } = europe2026();
+  const s = travelStats([tripSummary(trip, COUNTRY_INDEX)], AFTER_THE_TRIP);
+  assert.equal(trip.places.length, 95, 'INCONCLUSIVE: the reference trip no longer holds 95 place records');
+  assert.equal(s.seen.places, 95, '`seen.places` is not the trip\'s total place count');
+  assert.equal(s.located.places, 94);
+  assert.equal(
+    s.seen.places - s.located.places, 1,
+    'the one place with no coordinate at all is the number `seen` exists to make derivable',
+  );
+  // The other two columns are UNCHANGED — this ruling adds a denominator, it does not move one.
+  assert.equal(s.seen.cities, 6);
+  assert.equal(s.seen.stops, 143);
+  for (const cls of ['cities', 'places', 'stops'] as const) {
+    assert.ok(
+      s.unattributed[cls] <= s.located[cls] && s.located[cls] <= s.seen[cls],
+      `the census invariant \`unattributed <= located <= seen\` broke for ${cls}`,
+    );
+  }
+});
+
+test('I-24 Part 2 (A-85 Part 3): a row minted before gen-8 carries no `placeCount` and degrades to today\'s honest answer', () => {
+  const { trip } = europe2026();
+  const fresh = tripSummary(trip, COUNTRY_INDEX);
+  // Aged exactly as `test/stats-storage.test.ts`'s ager does it: a key is DELETED and
+  // `summaryVersion` is set. Nothing else — an aged row is not a migrated row.
+  const aged = structuredClone(fresh) as Record<string, unknown>;
+  delete aged.placeCount;
+  aged.summaryVersion = 7;
+  const stale = travelStats([aged as unknown as TripSummaryRow], AFTER_THE_TRIP);
+  assert.equal(stale.seen.places, stale.located.places, 'a gen-7 row cannot answer better than `located`');
+  assert.equal(stale.seen.places, 94);
+  // …and the rescan is what closes it. The row above and the row below are the same document.
+  const current = travelStats([fresh], AFTER_THE_TRIP);
+  assert.equal(current.seen.places, 95);
+});
+
+test('I-24 Part 2 (A-85 Part 3): `placeCount` is read through `countOf`, so a hand-edited row cannot make it a lie', () => {
+  const { trip } = europe2026();
+  const fresh = tripSummary(trip, COUNTRY_INDEX);
+  // **§8.4 A-37 Part 3: a stored row is not a validated document.** Every shape that is not a
+  // finite non-negative integer reads as 0, and the clamp then holds `seen` at `located` — the
+  // row's own honest answer — rather than throwing, emitting `NaN`, or reporting fewer records
+  // seen than were located.
+  for (const junk of [undefined, null, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, '95', {}]) {
+    const row = { ...fresh, placeCount: junk } as unknown as TripSummaryRow;
+    const s = travelStats([row], AFTER_THE_TRIP);
+    assert.equal(s.seen.places, 94, `placeCount ${JSON.stringify(junk)} did not degrade to the located floor`);
+  }
+});
+
+test('I-24 Part 4 (QA R62-6): the `cities` shape guard is LIVE — a row whose `cities` is not an array contributes nothing and does not throw', () => {
+  // **The defect was dead code, not a wrong answer.** `seenCities += Array.isArray(row.cities) ?
+  // row.cities.length : 0` stood one line above an unguarded `for (const c of row.cities)`, so a
+  // row the guard was written for threw on the very next statement and the guard could never be
+  // the thing that answered. The guarded value is now bound once and both readers use it —
+  // §8.4 A-37 Part 3's *a stored row is not a validated document*, applied to the whole read.
+  const { trip } = europe2026();
+  const fresh = tripSummary(trip, COUNTRY_INDEX);
+  for (const junk of [undefined, null, 'Vienna', 42, {}]) {
+    const broken = { ...fresh, cities: junk } as unknown as TripSummaryRow;
+    const s = travelStats([broken], AFTER_THE_TRIP);
+    assert.equal(s.seen.cities, 0, `cities ${JSON.stringify(junk)} was counted as records`);
+    assert.equal(s.located.cities, 0);
+    assert.deepEqual(s.cities, []);
+    // The row's other classes are unaffected: one broken field is not a broken row.
+    assert.equal(s.seen.places, 95);
+  }
 });

@@ -50,6 +50,7 @@ function row(init: { id: string; startDate: string; endDate: string; cities?: Tr
     dayCount: 0,
     stopCount: 0,
     poolCount: 0,
+    placeCount: 0,
     revision: 1,
     countryCodes: ['AT' as CountryCode],
     cities: init.cities ?? [],

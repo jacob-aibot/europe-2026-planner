@@ -37,7 +37,7 @@
  *
  *   `t-legacy`     `ROW(id, 5)`      — the current shape (gen-5, §8.4 A-56)
  *   `t-legacy-g1`  `ROW_GEN1(id)`    — the gen-1 shape: no `summaryVersion`, no `countryCodes`,
- *                                      no `cities`, no `attribution`
+ *                                      no `cities`, no `attribution`, no `placeCount`
  *
  * That is the widest separation on A-39's Axis S, and the pair differs in **key set** as well as
  * in version — so both a numeric staleness guard and a key-presence guard are live in a real
@@ -116,7 +116,8 @@ const note = (s) => console.log(`  note  ${s}`);
 
 /** A-33 Part 2 assertion 1, transcribed. Fourteen keys, no more, no fewer. */
 const ROW_KEYS = ['attribution', 'cities', 'cityCount', 'countryCodes', 'datePrecision', 'dayCount',
-  'endDate', 'id', 'poolCount', 'revision', 'startDate', 'stopCount', 'summaryVersion', 'title'];
+  'endDate', 'id', 'placeCount', 'poolCount', 'revision', 'startDate', 'stopCount', 'summaryVersion',
+  'title'];
 
 let raw = readFileSync(new URL('../apps/web/src/ports/storage.ts', import.meta.url), 'utf8');
 
@@ -301,12 +302,20 @@ await page.evaluate(injected);
 
 const ROW = (id, ver) => ({
   id, title: `T ${id}`, startDate: '2026-08-07', endDate: '2026-08-09', datePrecision: 'exact',
-  cityCount: 1, dayCount: 3, stopCount: 7, poolCount: 2, revision: 1,
+  cityCount: 1, dayCount: 3, placeCount: 11, stopCount: 7, poolCount: 2, revision: 1,
   countryCodes: ['HR', 'AT'],
   // **§8.4 A-56 (I-12).** The gen-5 `cities[]` entry: `centre` (the document's own
   // `City.centre`, copied verbatim) plus `firstDay`/`lastDay`. This literal is the CURRENT
   // shape, so it has to carry them or phase 2's "gen-current vs gen-1" pair stops being the
   // widest separation on Axis S that it claims to be.
+  //
+  // **QA round 62 / ROADMAP I-24 (§8.4 A-85 Part 3) adds `placeCount`, and A-36 Part 4 is why
+  // this file is edited at all.** `ROW_KEYS` moved 14 → 15 — the first TOP-LEVEL widening of the
+  // row since A-33 — so A-36 Part 4's obligation fires and this probe must be RUN in a browser
+  // with the result recorded. `placeCount: 11` is deliberately DIFFERENT from
+  // `attribution.places.located`'s 9: it is the row's TOTAL place count and `located` is nine of
+  // them, so a fault that read the wrong one of the two is visible here rather than hidden by
+  // two equal numbers.
   //
   // **QA round 61 (§8.4 A-83 Part 8, ROADMAP I-22) adds the SECOND entry, and it is the point.**
   // `TripSummaryCity.centre` became `LatLng | null`, so `ROW_PATHS` went 24 → 25 with
@@ -730,9 +739,11 @@ ok(PHASE2_EXPECTED['t-legacy'].join() === [...ROW_KEYS].sort().join(),
   'phase 2: the gen-5 seeded row is ROW_KEYS-shaped BEFORE the port runs', PHASE2_EXPECTED['t-legacy']);
 {
   const g1 = PHASE2_EXPECTED['t-legacy-g1'];
-  const gone = ['summaryVersion', 'countryCodes', 'cities', 'attribution'];
+  // **FIVE keys since ROADMAP I-24**: `placeCount` is a top-level key that arrives at
+  // generation 8, so gen-1 lacks it exactly as it lacks the other four (§8.4 A-85 Part 3).
+  const gone = ['summaryVersion', 'countryCodes', 'cities', 'attribution', 'placeCount'];
   ok(gone.every((k) => !g1.includes(k)) && g1.length === ROW_KEYS.length - gone.length,
-    'phase 2: the gen-1 seeded row genuinely LACKS the four keys that generation never carried — ' +
+    'phase 2: the gen-1 seeded row genuinely LACKS the five keys that generation never carried — ' +
       'a fixture aged by a number alone is invisible to a key-presence guard (§8.4 A-39 Part 6)', g1);
 }
 // The stamping branch ran, for BOTH records.

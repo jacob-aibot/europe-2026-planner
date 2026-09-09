@@ -100,6 +100,12 @@ const ROW_KEYS: Record<keyof TripSummaryRow, true> = {
   datePrecision: true,
   cityCount: true,
   dayCount: true,
+  // **§8.4 A-85 Part 3 (QA R62-1), ROADMAP I-24 — 14 → 15, and it is the FIRST top-level
+  // widening of the row since A-33 Part 2 reserved one to the architect.** I-12 and I-22 both
+  // widened *inside* `cities[]` deliberately to avoid this; a total place count has no inside to
+  // hide in. A-85 Part 3 makes the ruling in writing, `SUMMARY_VERSION` moves 7 → 8 beside it
+  // exactly as clause 3 requires, and the builder discharges it rather than deciding it.
+  placeCount: true,
   stopCount: true,
   poolCount: true,
   revision: true,
@@ -128,6 +134,11 @@ const ROW_KEYS: Record<keyof TripSummaryRow, true> = {
  * **This widening is A-33 Part 2's architect's ruling and it is discharged rather than assumed:**
  * A-83 Part 8 moves the type in writing, `SUMMARY_VERSION` moves 5 → 6 with it, and the fifth
  * union fixture below is what makes the new path reachable instead of merely permitted.
+ *
+ * **25 → 26 at §8.4 A-85 Part 3 (ROADMAP I-24), and this one is at the TOP LEVEL.** `placeCount`
+ * is a scalar beside `poolCount`, so it is one leaf and one `ROW_KEYS` entry; it is reachable
+ * from every one of the union rows below, including the empty trip, because a count of nothing is
+ * still a number. `SUMMARY_VERSION` moves 7 → 8 with it.
  */
 const ROW_PATHS = [
   'attribution.places.attributed',
@@ -149,6 +160,7 @@ const ROW_PATHS = [
   'dayCount',
   'endDate',
   'id',
+  'placeCount',
   'poolCount',
   'revision',
   'startDate',
@@ -195,9 +207,18 @@ function countShaped(name: string): boolean {
 /**
  * The eight count-shaped fields §8.4 A-31 Part 6 permits on the row, as dotted paths.
  *
- * **A-56 Part 6: this does not move, and that is a real check on the widening rather than a
- * formality.** It is what fails if someone later adds `cities[].dayCount` here instead of
- * deriving one from `firstDay`/`lastDay`. A ninth entry means a count was stored.
+ * **A-56 Part 6: this did not move for A-56 or A-83, and that was a real check on those
+ * widenings rather than a formality.** It is what fails if someone later adds `cities[].dayCount`
+ * here instead of deriving one from `firstDay`/`lastDay`.
+ *
+ * **Eight → NINE at §8.4 A-85 Part 3 (ROADMAP I-24), and the entry is named rather than
+ * absorbed.** `placeCount` is count-shaped by `countShaped()` — it has to be, it is a count — so
+ * the filter assertion below fails until it is listed here. That failure is the tripwire working:
+ * A-31 Part 6's rule is that a **lifetime** statistic may not be counted into storage, and
+ * `placeCount` is a per-document count of the document's own records, minted in the walk that
+ * writes the row, exactly as `cityCount`, `dayCount`, `stopCount` and `poolCount` are. A-85
+ * Part 3 rules it in writing (*"it is not a new kind of field, it is the missing member of a set
+ * of four"*). A **tenth** entry means a count was stored without such a ruling.
  */
 const ROW_COUNT_FIELDS = [
   'attribution.places.attributed',
@@ -206,6 +227,7 @@ const ROW_COUNT_FIELDS = [
   'attribution.stops.located',
   'cityCount',
   'dayCount',
+  'placeCount',
   'poolCount',
   'stopCount',
 ];
@@ -1087,11 +1109,11 @@ function assertSeedLanded(
 // ===========================================================================
 
 /**
- * Axis S's **eight** states, in ledger order. Five until A-56 (I-12) fired Part 11 item 1; six
+ * Axis S's **nine** states, in ledger order. Five until A-56 (I-12) fired Part 11 item 1; six
  * until §8.4 **A-83** Part 8 (I-22) fired it again; seven until §8.4 **A-84** Part 3 (I-22a)
- * fired it a third time.
+ * fired it a third time; eight until §8.4 **A-85** Part 3 (I-24) fired it a fourth.
  */
-type GenName = 'gen-1' | 'gen-2' | 'gen-3' | 'gen-4' | 'gen-5' | 'gen-6' | 'gen-7' | 'gen-future';
+type GenName = 'gen-1' | 'gen-2' | 'gen-3' | 'gen-4' | 'gen-5' | 'gen-6' | 'gen-7' | 'gen-8' | 'gen-future';
 
 type GenEntry = {
   name: GenName;
@@ -1119,18 +1141,23 @@ const LEDGER: readonly GenEntry[] = [
   // 1 — Phase 1 / Phase 2a. No `countryCodes`, no `cities`, no `attribution`, and no
   //     `summaryVersion` KEY AT ALL, which is what `needsRescan`'s `?? 0` exists for and is a
   //     distinct state from any number.
-  { name: 'gen-1', version: null, absent: ['summaryVersion', 'countryCodes', 'cities', 'attribution'], absentInCity: [] },
+  // **`placeCount` is on every one of gen-1…gen-7's `absent` lists** (§8.4 A-85 Part 3, I-24):
+  // it is a TOP-LEVEL key that arrives at generation 8, so seven generations differ from the
+  // current one in KEY SET and not merely in a number. That is A-39 Part 4's shape-faithfulness
+  // sub-ruling and it is what makes a key-presence guard — `if (!('placeCount' in r))` — visible
+  // to these fixtures instead of invisible to them.
+  { name: 'gen-1', version: null, absent: ['summaryVersion', 'countryCodes', 'cities', 'attribution', 'placeCount'], absentInCity: [] },
   // 2 — Phase 2 I-6: `countryCodes`, `cities` and `summaryVersion` arrive; `countrySource` and
   //     `attribution` do not.
-  { name: 'gen-2', version: 2, absent: ['attribution'], absentInCity: ['countrySource'] },
+  { name: 'gen-2', version: 2, absent: ['attribution', 'placeCount'], absentInCity: ['countrySource'] },
   // 3 — Phase 2 I-6a (A-29): `cities[]` gains `countrySource`. Still no `attribution`.
-  { name: 'gen-3', version: 3, absent: ['attribution'], absentInCity: [] },
+  { name: 'gen-3', version: 3, absent: ['attribution', 'placeCount'], absentInCity: [] },
   // 4 — Phase 2 I-7 (A-31): the row gains `attribution`. `cities[]` still carries no
   //     coordinate and no dates.
-  { name: 'gen-4', version: 4, absent: [], absentInCity: ['centre', 'firstDay', 'lastDay'] },
+  { name: 'gen-4', version: 4, absent: ['placeCount'], absentInCity: ['centre', 'firstDay', 'lastDay'] },
   // 5 — Phase 2 I-12 (A-56): `cities[]` gains `centre`, `firstDay` and `lastDay`. No new
   //     TOP-LEVEL key, which is why `absent` is empty and the whole widening is nested.
-  { name: 'gen-5', version: 5, absent: [], absentInCity: [] },
+  { name: 'gen-5', version: 5, absent: ['placeCount'], absentInCity: [] },
   // 6 — ROADMAP I-22 (§8.4 **A-83** Part 8): `cities[].centre` becomes `LatLng | null` and
   //     `countrySource` gains `'picked'`. **This generation adds NO KEY, at either level**, and
   //     `absent`/`absentInCity` are empty for a reason worth writing down rather than inferring:
@@ -1138,7 +1165,7 @@ const LEDGER: readonly GenEntry[] = [
   //     fields may hold. A key-presence guard therefore cannot tell a gen-5 row from a gen-6 one
   //     — which is exactly why axis C gains a state below (A-39 Part 11 item 3), because that is
   //     where the new VALUE is reachable. Current.
-  { name: 'gen-6', version: 6, absent: [], absentInCity: [] },
+  { name: 'gen-6', version: 6, absent: ['placeCount'], absentInCity: [] },
   // 7 — ROADMAP I-22a (§8.4 **A-84** Part 3): the PICKED DERIVATION changes. `City.placeId`
   //     became `City.pick`, the country is read off the pick and never off `City.countryCode`
   //     (QA **R61-1**), and a pick whose `centre` no longer equals the city's is inert. Like
@@ -1146,7 +1173,13 @@ const LEDGER: readonly GenEntry[] = [
   //     value, because a stale pick is not a source — so a key-presence guard cannot tell a
   //     gen-6 row from a gen-7 one either. What makes it reachable is axis C's `picked`
   //     representative, whose city now carries a live `CityPick`. Current.
-  { name: 'gen-7', version: 7, absent: [], absentInCity: [] },
+  { name: 'gen-7', version: 7, absent: ['placeCount'], absentInCity: [] },
+  // 8 — ROADMAP I-24 (§8.4 **A-85** Part 3, QA **R62-1**): the row gains the TOP-LEVEL key
+  //     `placeCount`, `trip.places.length` — the denominator `TravelStats.seen.places` had no way
+  //     to reach, so `seen − located` for places was 0 always. Unlike gen-6 and gen-7 this
+  //     generation **adds a key**, which is why every earlier entry above names it in `absent`
+  //     and why this one is reachable by a key-presence guard as well as by a number. Current.
+  { name: 'gen-8', version: 8, absent: [], absentInCity: [] },
 ];
 
 /**
@@ -1171,7 +1204,7 @@ function generation(name: GenName): GenEntry {
 }
 
 /** The current generation, by the ledger rather than by position-in-a-comment. */
-const CURRENT_GEN = generation('gen-7');
+const CURRENT_GEN = generation('gen-8');
 
 /** A generation's top-level key set: `ROW_KEYS` minus that generation's own removals. */
 function expectedKeys(gen: GenEntry): string[] {
@@ -1579,9 +1612,17 @@ const contentRow = (content: ContentName, id: string): TripSummaryRow =>
   tripSummary(contentTrip(content, id), COUNTRY_INDEX);
 
 // ---------------------------------------------------------------------------
-// **A-39 Part 5 — the covering table.** 8 summary-row generations × 5 document generations =
-// 40 `S×D` pairs, each carrying `C`, `V` and `B` values chosen so that every other pair the axes
-// admit appears inside those 40 rows.
+// **A-39 Part 5 — the covering table.** 9 summary-row generations × 5 document generations =
+// 45 `S×D` pairs, each carrying `C`, `V` and `B` values chosen so that every other pair the axes
+// admit appears inside those 45 rows.
+//
+// **40 → 45 at §8.4 A-85 Part 3 / Part 6 (ROADMAP I-24).** Part 11 item 1 fires alone this time:
+// `SUMMARY_VERSION` moves 7 → 8, so Axis S gains `gen-8` and `|S|` goes to **9**; `SCHEMA_VERSION`
+// does not move, so `|D|` stays at **5**; and `countrySource` gains no value, so `|C|` stays at 4.
+// A-85 Part 6 states the law this now obeys in both directions and puts it in `SUMMARY_VERSION`'s
+// own docstring: **a `SUMMARY_VERSION` bump adds `|D|` rows, a `SCHEMA_VERSION` bump adds `|S|`
+// rows, and an increment that bumps both owns the new product `|S| × |D|`.** The new five are the
+// `gen-8` block below, and they sit in ledger order ahead of `gen-future`.
 //
 // **28 → 40 at §8.4 A-84 Part 8 (ROADMAP I-22a), and TWO of A-39 Part 11's items fire at once
 // again.** Item 1 fires because `SUMMARY_VERSION` moves 6 → 7, so axis S gains `gen-7` and goes
@@ -1592,13 +1633,11 @@ const contentRow = (content: ContentName, id: string): TripSummaryRow =>
 // **40 is minimal, not chosen**; item 3 does **not** fire, because `countrySource` gains no
 // fourth value and `|C|` stays at 4.
 //
-// **Where this disagrees with A-84 Part 8's own arithmetic, and it is disclosed rather than
-// quietly reconciled.** A-84 Part 8 says the bump takes the table *"to 35 rows"*, which is
-// `7 × 5` — `|S|` held at 7. But this increment moves `SUMMARY_VERSION` as well, so the ledger
-// gains `gen-7` and `|S|` is 8: a freshly minted row stamps 7, and `LEDGER.at(-1)` must be
-// `SUMMARY_VERSION` or pin 1 reddens. **The ROADMAP criterion is the formula — *"every `S × D`
-// pair appears exactly once, `|S| × |D|` rows, no more"* — and that formula is what is
-// implemented.** BUILD-NOTES records the discrepancy for the architect.
+// **A-84 Part 8's *"35 rows"* was an arithmetic slip and is CORRECTED to 40 by §8.4 A-85
+// Part 6 (QA R62-3).** `35` is `7 × 5` — it held `|S|` at 7 in the same Part that moved
+// `SUMMARY_VERSION` 6 → 7 and therefore added `gen-7` to this ledger. I-22a's builder implemented
+// the criterion's *formula* rather than its number and shipped 40; nothing shipped was wrong, and
+// the ruling now says so in both documents.
 //
 // **One pair is still unreachable, and it is stated rather than discovered.** `D = v1` **implies**
 // `B = none`: a v1 document has no `photos` key at all, so it references no `PhotoId` and its byte
@@ -1674,11 +1713,19 @@ const COVERING_SET: readonly CoverCell[] = [
   { n: 33, s: 'gen-7',       d: 'v3',  c: 'rich',          v: 'present',  b: 'present',  arm: 2 },
   { n: 34, s: 'gen-7',       d: 'v4',  c: 'unattributed',  v: 'absent',   b: 'present',  arm: 3 },
   { n: 35, s: 'gen-7',       d: 'v5',  c: 'picked',        v: 'absent',   b: 'missing',  arm: 3 },
-  { n: 36, s: 'gen-future',  d: 'v1',  c: 'rich',          v: 'absent',   b: 'none',     arm: 3 },
-  { n: 37, s: 'gen-future',  d: 'v2',  c: 'unattributed',  v: 'present',  b: 'present',  arm: 2 },
-  { n: 38, s: 'gen-future',  d: 'v3',  c: 'degenerate',    v: 'absent',   b: 'missing',  arm: 3 },
-  { n: 39, s: 'gen-future',  d: 'v4',  c: 'picked',        v: 'present',  b: 'missing',  arm: 2 },
-  { n: 40, s: 'gen-future',  d: 'v5',  c: 'unattributed',  v: 'present',  b: 'missing',  arm: 2 },
+  // **The five rows §8.4 A-85 Part 3's `SUMMARY_VERSION` 7 → 8 adds, and this increment owns
+  // them** (A-85 Part 6). All four content representatives, both `V` states and all three `B`
+  // states appear inside the block, which is what the pairwise assertions below check.
+  { n: 36, s: 'gen-8',       d: 'v1',  c: 'unattributed',  v: 'present',  b: 'none',     arm: 2 },
+  { n: 37, s: 'gen-8',       d: 'v2',  c: 'picked',        v: 'absent',   b: 'present',  arm: 3 },
+  { n: 38, s: 'gen-8',       d: 'v3',  c: 'rich',          v: 'absent',   b: 'missing',  arm: 3 },
+  { n: 39, s: 'gen-8',       d: 'v4',  c: 'degenerate',    v: 'present',  b: 'missing',  arm: 2 },
+  { n: 40, s: 'gen-8',       d: 'v5',  c: 'picked',        v: 'present',  b: 'present',  arm: 2 },
+  { n: 41, s: 'gen-future',  d: 'v1',  c: 'rich',          v: 'absent',   b: 'none',     arm: 3 },
+  { n: 42, s: 'gen-future',  d: 'v2',  c: 'unattributed',  v: 'present',  b: 'present',  arm: 2 },
+  { n: 43, s: 'gen-future',  d: 'v3',  c: 'degenerate',    v: 'absent',   b: 'missing',  arm: 3 },
+  { n: 44, s: 'gen-future',  d: 'v4',  c: 'picked',        v: 'present',  b: 'missing',  arm: 2 },
+  { n: 45, s: 'gen-future',  d: 'v5',  c: 'unattributed',  v: 'present',  b: 'missing',  arm: 2 },
 ];
 
 const coverId = (cell: CoverCell) => `t-cov${String(cell.n).padStart(2, '0')}-${cell.s}-${cell.c}`;
@@ -1800,13 +1847,13 @@ test('exit 6b-1b (A-39 pin 1): the generation ledger\'s NEWEST entry IS SUMMARY_
     'SUMMARY_VERSION moved and the ledger did not. Add the new generation to LEDGER (with the ' +
       'keys that generation did NOT carry, transcribed from SUMMARY_VERSION\'s own docstring in ' +
       'packages/core/src/derive/summary.ts), and add ONE ROW PER DOCUMENT GENERATION to ' +
-      'COVERING_SET — five of them today, taking the table from 40 to 45. This is §8.4 A-39 ' +
+      'COVERING_SET — five of them today, taking the table from 45 to 50. This is §8.4 A-39 ' +
       'Part 11 item 1 as §8.4 A-84 Part 8 re-derived it (the cover is |S| x |D|, and |D| is now ' +
       'SCHEMA_VERSION\'s own domain), and this pin is what stops it being forgotten.',
   );
   assert.deepEqual(
     LEDGER.map((g) => g.name),
-    ['gen-1', 'gen-2', 'gen-3', 'gen-4', 'gen-5', 'gen-6', 'gen-7'],
+    ['gen-1', 'gen-2', 'gen-3', 'gen-4', 'gen-5', 'gen-6', 'gen-7', 'gen-8'],
     'the ledger holds one entry per SHIPPED SUMMARY_VERSION, in order',
   );
   assert.equal(GEN_FUTURE.version, SUMMARY_VERSION + 1, 'gen-future must sit exactly one above current');
@@ -1822,6 +1869,39 @@ test('exit 6b-1b (A-39 pin 2): ageing a row to the CURRENT generation is the IDE
         'helper may ONLY delete keys named in the ledger and set summaryVersion (§8.4 A-39 ' +
         'Part 6) — anything else has turned a fixture into a migration.',
     );
+  }
+});
+
+/**
+ * **A-39 Part 4's shape-faithfulness sub-ruling, asserted for THIS increment's generation —
+ * ROADMAP I-24, §8.4 A-85 Part 3.**
+ *
+ * Pin 3 above compares each aged row against `expectedKeys(gen)`, which is derived from the
+ * ledger's own `absent` list — so it is consistent *by construction* and stays green if a
+ * generation is entered with an empty `absent`. That is exactly the fixture A-39 Part 6 forbids:
+ * a generation aged by setting a NUMBER and nothing else is invisible to a key-presence guard,
+ * which is fault G17.
+ *
+ * `SUMMARY_VERSION` 7 → 8 adds a **key**, so this asserts the difference is the key and names it.
+ * The previous generation that added a top-level key was gen-4 (`attribution`, A-31), and gen-6
+ * and gen-7 correctly added none — so this is a per-generation claim and not a general one.
+ */
+test('exit 6b-1b (A-39 Part 4 / A-85 Part 3): a gen-8 row differs from a gen-7 row by the `placeCount` KEY, not by a number', () => {
+  const fresh = contentRow('rich', 'pin3b-placeCount');
+  const g7 = Object.keys(ageRow(fresh, generation('gen-7')));
+  const g8 = Object.keys(ageRow(fresh, generation('gen-8')));
+  assert.deepEqual(
+    g8.filter((k) => !g7.includes(k)),
+    ['placeCount'],
+    'gen-8 must differ from gen-7 by exactly the `placeCount` key. A ledger entry whose ' +
+      '`absent` list is empty ages the row by setting `summaryVersion` and nothing else, which ' +
+      'is A-39 Part 4\'s G17 fixture and would re-create R31-1 inside this widening.',
+  );
+  assert.deepEqual(g7.filter((k) => !g8.includes(k)), [], 'gen-7 carries no key gen-8 lacks');
+  assert.equal('placeCount' in ageRow(fresh, generation('gen-7')), false);
+  // …and the same is true of every generation below it, because `placeCount` arrives at 8.
+  for (const gen of LEDGER.filter((g) => g.version !== 8)) {
+    assert.ok(gen.absent.includes('placeCount'), `${gen.name} predates \`placeCount\` and must name it in \`absent\``);
   }
 });
 
@@ -1924,13 +2004,17 @@ test('exit 6b-1b (A-39 Part 6): the three Axis-C fixtures still ARE the states t
   );
 });
 
-test('exit 6b-1b (A-39 Part 5 / A-84 Part 8): the covering table covers 40 S×D, 32 S×C, 16 V×S and 8 V×C pairs — COUNTED FROM THE TABLE', () => {
+test('exit 6b-1b (A-39 Part 5 / A-85 Part 6): the covering table covers 45 S×D, 36 S×C, 18 V×S and 8 V×C pairs — COUNTED FROM THE TABLE', () => {
   const distinct = (f: (c: CoverCell) => string) => new Set(COVERING_SET.map(f)).size;
   const cells = GENERATIONS.length * DOC_GENS.length;
-  assert.equal(GENERATIONS.length, 8, 'the axis domains moved: |S| is no longer 8 (§8.4 A-39 Part 11 item 1)');
+  assert.equal(GENERATIONS.length, 9, 'the axis domains moved: |S| is no longer 9 (§8.4 A-39 Part 11 item 1, A-85 Part 6)');
+  // **A-85 Part 6's law, asserted rather than quoted**: `|S|` is `SUMMARY_VERSION + 1` — one
+  // state per shipped generation, plus gen-1's no-`summaryVersion`-key floor, plus `gen-future`.
+  // This is what turns the next bump into a red instead of an omission.
+  assert.equal(GENERATIONS.length, SUMMARY_VERSION + 1, '|S| is SUMMARY_VERSION + 1 (§8.4 A-85 Part 6): one per shipped generation, plus the no-field floor, plus gen-future');
   assert.equal(DOC_GENS.length, 5, 'the axis domains moved: |D| is no longer 5 (§8.4 A-84 Part 8)');
   assert.equal(CONTENTS.length, 4, 'the axis domains moved: |C| is no longer 4 (§8.4 A-39 Part 11 item 3)');
-  assert.equal(cells, 40, 'the covering set\'s lower bound |S| x |D| is no longer 8 x 5');
+  assert.equal(cells, 45, 'the covering set\'s lower bound |S| x |D| is no longer 9 x 5');
   // **NAMED, and first.** A deleted row drops both the count and a pair; a red that says
   // `39 !== 40` sends a reader looking, and a red that says `gen-future|v5` hands them the row.
   const want = GENERATIONS.flatMap((g) => DOC_GENS.map((d) => `${g.name}|${d}`)).sort();
@@ -1945,32 +2029,33 @@ test('exit 6b-1b (A-39 Part 5 / A-84 Part 8): the covering table covers 40 S×D,
   assert.equal(distinct((c) => `${c.s}|${c.c}`), GENERATIONS.length * CONTENTS.length, 'not every generation carries every content representative (32 S×C pairs)');
   assert.equal(distinct((c) => `${c.v}|${c.s}`), 2 * GENERATIONS.length, 'not every generation carries BOTH envelope-version states (16 V×S pairs)');
   assert.equal(distinct((c) => `${c.v}|${c.c}`), 2 * CONTENTS.length, 'not every content class carries BOTH envelope-version states (8 V×C pairs)');
-  assert.deepEqual(COVERING_SET.map((c) => c.n), Array.from({ length: cells }, (_, i) => i + 1), 'the table rows are not numbered 1..40');
+  assert.deepEqual(COVERING_SET.map((c) => c.n), Array.from({ length: cells }, (_, i) => i + 1), 'the table rows are not numbered 1..45');
   // The domains are exactly Part 4's, so a state cannot be dropped by dropping its rows.
   assert.deepEqual([...new Set(COVERING_SET.map((c) => c.s))].sort(), GENERATIONS.map((g) => g.name).slice().sort(), 'the table does not exercise every generation');
   assert.deepEqual([...new Set(COVERING_SET.map((c) => c.c))].sort(), [...CONTENTS].sort(), 'the table does not exercise every content representative');
   assert.deepEqual([...new Set(COVERING_SET.map((c) => c.d))].sort(), [...DOC_GENS].sort(), 'the table does not exercise every document generation');
-  // Arm assignment IS the V axis, and the split is 20/20 (14/14 before A-84 took the table to 40,
-  // 9/9 before A-83 took it to 28, 8/7 before A-56 took it to 18). A-39 Part 5 counts them in
+  // Arm assignment IS the V axis, and the split is 23/22 — 45 is odd, so an even split is not
+  // available (20/20 before A-85 took the table to 45, 14/14 before A-84 took it to 40, 9/9
+  // before A-83 took it to 28, 8/7 before A-56 took it to 18). A-39 Part 5 counts them in
   // writing.
   for (const cell of COVERING_SET) {
     assert.equal(cell.arm, cell.v === 'present' ? 2 : 3, `row ${cell.n} is assigned to an arm whose starting state does not match its V value`);
   }
-  assert.equal(COVERING_SET.filter((c) => c.arm === 2).length, 20, 'arm 2 does not carry the twenty V=present rows');
-  assert.equal(COVERING_SET.filter((c) => c.arm === 3).length, 20, 'arm 3 does not carry the twenty V=absent rows');
+  assert.equal(COVERING_SET.filter((c) => c.arm === 2).length, 23, 'arm 2 does not carry the twenty-three V=present rows');
+  assert.equal(COVERING_SET.filter((c) => c.arm === 3).length, 22, 'arm 3 does not carry the twenty-two V=absent rows');
   // And the ids the seed is keyed by are unique, or two table rows share one record.
   const ids = COVERING_SET.map(coverId);
   assert.equal(new Set(ids).size, cells, 'two table rows collide on one seeded id');
 });
 
-test('exit 6b-1b (§10 A-57 Part 8 / §8.4 A-84 Part 8): the re-derived table covers Axis D and Axis B pairwise too — 24 B×S, 12 B×C, 6 V×B, 40 D×S, 20 D×C, 10 V×D, and the unreachable pairs are named', () => {
+test('exit 6b-1b (§10 A-57 Part 8 / §8.4 A-85 Part 6): the re-derived table covers Axis D and Axis B pairwise too — 27 B×S, 12 B×C, 6 V×B, 45 D×S, 20 D×C, 10 V×D, and the unreachable pairs are named', () => {
   const pairs = (f: (c: CoverCell) => string, g: (c: CoverCell) => string) =>
     new Set(COVERING_SET.map((c) => `${f(c)}|${g(c)}`)).size;
 
   // **Axis B, new at I-13 (A-39 Part 11 item 4).** Full pairwise against both of the two largest
   // axes, using the rows the table already had: this is what "zero new rows" means.
   assert.equal(BYTE_STATES.length, 3, 'Axis B\'s domain moved (§10 A-57 Part 8)');
-  assert.equal(pairs((c) => c.b, (c) => c.s), BYTE_STATES.length * GENERATIONS.length, 'not every generation carries all three byte states (24 B×S pairs)');
+  assert.equal(pairs((c) => c.b, (c) => c.s), BYTE_STATES.length * GENERATIONS.length, 'not every generation carries all three byte states (27 B×S pairs)');
   assert.equal(pairs((c) => c.b, (c) => c.c), BYTE_STATES.length * CONTENTS.length, 'not every content class carries all three byte states (12 B×C pairs)');
   assert.equal(pairs((c) => c.b, (c) => c.v), BYTE_STATES.length * 2, 'not every byte state carries BOTH envelope-version states (6 V×B pairs)');
   for (const arm of [2, 3] as const) {
@@ -1983,7 +2068,7 @@ test('exit 6b-1b (§10 A-57 Part 8 / §8.4 A-84 Part 8): the re-derived table co
 
   // **Axis D, degenerate until I-13 and ABSORBED until I-22a (A-39 Part 11 item 2 as §8.4 A-84
   // Part 8 re-derives it).** Five states, and the rows ARE the D×S cover.
-  assert.equal(pairs((c) => c.d, (c) => c.s), DOC_GENS.length * GENERATIONS.length, 'not every generation carries every document generation (40 D×S pairs)');
+  assert.equal(pairs((c) => c.d, (c) => c.s), DOC_GENS.length * GENERATIONS.length, 'not every generation carries every document generation (45 D×S pairs)');
   assert.equal(pairs((c) => c.d, (c) => c.c), DOC_GENS.length * CONTENTS.length, 'not every content class carries every document generation (20 D×C pairs)');
   assert.equal(pairs((c) => c.d, (c) => c.v), DOC_GENS.length * 2, 'the ten D×V combinations are not all present');
 
@@ -2223,7 +2308,7 @@ test('exit 6b-1b-1: the arm is not vacuous — a port that widens its rows FAILS
 // fixture-fidelity cross-check, a different and smaller job.
 // ===========================================================================
 
-test('exit 6b-1b-2: STARTING STATE = an existing CURRENT database (no upgrade), seeded with A-39\'s TWENTY V=present covering records AND an ORPHANED byte record. The upcast runs and correctly does nothing — PER ID', async () => {
+test('exit 6b-1b-2: STARTING STATE = an existing CURRENT database (no upgrade), seeded with A-39\'s TWENTY-THREE V=present covering records AND an ORPHANED byte record. The upcast runs and correctly does nothing — PER ID', async () => {
   const records = coveringSeed(2);
   // **§10 A-57 Part 8, Axis O.** This arm's database holds one byte record no document
   // references — the state §10.2 calls *reclaimable*, and the state a *"while we are in here,
@@ -2251,7 +2336,7 @@ test('exit 6b-1b-2: STARTING STATE = an existing CURRENT database (no upgrade), 
       }
       assert.equal(db._store('versions').size, records.length, 'the upcast added a version for a record with no document');
       assert.equal(db._summaries().size, records.length, 'the upcast added or dropped a summary row');
-      assert.equal(records.length, 20, 'A-39 Part 5: arm 2 carries the TWENTY V=present rows of the covering table');
+      assert.equal(records.length, 23, 'A-39 Part 5 as A-85 Part 6 re-derives it: arm 2 carries the TWENTY-THREE V=present rows of the covering table');
       assert.deepEqual(
         records.map((r) => r.gen.name),
         COVERING_SET.filter((c) => c.arm === 2).map((c) => c.s),
@@ -2281,7 +2366,7 @@ test('exit 6b-1b-2: STARTING STATE = an existing CURRENT database (no upgrade), 
   );
 });
 
-test('exit 6b-1b-3: STARTING STATE = an existing LEGACY database (NO version), seeded with A-39\'s TWENTY V=absent covering records. The stamping branch runs — this is the arm G13 dies in', async () => {
+test('exit 6b-1b-3: STARTING STATE = an existing LEGACY database (NO version), seeded with A-39\'s TWENTY-TWO V=absent covering records. The stamping branch runs — this is the arm G13 dies in', async () => {
   const records = coveringSeed(3);
   await driveWebPort(
     async (port, db) => {
@@ -2290,7 +2375,7 @@ test('exit 6b-1b-3: STARTING STATE = an existing LEGACY database (NO version), s
 
       // The stamp: `versions` was empty and gains EXACTLY SEVEN non-empty entries.
       assert.equal(db._store('versions').size, records.length, 'the upcast did not stamp every versionless record exactly once');
-      assert.equal(records.length, 20, 'A-39 Part 5: arm 3 carries the TWENTY V=absent rows of the covering table');
+      assert.equal(records.length, 22, 'A-39 Part 5 as A-85 Part 6 re-derives it: arm 3 carries the TWENTY-TWO V=absent rows of the covering table');
       const minted = new Set<string>();
       for (const r of records) {
         const token = db._store('versions').get(r.trip.id);
@@ -3186,7 +3271,7 @@ for (const fault of A57_FAULTS) {
 }
 
 /**
- * Arm 2's twenty records with **one axis collapsed to a single state** — the shape A-39 Part 9's
+ * Arm 2's twenty-three records with **one axis collapsed to a single state** — the shape A-39 Part 9's
  * negative measurements need, and the shape the covering table had *before* I-13. The Axis-D
  * constraint survives the collapse (`v1` implies `none`), because a fixture that broke it would
  * be measuring a state no database can be in rather than measuring the degradation.
@@ -3398,6 +3483,11 @@ const SOURCE_ALLOW: Record<string, string> = {
   'packages/core/src/derive/summary.ts::dayCount': 'TripSummaryRow, clause 1 + clause 3',
   'packages/core/src/derive/summary.ts::stopCount': 'TripSummaryRow, clause 1 + clause 3',
   'packages/core/src/derive/summary.ts::poolCount': 'TripSummaryRow, clause 1 + clause 3',
+  // **§8.4 A-85 Part 3 (QA R62-1), ROADMAP I-24.** The fifth member of the same set, and it is
+  // on this list for the same reason the other four are: it counts THIS document's own records,
+  // in the walk that mints the row, stamped with `SUMMARY_VERSION`. It is not a lifetime number
+  // and there is still no place a lifetime number may be stored.
+  'packages/core/src/derive/summary.ts::placeCount': 'TripSummaryRow, clause 1 + clause 3',
   'packages/core/src/derive/summary.ts::located': 'AttributionCensus on TripSummaryRow (A-31 Part 2)',
   'packages/core/src/derive/summary.ts::attributed': 'AttributionCensus on TripSummaryRow (A-31 Part 2)',
   // `TravelStats` is the RETURN TYPE of a pure function. It summarises a set of documents, which

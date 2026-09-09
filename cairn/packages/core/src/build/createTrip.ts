@@ -66,6 +66,11 @@ export type CityInit = {
    * **Optional, and its default is `null` since §8.4 A-83 Part 8 (I-22).** It used to be
    * `{lat: 0, lng: 0}`, which is a real place in the Gulf of Guinea and was never a measurement.
    * A form that collects a name and no coordinate now records an honest hole.
+   *
+   * **§8.4 A-85 Part 2 (QA R62-2, ROADMAP I-24): the default is `null` only when there is no
+   * `pick` beside it.** Absent beside a pick means *the point the pick names*; written out —
+   * `null` included — it is honoured verbatim. See `pick` below for why the two cases cannot be
+   * told apart anywhere except here.
    */
   centre?: { lat: number; lng: number } | null;
   /**
@@ -77,6 +82,24 @@ export type CityInit = {
    * Its shape is **not checked here**. `commit` routes every city this function writes through
    * `fromJSON`'s own `parseCity`, which is where the rule lives and where every other door
    * inherits it (§2.1 A-77…A-81).
+   *
+   * **THE OBLIGATION ON ANY FUTURE DOOR THAT ACCEPTS A `CityInit` — §8.4 A-85 Part 2, and it is
+   * written here because this docstring is what such a builder reads.** A pick carries the
+   * coordinate of the row the user chose, and a door that takes a `pick` **without** a `centre`
+   * beside it must stand the city on a **copy** of `pick.centre`. Dropping it stores a pick that
+   * is stale by A-84 Part 3 clause 3 **on the day it is written** — inert forever, attributing
+   * nothing, with no default, no `Issue` and no parse refusal. That was QA R62-2, measured
+   * against the shortest call a picker screen makes.
+   *
+   * **The mirror obligation: a `centre` the caller WROTE is honoured verbatim, `null` included.**
+   * Clearing a picked city's coordinate is A-84 Part 3 clause 3's *erase* case — a legal shipped
+   * user action, in which the pick is kept and inert — and in the *stored document* the
+   * born-stale case and the erase case are the same two fields. The distinction exists **only at
+   * a door**, where a key can be absent rather than `null`. That is why this is not a parser rule
+   * and why `fromJSON` still opens `{centre: null, pick: {…}}`.
+   *
+   * `setTripMeta` is deliberately not in this obligation: its patch takes `City[]`, whose
+   * `centre` is **required**, so a caller there has to write `centre: null` out loud.
    */
   pick?: CityPick | null;
   order?: number;
@@ -126,8 +149,35 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
     countryCode: c.countryCode ?? '',
     // §8.4 A-83 Part 8 / A-82 Part 7. `{0,0}` used to stand here; it is *"a value nobody
     // measured, wearing the shape of one"*, and every hand-entered city was a summary row
-    // claiming 0°N 0°E. `??` and not `||` for the same reason the key above uses it.
-    centre: c.centre ?? null,
+    // claiming 0°N 0°E.
+    //
+    // **§8.4 A-85 Part 2 (QA R62-2, ROADMAP I-24), and the shape of the test is the ruling.**
+    // `c.centre ?? null` stood here and it is what made the shortest call a picker screen writes
+    // — `{name, pick}`, no `centre` — store a well-formed pick on a city with no coordinate:
+    // stale at birth by A-84 Part 3 clause 3, attributing nothing, forever.
+    //
+    // **This is a test on PRESENCE and it may never become `??`.** `??` collapses *absent* and
+    // *written `null`* into one value, and those are the two cases this whole ruling separates:
+    // absent beside a pick means *the point the pick names*; a written `null` beside a pick is
+    // A-84 Part 3 clause 3's **erase** case, in which the pick is kept and inert and the city
+    // reports `{null, null}`. In the stored document they are the same two fields — only a door
+    // can tell them apart, so the rule lives at the door.
+    //
+    // **`!== undefined`, not `'centre' in c`, and A-85 Part 2 permits either spelling** (ROADMAP
+    // I-24 Part 1 writes both). It is `!== undefined` because that is this door's own settled
+    // convention for an INIT, stated four fields down for `datePrecision` and recorded as
+    // BUILD-NOTES **KD-101**: absent and `undefined` mean *take the default*, and `null` is a
+    // value the caller supplied. A spread that leaves `centre: undefined` behind is not an erase.
+    //
+    // A **fresh** `LatLng`, never the pick's own object: the pick is the user's own record of
+    // what they chose, and aliasing it would let a later in-place edit of `City.centre` silently
+    // move the pick's coordinate — which is the one value A-84 Part 3 clause 3's staleness test
+    // compares against.
+    centre: c.centre !== undefined
+      ? c.centre
+      : c.pick
+        ? { lat: c.pick.centre.lat, lng: c.pick.centre.lng }
+        : null,
     pick: c.pick ?? null,
     order: c.order ?? i,
     ...(c.meta ? { meta: c.meta } : {}),

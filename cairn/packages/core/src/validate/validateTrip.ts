@@ -200,6 +200,53 @@ export function validateTrip(trip: Trip): Issue[] {
         params: { cityKey: c.key },
       });
     }
+    // --- the coordinate range check, on both of a city's coordinates ------------
+    //
+    // **§8.4 **A-85** Part 4 (QA **R62-8**, ROADMAP I-24), and it amends A-84 Part 4 item 2
+    // rather than withdrawing it.** That item refused a `validateTrip` rule for two cases and
+    // both refusals stand: a **malformed** pick is a parse refusal, and a **stale** pick is a
+    // city whose owner moved it, not a broken document. An out-of-range coordinate is neither —
+    // it is `|lat| > 90`, which the comment three hundred lines down calls *"genuine structural
+    // invalidity"* and which is already an `error` for the model's other two coordinate fields.
+    // Measured before the fix: a city and a pick at `{91.5, 500.25}` reported `{CH, picked}` with
+    // **zero** issues.
+    //
+    // **No new `IssueCode`, no new severity, no new mechanism** — the model has exactly one
+    // answer for *"this coordinate is not a coordinate"* and it acquires two more subjects. A
+    // city has no `RefKind` of its own and A-85 adds none, so the `ref` is the trip and the
+    // subject is named in the message and in `params.cityKey`, exactly as the three city checks
+    // above already do.
+    //
+    // **`City.centre: null` is LEGAL and is deliberately NOT reported.** The `Place` arm one
+    // screen down reports `at === null` as *"has no coordinates at all"*; a city's absent
+    // coordinate is A-82 Part 7's honest hole and the whole point of I-22. Copying that branch
+    // here would redden every typed city in the library — which is exactly the fault ROADMAP
+    // I-24's N6 injects.
+    //
+    // **This changes no attribution.** `tripSummary` is untouched: an impossible point that the
+    // index can still draw a country for goes on reporting `{CH, picked}`, and it now does so
+    // beside an error saying the document is broken. Reporting is this function's job and
+    // precedence is `summary.ts`'s.
+    if (c.centre !== null && !inRange(c.centre)) {
+      push({
+        level: 'error',
+        code: 'lat_lng_out_of_range',
+        ref: { kind: 'trip', id: trip.id },
+        message: `City "${c.name}" has coordinates outside the legal range (${c.centre.lat}, ${c.centre.lng}).`,
+        params: { cityKey: c.key, lat: c.centre.lat, lng: c.centre.lng },
+      });
+    }
+    if (c.pick !== null && !inRange(c.pick.centre)) {
+      push({
+        level: 'error',
+        code: 'lat_lng_out_of_range',
+        ref: { kind: 'trip', id: trip.id },
+        message:
+          `City "${c.name}" was picked from a gazetteer row whose coordinates are outside the ` +
+          `legal range (${c.pick.centre.lat}, ${c.pick.centre.lng}).`,
+        params: { cityKey: c.key, lat: c.pick.centre.lat, lng: c.pick.centre.lng },
+      });
+    }
   }
 
   // --- days dense, ids correct -------------------------------------------------

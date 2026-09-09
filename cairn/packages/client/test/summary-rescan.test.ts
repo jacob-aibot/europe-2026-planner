@@ -81,6 +81,9 @@ function preI6Row(doc: core.Trip): TripSummaryRow {
     dayCount: doc.days.length,
     stopCount: 0,
     poolCount: 0,
+    // **§8.4 A-85 Part 3 (I-24).** Generation 8's key. This helper is a hand-built row and the
+    // type requires it; the generation it is aged to is set by `summaryVersion` below.
+    placeCount: 0,
     revision: doc.revision,
   } as unknown as TripSummaryRow;
 }
@@ -581,12 +584,12 @@ test('A-56 / A-83: a stored version-4 row is stale on boot, and the GENERIC resc
   assert.equal(after.phase, 'complete');
   assert.deepEqual(after.outdated, []);
   for (const r of await storage.listTrips()) {
-    // **The number moved 5 → 6 at ROADMAP I-22 (§8.4 A-83 Part 8) and 6 → 7 at I-22a (§8.4
-    // A-84 Part 3), and the mechanism did not move either time.** This is the EXISTING rescan
-    // carrying its third real load, and it is asserted against the constant so it cannot go
-    // stale a fourth time.
+    // **The number moved 5 → 6 at ROADMAP I-22 (§8.4 A-83 Part 8), 6 → 7 at I-22a (§8.4 A-84
+    // Part 3) and 7 → 8 at I-24 (§8.4 A-85 Part 3), and the mechanism did not move any of the
+    // three times.** This is the EXISTING rescan carrying its fourth real load, and it is
+    // asserted against the constant so it cannot go stale a fifth time.
     assert.equal(r.summaryVersion, core.SUMMARY_VERSION, `${r.id} was left below the version`);
-    assert.equal(r.summaryVersion, 7, 'INCONCLUSIVE: SUMMARY_VERSION is not 7, so this fixture is no longer a version-4 row three generations back');
+    assert.equal(r.summaryVersion, 8, 'INCONCLUSIVE: SUMMARY_VERSION is not 8, so this fixture is no longer a version-4 row four generations back');
     assert.equal(r.cities.length, 1, `${r.id} lost its city`);
     assert.ok(r.cities[0].centre, `${r.id} was brought to the current version with no centre`);
   }

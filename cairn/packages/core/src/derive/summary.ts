@@ -189,8 +189,29 @@ export function cityRange(trip: Trip, cityKey: CityKey): string | null {
  *     after the pick now reports the coordinate. **No key moves at either level** and
  *     `countrySource` gains **no** fourth value — a stale pick is not a source — so `ROW_KEYS`,
  *     `ROW_PATHS` and `CITY_KEYS` are all unchanged.
+ *   - **8** — ROADMAP I-24 (§8.4 **A-85** Part 3, QA **R62-1**): the row gains **`placeCount`**,
+ *     `trip.places.length`, the missing member of the set of four counts it already carried. No
+ *     existing field's derivation moves; the stamp goes up because a field on the row is a field
+ *     in storage, and because a version-7 row cannot answer a question a version-8 row can —
+ *     `travelStats.seen.places` was `located.places` by construction, so *"how many place records
+ *     have no coordinate at all"* was **0 always**. This is the first **TOP-LEVEL** widening of
+ *     the row since A-33 (`ROW_KEYS` 14 → 15, `ROW_PATHS` +1); I-12 and I-22 both widened
+ *     *inside* `cities[]` deliberately to avoid it and there is no inside to hide this one in.
+ *     A row minted before this generation carries no `placeCount`, so `countOf` reads 0, the
+ *     clamp holds `seen.places` at `located.places`, and the row reports today's honest answer
+ *     until the generic rescan reaches it.
+ *
+ * **THE LAW EVERY BUMPER OF THIS CONSTANT OWES — §8.4 A-85 Part 6 (QA R62-3), and it is written
+ * here because this docstring is what a bumper actually reads.** §8.4 A-39 Part 11's covering
+ * table in `test/stats-storage.test.ts` is the pairwise product `|S| × |D|`, where
+ * `|S| = SUMMARY_VERSION + 1` (one row per shipped generation, plus the no-field floor, plus
+ * `gen-future`) and `|D|` is the schema generations that table names. **A `SUMMARY_VERSION` bump
+ * adds `|D|` rows; a `SCHEMA_VERSION` bump adds `|S|` rows; an increment that bumps both owns the
+ * new product. The increment that bumps writes the rows.** It is 45 today (`|S| = 9`, `|D| = 5`).
+ * A-84 Part 8's *"35 rows"* held `|S|` at 7 in the same Part that moved this constant 6 → 7, and
+ * A-85 Part 6 corrects it to 40; that is the slip this paragraph exists to stop repeating.
  */
-export const SUMMARY_VERSION = 7;
+export const SUMMARY_VERSION = 8;
 
 /**
  * A city's **stated** country code, accepted or refused — §8.4 **A-29** Part 3. Module-private:
@@ -324,6 +345,22 @@ export type TripSummaryRow = {
   datePrecision: DatePrecision;
   cityCount: number;
   dayCount: number;
+  /**
+   * The trip's total `Place` records — `trip.places.length` — §8.4 **A-85** Part 3 (QA
+   * **R62-1**), ROADMAP **I-24**.
+   *
+   * **A count, not a census**: it says how many `Place` records the trip holds, not how many are
+   * unlocated, and `attribution.places` beside it is the located/attributed pair. It is the
+   * DENOMINATOR `TravelStats.seen.places` had no way to reach — without it `seen.places` equalled
+   * `located.places` by construction, so `seen − located` for places was **0 always**, which is
+   * exactly the number `seen` was added to make derivable.
+   *
+   * It is not a new *kind* of field: it is the missing member of the set of four per-class counts
+   * the row already carried, minted in the same walk, about this one document. `cityCount`,
+   * `dayCount`, `stopCount` and `poolCount` are its neighbours and A-31 Part 6's rule about what
+   * may be counted into storage governs all five identically.
+   */
+  placeCount: number;
   stopCount: number;
   poolCount: number;
   revision: number;
@@ -545,6 +582,8 @@ export function tripSummary(trip: Trip, index: CountryIndex): TripSummaryRow {
     datePrecision: trip.datePrecision,
     cityCount: trip.cities.length,
     dayCount: trip.days.length,
+    // §8.4 A-85 Part 3. Beside its four neighbours, where it always belonged.
+    placeCount: trip.places.length,
     stopCount: trip.days.reduce((n, d) => n + d.stops.length, 0),
     poolCount: trip.pool.length,
     revision: trip.revision,

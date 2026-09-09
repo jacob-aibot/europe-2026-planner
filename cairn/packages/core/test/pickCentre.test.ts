@@ -1,0 +1,224 @@
+/**
+ * **ROADMAP I-24 Parts 1 and 3** — ARCHITECTURE §8.4 **A-85** Parts 2 and 4, which amend §8.4
+ * **A-84** Part 3 (clauses 1, 2 and 3 stand verbatim) and Part 4 item 2.
+ *
+ * **What QA round 62 measured (R62-2, MAJOR).** `CityInit.centre` and `CityInit.pick` are
+ * independent optionals, so the *shortest call a picker screen writes* —
+ * `createTrip({cities: [{name: 'Geneva', pick: cityPickFromRow(row)}]})` — stored a well-formed
+ * pick on a city with `centre: null`. A-84 Part 3 clause 3 then makes that pick **stale at
+ * birth**: it attributes nothing, forever, with no default, no `Issue` and no refusal.
+ *
+ * **What A-85 Part 2 rules.** A `CityInit` that carries a `pick` and does **not carry a `centre`
+ * key** is stood on a **copy** of `pick.centre`. A `CityInit` that carries `centre` is honoured
+ * **verbatim, `null` included** — because an explicit `centre: null` beside a pick is A-84 Part 3
+ * clause 3's *erase* case, a legal shipped user action, and in the stored document the two cases
+ * are the same two fields. **The distinction exists only at the door**, so the test is key
+ * PRESENCE and never `??`.
+ *
+ * **And A-85 Part 4 (R62-8).** The **existing** `lat_lng_out_of_range` gains two subjects —
+ * `City.centre` when non-null, and `City.pick.centre`. No new `IssueCode`, no new severity, and
+ * **the `Place` arm's `at === null` branch is deliberately NOT copied**: a city's absent
+ * coordinate is A-82 Part 7's honest hole, and copying it would redden every typed city.
+ *
+ * The coordinates are the shipped gazetteer's own and are re-derived here rather than copied:
+ * Geneva `ne:j64n0x` at `{46.21, 6.14}` stating `CH`, where `countryOf` says **`FR`**.
+ */
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  COUNTRY_INDEX, cityPickFromRow, countryOf, createTrip, searchGazetteer, sequentialIds,
+  tripSummary, validateTrip,
+} from '../src/index.ts';
+import type { BuildCtx, GazetteerRow, Issue, Trip } from '../src/index.ts';
+import { GAZETTEER } from '../src/geo/gazetteer.gen.ts';
+import { europe2026 } from './fixture.ts';
+
+const ctx = (p: string): BuildCtx => ({ ids: sequentialIds(`${p}-`), now: '2026-06-15' });
+
+/** The shipped row, found the way a human finds it: by typing a name. */
+function row(query: string): GazetteerRow {
+  const hits = searchGazetteer(query, GAZETTEER, { limit: 5 });
+  assert.ok(hits.length > 0, `the shipped gazetteer has no row for "${query}"`);
+  return hits[0];
+}
+
+const GENEVA = row('geneva');
+
+const attribution = (trip: Trip) => {
+  const s = tripSummary(trip, COUNTRY_INDEX);
+  return {
+    countryCode: s.cities[0].countryCode,
+    countrySource: s.cities[0].countrySource,
+    countryCodes: s.countryCodes,
+  };
+};
+
+test('I-24: the row this file rests on is what A-85 says it is, and the ring still disagrees with it', () => {
+  assert.deepEqual(
+    { id: GENEVA.id, centre: GENEVA.centre, countryCode: GENEVA.countryCode },
+    { id: 'ne:j64n0x', centre: { lat: 46.21, lng: 6.14 }, countryCode: 'CH' },
+  );
+  assert.equal(
+    countryOf(GENEVA.centre, COUNTRY_INDEX), 'FR',
+    'INCONCLUSIVE: the coarse ring no longer says FR at Geneva, so `picked` outranking ' +
+      '`coordinate` is no longer observable at this point (§8.4 A-84 Part 3 clause 1)',
+  );
+});
+
+// ===========================================================================
+// Part 1 — the pick lands on the point it names.
+// ===========================================================================
+
+test('I-24 Part 1 (A-85 Part 2, QA R62-2): a pick with NO `centre` key stands the city on a COPY of `pick.centre`', () => {
+  const pick = cityPickFromRow(GENEVA);
+  // The shortest call a picker screen writes. Nothing else.
+  const trip = createTrip(
+    { title: 'T', startDate: '2026-08-07', endDate: '2026-08-08', cities: [{ name: 'Geneva', pick }] },
+    ctx('p1'),
+  );
+  assert.deepEqual(trip.cities[0].centre, { lat: 46.21, lng: 6.14 });
+  // A COPY, never the pick's own object: the two fields are independently stored and an
+  // alias would make a later in-place edit of either silently move the other.
+  assert.notEqual(trip.cities[0].centre, trip.cities[0].pick?.centre);
+  assert.notEqual(trip.cities[0].centre, pick.centre);
+  assert.deepEqual(trip.cities[0].pick, pick);
+  // …and therefore the pick is LIVE, which is the whole point: `{CH, picked}`, not `{null, null}`.
+  assert.deepEqual(attribution(trip), {
+    countryCode: 'CH', countrySource: 'picked', countryCodes: ['CH'],
+  });
+});
+
+test('I-24 Part 1 (A-85 Part 2 clause 2): an EXPLICIT `centre: null` beside a pick is honoured verbatim — the erase case', () => {
+  const pick = cityPickFromRow(GENEVA);
+  const trip = createTrip(
+    {
+      title: 'T', startDate: '2026-08-07', endDate: '2026-08-08',
+      // Written out loud. A-84 Part 3 clause 3's erase case: the pick is KEPT and inert.
+      cities: [{ name: 'Geneva', centre: null, pick }],
+    },
+    ctx('p2'),
+  );
+  assert.equal(trip.cities[0].centre, null);
+  assert.deepEqual(trip.cities[0].pick, pick, 'the pick is kept — deleting it silently is the larger loss');
+  assert.deepEqual(attribution(trip), { countryCode: null, countrySource: null, countryCodes: [] });
+});
+
+test('I-24 Part 1 (A-85 Part 2 clause 2): an EXPLICIT `centre` elsewhere is honoured verbatim — the pick goes stale and stays kept', () => {
+  const pick = cityPickFromRow(GENEVA);
+  const trip = createTrip(
+    {
+      title: 'T', startDate: '2026-08-07', endDate: '2026-08-08',
+      cities: [{ name: 'Geneva', centre: { lat: 48.2082, lng: 16.3738 }, pick }],
+    },
+    ctx('p3'),
+  );
+  assert.deepEqual(trip.cities[0].centre, { lat: 48.2082, lng: 16.3738 });
+  assert.deepEqual(trip.cities[0].pick, pick);
+  assert.deepEqual(attribution(trip), {
+    countryCode: 'AT', countrySource: 'coordinate', countryCodes: ['AT'],
+  });
+});
+
+test('I-24 Part 1: a city with NO pick and NO centre is still the honest hole A-82 Part 7 made it', () => {
+  const trip = createTrip(
+    { title: 'T', startDate: '2026-08-07', endDate: '2026-08-08', cities: [{ name: 'Nowhere' }] },
+    ctx('p4'),
+  );
+  assert.equal(trip.cities[0].centre, null);
+  assert.equal(trip.cities[0].pick, null);
+});
+
+test('I-24 Part 1: `undefined` written out loud is ABSENT — the door test is presence, and `centre: undefined` beside a pick still lands on the pick', () => {
+  const pick = cityPickFromRow(GENEVA);
+  const trip = createTrip(
+    {
+      title: 'T', startDate: '2026-08-07', endDate: '2026-08-08',
+      cities: [{ name: 'Geneva', centre: undefined, pick }],
+    },
+    ctx('p5'),
+  );
+  // `undefined` is what an INIT means by *take the default* (BUILD-NOTES KD-101's reasoning,
+  // one field over): it is not a value the caller supplied. `null` is.
+  assert.deepEqual(trip.cities[0].centre, { lat: 46.21, lng: 6.14 });
+});
+
+// ===========================================================================
+// Part 3 — the coordinate range check, on both new subjects.
+// ===========================================================================
+
+/**
+ * The CITY subjects only. `lat_lng_out_of_range` has four subjects after A-85 Part 4 and the
+ * other two are `Stop` and `Place`; the reference trip already carries a `Place` with no
+ * coordinate at all (that is the 95th place record, and R62-1's whole subject), so an unfiltered
+ * count would read a shipped, correct issue as this increment's. A city issue is the one whose
+ * `ref` is the TRIP — cities have no `RefKind` of their own and A-85 adds none.
+ */
+const outOfRange = (issues: readonly Issue[]) =>
+  issues.filter((i) => i.code === 'lat_lng_out_of_range' && i.ref.kind === 'trip');
+
+test('I-24 Part 3 (A-85 Part 4, QA R62-8): a city AND its pick at an impossible point are TWO errors, each naming the city', () => {
+  const bad = { lat: 91.5, lng: 500.25 };
+  const trip = createTrip(
+    {
+      title: 'T', startDate: '2026-08-07', endDate: '2026-08-08',
+      cities: [{
+        key: 'geneva', name: 'Geneva', centre: bad,
+        pick: { rowId: 'ne:j64n0x', centre: bad, countryCode: 'CH' },
+      }],
+    },
+    ctx('p6'),
+  );
+  const issues = outOfRange(validateTrip(trip));
+  assert.equal(issues.length, 2, 'one for `City.centre` and one for `City.pick.centre`');
+  for (const i of issues) {
+    assert.equal(i.level, 'error');
+    assert.equal(i.params.cityKey, 'geneva');
+    assert.equal(i.params.lat, 91.5);
+    assert.equal(i.params.lng, 500.25);
+    assert.match(i.message, /Geneva/, 'the city is NAMED — a key is an opaque id nobody can read');
+  }
+  assert.equal(
+    issues.filter((i) => /pick/i.test(i.message)).length, 1,
+    'exactly one of the two messages says the subject is the PICK, or a reader cannot tell them apart',
+  );
+  // A-85 Part 4 note 3: this changes NO attribution. Reporting is `validateTrip`'s job and
+  // precedence is `summary.ts`'s, and the ruling does not blur them.
+  assert.deepEqual(attribution(trip), {
+    countryCode: 'CH', countrySource: 'picked', countryCodes: ['CH'],
+  });
+});
+
+test('I-24 Part 3: `City.centre: null` is LEGAL and is not an issue — the `Place` arm\'s `at === null` branch is NOT copied', () => {
+  const trip = createTrip(
+    {
+      title: 'T', startDate: '2026-08-07', endDate: '2026-08-08',
+      cities: [{ key: 'typed', name: 'Typed', centre: null }],
+    },
+    ctx('p7'),
+  );
+  assert.deepEqual(outOfRange(validateTrip(trip)), []);
+});
+
+test('I-24 Part 3: only the offending subject reddens — a legal city carrying an impossible PICK is one error', () => {
+  const trip = createTrip(
+    {
+      title: 'T', startDate: '2026-08-07', endDate: '2026-08-08',
+      cities: [{
+        key: 'geneva', name: 'Geneva', centre: { lat: 46.21, lng: 6.14 },
+        pick: { rowId: 'ne:j64n0x', centre: { lat: 91.5, lng: 500.25 }, countryCode: 'CH' },
+      }],
+    },
+    ctx('p8'),
+  );
+  const issues = outOfRange(validateTrip(trip));
+  assert.equal(issues.length, 1);
+  assert.match(issues[0].message, /pick/i);
+});
+
+test('I-24 Part 3: the whole committed reference trip reports ZERO city coordinate errors', () => {
+  const { trip } = europe2026();
+  assert.deepEqual(
+    outOfRange(validateTrip(trip) as Issue[]).map((i) => i.message), [],
+    'a real trip reddening here means the `Place` arm was copied, or the range test is wrong',
+  );
+});

@@ -390,7 +390,7 @@ test('A-56 Part 5: `centre` reached no committed golden, and travel-stats.json c
   // which are not coordinates, and which the "NO COORDINATES" header does not forbid.
   const stats = readFileSync(join(dir, 'travel-stats.json'), 'utf8');
   assert.match(stats, /"firstVisit": "2026-08-08"/, 'travel-stats.json has no city dates in it');
-  assert.match(stats, /"summaryVersion": 7/, 'travel-stats.json was not regenerated at SUMMARY_VERSION 7');
+  assert.match(stats, /"summaryVersion": 8/, 'travel-stats.json was not regenerated at SUMMARY_VERSION 8');
 });
 
 test('cli stats prints no marker and no legend when the trip is over', () => {

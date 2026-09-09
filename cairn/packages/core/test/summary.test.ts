@@ -397,8 +397,19 @@ test('A-29: a stated code on a city does NOT rescue that city\'s places and stop
   assert.equal(row.stopCount, 0, 'INCONCLUSIVE: the fixture grew stops');
 });
 
-test('A-84 Part 3: SUMMARY_VERSION is 7 — the PICKED derivation changed (A-83 Part 8 put it at 6)', () => {
-  assert.equal(SUMMARY_VERSION, 7);
+test('A-85 Part 3: SUMMARY_VERSION is 8 — the row gained `placeCount` (A-84 Part 3 put it at 7)', () => {
+  assert.equal(SUMMARY_VERSION, 8);
+});
+
+test('A-85 Part 3 (QA R62-1): a minted row carries `placeCount`, and it is `trip.places.length`', () => {
+  const { trip } = europe2026();
+  const row = tripSummary(trip, COUNTRY_INDEX);
+  assert.equal(row.placeCount, trip.places.length);
+  assert.equal(row.placeCount, 95, 'INCONCLUSIVE: the reference trip no longer holds 95 place records');
+  // It is a COUNT, not a census: `attribution.places.located` is the located subset beside it,
+  // and the gap between them is the thing `TravelStats.seen − located` exists to publish.
+  assert.equal(row.attribution.places.located, 94);
+  assert.equal(row.summaryVersion, 8);
 });
 
 test('A-29 non-regression: the reference trip does not move, and every city is coordinate-derived', () => {

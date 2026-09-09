@@ -29,6 +29,7 @@ function row(init: { id: string; startDate: IsoDate; endDate: IsoDate }): TripSu
     dayCount: 0,
     stopCount: 0,
     poolCount: 0,
+    placeCount: 0,
     revision: 1,
     countryCodes: [] as CountryCode[],
     cities: [],
