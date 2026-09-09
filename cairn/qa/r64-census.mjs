@@ -93,10 +93,34 @@ head('A  KD-117 — a `cities` ARRAY holding a corrupt entry: what happens, and 
   // Does anything downstream distinguish "no history" from "history threw"?
   const empty = client.travelHistory({ library: [] }, TODAY);
   note(`an EMPTY library: ok=${empty.ok}, trips=${empty.ok ? JSON.stringify(empty.stats.trips) : 'n/a'} — a caller that only reads counts cannot tell this from the catch branch unless it branches on \`ok\``);
-  const thrown = client.travelHistory({ library: [unnameable] }, TODAY);
-  ok(thrown.ok === false && /^travelStats:/.test(thrown.message),
-    'A3  the catch branch reports a message core AUTHORED (`travelStats: …`), not a raw engine string',
-    thrown.ok ? 'it did not throw' : JSON.stringify(thrown.message));
+  // **A3, re-cut in QA round 65.** As written this asserted `travelHistory(...).ok === false`
+  // plus a core-authored catch message for the `name: 42` fault — and `I-26` (A-87 Part 4) is
+  // precisely the change that stops that fault reaching the catch branch, so the assertion was
+  // stale by construction rather than failing. The PROPERTY it protected is *"whatever a caller
+  // is handed about a bad row, core authored it and it names the row"*, and that property is
+  // now discharged on the SUCCESS path. Both halves are asserted here, over the two populations
+  // that exist after `I-26`:
+  //   A3a  the absorbed population — no throw, and the row and the field are named by core;
+  //   A3b  the population that still reaches the catch (A-37 Part 2's grandfathered throw and
+  //        the duplicate id) — the message is still core-authored, which is what A3 was for.
+  const absorbedHist = client.travelHistory({ library: [unnameable] }, TODAY);
+  const absorbedStats = core.travelStats([unnameable], TODAY);
+  ok(absorbedHist.ok === true
+     && absorbedStats.absorbed.length === 1
+     && absorbedStats.absorbed[0].rowId === 'corrupt'
+     && absorbedStats.absorbed[0].path === 'cities[0].name',
+    'A3a the row is named by CORE on the success path — id and field path, no throw (A-87 Part 4)',
+    `ok=${absorbedHist.ok} absorbed=${JSON.stringify(absorbedStats.absorbed)}`);
+  const stillThrows = [
+    ['a malformed trip date (A-37 Part 2, grandfathered)', [travelledRow({ id: 'baddate', startDate: 'nope' })]],
+    ['a duplicate row id', [travelledRow({ id: 'dup' }), travelledRow({ id: 'dup', startDate: '2026-01-01', endDate: '2026-01-02' })]],
+  ];
+  for (const [label, library] of stillThrows) {
+    const h = client.travelHistory({ library }, TODAY);
+    ok(h.ok === false && /^travelStats:|^invalid IsoDate:/.test(h.message),
+      `A3b the catch branch still reports a message core AUTHORED — ${label}`,
+      h.ok ? 'it did not throw' : JSON.stringify(h.message));
+  }
 
   // Is the entry-level fault reachable through a real write path, or only by hand?
   const roundTripped = JSON.parse(JSON.stringify({ ...REF, cities: [undefined, REF.cities[0]] }));
@@ -298,12 +322,37 @@ head('F  `I-24`\'s exit re-derived under the two CORRECTED criteria (R63-7, R63-
   // And the source says one spelling, not two.
   const ct = readFileSync(join(CAIRN, 'packages/core/src/build/createTrip.ts'), 'utf8');
   ok(!/permits either spelling/.test(ct), 'F6  `createTrip.ts` no longer says the ruling "permits either spelling"');
+  // **F7/F8, re-cut in QA round 65.** As written these grepped for the literal string
+  // `c.centre !== undefined`, which round 64's own fix (`e1e1973`, R64-1: *bind the value
+  // once*) correctly removed — the door now reads `const centre = c.centre` and tests
+  // `centre !== undefined`. A snapshot that reads like the init is how this class gets re-filed
+  // a fourth time, and the builder was right to refuse to rescue the greps by naming a local
+  // `c`. Re-cut to pin the two PROPERTIES A-86 Parts 1 and 2 actually rule:
+  //   F7  the presence test is on a value read ONCE — measured with a counting accessor, not
+  //       read off the source text;
+  //   F8  the test is `!== undefined` and not `in`/`hasOwnProperty` — measured behaviourally
+  //       (an inherited `centre` is honoured, and `{centre: undefined}` takes the default),
+  //       with a source check that asserts the ABSENCE of the two spellings the ruling refuses.
+  let centreReads = 0;
+  const counting = { name: 'Geneva', pick, get centre() { centreReads++; return undefined; } };
+  mk(counting);
+  ok(centreReads === 1,
+    'F7  the door reads `CityInit.centre` EXACTLY ONCE (R64-1\'s property, not its spelling)',
+    `read ${centreReads} times`);
   const ctCode = strip(ct);
-  const wrote = /const wroteCentre[^\n]*\n/.exec(ctCode);
-  ok(wrote !== null && /c\.centre !== undefined/.test(wrote[0]) && !/hasOwnProperty/.test(wrote[0]),
-    'F7  `wroteCentre` reads the VALUE (`!== undefined`) with no `hasOwnProperty` — A-86 Part 2',
-    wrote ? wrote[0].trim() : '`wroteCentre` not found');
-  ok(/c\.centre !== undefined/.test(ct), 'F8  the shipped test is `c.centre !== undefined`');
+  // Scoped to `centre`: `hasOwnProperty` is legitimate elsewhere in this file (`setTripMeta`'s
+  // patch allowlist, :415/:449, where `in` would make `toString` a patchable key — A-77's rule).
+  // What A-86 Part 1 refuses is an OWN-KEY test on THIS field.
+  const centreOwnKey = /(?:'centre'|"centre")\s+in\s+\w|hasOwnProperty\.call\([^)]*['"]centre['"]/.exec(ctCode);
+  ok(centreOwnKey === null,
+    'F8  no own-key test on `centre` at the door — neither `\'centre\' in c` nor `hasOwnProperty` (A-86 Part 1)',
+    centreOwnKey ? centreOwnKey[0] : undefined);
+  // …and the behaviour the spelling was a proxy for, which F1–F5 above already measure: absent
+  // and `undefined` agree, and an inherited value is honoured. Asserted here as one line so the
+  // property has a home even if F1–F5 are ever re-scoped.
+  ok(JSON.stringify(absent) === JSON.stringify(undef),
+    'F8b `centre` absent and `centre: undefined` produce the SAME answer — the behaviour `!== undefined` buys',
+    `${JSON.stringify(absent)} vs ${JSON.stringify(undef)}`);
 
   // R63-8: the range check, BOTH numbers, over the committed reference trip.
   const issues = core.validateTrip(trip, { today: '2026-08-01' });

@@ -4424,3 +4424,70 @@ file can lose.
 Neither round-64 probe writes to the repo: `r64-census.mjs` builds every fixture in memory, uses
 `memoryStorage()`, and reads `fixtures/` only; `r64-mutants.sh` works exclusively inside a
 `git worktree` it creates and removes, and never touches the live tree.
+
+---
+
+**Round 65** is the confirming adversarial pass ROADMAP `I-26` says `e1e1973` already owed, run
+over **two commits as one subject**: round 64's builder-routed fixes (`e1e1973`) and **I-26**
+(`ede933f`) / §8.4 **A-87**. Three scripts, run from `cairn/`:
+
+```bash
+node --experimental-strip-types qa/r65-gate.mjs   # 12 sections; 8 ok, 14 FAIL at ede933f
+bash qa/r65-mutants.sh                            # 11 mutants in a throwaway git worktree — 11/11 RED
+bash qa/r65-axes.sh                               # 3 type-level injections, same worktree discipline
+```
+
+**A-87 Part 7 states round 65's own falsification condition, and these probes are written to it**:
+*"a sixth hostile shape of a field the table already covers is not a finding against this ruling."*
+So `r65-gate.mjs` attacks the covering table's **denominators**, the reader's own read-once
+discipline, the reachability premise behind the ruling's stated scope limit, and the two behaviour
+changes — never one more corrupt value shape for its own sake. Its `FAIL` lines are the findings.
+
+- **§A** the four stored record classes the reader descends into against the **two** the table
+  denominates — **R65-2**, the round's second MAJOR.
+- **§B** the reader's read count per gated field, measured with counting accessors (round 64 §H's
+  technique, one layer in) — **R65-4**: `cities[i].firstDay`/`.lastDay` are read **twice**.
+- **§C** `readCensus` over five census shapes — **R65-3**: an **absent** number is reported as a
+  defect and the readable number beside it is discarded.
+- **§D** the uniform null arm, against the `SUMMARY_VERSION` ledger and what `tripSummary`
+  actually writes — **R65-7**, disclosure 1 adjudicated.
+- **§E** `absorbed`'s ordering (canonical, not caller order — holds) and its mutability (**R65-10**).
+- **§F** the reachability premise, **tested rather than accepted**: `JSON.stringify` throws on a
+  throwing getter, `structuredClone` evaluates a getter into plain data, `structuredClone` of a
+  `Proxy` throws `DataCloneError` — so the **accessor** half of the scope limit holds. The
+  *"plain data"* half does not, which is §J.
+- **§G** `rowStatsReadable`'s new cost, measured — **R65-8**, disclosure 5.
+- **§H** lifecycle blindness end to end, plus the search for a downstream consumer that assumed
+  travelled-only (there is exactly one, `cli.ts`, and it is fine).
+- **§I** `cli.ts`'s per-row line, uncapped — **R65-6**: A-87 Part 10 residue 1's trigger fired
+  inside the increment that added the surface.
+- **§J** the shape set's five missing object kinds — **R65-5**, including the `cities[]` entry
+  that is an `Error` and becomes a city named *"Error"*.
+- **§K** the privacy check: `absorbed` carries `{rowId, path, kind}` and never a stored value.
+- **§L** what widening `rowStatsReadable` in place cost `travelHistory`'s attribution — **R65-1**,
+  the round's headline, measured at **both** commits.
+
+`r65-mutants.sh` is the answer to the claims that are about a TEST rather than about the product.
+Each mutant is applied in a throwaway `git worktree` and **aborts if the literal it replaces is not
+there** — an earlier draft used `perl -0pi` whose backtick escaping silently never matched, and
+three mutants read GREEN for no reason at all. All eleven are **RED**: the assertions `I-26` added
+are alive, including `absorbed`'s ordering, `seen.cities`' rule-1 value, and both behaviour changes.
+
+`r65-axes.sh` is **R65-2's evidence**. M1 adds a number to `AttributionCensus`, M2 a census class to
+the `attribution` container, M3 (the control) a key to `TripSummaryRow`. Only M3 points `tsc` at
+`test/stats-storage.test.ts:95` — `ROW_KEYS`, inside the covering table. M1's every named site is a
+fixture literal or `readCensus`' own return; satisfy them the obvious way and the covering table is
+4/4 green with a stored census number nothing gates.
+
+**`qa/r64-census.mjs` gained three re-cut assertions this round and lost none (R65-11).** **A3**
+asserted a core-authored *catch* message for the `name: 42` fault, which `I-26` is precisely the
+change that makes unreachable; it is now **A3a** (the row is named by core on the **success** path)
+and **A3b** (the catch message is still core-authored over the two populations that still reach it).
+**F7/F8** grepped for the literal `c.centre !== undefined`, which round 64's own fix correctly
+removed — the builder was right to refuse to rescue them by naming a local `c` — and now pin the
+property: F7 counts the door's reads with an accessor, F8 asserts the absence of an own-key test
+**scoped to `centre`**, and F8b is its behavioural pair. Re-run: **0 FAIL / 69 ok**.
+
+None of the three round-65 scripts writes to the repo: `r65-gate.mjs` builds every fixture in
+memory and reads `fixtures/` and the repo's own source only; `r65-mutants.sh` and `r65-axes.sh`
+work exclusively inside a `git worktree` they create and remove.
