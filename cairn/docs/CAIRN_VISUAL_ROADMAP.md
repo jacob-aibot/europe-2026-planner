@@ -19,6 +19,99 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟩 GENEVA NOW LANDS ON GENEVA — AND NOTHING IN THIS ARC HAS BEEN SIGNED OFF YET. As of
+> 2026-09-09 this block is the newest and it supersedes every block below it, including the two
+> directly under it.** Nothing on your phone changes. This block covers three rounds at once
+> (the two below it were deliberately left alone until the work settled, so it would be written
+> once against a finished state rather than three times mid-flight).
+>
+> **The problem the block below describes is fixed, and a tester spent a whole round failing to
+> break the fix.** The mark saying *"this city was picked from Cairn's list"* used to be a bare
+> label nobody checked, so a hand-typed country could wear it. Now the pick is recorded **whole** —
+> the exact list entry, its coordinate and its country, together — the country is read off that
+> record and never off a field you can edit, and the moment you move the city the pick stops
+> counting. The tester attacked that rule over **all 7,342 cities** in the list and could not break
+> it: nothing round-trips wrong through save-and-reload, no shipped city can be made to flip its
+> country, and a malformed pick is refused at every door rather than half-believed.
+>
+> **Then the same mistake turned up one field over, twice, and both are now fixed.**
+>
+> - **Picking Geneva and saving stored a city with no location at all.** The shortest thing a
+>   picker screen would do — *"here is the city the user chose"* — saved the label and threw the
+>   coordinate away, so the pick was dead the instant it was made: no location, no country on your
+>   lifetime map, forever, and nothing anywhere said so. **Picking Geneva now puts Geneva on the
+>   map at Geneva, with Switzerland on your lifetime map.** If you deliberately clear a picked
+>   city's location, that still works and still means what it says — the two cases are now told
+>   apart at the moment you act, which is the only place they can be told apart.
+> - **The line "how many of your places have no coordinate" could only ever say zero.** Nothing
+>   stored the total, so the number was being subtracted from itself. Your saved trip summaries now
+>   carry the total, and on the Europe trip the honest answer appears for the first time: **95
+>   place records, 94 with a coordinate, one without** — *Windsor Great Park / Long Walk*.
+>
+> **A third round attacked that work and found one real problem, which is also fixed.** When a
+> picked record arrived broken, the code reached for its coordinate *before* checking the record
+> was a record, so instead of a clear refusal naming what was wrong you got a bare crash with no
+> explanation — but only when you had not also written a location, which made it look random. That
+> is now the other way round: the record is checked first, and **all seven broken shapes refuse
+> identically and say exactly where the problem is**, whether or not a location was written beside
+> them. **1,741 automated checks pass, none fail.**
+>
+> **Four things came back to the designer, and all four are ruled as of today.** None of them
+> changes what the product does; three are about what the documents *say*, which is where two of
+> the last three rounds' defects actually lived.
+>
+> - **A rule was written two ways, so the builder had to make the designer's decision.** The
+>   two spellings disagree on exactly one input and neither could cause the bug the rule exists to
+>   prevent, so the builder's choice was right — but shipping the *choice* instead of the *rule* is
+>   the second time in two rounds that has happened. One spelling is now named, with its reasons,
+>   and there is a new standing rule: **a test must admit exactly one implementation and count
+>   exactly one population.**
+> - **A test said the Europe trip reports "zero" bad coordinates. It reports one — and always
+>   has.** The same internal code covers *"this coordinate is impossible"* and *"this place has no
+>   coordinate at all"*, and Windsor Great Park is the second kind. The builder had scoped the
+>   actual test correctly; the sentence describing it had not. It now states **both** numbers, so
+>   the scoping is visibly a filter rather than a hole.
+> - **A guard that protects your whole lifetime map was quietly costing you a trip.** If one saved
+>   trip summary is corrupt, it used to take the *entire* lifetime map down; that was fixed last
+>   round and the fix is right. What nobody noticed is that it now drops that trip's cities from
+>   your counts **silently** — no message, nothing naming the trip. It will now be **counted and
+>   printed**, on the one surface that exists today, without waiting on any screen work. That is
+>   the one thing here that costs code, and it is queued next.
+> - **A saved number that nothing bounds.** A hand-corrupted saved summary can claim 4,000 places
+>   for a trip holding 95. There is deliberately **no cap**, because for places that saved number
+>   *is* the only total there is, so any cap would be invented rather than measured — and the two
+>   numbers beside it have had the same property since the first version. The reason and the exact
+>   trigger that would change the answer are now written down instead of rediscovered.
+>
+> **Where this honestly stands — built, verified and shippable are three different things.**
+>
+> | | Built (the code exists) | Verified (a tester tried to break it) | Shippable (signed off) |
+> |---|---|---|---|
+> | The city list, and honest blanks instead of 0°N 0°E | ✅ | ✅ | ❌ |
+> | The pick recorded whole; the country read off it | ✅ | ✅ | ❌ |
+> | Geneva lands on Geneva; the place count has its total | ✅ | ✅ | ❌ |
+> | This round's three fixes to the above | ✅ | **not yet** | ❌ |
+> | Counting the trip a corrupt summary silently drops | **not yet** | — | ❌ |
+> | The bigger city list — Hallstatt, Positano, Amalfi | **not yet** | — | ❌ |
+> | The picker screen itself | **not yet, and deliberately fenced** | — | ❌ |
+>
+> **Nothing in this arc has a sign-off, and the newest fixes have not yet been attacked.** That is
+> the honest state; the ✅ column is not a substitute for the other two.
+>
+> **What happens next, in order.** First the count above, which lands in the same test round the
+> newest fixes already owe — one round over both, not two. Then the small fix that stops a day map
+> opening on the Gulf of Guinea. Then **the big one, and it is the one that answers your own
+> question**: swapping the city list for a much larger one, so that someone typing where they have
+> been actually finds it. The measured miss rate is still what the block below reports — **big
+> cities 50 out of 50, everywhere else about one in five**, with Hallstatt, Positano, the Cinque
+> Terre and Santorini all absent — and that swap was **blocked** until the Geneva fix landed. It no
+> longer is.
+>
+> **The picker screen stays fenced, and the reason has changed.** It was fenced because the
+> shortest thing it would do stored a dead record; that is fixed, so the door is now safe to use.
+> What is still unsettled is the **look and feel**, which is a separate strand of work and not this
+> one's to decide. No screen code has been touched in any of these three rounds.
+
 > **🟥 TESTED: GENEVA IS BACK, NOTHING WAS LOST IN THE UPGRADE, AND ONE RULE IS TOO EASY TO
 > FOOL. As of 2026-09-09 this block is the newest and it supersedes every block below it,
 > including the two directly under it.** Nothing on your phone changes.

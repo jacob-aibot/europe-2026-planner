@@ -1612,6 +1612,40 @@ a record when it discards something a person typed or picked, and not when it de
 (**R61-12**). `ROADMAP.md` revision 68 carries the ledger entry, **I-22a**, **I-22b** and the changes to
 **I-23**.
 
+**Revision 66, 2026-09-09** is §8.4 **A-85** and its banners on A-84, A-39 Part 11 and A-33 Part 2; it
+landed with `ROADMAP.md` revision 69 and **I-24**, and its narrative is A-85's own Part 1 rather than a
+paragraph here.
+
+**Revision 67, 2026-09-09.** **QA round 63 ran every door that can reach a `City` and could not break A-85
+Part 2. What it broke, twice, is the sentence that describes the rule** — and once, the thing one of A-85's
+own riders quietly stopped saying. **§8.4 A-86** rules all four, and **`I-25` builds the one that costs
+code**. **A rule written two ways ships the choice, not the rule** (**R63-7**): `I-24` Part 1 wrote both
+`'centre' in c` and `!== undefined`, which differ on `{name, centre: undefined, pick}`; the ruling now names
+**`!== undefined`**, because the declared type cannot tell that input from an absent key, because `in`
+refuses a spread-shaped call that type-checks, and because `datePrecision` on the same init already settled
+the convention as KD-101. The third case neither spelling covered — an **inherited** `centre: null` — is
+ruled **honoured as written**, and `hasOwnProperty` is refused at this door for R63-1's own reason: an
+own-key guard above a chain-reading parser makes an answer's quality depend on where a key lives.
+**A count over an `IssueCode` states the population it does not count** (**R63-8**): the reference trip
+reports **one** `lat_lng_out_of_range` — the `place`-kinded *Windsor Great Park* record with no coordinate —
+so *"zero of them"* was failed by a correct implementation; `ref.kind === 'trip'` is an **exact** selector
+for the two subjects A-85 Part 4 added, and the corrected criterion states both numbers. **A guard that
+absorbs a row owes a count** (**R63-9**): R62-6's `Array.isArray` fix is right and **is not reopened** —
+A-59 Part 2 already ruled that a value with a documented fallback takes the fallback — but it turned a
+throw that `travelHistory` caught and `rowStatsReadable` **named** into a silent under-count of a trip's
+cities, so `TravelStats` gains **`unreadableCityLists`**, A-59 Part 3's idiom for the third time, printed on
+`cli.ts stats`' existing conditional line. No version constant moves: `TravelStats` is derived and never
+stored (A-34), §2.10 stays at **88**, `SCHEMA_VERSION` **5** and `SUMMARY_VERSION` **8** are untouched, and
+the covering table stays at **45**. **A stored `placeCount` gets no ceiling** (**R63-6**): the row *is* the
+denominator for places, so a cap would be a number nobody measured, and the residue is recorded with the
+trigger that will actually fire — the first surface that renders `seen − located` as a **sentence** rather
+than as two numbers. And the one thing the breaker's fence stopped it verifying is **answered from source
+rather than reassigned**: nothing under `apps/web/src` reads `Issue` at all, and `issuesForRef` — the only
+generic issue selector — has **no caller in the repository**, so a `trip`-kinded `lat_lng_out_of_range` has
+no rendered consequence to check and **no `.tsx` pass is assigned**. `ROADMAP.md` revision 70 carries the
+ledger entry, **I-25**, the two corrections in place to **I-24**, and *How a criterion is written* rule
+**8**.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -1619,7 +1653,14 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~530k tokens** (re-measured at **revision 66** — **§8 grew 124k → 130k** with §8.4's
+This document is **~536k tokens** (re-measured at **revision 67** — **§8 grew 130k → 136k** with §8.4's
+**A-86**, its amendment banner on **A-85** and its pointer banner on **A-59 Part 5**; §2, §4 and §10 did
+not move). **A-86 is ~5k and it is now the entry point to the pick family — read it before A-85, A-85
+before A-84, and A-84 before A-83 Part 8, which is never read alone.** **A builder of ROADMAP `I-25` reads
+A-86 whole and A-59 Parts 3, 4 and 5, and nothing else** — not A-85, not A-84, not A-83, not §2 whole, not
+§4, not §10.
+Revision 66's own note follows, and the figures in it are superseded by the ones above: the document was
+~530k (**§8 grew 124k → 130k** with §8.4's
 **A-85**, the four amendment banners it puts on A-84 and the two pointer banners it puts on A-39 Part 11
 and A-33 Part 2; §2, §4 and §10 did not move). **A-85 is ~5k and it is now the first thing anyone reads
 about a picked city** — it is read before A-84, and A-84 is read before A-83 Part 8, which is never read
@@ -20846,6 +20887,14 @@ obvious wrong move:
 
 **Part 5 — the Trips-list treatment: fixed here, built by the next increment that opens `Library.tsx`.**
 
+> **⚠ Pointer added at revision 67 by §8.4 A-86 Part 4 (QA R63-9).** This Part is **unchanged and still
+> unscheduled**, and its **fact set is now complete**: `unreadableRows` (Part 4 above), `unreadableCityDates`
+> (Part 3 above) and **`unreadableCityLists`** (A-86 Part 4) are the three facts the surface needs, and it
+> needs no further `packages/core` work. A-86 Part 4 also records why a second fault now reaches this Part
+> silently: `I-24` Part 4's `Array.isArray` guard removed the throw that used to route a corrupt `cities`
+> through `travelHistory`'s catch, where `rowStatsReadable` named it. **Trigger, unchanged: the first
+> increment that opens `Library.tsx`.**
+
 The vocabulary is fixed now so nobody invents it, and the work is deliberately not scheduled into I-12a,
 which opens no view:
 
@@ -22895,6 +22944,17 @@ owns the new product `|S| × |D|`.*
 
 #### A-85 — a pick is minted **onto** the point it names, a census may not publish a number whose denominator it does not hold, and the pick's coordinate earns the range check the model already has (revision 66, QA **R62-2**/**R62-1**, MAJOR; **R62-3**, **R62-4**, **R62-5**, **R62-8** ride along)
 
+> **⚠ Amended at revision 67 by A-86 (QA round 63), which is READ WITH THIS, NOT INSTEAD OF IT.** Round 63
+> ran every door that can reach a `City` and **could not break Part 2's distinction**; the design below is
+> sound and is not reopened. Three sentences move. **Part 2's *"does not carry a `centre` key"* is
+> AMENDED**: the presence test is `c.centre !== undefined`, one spelling, and an **inherited** `centre` is
+> honoured exactly as a written one (A-86 Parts 1 and 2, **R63-7**). **Part 3 gains a residue**: the new
+> `seen − located` subtraction is published from a stored count no ceiling bounds (A-86 Part 5, **R63-6**).
+> **Part 4's criterion — not its rule — was unscoped** and is corrected: the reference trip reports **one**
+> `lat_lng_out_of_range`, `place`-kinded, and the two new subjects are selected by `ref.kind === 'trip'`
+> (A-86 Part 3, **R63-8**). **Part 9 gains a fifth and sixth residue**, and `I-24` Part 4's `Array.isArray`
+> rider owes a count (A-86 Part 4, **R63-9**).
+
 **A-84 closed the slip that let a shipped door *change* a pick's country. Round 62 measured the slip one
 field over: a shipped door can *create* a pick that never attributes anything at all.** The mechanism
 A-84 built is sound — the breaker attacked the exact-float staleness rule over all **7,342** shipped rows
@@ -23162,6 +23222,272 @@ throw; each message carries `pick.rowId` **and** identifies the city; `fromJSON`
    coordinate on the wrong continent from the city's other content is only visible through staleness, and
    staleness compares it to `City.centre` alone. **Trigger:** the first report of a pick that attributes a
    plausible-but-wrong country from a corpus row, which is `I-23`'s `indexSays: 'differs'` surface.
+
+#### A-86 — one spelling at the door, one population in a count, and a census that absorbs a row says so (revision 67, QA **R63-7**, **R63-8**, **R63-9**, MINOR; **R63-6** ruled as a residue with its trigger)
+
+*(Read with **A-85** Parts 2, 3 and 4, which this amends in three places and does not reopen, and with
+**A-59** Parts 3 and 5, whose idiom Part 4 below uses for the third time. It supersedes no clause of A-84.
+`packages/core`'s export surface does not move — **88** — `SCHEMA_VERSION` does not move, `SUMMARY_VERSION`
+does not move, and no `.tsx` file is opened.)*
+
+**Round 63 could not break A-85's door-level rule by the route A-85 worried about.** Every door that can
+reach a `City` was run rather than reasoned about, and the distinction held. What broke is the *sentence
+that describes it*, twice — a rule written two ways and a count written over two populations — and one
+rider of A-85 traded a loud failure for a quiet one. Four findings: three are about what a document says,
+and one costs a single field.
+
+---
+
+**Part 1 — R63-7 ruled: the presence test is `c.centre !== undefined`, and this ruling names it once.**
+
+`I-24` Part 1 wrote the rule two ways — *"`'centre' in c` / `!== undefined`"* — while A-85 Part 2's prose
+said *"does not carry a `centre` key"*, which reads as `in`. Measured, the two differ on exactly one input,
+`{name, centre: undefined, pick}`: `in` produces a parse refusal at `$.cities[0].centre`, `!== undefined`
+takes the default. **Neither can produce a born-stale pick**, which is the property A-85 Part 2 actually
+protects, so the increment shipped with a live choice open inside a ruling — R62-4's class one revision
+later. The builder chose `!== undefined` on KD-101's precedent and the breaker confirmed the reading; what
+was missing is the ruling saying so.
+
+> **The presence test at a `CityInit` door is `c.centre !== undefined`. There is one spelling and this is
+> it. A-85 Part 2's *"does not carry a `centre` key"* is replaced by *"whose `centre` is `undefined` —
+> the key absent, or written as `undefined`"*, and every comment in `build/createTrip.ts` saying this
+> ruling *"permits either spelling"* is now false and is corrected in place.**
+
+Three reasons, in the order that decides it:
+
+1. **The declared type cannot tell the two apart, so the door may not.** `CityInit.centre` is optional and
+   this project does not set `exactOptionalPropertyTypes`, so `{name, pick}` and `{name, centre: undefined,
+   pick}` are **the same type**. A door whose behaviour splits on a distinction its own signature does not
+   carry is a door whose contract cannot be read off the contract — and `CityInit.pick`'s docstring is
+   where A-85 Part 2 put the obligation on every future door, which makes the type the thing a builder
+   reads.
+2. **`in` refuses a call that type-checks and is correct.** `{...defaults, ...patch}` leaves `centre:
+   undefined` behind whenever `patch` carries no centre — the ordinary shape of a form's submit handler,
+   which is the caller the picker will be. Under `in`, that call is *refused at the parser* having been
+   written correctly. **Sequencing rule 9 exists because the shortest correct-looking call must do what
+   the caller meant**; refusing it is the same failure wearing the opposite sign.
+3. **It is already this door's settled convention, and the convention is already written down.**
+   `datePrecision` on the same init is `=== undefined` for KD-100's reason, recorded as BUILD-NOTES
+   **KD-101**: *absent* and *`undefined`* mean take the default, and `null` is a value the caller supplied.
+   A second convention on a neighbouring field of the same object is how the next reader gets it wrong.
+
+**What does not change:** a written `centre: null` beside a pick is still A-84 Part 3 clause 3's **erase**
+case, the pick is still kept and inert, the city still reports `{null, null}`, and the stored document
+still cannot tell the born-stale case from the erased one — which is why the rule stays at the door and
+never becomes a parser rule (A-85 Part 2 clause 2, unchanged).
+
+---
+
+**Part 2 — R63-7's second half ruled: the door reads the *value* of `c.centre`, prototype chain included.
+No `hasOwnProperty`, and it is stated here so nobody adds one.**
+
+The breaker names a third case neither spelling covers: `Object.create({centre: null})` carrying a pick.
+Under both spellings the inherited `null` is honoured as an erase; under `hasOwnProperty` it would be
+absent and the city would stand on the pick.
+
+> **`c.centre !== undefined` is a read of the property, not of the own-property table. An inherited
+> `centre` is the caller's value and is honoured exactly as a written one. `hasOwnProperty` may not be
+> introduced at this door.**
+
+Three reasons, and each is also a reason not to reopen it:
+
+1. **The parser one line later reads the chain.** `commit` hands each written record to the record parser,
+   which reads properties. An own-key guard at the door above a chain read at the parser is **R63-1's shape
+   exactly**: the quality of an answer depending on *where* a key lives rather than on *what* it says. That
+   defect was the round's headline and this ruling declines to re-mint it in the neighbouring line.
+2. **It would have to be applied to every optional on the init, not to one.** `CityInit` carries `centre`,
+   `pick`, `order`, `meta` and `key`. A door that reads one own-key-only and four chain-inclusively is less
+   predictable than one that reads all five the same way, and a `CityInit` is a plain argument object, not
+   a record whose provenance the door adjudicates.
+3. **The answer it gives is the conservative one.** An inherited `centre: null` erases: the pick is kept,
+   inert, and nothing is minted onto a point the caller did not confirm in the call. `hasOwnProperty` does
+   the opposite — it **mints a live pick off a value nobody in the call wrote**, which is the direction
+   A-85 Part 2 exists to control.
+
+**Trigger that reopens this:** a `CityInit` arriving at this door as a class instance or a
+framework-reactive wrapper whose prototype carries domain data. That is the same family as R63-2's getter
+case, and the fix there — bind the value once, write it into both fields — is the fix here too.
+
+---
+
+**Part 3 — R63-8 ruled: the range-check criterion is scoped to the subjects the increment adds, and it
+states both numbers.**
+
+`I-24`'s criterion said *"the whole committed reference trip reports **zero** of them"*. Measured, the
+reference trip reports **one** `lat_lng_out_of_range` — `Place "Windsor Great Park / Long Walk" has no
+coordinates at all`, R62-1's own 95th place record — so the criterion's literal reading is failed by a
+**correct** implementation, which is rule 5's family. The builder scoped its test with `ref.kind === 'trip'`
+and was right to; nothing shipped is wrong.
+
+**The scoping is exact, not a convenience, and that is what makes it the criterion's answer rather than the
+builder's workaround.** A `City` has no id of its own — only a `key`, which travels in `params` — so both
+new subjects push `ref: {kind: 'trip', id: trip.id}`, while every other emitter of that code pushes
+`kind: 'stop'` or `kind: 'place'`, the `Place` arm's missing-coordinate branch included. `ref.kind ===
+'trip'` therefore selects *"the subjects A-85 Part 4 added"* and nothing else, and stays exact until a
+trip-scoped coordinate that is not a city exists.
+
+> **A criterion that counts instances of an `IssueCode` names the population it counts **and** the
+> population it does not.** `I-24`'s is rewritten in `ROADMAP.md` to: over the committed reference trip,
+> `lat_lng_out_of_range` with `ref.kind === 'trip'` is **0**, and the trip's **total** count of that code
+> is **1** — the `place`-kinded Windsor record, unchanged by this increment. Both numbers, because the
+> second is what proves the first is a filter rather than a hole.
+
+---
+
+**Part 4 — R63-9 ruled: R62-6's guard stands, and what it owes is a count, not a throw.**
+
+Measured: a row whose stored `cities` is a string used to throw out of `travelStats`, be caught by
+`travelHistory`, and be **named** through `rowStatsReadable`. Since `I-24` Part 4 it contributes 0 cities,
+`travelHistory` returns `ok: true` with no banner and no named row, and nothing anywhere says a row was
+skipped. `rowStatsReadable(row)` is still `false` — and `travelHistory` asks it **only on the catch
+branch**, which the guard made unreachable for this fault. The lifetime census is quietly missing a trip's
+cities.
+
+**The guard is not reopened.** One corrupt row taking the whole library's lifetime statistics down is the
+worse failure, and **A-59 Part 2 already ruled this direction one field over**: *a stored value that gates
+the record's participation throws; a stored value the record has a documented fallback for takes the
+fallback*. `cities` has a documented fallback — a row that does not say which cities it holds contributes
+none, which is exactly what a pre-generation-3 row does — so reverting to the throw would apply the
+opposite rule to the neighbouring field of the same record.
+
+**What is wrong is that the absorption is silent, and A-59 Part 3 ruled that too**: *"a silently absorbed
+value is A-37 Part 5 residue 2's mistake repeated … skipping it without counting would be silent loss,
+which is why the count is a field."*
+
+> **`TravelStats` gains `unreadableCityLists: number` — library rows whose stored `cities` was **present
+> and not an array**, so the row contributed **no** cities to the census. Counted **per row**.
+> `undefined` and `null` are values, not defects, and are **NOT** counted: a row minted before generation
+> 3 carries no `cities` key at all, and contributing none is its correct answer.**
+
+Four things this is, each stated so a builder does not have to decide it:
+
+1. **It is `unreadableCityDates`' idiom, third instance, deliberately the same shape.** Counted in the walk
+   where the fallback fires; on `TravelStats` and not on the row; printed by `cli.ts stats` on the same
+   conditional line the other two use — `trips whose stored city list could not be read: N`. **That line is
+   what makes the absorption visible on the one surface that exists today**, with no `.tsx` and no wait on
+   the unresolved visual direction. A-59 Part 3's argument, unchanged and applied again.
+2. **It agrees with `rowStatsReadable` by construction rather than by coincidence.** The client predicate
+   already draws exactly this line — `cities === undefined || cities === null` is readable,
+   `!Array.isArray(cities)` is not — so core's counter uses the same three-way split and the two are
+   **pinned against each other by an assertion**, not by a comment. Two predicates over one fact that agree
+   only in prose is how R28-5 happened.
+3. **Nothing else moves.** `TravelStats` is derived and never stored (**A-34**; `test/stats-storage.test.ts`
+   6b-5 pins it mechanically), so `SUMMARY_VERSION` does **not** move and neither does `SCHEMA_VERSION`.
+   `fixtures/golden/travel-stats.json` regenerates with the new field reading `0` in both clock blocks — a
+   golden diff and not a behaviour change, exactly as A-59 Part 3's was. §2.10 stays at **88**: this is a
+   field on an existing type, not an export.
+4. **`SOURCE_ALLOW` gains no entry, and that is asserted rather than assumed.**
+   `countShaped('unreadableCityLists')` is **false** — `Lists` matches neither `PLURAL` nor `SHAPE` — which
+   is `unreadableCityDates`' own situation, already asserted in that file. The new field gains the sibling
+   assertion beside it, so a later rename to something ending in `Cities` fails loudly instead of quietly
+   requiring a tenth `ROW_COUNT_FIELDS` entry and the architect's ruling A-33 Part 2 reserves for it.
+
+**What is still owed, and it is A-59 Part 5's rather than a new deferral.** The Trips-list treatment —
+*"this row's saved summary could not be read"*, with **recompute** as the affordance and a per-id forced
+recompute as a new store method — is unchanged and stays unscheduled, because it opens `Library.tsx` and
+the visual direction is unresolved. What changes is that its **fact set is now complete**: `unreadableRows`
+(A-59 Part 4), `unreadableCityDates` and `unreadableCityLists` are the three facts that surface needs, and
+it needs no further `packages/core` work to be built. **Trigger, unchanged:** the first increment that
+opens `Library.tsx`.
+
+---
+
+**Part 5 — R63-6 ruled: a stored count gets no ceiling, and the residue is recorded with two triggers
+rather than dismissed.**
+
+Measured: a row hand-edited to `placeCount: 4000` publishes `seen.places` 4000 for a document holding 95,
+and `1e21` publishes `1e+21`. `countOf` floors a stored count at zero and caps it at nothing.
+
+**No ceiling is added, and the reason is that there is nothing to derive one from.** For places the row
+**is** the denominator: unlike `cities[]`, which the row carries record by record, there is no second
+stored field a place count can be checked against. A cap would therefore be a magic number — A-82 Part 7's
+*"a value nobody measured, wearing the shape of one"*, applied to a bound instead of to a coordinate.
+`stopCount + poolCount` has the identical property and has had it since generation 1, so treating the third
+count differently from its two neighbours would be A-37 Part 3's idiom applied **inconsistently**, which is
+precisely the defect R62-6 was.
+
+**What genuinely changed at `I-24`, and it is why this is recorded rather than dismissed:** `seen − located`
+for places went from *always 0* to a published difference, and A-85 Part 3 describes that difference as
+*"records with no coordinate at all"* — a sentence about the user's own data that a corrupt row can now
+make arbitrarily large.
+
+> **Residue.** A stored count is believed: floored at zero and at the row's own `located`, capped by
+> nothing. **Two triggers, and the first is the one that will actually fire:**
+> 1. **The first surface that renders `seen − located` as a sentence** rather than as two numbers side by
+>    side. `cli.ts stats` prints `records seen …` and `located …` on separate lines and is a developer
+>    surface; a Profile line reading *"n places have no coordinate"* is a **claim**, and the surface making
+>    it owes the recompute affordance beside it (Part 4 above, A-59 Part 5).
+> 2. **The first time a stored count drives a decision rather than a display** — a filter, a sort, a
+>    threshold, a streak, any gamified number. A corrupt count then changes behaviour rather than a printed
+>    line, and a bound stops being arbitrary because the decision defines one.
+
+---
+
+**Part 6 — the rendered consequence of a `trip`-kinded `lat_lng_out_of_range`, answered here rather than
+assigned to a `.tsx` pass.**
+
+The breaker could not open a `.tsx` under its fence and recorded the question as unverified, noting that
+its grep for the code string was a source measurement rather than a rendered one. **It is answerable from
+source, two-sidedly, and the second measurement is the one the grep did not make:**
+
+- **No file under `apps/web/src` reads `Issue` at all.** The single match for `validateTrip` there is a
+  comment in `ports/storage.ts`.
+- **The one generic issue selector — `packages/client/src/selectors/index.ts::issuesForRef` — has no caller
+  anywhere in the repository.** Its only occurrence is its own definition.
+
+There is therefore no rendered consequence to check: nothing renders `Issue[]`, and the selector that would
+feed such a surface is uncalled. **No `.tsx` check is assigned.** `I-25` asserts the second measurement — a
+single occurrence of `issuesForRef` — so that the answer stops being true by accident and the day a caller
+appears is the day the assertion says so.
+
+**One latent defect measured while answering it, recorded because the first surface meets it:**
+`issuesForRef` filters on `i.ref.id === id` and **ignores `ref.kind`**, while its two neighbours
+`conflictsForDay` and `conflictsForStop` both check the kind. Ids are document-scoped, so a `DayId` and a
+`StopId` are not guaranteed distinct across kinds, and `lat_lng_out_of_range` is now the first code that
+puts a **trip**-kinded issue into the same array as day- and stop-kinded ones. **Trigger, and it is armed rather than
+hoped for:** the first caller of `issuesForRef`. The signature is **not** changed now — designing a filter
+for a surface whose direction is unresolved is how an API gets built for nobody — so `I-25` instead pins
+the measurement with an assertion in root `test/`, which already walks source. The day a caller appears the
+assertion goes red and names this Part, which forces the kind into the signature **at** that moment rather
+than after the caller has shipped.
+
+---
+
+**Part 7 — what this supersedes, clause by clause.**
+
+| clause | status |
+|---|---|
+| A-85 Part 2, *"does not carry a `centre` key"* | **AMENDED** by Part 1: the test is `c.centre !== undefined`, one spelling, and an inherited `centre` is honoured (Part 2) |
+| A-85 Part 2's four clauses, and the rule's placement at the door | **stand verbatim.** Round 63 ran the whole door set and could not break the distinction; this ruling changes the spelling, not the rule |
+| A-85 Part 3 (`placeCount`, `seen` becomes total) | **stands**, and Part 5 records the residue its new subtraction creates |
+| A-85 Part 4 (`lat_lng_out_of_range` gains two subjects) | **stands verbatim.** Part 3 corrects the **criterion** that tested it, not the rule |
+| A-85 Parts 5, 6, 7, 8 | **stand, untouched** |
+| A-85 Part 9's four residues | **stand**, and gain a fifth and a sixth (Part 8 below) |
+| A-84 Part 3 clause 3 (the erase case) and Part 4 item 2 | **stand verbatim.** A written *or inherited* `centre: null` is still an erase and still mints no `Issue` |
+| A-59 Part 2 (throw vs documented fallback) | **stands, and Part 4 APPLIES it to `cities`** rather than re-deciding it |
+| A-59 Part 3 (a silent absorption is counted) | **stands, and is applied a third time** by Part 4 |
+| A-59 Part 5 (the Trips-list treatment) | **stands, unscheduled, and its fact set is now complete.** Trigger unchanged: the first increment that opens `Library.tsx` |
+| A-59 Part 7 residue 4 (*"`unreadableRows` has no consumer"*) | **stands, and is now two facts wide** rather than one |
+| A-37 Part 3 (*a stored row is not a validated document*) | **stands, and Part 5 declines to make an exception to it** for `placeCount` |
+| A-39 Part 11's covering table | **unchanged. 45.** No version constant moves in this ruling |
+| §2.10's export surface | **does not move. 88.** This ruling adds no symbol |
+| `SCHEMA_VERSION` / `SUMMARY_VERSION` | **neither moves.** `TravelStats` is derived and never stored (A-34) |
+
+---
+
+**Part 8 — residues, each with what would fire it.**
+
+1. **A corrupt row still reports plausible wrong numbers, and only the counts say anything happened.**
+   A-37 Part 5 residue 1's trade, unchanged, now with a third counter beside it. **Trigger:** a
+   `TravelStats` with an `Issue`-like channel instead of three scalar counters — at which point all three
+   fold into it and `cli.ts` loses three conditional lines.
+2. **`unreadableCityLists` counts the list, not the entries.** A row whose `cities` **is** an array but
+   contains a string contributes that entry as unlocated and is counted by nothing. **Trigger:** the first
+   measurement that a per-entry corruption is reachable in shipped storage. `rowStatsReadable` already
+   returns `false` for it, so the fact exists and only the count is missing.
+3. **The stored counts have no ceiling.** Part 5, with its own two triggers.
+4. **`issuesForRef` ignores `ref.kind`.** Part 6, with its own trigger.
+
 
 ### 8.5 Observed travel — the shape Phase 5 must be able to land on
 
