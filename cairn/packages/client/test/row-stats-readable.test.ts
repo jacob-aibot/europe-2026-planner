@@ -50,12 +50,15 @@ function row(init: { id: string; startDate: string; endDate: string; cities?: Tr
     dayCount: 0,
     stopCount: 0,
     poolCount: 0,
+    // Generation 8's key (§8.4 A-85 Part 3). `row()` mints a row at the CURRENT generation, so it
+    // carries it and says so one field down — a fixture may be aged, but only deliberately, and
+    // then by its keys as well as by its number (QA R63-3).
     placeCount: 0,
     revision: 1,
     countryCodes: ['AT' as CountryCode],
     cities: init.cities ?? [],
     attribution: { places: { located: 0, attributed: 0 }, stops: { located: 0, attributed: 0 } },
-    summaryVersion: 5,
+    summaryVersion: core.SUMMARY_VERSION,
   };
 }
 
@@ -115,11 +118,17 @@ test('A-59 Part 4: `null` and an ABSENT key are values, not defects — the row 
  */
 function versionOneRow(init: { id: string; startDate: string; endDate: string }): TripSummaryRow {
   const r = row(init) as Partial<TripSummaryRow>;
-  // The ten Phase-1 / Phase-2a keys and nothing else; `cities` arrives at version 2.
+  // The ten Phase-1 / Phase-2a keys and nothing else; `cities` arrives at version 2, and
+  // `placeCount` at version 8 (§8.4 A-85 Part 3). **QA R63-3**: `row()` mints at the current
+  // generation, so a fixture aged to version 1 has to shed every key minted since — aging it by
+  // the version NUMBER alone leaves a "version-1 row" carrying a key that arrives seven
+  // generations later, which is invisible to exactly the key-presence guard this fixture exists
+  // to stand under.
   delete r.countryCodes;
   delete r.cities;
   delete r.attribution;
   delete r.summaryVersion;
+  delete r.placeCount;
   return r as TripSummaryRow;
 }
 

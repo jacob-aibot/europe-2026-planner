@@ -169,19 +169,38 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
     // BUILD-NOTES **KD-101**: absent and `undefined` mean *take the default*, and `null` is a
     // value the caller supplied. A spread that leaves `centre: undefined` behind is not an erase.
     //
-    // A **fresh** `LatLng`, never the pick's own object: the pick is the user's own record of
-    // what they chose, and aliasing it would let a later in-place edit of `City.centre` silently
-    // move the pick's coordinate — which is the one value A-84 Part 3 clause 3's staleness test
-    // compares against.
-    centre: c.centre !== undefined
-      ? c.centre
-      : c.pick
-        ? { lat: c.pick.centre.lat, lng: c.pick.centre.lng }
-        : null,
+    // **The pick's coordinate is NOT read here — QA R63-1 (MAJOR) and R63-2.** This expression
+    // used to be `c.pick ? {lat: c.pick.centre.lat, lng: c.pick.centre.lng} : null`, which put a
+    // raw dereference in FRONT of the parser that A-84 Part 3 clause 2 says refuses a malformed
+    // pick *"at a named JSON path, at every door"*. Two harms, both measured:
+    //
+    //   - a pick with **no `centre`** — clause 2's own case, *"a pick without a coordinate is not
+    //     a pick"* — left this door as `TypeError: Cannot read properties of undefined (reading
+    //     'lat')`, with no path, no city and no row id, **whenever the caller had not written a
+    //     `centre` key**. Written `centre: null` beside the same value was refused correctly, so
+    //     the quality of the refusal depended on a key the malformed value has nothing to do with;
+    //   - reading `pick.centre` here and again in the parser is **two reads of a caller-owned
+    //     object**, so a getter-backed (reactive, `Proxy`) init could mint a city whose `centre`
+    //     disagreed with the `pick.centre` stored beside it — a pick **stale at birth**, which is
+    //     the exact state A-85 Part 2 exists to prevent, reached without anyone writing `null`.
+    //
+    // So the door writes the honest hole here and stands the city on the pick **below the commit**
+    // (`standOnPicks`), off the record the parser returned. One rule, one read, and the refusal
+    // path no longer depends on whether `centre` was written.
+    centre: c.centre !== undefined ? c.centre : null,
     pick: c.pick ?? null,
     order: c.order ?? i,
     ...(c.meta ? { meta: c.meta } : {}),
   }));
+  // Which cities the caller wrote a `centre` for, captured beside the map above because it is the
+  // INIT that holds the distinction and the stored document does not (A-85 Part 2 clause 2).
+  //
+  // **`!== undefined`, not `'centre' in c`, and A-85 Part 2 permits either spelling** (ROADMAP
+  // I-24 Part 1 writes both). It is `!== undefined` because that is this door's own settled
+  // convention for an INIT, stated further down for `datePrecision` and recorded as BUILD-NOTES
+  // **KD-101**: absent and `undefined` mean *take the default*, and `null` is a value the caller
+  // supplied. A spread that leaves `centre: undefined` behind is not an erase.
+  const wroteCentre: boolean[] = (init.cities ?? []).map((c) => c.centre !== undefined);
   const base: Trip = {
     id: init.id ?? ctx.ids.newId('trip'),
     title: init.title,
@@ -235,7 +254,44 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
   if (checked.endDate < checked.startDate) {
     throw new Error(`createTrip: endDate ${checked.endDate} precedes startDate ${checked.startDate}`);
   }
-  return commit('createTrip', checked, ensureDays(checked, ctx));
+  // §8.4 **A-85 Part 2**, after the parse rather than before it (QA **R63-1**/**R63-2**).
+  const stood = standOnPicks(checked, wroteCentre);
+  const ready = stood === checked ? checked : commit('createTrip', checked, stood);
+  return commit('createTrip', ready, ensureDays(ready, ctx));
+}
+
+/**
+ * §8.4 **A-85 Part 2**: a city whose init carried a `pick` and **no `centre` key** stands on the
+ * point the pick names — a **copy** of `pick.centre`, never the pick's own object, because
+ * aliasing would let a later in-place edit of `City.centre` silently move the one value A-84
+ * Part 3 clause 3's staleness test compares against.
+ *
+ * **It runs on a trip `commit` has already parsed, and that placement is the ruling of QA R63-1.**
+ * Every `pick` here came out of `parseCityPick`, so `pick.centre` is a `LatLng` this parser has
+ * accepted — the dereference cannot throw, and a malformed pick never reaches this function at
+ * all: it was refused one line up, at `$.cities[i].pick…`, with the city named, **whether or not
+ * the caller wrote a `centre`**. It is also the **only** read of the pick's coordinate the door
+ * makes, so a caller-owned object with a getter cannot be made to disagree with itself — the
+ * value stored in `City.centre` is copied off the value stored in `City.pick`, not off a second
+ * read of the caller's.
+ *
+ * Pure. Returns `trip` **by reference** when no city stands on a pick, so the common case mints no
+ * object and `commit` has nothing to re-parse.
+ *
+ * @param wroteCentre index-aligned with `trip.cities`: did the *init* carry a `centre` key? A
+ *        written `centre` is honoured verbatim, `null` included — that is A-84 Part 3 clause 3's
+ *        erase case, and it is a distinction only a door can see.
+ */
+function standOnPicks(trip: Trip, wroteCentre: readonly boolean[]): Trip {
+  let moved = false;
+  const cities = trip.cities.map((city, i) => {
+    if (wroteCentre[i] === true) return city;
+    const pick = city.pick;
+    if (pick === null) return city;
+    moved = true;
+    return { ...city, centre: { lat: pick.centre.lat, lng: pick.centre.lng } };
+  });
+  return moved ? { ...trip, cities } : trip;
 }
 
 /**

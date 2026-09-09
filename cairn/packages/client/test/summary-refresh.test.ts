@@ -64,7 +64,12 @@ function makeTrip(id: string, city: keyof typeof PLACES): core.Trip {
   );
 }
 
-/** The row as a build older than the current `SUMMARY_VERSION` wrote it. */
+/**
+ * The row as a build older than the current `SUMMARY_VERSION` wrote it — which means it carries
+ * **no `placeCount`** (generation 8's key, §8.4 A-85 Part 3) and no `summaryVersion` at all. QA
+ * **R63-3**: a fixture aged by the number alone, while carrying the newest generation's key, is
+ * invisible to a key-presence guard. The literal is cast, so nothing here needs the key.
+ */
 function staleRow(doc: core.Trip): TripSummaryRow {
   return {
     id: doc.id,
@@ -76,7 +81,6 @@ function staleRow(doc: core.Trip): TripSummaryRow {
     dayCount: doc.days.length,
     stopCount: 0,
     poolCount: 0,
-    placeCount: 0,
     revision: doc.revision,
   } as unknown as TripSummaryRow;
 }

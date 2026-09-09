@@ -2026,9 +2026,13 @@ test('exit 6b-1b (A-39 Part 5 / A-85 Part 6): the covering table covers 45 S×D,
   );
   assert.equal(COVERING_SET.length, cells, 'the covering set is not |S| × |D| rows. That product is the pairwise lower bound AND is achieved, so it is minimal — a row was deleted or duplicated (§8.4 A-39 Part 5, A-84 Part 8).');
   assert.equal(distinct((c) => `${c.s}|${c.d}`), cells, 'the S×D pairs are not distinct — the cover has shrunk while the row count says otherwise');
-  assert.equal(distinct((c) => `${c.s}|${c.c}`), GENERATIONS.length * CONTENTS.length, 'not every generation carries every content representative (32 S×C pairs)');
-  assert.equal(distinct((c) => `${c.v}|${c.s}`), 2 * GENERATIONS.length, 'not every generation carries BOTH envelope-version states (16 V×S pairs)');
-  assert.equal(distinct((c) => `${c.v}|${c.c}`), 2 * CONTENTS.length, 'not every content class carries BOTH envelope-version states (8 V×C pairs)');
+  // QA **R63-4**: these three messages state a product of two axis lengths, and two of them said
+  // `|S| = 8`'s numbers after A-85 Part 6 took `|S|` to 9. A message that repeats a number the
+  // assertion computes goes stale the next time an axis moves and prints a figure the red
+  // contradicts — so each one now interpolates the same expression it asserts.
+  assert.equal(distinct((c) => `${c.s}|${c.c}`), GENERATIONS.length * CONTENTS.length, `not every generation carries every content representative (${GENERATIONS.length * CONTENTS.length} S×C pairs)`);
+  assert.equal(distinct((c) => `${c.v}|${c.s}`), 2 * GENERATIONS.length, `not every generation carries BOTH envelope-version states (${2 * GENERATIONS.length} V×S pairs)`);
+  assert.equal(distinct((c) => `${c.v}|${c.c}`), 2 * CONTENTS.length, `not every content class carries BOTH envelope-version states (${2 * CONTENTS.length} V×C pairs)`);
   assert.deepEqual(COVERING_SET.map((c) => c.n), Array.from({ length: cells }, (_, i) => i + 1), 'the table rows are not numbered 1..45');
   // The domains are exactly Part 4's, so a state cannot be dropped by dropping its rows.
   assert.deepEqual([...new Set(COVERING_SET.map((c) => c.s))].sort(), GENERATIONS.map((g) => g.name).slice().sort(), 'the table does not exercise every generation');

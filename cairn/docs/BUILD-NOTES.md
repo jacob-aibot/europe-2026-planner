@@ -1,5 +1,26 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — QA round 63's four builder-routed findings (R63-1 MAJOR, R63-2, R63-3, R63-4).**
+> Builds on `82c7afb`. One product-code file (`packages/core/src/build/createTrip.ts`), four test
+> files, no doc but this one. **Zero `.tsx`, zero `apps/web/`, zero `packages/client/src/`, zero
+> `docs/design/`, zero `qa/`, zero corpus file, zero new dependency, zero lockfile, zero golden
+> movement** (`npm run golden` leaves `git status --porcelain fixtures/` empty). `SCHEMA_VERSION`
+> **5** and `SUMMARY_VERSION` **8** do not move; no record shape, no `IssueCode` and no export
+> changes.
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact commands** | From `cairn/`: `node --experimental-strip-types qa/r63-i24.mjs` → **0 FAIL, 3 GAP** (before: **13 FAIL, 3 GAP**; the 3 GAPs are R63-6, R63-8 and R63-9, all architect-routed and untouched here). `npm run test:tap` → **1,741 pass / 0 fail** (baseline re-run on this tree before the change, not quoted: **1,738 / 0**; the +3 are this pass's new tests). `npm run typecheck` → **exit 0 on both projects**. |
+> | **R63-1 (MAJOR) — the fix is placement, not a guard** | `createTrip` dereferenced `c.pick.centre.lat` **in front of** the parser that A-84 Part 3 clause 2 says refuses a malformed pick *"at a named JSON path, at every door"*. The door now writes `centre: c.centre !== undefined ? c.centre : null`, commits, and stands the city on the pick **below the commit** in a new local `standOnPicks(trip, wroteCentre)` — reading the coordinate off the **parsed** record, which `parseCityPick` has already accepted. So the dereference cannot throw, and the refusal no longer depends on a key the malformed value has nothing to do with. **No second guard is added to `build/` (A-78 Part 3): the parser is still the only place the pick's shape rule lives**, and `packages/core/test/cityPick.test.ts`'s N6 text pin over `createTrip.ts` stays green. |
+> | **R63-1, measured over all seven shapes, both ways round** | `{rowId, countryCode}` (clause 2's own case), `{centre: null}`, a string, a number, `true`, `[]` and `{centre:{lat:'46.21',lng:'6.14'}}` — each run with **no `centre` key** and with **`centre: null` written out loud**. All fourteen now refuse identically: `createTrip: this city cannot be stored — … (at $.pick…) … (cities[0])`, no `TypeError` anywhere. The string-coordinate shape lands at **`$.pick.centre.lat`**, not at the `$.centre.lat` the caller never wrote. |
+> | **R63-2 — closed by the same move, verified rather than assumed** | The door now reads the pick's coordinate **once**, and it is the parser that reads it: a `pick` whose `centre` is a counting getter reports **1 read**, and the stored `city.centre` deep-equals the stored `city.pick.centre` (a **copy**, `!==` by identity) instead of trailing it by one increment. The born-stale-at-birth state A-85 Part 2 exists to prevent is unreachable through this door with no caller writing `centre: null`. |
+> | **I-24's own point did not regress** | `{name, pick}` with no `centre` key → stored `{46.21, 6.14}`, `{CH, picked}`. `{name, centre: null, pick}` → stored `null`, `{null, null}`, pick kept — the erase case. `{name, centre: undefined, pick}` still takes the default and lands on the pick (KD-101's spelling, unchanged — **R63-7 is the architect's and I did not pre-empt it**). |
+> | **R63-3 — three aged fixtures** | `packages/client/test/summary-rescan.test.ts::preI6Row` and `summary-refresh.test.ts::staleRow` drop `placeCount: 0` (both literals are `as unknown as TripSummaryRow`, so the shipped reason *"the type requires it"* was false — measured by compiling without it). `row-stats-readable.test.ts::versionOneRow` now also `delete r.placeCount`, which restores the truth of its own comment (*"the ten Phase-1 / Phase-2a keys and nothing else"* — it is exactly ten again). Its base helper `row()` was minting `placeCount` under `summaryVersion: 5`, so that helper is moved to `summaryVersion: core.SUMMARY_VERSION`: it is the **current-generation** fixture, and only `versionOneRow` is aged — by its keys as well as by its number. |
+> | **R63-4 — two stale assertion messages** | `test/stats-storage.test.ts` said *"(32 S×C pairs)"* and *"(16 V×S pairs)"* beside assertions computing **36** and **18**. All three messages in that group now **interpolate the same expression the assertion computes**, so the class cannot recur the next time an axis length moves. |
+> | **Objection — none.** | Nothing here required deviating from A-84 Part 3 clause 2 or A-85 Part 2; the fix is what both already said. |
+> | **What I did NOT do** | R63-6, R63-8 and R63-9 are architect-routed and untouched — the repro still reports them as its 3 GAPs. `qa/` was not edited (R63-5 is closed there already). `npm run web:build` was **not** run: no `apps/web` or `packages/client/src` file is in the diff, so the bundle cannot have moved — that is an argument, not a measurement. |
+
+
 > **Addendum — ROADMAP `I-24`: a pick lands on the point it names, the place census gains its
 > denominator, and the pick's coordinate is range-checked (`ARCHITECTURE.md` revision 66 §8.4
 > **A-85**).** Builds on `e2fd8bc`. **Both MAJORs QA round 62 measured, closed.** **R62-2:**

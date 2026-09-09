@@ -69,6 +69,12 @@ function makeTrip(id: string, city: keyof typeof PLACES): core.Trip {
  * The row exactly as a build older than I-6 wrote it — **no `summaryVersion` field at all.**
  * That absence is the realistic starting state for every row a user already has, and it must
  * read as *below* the current version rather than as "unknown, leave it alone".
+ *
+ * **It therefore carries none of the keys minted since, `placeCount` (generation 8, §8.4 A-85
+ * Part 3) included — QA R63-3.** A fixture aged by the version NUMBER while carrying the newest
+ * generation's keys is invisible to a key-presence guard, which is the fault A-39 Part 4 names.
+ * The key shipped here under the reason *"the type requires it"*, and that reason is false: the
+ * literal below is cast `as unknown as TripSummaryRow` and compiles without it.
  */
 function preI6Row(doc: core.Trip): TripSummaryRow {
   return {
@@ -81,9 +87,6 @@ function preI6Row(doc: core.Trip): TripSummaryRow {
     dayCount: doc.days.length,
     stopCount: 0,
     poolCount: 0,
-    // **§8.4 A-85 Part 3 (I-24).** Generation 8's key. This helper is a hand-built row and the
-    // type requires it; the generation it is aged to is set by `summaryVersion` below.
-    placeCount: 0,
     revision: doc.revision,
   } as unknown as TripSummaryRow;
 }

@@ -143,6 +143,108 @@ test('I-24 Part 1: `undefined` written out loud is ABSENT — the door test is p
 });
 
 // ===========================================================================
+// Part 1, QA round 63 — the pick is PARSED before its coordinate is read.
+//
+// **R63-1 (MAJOR).** The first cut of Part 1 wrote `c.pick.centre.lat` in FRONT of the parser
+// A-84 Part 3 clause 2 says refuses a malformed pick *"at a named JSON path, at every door"*, so
+// six malformed shapes — `{rowId, countryCode}` with no centre among them, which is clause 2's
+// own case (*"a pick without a coordinate is not a pick"*) — came out of `createTrip` as a bare
+// `TypeError: Cannot read properties of undefined (reading 'lat')` **whenever the caller had not
+// written a `centre` key**. The same six with `centre: null` written out loud were refused
+// correctly, which is the shape of the defect: the quality of a refusal depended on a key the
+// malformed value has nothing to do with.
+//
+// **R63-2 (MINOR).** The same site read `pick.centre` twice (three times counting the parser's
+// own read), so a getter-backed init minted a city whose `centre` disagreed with the `pick.centre`
+// stored beside it — a pick **stale at birth** with no caller ever writing `centre: null`, which
+// is precisely the state A-85 Part 2 exists to prevent.
+//
+// Both close the same way and it is the one A-84 Part 3 clause 2 already names: the door hands the
+// pick to the parser first and takes the city's coordinate off the **parsed** record, so the
+// coordinate that is copied is one the parser has already accepted.
+// ===========================================================================
+
+/** Every malformed pick shape, run through the door both ways round. */
+const MALFORMED: readonly (readonly [string, unknown])[] = [
+  ["a pick with no `centre` — A-84 Part 3 clause 2's own case", { rowId: 'ne:j64n0x', countryCode: 'CH' }],
+  ['a pick whose `centre` is null', { rowId: 'ne:j64n0x', centre: null, countryCode: 'CH' }],
+  ['a pick that is a string', 'ne:j64n0x'],
+  ['a pick that is a number', 7],
+  ['a pick that is `true`', true],
+  ['a pick that is an array', []],
+  ['a pick whose coordinates are strings', { rowId: 'ne:j64n0x', centre: { lat: '46.21', lng: '6.14' }, countryCode: 'CH' }],
+];
+
+const refusal = (fn: () => unknown): Error => {
+  try {
+    fn();
+  } catch (err) {
+    return err as Error;
+  }
+  return assert.fail('createTrip accepted a malformed pick') as never;
+};
+
+test('I-24 Part 1 (QA R63-1): a malformed pick is refused at a NAMED path whether or not `centre` was written', () => {
+  for (const [label, pick] of MALFORMED) {
+    for (const [how, city] of [
+      ['no `centre` key', { name: 'Geneva', pick }],
+      ['`centre: null` written out loud', { name: 'Geneva', centre: null, pick }],
+    ] as const) {
+      const err = refusal(() => createTrip(
+        { title: 'T', startDate: '2026-08-07', endDate: '2026-08-08', cities: [city as never] },
+        ctx('r63'),
+      ));
+      assert.ok(
+        !(err instanceof TypeError),
+        `${label}, ${how}: a bare TypeError is the parser being jumped — ${err.message}`,
+      );
+      assert.match(err.message, /createTrip: this city cannot be stored/, `${label}, ${how}`);
+      assert.match(err.message, /\(at \$\.pick(\.|\b)/, `${label}, ${how}: the path names the PICK`);
+      assert.match(err.message, /\(cities\[0\]\)/, `${label}, ${how}: the refusal locates the city`);
+    }
+  }
+});
+
+test('I-24 Part 1 (QA R63-1): a pick with string coordinates is refused at `$.pick.centre.lat`, not at a `centre` the caller never wrote', () => {
+  const err = refusal(() => createTrip(
+    {
+      title: 'T', startDate: '2026-08-07', endDate: '2026-08-08',
+      cities: [{ name: 'Geneva', pick: { rowId: 'ne:j64n0x', centre: { lat: '46.21', lng: '6.14' }, countryCode: 'CH' } as never }],
+    },
+    ctx('r63b'),
+  ));
+  assert.match(err.message, /\(at \$\.pick\.centre\.lat\)/);
+});
+
+test('I-24 Part 1 (QA R63-2): the door reads `pick.centre` ONCE — a caller-owned object cannot be made to disagree with itself', () => {
+  // The realistic shape is a reactive or `Proxy`-backed form object; a counting getter is the
+  // same thing made observable.
+  let reads = 0;
+  const shifting = {
+    rowId: 'ne:j64n0x',
+    countryCode: 'CH',
+    get centre() {
+      reads += 1;
+      return { lat: 46.21 + reads, lng: 6.14 };
+    },
+  };
+  const trip = createTrip(
+    { title: 'T', startDate: '2026-08-07', endDate: '2026-08-08', cities: [{ name: 'Geneva', pick: shifting as never }] },
+    ctx('r63c'),
+  );
+  const city = trip.cities[0];
+  assert.equal(reads, 1, 'one read of the caller-owned getter, and it is the parser that takes it');
+  assert.deepEqual(
+    city.centre, city.pick?.centre,
+    'the stored city stands on the stored pick — anything else is a pick stale at birth (A-85 Part 2)',
+  );
+  // …and a copy, not the same object, exactly as the well-formed case asserts.
+  assert.notEqual(city.centre, city.pick?.centre);
+  // Live, therefore attributing: `{CH, picked}`, not `{null, null}`.
+  assert.deepEqual(attribution(trip), { countryCode: 'CH', countrySource: 'picked', countryCodes: ['CH'] });
+});
+
+// ===========================================================================
 // Part 3 — the coordinate range check, on both new subjects.
 // ===========================================================================
 
