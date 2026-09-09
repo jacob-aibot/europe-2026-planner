@@ -1646,6 +1646,34 @@ no rendered consequence to check and **no `.tsx` pass is assigned**. `ROADMAP.md
 ledger entry, **I-25**, the two corrections in place to **I-24**, and *How a criterion is written* rule
 **8**.
 
+**Revision 68, 2026-09-09.** **QA round 64 broke `travelStats` two ways inside one `cities` entry, and
+before ruling those two I measured the neighbouring fields of the same record and found three more.**
+§8.4 **A-87** rules the class rather than the instance, and **`I-26` builds it**. The five shapes, all live
+at `e1e1973`: a `cities` array holding a non-object entry **throws**, taking the whole library's travel
+history down (A-86 Part 8 residue 2 said it was absorbed — **that residue was false and is corrected in
+place**); an entry whose `name` is not a string throws *and* passes `rowStatsReadable`, so **nothing names
+the row**, defeating A-59 Part 4; **`countryCodes: 42` throws the same way and is equally unnameable**;
+**`countryCodes: 'AT'` iterates its characters** and a row's whole country list vanishes from the lifetime
+map in silence; and **`attribution: {places: {}}` publishes `seen.places`, `located.places` and
+`unattributed.places` as `NaN`** for the entire library. The function's own docstring already forbade all
+five — *"@throws … **Two, and the list is exhaustive**"* — so the ruling's content is the obligation that
+makes that claim true rather than stated: **every stored field a derivation reads goes through a gate that
+is total over `unknown`, read exactly once, three-way (absent/`null` is a value; the declared shape is the
+value; anything else present is a defect that takes the same documented fallback and is REPORTED), and a
+method call is a dereference.** One module-private reader per record class; `TravelStats` gains
+**`absorbed: readonly TravelStatsAbsorption[]`** — the row id **and** the path — which fires A-86 Part 8
+residue 1's own trigger and makes a row nameable on the **success** path instead of only through a throw.
+**Absorptions are lifecycle-blind** (R64-3 §C2/§C3: a corrupt `planned` row is corrupt today, and A-31 Part
+3's inflation argument governs the lifetime map, not the honesty channel), while every count about travel
+stays travelled-only. **`rowStatsReadable` is widened in place, not renamed** — A-59 Part 7 residue 1's own
+question, answered — and its body becomes one call to `core.travelStats`, which deletes the second
+implementation and turns A-86 Part 4 item 2's pin into an identity. The closure claim is a **covering table
+over the TYPE's fields**, not over the code's reads, so a field nothing reads is covered before anything
+reads it. No version constant moves: `SCHEMA_VERSION` **5**, `SUMMARY_VERSION` **8**, the covering table
+**45**, §2.10's runtime export count **88** (a type is erased; measured). `ROADMAP.md` revision 71 carries
+the ledger entry, **I-26**, and **I-27** — the per-id forced recompute A-59 Part 5 declined to schedule
+because *"it opens `Library.tsx`"*, which is false for a store method plus a CLI command (**R64-5**).
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -1653,9 +1681,15 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~536k tokens** (re-measured at **revision 67** — **§8 grew 130k → 136k** with §8.4's
-**A-86**, its amendment banner on **A-85** and its pointer banner on **A-59 Part 5**; §2, §4 and §10 did
-not move). **A-86 is ~5k and it is now the entry point to the pick family — read it before A-85, A-85
+This document is **~547k tokens** (re-measured at **revision 68** — **§8 grew 136k → 145k** with §8.4's
+**A-87**, its amendment banner on **A-86**, its corrections in place to **A-86 Part 8 residues 1 and 2**
+and its pointer banners on **A-59 Part 7 residue 1**, **A-59 Part 5** and **A-31 Part 3**; §2, §4 and §10
+did not move. It was **~536k** at revision 67 — **§8 130k → 136k** with **A-86**, its banner on **A-85**
+and its pointer on **A-59 Part 5**). **A-87 is ~8k and it is the entry point to the DERIVE path: a builder
+or breaker of anything that reads a stored `TripSummaryRow` reads A-87 first.** It is **not** part of the
+pick family and does not require it. **A builder of ROADMAP `I-26` reads A-87 whole, then A-86 Part 4, then
+A-59 Parts 2, 3 and 4, and nothing else** — not A-85, not A-84, not A-83, not §2 whole, not §4, not §10.
+**A-86 remains the entry point to the pick family — read it before A-85, A-85
 before A-84, and A-84 before A-83 Part 8, which is never read alone.** **A builder of ROADMAP `I-25` reads
 A-86 whole and A-59 Parts 3, 4 and 5, and nothing else** — not A-85, not A-84, not A-83, not §2 whole, not
 §4, not §10.
@@ -1841,7 +1875,7 @@ this document** | 175k | builder, breaker |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
-| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35**; **A-38 is revision 27 and sits under A-37** — it **widens A-36 Part 2's mechanism and Part 4's 6b-4 scope without touching A-36's sentence**: a port's coverage is its **write paths**, not its interface methods, so the recording double gains a **seed** (a pre-existing database, including a *legacy* record with no envelope version), 6b-1b becomes **five arms each with a stated starting state**, and 6b-4 gains a second seeded phase; **A-39 is revision 28, sits under A-38 and closes the arc** — it supersedes A-38 Part 7's *required property* sentence (which quantified over **faults** and so could never be discharged by a finite fixture list) and A-38 Part 3's arm **seeds**, replacing both with a claim quantified over the state `ensureReady()` can **read**: five axes derived line by line from the function, a **15-state pairwise covering set** in the same five arms, and — the part Jacob asked for — a **written boundary** saying what legitimately reopens this (a `SUMMARY_VERSION`/`SCHEMA_VERSION` bump, a new store, a new port, a fourth write path) and what does not (one more fault shape on an axis already covered, which is a **builder** finding against A-39 Part 5's table, not an architect's). **Anyone touching a port implementation, `recordingIdb`, `test/stats-storage.test.ts` or `qa/i7a-idb-rowkeys.mjs` reads A-39 first, A-38 second and A-36 third**; **A-44 is revision 30, sits at the end of §8.4 and is read with A-37 Part 2** — it is one paragraph plus a signature, and it says where `lifecycle`'s read gate goes (`packages/client`, once, beside `travelHistory`); **anyone rendering a stored summary row on a new surface reads it**; **A-56 is revision 40, sits at the very end of §8.4 and is the newest entry in the section** — the city entry gains `centre` and `firstDay`/`lastDay`, `SUMMARY_VERSION` goes to **5**, A-33 Part 2's `ROW_KEYS`/`ROW_PATHS` are widened, stop-level geometry is refused with its trigger, and A-31 Part 5 residue 1 is closed **for cities only**. **A builder of I-12 reads A-56, then A-31 Parts 2 and 4, then A-33 Part 2, then A-39 Part 11 item 1, and needs nothing else in this document except §2.10's list**; **A-59 and A-60 are revision 41, sit directly under A-56 and are read *with* it, never instead of it** — QA round 43 measured A-56 Part 7 clause 1's *read* of a stored city date as an anonymous throw that takes the whole library's statistics down with no selector naming the row (A-59: the read is gated, the fallback is clause 2's, the absorption is counted in a new `TravelStats.unreadableCityDates`, and a new `rowStatsReadable` selector plus a widened `TravelHistoryResult` make the row nameable), and its *clamp* as printing a specific single day for a city the traveller has not reached (A-60: a range disjoint from the clamp interval falls back to the trip's range, so no city line escapes the country line beside it — *"never more assertive than its country's"* was A-60 Part 2's own wording and is **superseded at revision 42** by Part 6.4, which states the property as escape rather than width). **A-59 and A-60 also carry the three in-place corrections R43-6 made to A-56's own prose** (Part 2's `firstDay` docstring, Part 6's fourth-fixture justification, Part 8 item 6's `gen-golden.mjs` line), none of which moves a fixture, a test or a clause. **A builder of I-12a reads A-59, then A-60, then A-56 Part 7, then §2.9 A-47 Part 3, and needs nothing else**; **A-60 Part 6 is revision 42** and closes QA R44-2, an ambiguity in A-60's own Part 2 — a `null` city day edge is a **value** and keeps A-56 clause 1's per-field fallback (the shipped behaviour is **upheld**; the literal pair-wide reading is refused, because it deletes a real observation to arrive at a less precise version of the same invention), while A-60's disjointness test is generalised to read **the edges the row supplied** rather than the substitutes standing in for the missing ones — which is what makes a lone `lastDay` before `a` stop printing a fully-invented single day. **Part 2's pseudocode and Part 2's closing claim are both superseded by Part 6's**, and **a builder of the I-12a repair pass builds from Part 6.3's block and nothing else in this ruling**. **A-72 and A-73 are revision 54 and are the first rulings to land in §8.3** — they close the two objections the I-9 builder disclosed rather than resolved: **A-72** takes `SCHEMA_VERSION` to **3** (`participants` is records; `migrateDoc` becomes a ladder; `migrate.ts`'s rule is restated in three clauses so the next record class needs no ruling) and fires **A-39 Part 11 item 2** a second time, which is why §8.4's Axis D paragraph carries a bracketed amendment; **A-73** gives `duplicate_participant_id` **one home, `validateTrip`**, takes the parser refusal out and leaves **A-20 unamended**. **Neither moves a field, a type, a port, a selector or a screen**, and **a builder of ROADMAP I-9a reads A-72 Parts 5–7 and A-73 Parts 6–7 and needs nothing else in this document**; **A-74 is revision 55, sits under A-73 and closes the arc** — it answers BUILD-NOTES **KD-99** by reading the code rather than by ruling on a trade-off: a participant `kind` outside `PARTICIPANT_KINDS` **can never reach `validateTrip`**, because `parseParticipant` has refused it through `oneOf` since I-9, so there is **no new `Issue` code and no `src` change**. Its lasting content is Part 2's **eight-row producer census** for `Trip.participants` and Part 4's rule — *an enum-constrained field earns a `validateTrip` code when some producer of a `Trip` other than the parser can put a value outside the enum into it; a cast is not a producer* — which is what separates this case from §2.9 **A-45 Part 3**'s `invalid_calendar_date` and decides the remaining seventeen `oneOf` fields without a ruling. **Anyone tempted to add a validation code for a field the parser already refuses reads A-74 Part 4 first**; a builder of ROADMAP **I-9b** reads A-74 Parts 5–6 and nothing else. **Two revision-57 corrections land in this section and neither is a new entry** (QA round 54): **A-74 Part 7's residue carries an amendment banner** — its trigger fired at eight doors, and its stated answer (*"another door guard in `build/`"*) is **superseded by §2.1 A-76**, which refuses the enumeration and replaces it with a mechanism; A-74 Parts 1–4 stand entire. And **§8.4 A-27 Part 6 residue 1's *"Vatican City is `IT` at every scale"* is corrected in place** to what KD-52 measured and R54-5 re-measured over 480 cells (`IT` 476, `VA` 4): the sliver is in the index and answers itself; the residue is unrepaired and its trigger is unchanged. **A-82 is revision 63 and A-83 is revision 64; they sit at the end of §8.4, they are the offline city gazetteer, and A-83 IS THE ENTRY POINT — it carries an amendment banner naming every clause of A-82 that no longer holds and a clause-by-clause table in its Part 12.** A-82 is the bundled dataset, the fold, the match rule, the label rule, the total order, *a pick is the user's own* and the bundle boundary; **A-83 is what QA round 60's measured 21.5 % travel hit rate forced** — notability rather than population as the filter, GeoNames under CC BY 4.0, the corpus sharded into JSON documents behind the dynamic import so a search fetches ~20 kB rather than everything, the consistency invariant restated so 2,512 disagreeing rows (Geneva, Jerusalem, Brazzaville) ship carrying their disagreement, **`City.centre: LatLng | null` and `City.placeId`**, and **A-29's first amendment**. **A builder of I-22 reads A-83 Parts 8 and 9, then A-29 Part 3 and A-56; a builder of I-23 reads A-83 Parts 1–7 and 10–11, then A-82 Parts 2–4 and 9–10, and neither needs anything else in this document except §2.10's list** | 115k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
+| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35**; **A-38 is revision 27 and sits under A-37** — it **widens A-36 Part 2's mechanism and Part 4's 6b-4 scope without touching A-36's sentence**: a port's coverage is its **write paths**, not its interface methods, so the recording double gains a **seed** (a pre-existing database, including a *legacy* record with no envelope version), 6b-1b becomes **five arms each with a stated starting state**, and 6b-4 gains a second seeded phase; **A-39 is revision 28, sits under A-38 and closes the arc** — it supersedes A-38 Part 7's *required property* sentence (which quantified over **faults** and so could never be discharged by a finite fixture list) and A-38 Part 3's arm **seeds**, replacing both with a claim quantified over the state `ensureReady()` can **read**: five axes derived line by line from the function, a **15-state pairwise covering set** in the same five arms, and — the part Jacob asked for — a **written boundary** saying what legitimately reopens this (a `SUMMARY_VERSION`/`SCHEMA_VERSION` bump, a new store, a new port, a fourth write path) and what does not (one more fault shape on an axis already covered, which is a **builder** finding against A-39 Part 5's table, not an architect's). **Anyone touching a port implementation, `recordingIdb`, `test/stats-storage.test.ts` or `qa/i7a-idb-rowkeys.mjs` reads A-39 first, A-38 second and A-36 third**; **A-44 is revision 30, sits at the end of §8.4 and is read with A-37 Part 2** — it is one paragraph plus a signature, and it says where `lifecycle`'s read gate goes (`packages/client`, once, beside `travelHistory`); **anyone rendering a stored summary row on a new surface reads it**; **A-56 is revision 40, sits at the very end of §8.4 and is the newest entry in the section** — the city entry gains `centre` and `firstDay`/`lastDay`, `SUMMARY_VERSION` goes to **5**, A-33 Part 2's `ROW_KEYS`/`ROW_PATHS` are widened, stop-level geometry is refused with its trigger, and A-31 Part 5 residue 1 is closed **for cities only**. **A builder of I-12 reads A-56, then A-31 Parts 2 and 4, then A-33 Part 2, then A-39 Part 11 item 1, and needs nothing else in this document except §2.10's list**; **A-59 and A-60 are revision 41, sit directly under A-56 and are read *with* it, never instead of it** — QA round 43 measured A-56 Part 7 clause 1's *read* of a stored city date as an anonymous throw that takes the whole library's statistics down with no selector naming the row (A-59: the read is gated, the fallback is clause 2's, the absorption is counted in a new `TravelStats.unreadableCityDates`, and a new `rowStatsReadable` selector plus a widened `TravelHistoryResult` make the row nameable), and its *clamp* as printing a specific single day for a city the traveller has not reached (A-60: a range disjoint from the clamp interval falls back to the trip's range, so no city line escapes the country line beside it — *"never more assertive than its country's"* was A-60 Part 2's own wording and is **superseded at revision 42** by Part 6.4, which states the property as escape rather than width). **A-59 and A-60 also carry the three in-place corrections R43-6 made to A-56's own prose** (Part 2's `firstDay` docstring, Part 6's fourth-fixture justification, Part 8 item 6's `gen-golden.mjs` line), none of which moves a fixture, a test or a clause. **A builder of I-12a reads A-59, then A-60, then A-56 Part 7, then §2.9 A-47 Part 3, and needs nothing else**; **A-60 Part 6 is revision 42** and closes QA R44-2, an ambiguity in A-60's own Part 2 — a `null` city day edge is a **value** and keeps A-56 clause 1's per-field fallback (the shipped behaviour is **upheld**; the literal pair-wide reading is refused, because it deletes a real observation to arrive at a less precise version of the same invention), while A-60's disjointness test is generalised to read **the edges the row supplied** rather than the substitutes standing in for the missing ones — which is what makes a lone `lastDay` before `a` stop printing a fully-invented single day. **Part 2's pseudocode and Part 2's closing claim are both superseded by Part 6's**, and **a builder of the I-12a repair pass builds from Part 6.3's block and nothing else in this ruling**. **A-72 and A-73 are revision 54 and are the first rulings to land in §8.3** — they close the two objections the I-9 builder disclosed rather than resolved: **A-72** takes `SCHEMA_VERSION` to **3** (`participants` is records; `migrateDoc` becomes a ladder; `migrate.ts`'s rule is restated in three clauses so the next record class needs no ruling) and fires **A-39 Part 11 item 2** a second time, which is why §8.4's Axis D paragraph carries a bracketed amendment; **A-73** gives `duplicate_participant_id` **one home, `validateTrip`**, takes the parser refusal out and leaves **A-20 unamended**. **Neither moves a field, a type, a port, a selector or a screen**, and **a builder of ROADMAP I-9a reads A-72 Parts 5–7 and A-73 Parts 6–7 and needs nothing else in this document**; **A-74 is revision 55, sits under A-73 and closes the arc** — it answers BUILD-NOTES **KD-99** by reading the code rather than by ruling on a trade-off: a participant `kind` outside `PARTICIPANT_KINDS` **can never reach `validateTrip`**, because `parseParticipant` has refused it through `oneOf` since I-9, so there is **no new `Issue` code and no `src` change**. Its lasting content is Part 2's **eight-row producer census** for `Trip.participants` and Part 4's rule — *an enum-constrained field earns a `validateTrip` code when some producer of a `Trip` other than the parser can put a value outside the enum into it; a cast is not a producer* — which is what separates this case from §2.9 **A-45 Part 3**'s `invalid_calendar_date` and decides the remaining seventeen `oneOf` fields without a ruling. **Anyone tempted to add a validation code for a field the parser already refuses reads A-74 Part 4 first**; a builder of ROADMAP **I-9b** reads A-74 Parts 5–6 and nothing else. **Two revision-57 corrections land in this section and neither is a new entry** (QA round 54): **A-74 Part 7's residue carries an amendment banner** — its trigger fired at eight doors, and its stated answer (*"another door guard in `build/`"*) is **superseded by §2.1 A-76**, which refuses the enumeration and replaces it with a mechanism; A-74 Parts 1–4 stand entire. And **§8.4 A-27 Part 6 residue 1's *"Vatican City is `IT` at every scale"* is corrected in place** to what KD-52 measured and R54-5 re-measured over 480 cells (`IT` 476, `VA` 4): the sliver is in the index and answers itself; the residue is unrepaired and its trigger is unchanged. **A-82 is revision 63 and A-83 is revision 64; they sit at the end of §8.4, they are the offline city gazetteer, and A-83 IS THE ENTRY POINT — it carries an amendment banner naming every clause of A-82 that no longer holds and a clause-by-clause table in its Part 12.** A-82 is the bundled dataset, the fold, the match rule, the label rule, the total order, *a pick is the user's own* and the bundle boundary; **A-83 is what QA round 60's measured 21.5 % travel hit rate forced** — notability rather than population as the filter, GeoNames under CC BY 4.0, the corpus sharded into JSON documents behind the dynamic import so a search fetches ~20 kB rather than everything, the consistency invariant restated so 2,512 disagreeing rows (Geneva, Jerusalem, Brazzaville) ship carrying their disagreement, **`City.centre: LatLng | null` and `City.placeId`**, and **A-29's first amendment**. **A builder of I-22 reads A-83 Parts 8 and 9, then A-29 Part 3 and A-56; a builder of I-23 reads A-83 Parts 1–7 and 10–11, then A-82 Parts 2–4 and 9–10, and neither needs anything else in this document except §2.10's list**. **A-87 is revision 68, sits at the very END of §8.4 and is the newest entry in the section — it is the entry point to the DERIVE path and is READ ALONE, not with the pick family**: QA round 64 broke `travelStats` inside a `cities` entry two ways and three more shapes were measured on the neighbouring fields before ruling, so A-87 states the **derive-path read rule** (every stored field a derivation reads passes a gate total over `unknown`, read exactly once, three-way — absent/`null` is a value, the declared shape is the value, anything else present is a defect that takes the same documented fallback and is **reported**; a method call is a dereference; the obligation is discharged **per record class at one reader**, never per call site), gives `TravelStats` **`absorbed: readonly TravelStatsAbsorption[]`** so a row is nameable on the **success** path, makes absorption **lifecycle-blind** while every travel count stays travelled-only, widens `rowStatsReadable` **in place** into one call to `core.travelStats`, and closes the class with a **covering table over the type's fields**. **It corrects A-86 Part 8 residue 2, which was false as measured, fires A-86 Part 8 residue 1's trigger, and discharges A-59 Part 7 residue 1 and A-31 Part 5 residue 2.** **A builder of `I-26` reads A-87 whole, then A-86 Part 4, then A-59 Parts 2, 3 and 4, and needs nothing else in this document except §2.10's list** | 145k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 | 9 | **The design contract and the frontend tooling stack** (revision 38). §9.1 makes `docs/DESIGN.md` binding and says what is in it; §9.2 names the three fences a design pass may not cross; **A-55** is the eight-candidate tooling ruling, its Part 0 states where the dependency line actually is (`core`/`client` only — `apps/web` may take deps and takes none new), and its Part 4 is the tool hierarchy. **A builder of any web surface reads `DESIGN.md`, not this section**; this section is for the architect and for anyone about to add a frontend dependency | 4k | architect; anyone adding a frontend dependency |
 | 10 | **The photo foundation** (revision 40). §10.1 the record class and where the bytes are not; §10.2 import and the hand-rolled EXIF reader; §10.3 storage and the two new object stores; §10.4 the resolution discipline; §10.5 privacy and redaction; §10.6 the loading-state signals a consuming UI needs. **A-57** is the consolidated ruling and **A-58** is the dependency verdict. **A builder of I-13 reads §10 whole — it is self-contained — plus §2.8 (provenance), §2.10's list, `serialize/migrate.ts`'s own docstring, §8.6 and §8.4 A-39 Part 11.** It does **not** need the rest of §2 or §4. **A-61 is revision 43, sits at the end of the section and supersedes nothing in §10 except one clause of §10.1 point 1's own prose, corrected in place** — it is the ruling on BUILD-NOTES **KD-81** (ROADMAP I-13's 4 KB document-growth criterion against §10.1's measured 768 B record), it moves **no field**, and **a builder of I-13a reads A-61 Parts 5 and 7 and needs nothing else in this document**. **A-62, A-63 and A-64 are revision 44** — round 45's three architect-routed findings against I-13: the photo byte key gains its tenancy (`[tripId, photoId]`, `DB_VERSION` 4 → 5, `PhotoPort`'s signatures, R45-2 BLOCKER), `PhotoListing` gains an `'unreadable'` phase and a retry (R45-5), and A-57 Part 4's transition claim is withdrawn with `RefKind` unmoved (R45-6). They amend §10.2, §10.3 and §10.6 **in place**; §10.1's record class and A-58 do not move. **A builder of I-13b reads §10.2, §10.3, §10.6 and A-62/A-63/A-64, plus §8.4 A-38 Part 5 and A-39 Part 5 for the fixture re-cut**. **A-62 Part 8 gained a fourth residue at revision 45** (QA **R46-4**) — a failed byte cascade during `deleteTrip` does not block the delete, is not reported into `orphanPhotoBytes`, and is answered only by residue 2's unbuilt sweep, whose trigger is widened in place; **it changes no mechanism, and a builder of I-13c reads residue 4 alone**. **A-65 and A-66 are revision 46 and close the two items that had been routed here and never ruled** — A-65 (QA **R45-14**) upholds §10.3's synchronous byte delete and rules that undo restores the **record** and not the photograph, refusing the deferred delete with its reasons, and it amends §10.1 point 1 and §10.3's cascade row **in place**; A-66 (BUILD-NOTES **KD-82**, QA **R46-1**) closes `PhotoImportFailure` at **exactly five arms** and rules that a batch abandoned by a trip transition is reported as nothing, and it amends §10.6's union block in place. **Neither moves a type, a field, a selector or a port method**, and **a builder of I-13c group 3 reads A-65 Part 5 and A-66 Part 6 and needs nothing else in this document**. **A-66 gained a Part 10 at revision 47 (QA R47-1) and it is read FIRST** — Part 7's *"bounded at one derivative pair"* was true of `importPhotos`' loop and false of the system, Part 5 item 3's premise is narrowed and Part 6's owed sentence is widened; the union still does not widen and `U5` still holds. **The mechanism Part 10 depends on is §4.2 A-67, and the two are read together or neither**. **A-65 Part 6's T1 gains a scope sentence at revision 51 and gains nothing else** — §4.2 **A-70** upheld T1 **unamended** against a §4.2 criterion that had contradicted it (BUILD-NOTES **KD-84**), and the sentence records that T1's prohibition holds on **both** availability fixtures, unread and previously-failed. **No row of §10 moves and nothing in §10 is a builder's work at revision 51**. **A-66 gained a Part 11 at revision 52 (QA R50-2) and, like Part 10, it is read FIRST by anyone reading Part 3** — Part 3's misattribution argument was written about a *hypothetical* sixth arm and is true of `'decode_failed'` and `'storage_failed'` **as shipped**, because `fail()` and the batch's progress settlement write into `state.photos` after an `await` with no gate: a file picked in trip A is reported by name on trip B, and an abandoned four-file batch subtracts four from B's own in-flight fraction. **The union still does not widen, `U5` still holds and Part 3's conclusion stands** — what changes is that Part 3 becomes a property one gated writer (`setBatch`) enforces, Part 6's surface sentence gains a clause, and Part 8 gains **U6**/**U7**, written so the shipped code fails them. **It is read with §4.2 A-71**, which moves the batch's closing settlement into a `finally` in the same increment (**I-13i**); the two meet at that one line and nowhere else. **Revision 54 adds one banner and no content**: **A-57 Part 5 is upheld and is no longer the whole rule** — §8.3's **A-72** generalises it (*a new array of records on `TripDoc` always earns a bump; a new scalar with a total default does not*) and takes `SCHEMA_VERSION` to **3**, so anyone reading Part 5 to decide a **new** field reads A-72 Part 4 instead. No row of §10 moves | 40k | builder and breaker of I-13; architect |
 
@@ -18670,6 +18704,14 @@ This is the half clause 2 left open, and every field depends on it.
 > **`travelStats` partitions its rows by `lifecycle(row, today)` and computes the lifetime map from the
 > travelled ones only.** A `planned` trip contributes **no country, no city, no day and nothing to either
 > census**. It contributes exactly one thing: `+1` to `trips.planned`.
+>
+> **⚠ Scoped in place at revision 68 by §8.4 A-87 Part 5 (QA R64-3 §C2/§C3). This clause stands verbatim
+> and it governs the LIFETIME MAP.** Its argument is about *inflation* — a country you have not been to is
+> not on the map of everywhere you have been — and it has never governed the **absorption** counters. A
+> corrupt `planned` row is corrupt today and its corruption is not inflatable by planning, so
+> `TravelStats.absorbed` and the two counters derived from it are accumulated over **every row in the
+> library**, lifecycle-blind. Everything this clause names — countries, cities, days, both censuses, and
+> `unnamedCities` beside them — stays travelled-only.
 
 The argument is clause 2's own. A stored `countriesVisited: 47` is refused because *"it is a number a user
 can inflate by typing"* — and a lifetime map that counts a trip to Japan you have booked for next spring is
@@ -20887,10 +20929,14 @@ obvious wrong move:
 
 **Part 5 — the Trips-list treatment: fixed here, built by the next increment that opens `Library.tsx`.**
 
-> **⚠ Pointer added at revision 67 by §8.4 A-86 Part 4 (QA R63-9).** This Part is **unchanged and still
-> unscheduled**, and its **fact set is now complete**: `unreadableRows` (Part 4 above), `unreadableCityDates`
-> (Part 3 above) and **`unreadableCityLists`** (A-86 Part 4) are the three facts the surface needs, and it
-> needs no further `packages/core` work. A-86 Part 4 also records why a second fault now reaches this Part
+> **⚠ Pointer added at revision 67 by §8.4 A-86 Part 4 (QA R63-9); extended at revision 68 by A-87.** This
+> Part is **unchanged and still unscheduled**, and its **fact set is now complete**: `unreadableRows` (Part
+> 4 above), `unreadableCityDates` (Part 3 above) and **`unreadableCityLists`** (A-86 Part 4) are the three
+> facts the surface needs, and it needs no further `packages/core` work. **A-87 Part 4 supersedes those
+> three with one — `TravelStats.absorbed`, which names the row AND the path on the success path — and A-87
+> Part 10 residue 5 schedules the recompute affordance this Part left unscheduled** (as ROADMAP `I-27`,
+> because *"it opens `Library.tsx`"* is false for a store method plus a CLI command). **The rendered
+> treatment is still this Part's and its trigger is still the first increment that opens `Library.tsx`.** A-86 Part 4 also records why a second fault now reaches this Part
 > silently: `I-24` Part 4's `Array.isArray` guard removed the throw that used to route a corrupt `cities`
 > through `travelHistory`'s catch, where `rowStatsReadable` named it. **Trigger, unchanged: the first
 > increment that opens `Library.tsx`.**
@@ -20927,6 +20973,12 @@ which opens no view:
    string). **Trigger:** the first derivation that computes with a non-date row field, at which point the
    question is whether `rowStatsReadable` becomes `rowUsable` rather than whether a second predicate is
    added.
+   > **⚠ This trigger FIRED at `I-22` and is discharged at revision 68 by A-87 Part 6** (QA R64-2).
+   > `travelStats` has computed with `centre` since A-83 Part 8 and with `countryCode` since A-37 Part 3,
+   > and nobody noticed. **The question is answered: `rowStatsReadable` is widened in place, is NOT renamed
+   > to `rowUsable`, and gains no sibling** — its body becomes one call to `core.travelStats`, so the
+   > second implementation this predicate has always been is deleted rather than widened, and A-86 Part 4
+   > item 2's pin becomes an identity.
 2. **The predicate is stricter than the throw, deliberately.** `isIsoDate` rejects a *calendar*-invalid
    `'2026-02-30'`, which `travelStats` would have normalised through A-32 Part 4 to `'2026-03-02'`. So
    `rowStatsReadable` reports rows that would not have thrown, and the Part 2 fallback now fires for them
@@ -23230,6 +23282,13 @@ throw; each message carries `pick.rowId` **and** identifies the city; `fromJSON`
 `packages/core`'s export surface does not move — **88** — `SCHEMA_VERSION` does not move, `SUMMARY_VERSION`
 does not move, and no `.tsx` file is opened.)*
 
+> **⚠ Amended at revision 68 by A-87 (QA round 64), which is READ WITH THIS, NOT INSTEAD OF IT.** Round 64
+> confirmed Parts 1, 2 and 3 and could not break them. **Part 8 residue 2 was FALSE as written** and is
+> corrected in place below — the per-entry corruption it described as absorbed actually **throws**, takes
+> the whole library's travel history down, and in one shape can be named by nothing. **Part 8 residue 1's
+> trigger has fired.** Part 4's `unreadableCityLists` **stands** and becomes a view of A-87's `absorbed`;
+> its item 2 pin becomes an identity rather than an assertion (A-87 Part 6). Parts 5 and 6 are untouched.
+
 **Round 63 could not break A-85's door-level rule by the route A-85 worried about.** Every door that can
 reach a `City` was run rather than reasoned about, and the distinction held. What broke is the *sentence
 that describes it*, twice — a rule written two ways and a count written over two populations — and one
@@ -23481,12 +23540,463 @@ than after the caller has shipped.
    A-37 Part 5 residue 1's trade, unchanged, now with a third counter beside it. **Trigger:** a
    `TravelStats` with an `Issue`-like channel instead of three scalar counters — at which point all three
    fold into it and `cli.ts` loses three conditional lines.
-2. **`unreadableCityLists` counts the list, not the entries.** A row whose `cities` **is** an array but
-   contains a string contributes that entry as unlocated and is counted by nothing. **Trigger:** the first
-   measurement that a per-entry corruption is reachable in shipped storage. `rowStatsReadable` already
-   returns `false` for it, so the fact exists and only the count is missing.
+   > **⚠ This trigger FIRED at revision 68 and is discharged by A-87 Part 4** (QA R64-2): the read gates
+   > that ruling requires absorb at **nine** sites, so `TravelStats` gains **`absorbed:
+   > readonly TravelStatsAbsorption[]`** and a new gate adds a row to that list rather than a fourth
+   > counter. **One clause of this residue is deliberately NOT applied literally** — `unreadableCityDates`
+   > and `unreadableCityLists` **stay**, computed from `absorbed` at one site, because they are what three
+   > shipped assertions pin core against `packages/client` with; `unnamedCities` does not fold in at all,
+   > because it is a census fact and not a storage fact (A-87 Part 5). A-87 Part 4 carries the re-recorded
+   > residue and its trigger.
+2. **`unreadableCityLists` counts the list, not the entries.**
+   > **⚠ CORRECTED IN PLACE and DISCHARGED at revision 68 by A-87 (QA R64-2). This residue was FALSE as
+   > written.** It said such an entry *"contributes that entry as unlocated and is counted by nothing"*.
+   > Measured: it **throws** — a raw engine `TypeError` out of `travelStats`, into `travelHistory`'s catch,
+   > taking the **whole library's** travel history down; and for an entry that IS an object whose `name` is
+   > not a string, `rowStatsReadable` returns **`true`**, so **nothing names the row** and A-59 Part 4's
+   > guarantee is defeated. Its stated trigger — *"the first measurement that a per-entry corruption is
+   > reachable in shipped storage"* — was also wrong: reachability was already settled by the same
+   > argument that justified the list-level guard one level up (A-37 Part 3), and what was measurable here
+   > was the failure mode. **A-87 rules the class this residue named the instance of; read it instead of
+   > this line.**
 3. **The stored counts have no ceiling.** Part 5, with its own two triggers.
 4. **`issuesForRef` ignores `ref.kind`.** Part 6, with its own trigger.
+
+
+---
+
+#### A-87 — the derive path reads a stored record through a gate, once, and names the row it absorbed on the SUCCESS path (revision 68, QA **R64-2**, **R64-3**, **R64-5**; ROADMAP **I-26**)
+
+*(Read with **A-86** Part 4 and **A-59** Parts 2, 3 and 4, whose idiom this generalises, and with **A-37**
+Parts 2 and 3, whose rule this is the third and last application of. It **corrects A-86 Part 8 residue 2 in
+place** — that residue is false as measured — **fires A-86 Part 8 residue 1's own trigger** and **answers
+A-59 Part 7 residue 1's own question**. It supersedes no clause of A-83, A-84, A-85 or A-86 Parts 1–3, and
+opens no `.tsx`. `SCHEMA_VERSION` stays **5**, `SUMMARY_VERSION` stays **8**, §2.10's runtime export count
+stays **88**, and A-39 Part 11's covering table stays **45**.)*
+
+**This ruling is deliberately wider than the finding that routed it.** R64-2 names two shapes inside
+`cities[]`. I measured the neighbouring fields of the same record before ruling, and there are **three
+more**, all live on `master` at `e1e1973`, all the same defect. Ruling the two would have bought round 65 a
+third round on one class — which is the pattern rounds 61→64 already ran on the door, one multi-read at a
+time. So this rules the class, states the obligation generally, and prices the increment honestly.
+
+---
+
+**Part 1 — the five shapes, measured, not reasoned about.**
+
+Every row below is a `TripSummaryRow` over the committed reference trip with **one** stored value replaced,
+passed to `core.travelStats([row], '2026-09-09')` and to `client.travelHistory({library:[row]}, …)`.
+Measured at `e1e1973` on 2026-09-09; the two marked **R64-2** are the finding, the three marked **new** are
+what the finding's neighbours do.
+
+| # | stored value | what happens | who can name the row |
+|---|---|---|---|
+| 1 **R64-2** | `cities: ['Vienna']`, `[null]`, `[42]`, `[undefined]` | raw `TypeError` out of `travelStats`, caught by `travelHistory` — **the whole library's travel history is down** | `rowStatsReadable` is `false`, so `rowId` and `unreadableRows` **do** name it |
+| 2 **R64-2** | `cities: [{…, name: 42}]` (also `null`, `{}`, `['a']`, absent) | raw `TypeError: nfc(...).replace is not a function` — same blast radius | `rowStatsReadable` is **`true`** — `rowId: null`, `unreadableRows: []`, **nothing names the row** |
+| 3 **new** | `countryCodes: 42`, `{}`, `null` | raw `TypeError: row.countryCodes is not iterable` — same blast radius | `rowStatsReadable` is **`true`** — **nothing names the row** |
+| 4 **new** | `countryCodes: 'AT'` | a string is iterable, so the walk reads **characters**, every one fails `isMintedCode`, and the row's whole country list **silently vanishes** from the lifetime map | nothing; no throw, no count |
+| 5 **new** | `attribution: {places: {}}` or `{places: 'x'}` | `seen.places`, `located.places` **and** `unattributed.places` come out **`NaN`** — for the **whole library**, not the row | nothing; no throw, no count. `{located: '5'}` publishes `located.places: "05"` by string concatenation |
+
+**One reading of the table to fix before Part 2 changes it:** shape 3's `null` throws **today**, and under
+Part 2's rule it becomes a *value* — the row does not say which countries it holds, so it contributes none,
+uncounted, exactly as `cities: null` already does. That is deliberate and Part 3 rule 5 states why.
+
+Shape 4 is `cities`' own R63-9 defect on the neighbouring field, and `rowStatsReadable`'s docstring already
+names the mechanism for `cities` — *"a string is iterable, so the unguarded loop walked its characters and
+called a garbage row readable: the same missing guard with the quieter symptom."* It was written about the
+field beside it and never applied to this one. Shape 5 is a published number that is not a number.
+
+**And the function's own contract already forbids all five.** `travelStats`' docstring says: *"@throws
+programmer error only — a duplicate row id, or a malformed **trip** date … **Two, and the list is
+exhaustive** (A-31 Part 4)."* Shapes 1, 2 and 3 are a third and a fourth. **The exhaustiveness claim is
+false as shipped**, and this ruling's whole content is the obligation that makes it true rather than
+stated.
+
+---
+
+**Part 2 — ruled (a). The general obligation, which is the thing round 65 must not be able to find a sixth
+shape of.**
+
+> **The derive-path read rule.** A function on the derive path that reads a **stored** record — a
+> `TripSummaryRow` and every record it carries — reads each field it uses through a gate that is **total
+> over `unknown`**, and reads it **exactly once**. A gate is **three-way**:
+>
+> 1. **absent or `null`** → a *value*. The field's documented fallback applies and **nothing is counted**.
+>    A generation that did not carry the key is the population this arm exists for.
+> 2. **the declared shape** → the value is used.
+> 3. **anything else present** → a *defect*. The **same documented fallback** applies — the derivation does
+>    not throw and does not invent — and the absorption is **reported, with the row's id and the field's
+>    path**.
+>
+> A **container** — a list that is not an array, an entry that is not an object — fails at its own level
+> and takes everything below it with it, reported once at that level.
+>
+> **No derive-path expression may dereference a stored field that has not been through its gate. A method
+> call is a dereference** — `.normalize`, `.replace`, `.toUpperCase`, `for…of` — and that is the shape this
+> class keeps being found through: shapes 1, 2 and 3 above are all a method or an iterator called on a
+> value nobody asked about.
+>
+> The obligation is discharged **per record class, at one reader**, never per call site. Where a record
+> class has more than one consumer, the reader runs once and the consumers read its output; a consumer may
+> not re-read the stored field.
+
+**Why three-way and not two.** A-86 Part 4 already ruled the three-way split for `cities` and gave the
+reason: `undefined`/`null` is what an older generation of the row legitimately holds, and calling that a
+defect makes every mid-rescan library look corrupt. The same split, on every field, is what stops the next
+gate needing a ruling — and it is what item 2 of that Part meant by *agree by construction*.
+
+**Why the fallback and not the throw, on every field.** A-59 Part 2's line, unchanged and now applied for
+the last time: *a stored value that gates the record's participation throws; a stored value the record has
+a documented fallback for takes the fallback.* Only `startDate`/`endDate` gate participation — they decide
+whether the row is classified at all and there is nothing to degrade to (A-37 Part 2, grandfathered). Every
+other field has a documented fallback and has had one since the field was added: an unreadable
+`countryCode` is `null` (A-37 Part 3, read 1), an unreadable `centre` is unlocated (A-83 Part 8), an
+unreadable day edge is the trip's range (A-59 Part 2), an unreadable `cities` contributes no cities (A-86
+Part 4), an unreadable count reads 0 (`countOf`). **The gates already exist for four of the nine fields.
+What is missing is not a policy; it is the other five gates and a single place to put them.**
+
+**Why "read exactly once" is in this rule and not only in A-86 Part 2's trigger.** R64-1 was the third
+consecutive round to find one more multi-read at the door, and the fix that closed it — *bind the value
+once* — is the same discipline a reader enforces structurally: a consumer that reads the reader's output
+**cannot** re-read the stored field, so the class is closed by construction on this path rather than by
+counting reads. This is the read rule's other half and it belongs beside it.
+
+---
+
+**Part 3 — ruled (b). The mechanism: one module-private reader in `travelStats.ts`, and the fold consumes
+its output.**
+
+`travelStats` reads exactly **nine** of the row's **fifteen** stored fields — `id`, `startDate`, `endDate`,
+`stopCount`, `poolCount`, `placeCount`, `countryCodes`, `cities`, `attribution` — plus, through `cities`,
+five of `TripSummaryCity`'s seven. Three of the nine are already gated by `countOf`, two are the
+grandfathered throw, one is `id`. The reader owns the rest. **The six the derivation does not read —
+`title`, `datePrecision`, `cityCount`, `dayCount`, `revision`, `summaryVersion` — are the control half of
+Part 7's table.**
+
+```ts
+/** One stored value the derivation could not read. §8.4 A-87 Part 4. */
+export type TravelStatsAbsorption = {
+  /** The library row it was found on. THIS is what makes the row nameable without a throw. */
+  rowId: string;
+  /** Where on the row, as a path: `cities`, `cities[3]`, `cities[3].name`, `countryCodes[1]`,
+   *  `attribution.places.located`. Stable enough for a surface to print; never parsed by core. */
+  path: string;
+  kind: 'list' | 'entry' | 'field' | 'date' | 'census';
+};
+```
+
+The reader is **module-private**, runs **once per row over the whole library**, and returns the gated
+values the fold needs plus the absorptions it made. The travelled fold then reads *only* the reader's
+output. Five rules a builder does not get to decide:
+
+1. **One absorption per failing value, at the level the value failed.** A `cities` that is a string is one
+   `list` absorption at `cities` and the row contributes no cities — the entries are not there to fail. An
+   entry that is not an object is one `entry` absorption at `cities[i]` and its five fields are not asked.
+   A bad `name` beside a bad `centre` in one entry is **two** `field` absorptions, because they are two
+   independent facts about two stored values. **`seen.cities` is unchanged: it stays the length of the
+   stored array**, absorbed entries included. `seen` is A-85 Part 3's *total records the row carries*, an
+   unreadable entry is still a record the row carries, and `located ≤ seen` holds a fortiori because an
+   absorbed entry cannot be located. Stated because it is the one number a builder would be tempted to
+   adjust.
+2. **The date pair is entry-scoped, because A-59 Part 2 made it entry-scoped.** *One end unreadable makes
+   the pair unusable* — so an entry with either or both day edges unreadable produces exactly **one**
+   `date` absorption at `cities[i]`, never two. That is what keeps `unreadableCityDates` counted per entry,
+   which is the number that field has always published.
+3. **`name` is a field gate, not an entry gate, and the reason is A-86 Part 1 reason 3.** A door that reads
+   one field own-key-only and four chain-inclusively was refused there for being a second convention on a
+   neighbouring field of one object; a reader that kills the entry on `name` and degrades it on `centre` is
+   that same failure. An unreadable `name` therefore behaves **exactly as a name that folds to `''`
+   already does**: the entry still counts in `seen.cities`, still counts in `located`/`unattributed` if its
+   centre is readable, produces **no city row**, and increments `unnamedCities`. `unnamedCities`' docstring
+   widens by one clause — *the stored `name` folded to `''`, **or was not a string at all*** — and its
+   `cli.ts` line, *cities with no usable name*, becomes true for the second population as written.
+4. **`attribution` is gated at all three levels and its numbers go through `countOf`.** `attribution` not a
+   plain object → absent (its documented fallback, A-31 Part 3's *"a row minted before SUMMARY_VERSION 4
+   carries no census and contributes none"*). `attribution.places` not a plain object → the same, one level
+   down. `located`/`attributed` through **`countOf`** — the row's own idiom for its other three counts, so
+   a `'5'`, a `NaN` and a `-1` are all **0** and none of them can reach an output. A-86 Part 5's *no
+   ceiling* stands untouched: `countOf` floors and does not cap, and this ruling adds no cap.
+
+5. **The value arm is `undefined` and `null`, uniformly, on every field, and this is the one place a
+   builder might otherwise reach for a per-field judgment.** It is tempting to say that `countryCodes` has
+   been required and array-valued since generation 1, so a `null` there *must* be corruption and should be
+   reported. **No.** A-86 Part 4 already drew this line for `cities` and the uniform rule is worth more
+   than the one shape it costs: *a row that does not say what it holds contributes none*, and the
+   observable outcome of `countryCodes: null` is identical to the outcome of `countryCodes: []`, which is a
+   row that legitimately visited nowhere. A field whose `null` is a defect and a neighbouring field whose
+   `null` is a value is the second convention A-86 Part 1 reason 3 refused. **Residue, with its trigger:** a
+   `null` on a field no generation ever wrote `null` to is absorbed and reported by nothing. **Trigger:** a
+   measurement that a shipped write path can produce it — at which point it is a write-side defect, not a
+   read gate.
+
+**Fields nothing reads are not gated, and the covering table in Part 7 is what makes that safe.**
+`TripSummaryCity.key` and `.countrySource` are not read by any derivation today. They get no gate, they
+absorb nothing, and a hostile value in either changes no output — which the covering table **asserts**, so
+the day a derivation starts reading one, its cell's expectation changes and the test demands the gate.
+
+---
+
+**Part 4 — ruled (c). The absorption is reported on a channel, and the two existing scalars become views of
+it. This fires A-86 Part 8 residue 1's own trigger.**
+
+That residue says, in as many words: *"**Trigger:** a `TravelStats` with an `Issue`-like channel instead of
+three scalar counters — at which point all three fold into it."* Part 3's reader produces absorptions at
+**nine** sites. Nine scalar counters would be nine fields, nine `cli.ts` conditional lines, nine
+`countShaped` assertions and nine chances to forget the tenth. **The trigger has fired and it is fired
+here, not deferred a fourth time.**
+
+> **`TravelStats` gains `absorbed: readonly TravelStatsAbsorption[]`** — every stored value the derivation
+> could not read, over the **whole library**, in the canonical row order `travelStats` already computes
+> (`startDate`, then `id`) and within a row in the order the reader visits its fields. It is deterministic
+> for the same reason every other output of this function is, and it is the fact, recorded once. A new gate adds a **row to this list**, never a field to this type, and that is the property that
+> closes the class.
+
+**The two scalars stay, and are computed from `absorbed` at one site.** A-86 Part 8 residue 1's *"all three
+fold into it"* is **not** applied literally, for three reasons and each is also a reason not to reopen it:
+
+1. `unreadableCityDates` and `unreadableCityLists` are what three shipped assertions use to pin core against
+   `packages/client` — the pin A-86 Part 4 item 2 bought. Deleting the fields to replace them with a filter
+   over a list reddens two live `qa/` probes and three test files for **zero** change in information, in the
+   increment whose actual subject is a read-gate class.
+2. `unnamedCities` does **not** fold in at all: it is a *census* fact (Part 5), not a storage fact, and
+   putting it in a lifecycle-blind list would give one list two populations — R63-8's defect exactly.
+3. Computed rather than counted, the two cannot drift from the channel: `unreadableCityLists` is the number
+   of distinct `rowId`s carrying a `list` absorption at path `cities`, and `unreadableCityDates` is the
+   number of `date` absorptions. Both are one expression at one site, and the golden pins them.
+
+**Residue, with its trigger:** the two scalars have no reader that `absorbed` could not serve. **Trigger:**
+the first surface that reads `absorbed`. At that moment they have no consumer and they go, which is the
+literal form of A-86 residue 1 arriving when it costs nothing.
+
+**`cli.ts stats` gains one data-driven block and keeps both existing sentences verbatim.** One line per row
+holding absorptions — `trip <id>: unreadable stored values at cities[3].name, countryCodes` — printed from
+`absorbed` by a loop, so a new gate cannot be added and forgotten on the one surface that exists. **This is
+the line that discharges R64-2's second half**: the row is named on the **success** path, by the
+derivation that absorbed it, with no `.tsx` and no wait on the visual direction.
+
+**Nothing that is stored moves.** `TravelStats` is derived and never stored (**A-34**;
+`test/stats-storage.test.ts` 6b-5 pins it mechanically), so `SUMMARY_VERSION` and `SCHEMA_VERSION` are
+untouched and A-39 Part 11's covering table stays at **45**. `TravelStatsAbsorption` is a **type**:
+`Object.keys(core).length` is **88** before and after, measured, because types are erased.
+
+---
+
+**Part 5 — ruled (d). R64-3's behaviour half (C2/C3): an absorption is a fact about the stored row and is
+reported for every row in the library. A census is a fact about travel and stays travelled-only.**
+
+The counters accumulate inside the travelled walk today, so a **planned** row with `cities: 'nope'` gives
+`rowStatsReadable(row) === false` and a count of **0** (R64-3 §C2), and a library holding one travelled and
+one planned corrupt row counts **1**, not 2 (§C3). The builder left it and documented A-31 Part 3's reason.
+**The reason does not reach these fields.**
+
+> **A-31 Part 3 governs the lifetime map** — *"a `planned` trip contributes no country, no city, no day and
+> nothing to either census"* — and its argument is about **inflation**: *"a lifetime map that counts a trip
+> to Japan you have booked for next spring is that same inflation, reached by planning instead of by
+> typing."* An absorption is not inflatable by planning. A corrupt planned row is corrupt **today**, its
+> repair is available **today**, and it will be travelled later carrying the same corruption. **Absorptions
+> are therefore accumulated over every row the library holds, whatever its lifecycle. Every count that is
+> about travel — `countries`, `cities`, `daysTravelled`, `seen`, `located`, `unattributed`,
+> `unnamedCities` — stays travelled-only, unchanged.**
+
+Three reasons, in the order that decides it:
+
+1. **The shipped behaviour is non-uniform in the exact way this walk was already condemned for once.**
+   `travelStats.ts`' own comment at the `attribution` read says of QA R28-3: *"this used to throw —
+   **non-uniformly**, because only travelled rows are walked, so the same stale row was fatal when the trip
+   was `completed` and silent when it was `planned`."* That is the defect, back on the counters: the same
+   corrupt row is reported when travelled and silent when planned. The precedent is in the file, on this
+   walk, about this population.
+2. **It is what makes the pin an identity instead of a coincidence.** `rowStatsReadable` takes a row and no
+   clock — it is lifecycle-blind by construction — so a counter that is lifecycle-sensitive can only agree
+   with it over fixtures that happen to be travelled, which is precisely how the pin's eight-value table
+   held while §C2 failed. Part 6 makes the two one implementation, and **that is only possible if
+   absorption is lifecycle-blind.**
+3. **`unnamedCities` is the control that proves this is a line and not a convenience.** It stays
+   travelled-only, because a planned row's cities are not folded and therefore nothing about them was
+   *dropped from the census*. `unnamedCities` counts what the census lost; `absorbed` records what the
+   storage cannot say. Two populations, two homes, and each field's docstring states which.
+
+`unreadableCityDates`' docstring loses its consequence clause — *"so the entry fell back to its trip's
+range"* becomes *"and, where the row is travelled, the entry took the trip's range"* — because on a planned
+row nothing falls back and the sentence would be false.
+
+---
+
+**Part 6 — ruled (e). `rowStatsReadable` is widened in place and re-expressed as ONE call to core. This
+answers A-59 Part 7 residue 1's own question.**
+
+That residue reads: *"This covers dates, not the row. A `centre.lat` of `"x"` is not caught by anything
+here, because nothing computes with `centre` yet. **Trigger:** the first derivation that computes with a
+non-date row field, at which point the question is whether `rowStatsReadable` becomes `rowUsable` rather
+than whether a second predicate is added."*
+
+**The trigger fired at I-22 and nobody noticed**: `travelStats` has computed with `centre` since A-83 Part
+8 (`isLocatedCentre` decides `located.cities`) and with `countryCode` since A-37 Part 3. The question is
+answered here, all three ways at once:
+
+> **`rowStatsReadable` is widened in place, is not renamed, and gains no sibling. Its subject becomes
+> *"does every stored value this row carries read as its declared shape"*, and its body becomes
+> `core.travelStats([row], row.startDate).absorbed.length === 0`, guarded by the existing
+> `rowDatesReadable` check and a `catch` that returns `false`.**
+
+Four things this is:
+
+1. **It deletes the second implementation rather than widening it.** Sequencing rule 1 forbids a second
+   implementation of a core function, and the shipped predicate is one: it re-derives core's `cities`
+   three-way split in `packages/client`, which is why A-86 Part 4 item 2 had to buy an assertion to hold
+   them together. **Expressed this way the pin is an identity**, and the assertion stays only as a
+   tripwire — now asserting something that cannot drift instead of something that can.
+2. **`row.startDate` is the clock and it is not an invention.** `rowDatesReadable` has already established
+   it is an `IsoDate` at that line, absorption does not depend on `today` (Part 5), and `travelStats` over
+   one row cannot report a duplicate id. The call is total, and the `catch` is A-71's discipline, not a
+   hope.
+3. **No rename.** `rowUsable` renames a shipped selector, three test files and two `qa/` probes to say what
+   `rowStatsReadable` already says: it is the predicate for **stats**, and `rowDatesReadable` beside it is
+   the one that is about dates. The residue offered the rename as a question; the answer is no, and the
+   docstring is what changes.
+4. **Its two refusals stand verbatim.** Not folded into `rowDatesReadable` (a row with good trip dates and
+   a bad `cities[3].name` still has a perfectly good range to print), and **not** folded into
+   `rowUnopenable` (the row is a derived cache; the document behind it is almost certainly fine, and
+   flagging it hands the user a healthy trip under a filename that lies). A-59 Part 4's F-E is still a
+   fifth fact and its affordance is still **recompute**.
+
+**What widens, stated so the increment is checkable:** `rowStatsReadable` now returns `false` for a row
+whose `countryCodes` is unreadable, whose `attribution` is unreadable, and whose city entry carries an
+unreadable `name`, `countryCode` or `centre` — six shapes it called healthy at `e1e1973`. It still returns
+`true` for `cities`/`countryCodes`/`attribution` absent or `null`, and for a hostile `key` or
+`countrySource`, which nothing reads.
+
+---
+
+**Part 7 — the closure claim, and it is a covering table over the TYPE's fields rather than over the code's
+reads.**
+
+A-80 Part 10's lesson, applied one model layer down: a closure claim shaped as *"a further finding could
+only be X, Y or Z"* is the format this project has now falsified four times. So the claim here is
+**coverage**, and it is mechanical.
+
+> **The entry-gate covering table, and its denominator is a constant the COMPILER maintains.** The row
+> axis is **`ROW_KEYS`** — `Record<keyof TripSummaryRow, true>`, **15** today — and the city axis is its
+> new sibling `Record<keyof TripSummaryCity, true>`, **7**. Both are exhaustive by type, so **a field added
+> to either record breaks the build until the table has a row for it**, which is the same mechanism A-33
+> Part 2 already reserves to the architect and is why this is a coverage claim rather than a list.
+>
+> Each key is crossed with a fixed hostile shape set — `undefined`, `null`, a number, a string, a plain
+> object, an array, a boolean, and for the two containers a string and a non-object entry — and in every
+> cell `travelStats` **returns** and every published number satisfies `Number.isFinite`. Each cell's
+> expectation is one of exactly **two**: *absorbed* — one named absorption at this path, every other output
+> equal to the healthy row's — or *inert* — no absorption, every output equal to the healthy row's. **A
+> cell with no stated expectation is a hole**, and the six row keys and two city keys the derivation does
+> not read are asserted **inert**, which is what covers them before anything reads them.
+
+That is what makes this different from a fifth instance. It also gives round 65 its own falsification
+condition, stated rather than hoped for:
+
+> **What a round-65 finding on this class must look like.** Either (a) a cell of the covering table whose
+> measured behaviour differs from its stated expectation; or (b) a **stored record class reachable from the
+> derive path that the table does not cover** — which today means a record class added to
+> `TripSummaryRow` after this ruling, and which is a finding against whoever added it without a row here;
+> or (c) a derive-path function other than `travelStats` that reads a stored record. **A sixth hostile
+> shape of a field the table already covers is not a finding against this ruling** — it is a builder
+> finding against the table's shape set, exactly as A-39 Part 11 draws that line.
+
+**One population this deliberately does not cover, said rather than left to be inferred.** A stored value
+reached through a **hostile accessor** — a `Proxy` whose `length` getter throws, a row whose `cities`
+getter throws — still throws out of `travelStats`, and QA round 64 §B measured both. It is not reachable:
+storage returns plain data from structured clone or `JSON.parse`, neither of which can carry an accessor.
+**Over the reachable population — plain data — `travelStats`' throw list is exhaustive at two, and the
+covering table is what says so.** The `@throws` docstring is corrected to say *reachable* rather than
+leaving the claim unqualified.
+
+---
+
+**Part 8 — three documents corrected in place, because each is false or fired as written.**
+
+1. **A-86 Part 8 residue 2 is WRONG as measured and is corrected here.** It says a `cities` array holding a
+   non-object entry *"contributes that entry as unlocated and is counted by nothing"*, and gives its
+   trigger as *"the first measurement that a per-entry corruption is reachable in shipped storage"*. Both
+   halves are wrong. It does not contribute — it **throws**, and the throw takes the whole library's
+   travel history down. And reachability was never the question: it is settled by the same argument that
+   justified the list-level guard one level up, A-37 Part 3's *a stored row is not a validated document*,
+   over the same population. **The residue is replaced by a pointer to this ruling, which discharges it.**
+   The correction is made in place because a shipped residue that misstates a failure mode is what let the
+   worse half of one population sit unguarded beside the half that was paid for.
+2. **A-86 Part 8 residue 1's trigger has fired** and is discharged by Part 4, with one clause not applied
+   literally and its own trigger recorded there.
+3. **A-59 Part 7 residue 1's trigger fired at I-22** and its question is answered by Part 6.
+4. **R64-4's criterion, which KD-116 makes mine.** A source-lifted assertion proves a line's **text**; an
+   end-to-end assertion of an **absence** proves nothing about whether the line ran. Mutant M1 — an early
+   `return` making three shipped lines unreachable — left `test/cli.test.ts` fully green. The rule, general
+   and cheap: **a criterion that pins a shipped line pins its execution, not its text — every source-lift
+   assertion is paired with an end-to-end arm asserting a PRESENCE in the output.** Part 4's data-driven
+   `cli.ts` block is written to satisfy it: the block prints for a library that carries an absorption, so
+   the arm is a presence by construction and M1's early `return` reddens it.
+
+---
+
+**Part 9 — what this supersedes, clause by clause.**
+
+| clause | status |
+|---|---|
+| A-37 Part 2 (the grandfathered `startDate`/`endDate` throw) | **stands verbatim**, and Part 7 states it is now the whole throw list over the reachable population |
+| A-37 Part 3 (*a stored row is not a validated document*) | **stands, and Part 2 generalises it** from two reads to every read on the path |
+| A-31 Part 3 (travelled-only) | **stands verbatim for the lifetime map**, and Part 5 states in place that it never governed the absorption counters |
+| A-31 Part 5 residue 2 (*"there is no `unreadableCodes` counter"*) | **discharged** by Part 4 — a `countryCodes[]` entry that is not a minted code is a `field` absorption |
+| A-59 Part 2 (throw vs documented fallback) | **stands, and is the rule Part 2 states generally.** Its pair-wide clause survives as Part 3 rule 2 |
+| A-59 Part 3 (a silent absorption is counted) | **stands, and Part 4 changes only the SHAPE of the counting**, from a scalar per fault to one channel |
+| A-59 Part 4 (the row is nameable) | **stands, and Part 4 makes it true on the SUCCESS path.** Naming stops being a property of the failure path, which is what R64-2's second shape broke |
+| A-59 Part 5 (the Trips-list treatment) | **stands, unscheduled.** Its fact set gains `absorbed`, which supersedes `unreadableRows` as the complete one — **trigger unchanged** |
+| A-59 Part 7 residue 1 | **FIRED and discharged** by Part 6 |
+| A-83 Part 8 (`centre` may be `null`; a city with none is unlocated) | **stands verbatim.** Part 3 adds the third arm — present-and-not-a-coordinate is a defect, not a value |
+| A-84, A-85, A-86 Parts 1–3 | **stand, untouched.** This ruling is on the derive path and opens no door |
+| A-86 Part 4 (`unreadableCityLists`) | **stands**, and the field becomes a view of `absorbed` (Part 4). Its item 2 pin becomes an **identity** (Part 6) |
+| A-86 Part 5 (no ceiling on a stored count) | **stands verbatim.** `countOf` still floors and does not cap; Part 3 rule 4 only extends it to two more numbers |
+| A-86 Part 8 residue 1 | **FIRED**, discharged in part by Part 4, with the unapplied clause re-recorded there |
+| A-86 Part 8 residue 2 | **CORRECTED IN PLACE — it was false as measured** — and discharged by this ruling |
+| A-39 Part 11's covering table | **unchanged. 45.** No version constant moves |
+| §2.10's runtime export surface | **does not move. 88.** `TravelStatsAbsorption` is a type; `Object.keys(core).length` is unmoved, measured |
+
+---
+
+**Part 10 — residues, each with what would fire it.**
+
+1. **`absorbed` is unbounded by anything but the stored data.** A library of corrupt rows produces one
+   object per absorbed value. It is bounded by what the user stored, which is A-86 Part 5's own posture
+   toward stored counts, and no cap is invented. **Trigger:** the first surface that renders the list
+   rather than a count — that surface caps its own display and says it is capping.
+2. **The two scalar views have no reader `absorbed` could not serve.** Part 4, with its trigger.
+3. **`rowStatsReadable` now costs one `travelStats` call per row.** Cheap on today's rows and only reached
+   on a failure branch. **Trigger:** the first surface that calls it per card on every render, at which
+   point it is memoised in the selector layer — not re-implemented.
+4. **A hostile accessor still throws.** Part 7 states the population and why it is unreachable. **Trigger:**
+   a storage port that returns anything other than plain data.
+5. **A repair affordance is still owed, and this ruling makes it more owed, not less** (R64-5). The count
+   is a report with nothing behind it: `rescanSummaries` visits rows *below* the current generation, so a
+   corrupt row **at** the current generation is reported forever and never repaired. A-59 Part 5 declined
+   to schedule the per-id forced recompute *because it opens `Library.tsx`* — **that reason is now false**:
+   a store method plus a `cairn` command opens no view. It is scheduled as ROADMAP **I-27**, after the
+   picker work, and A-59 Part 5's own trigger (the first increment that opens `Library.tsx`) still governs
+   the *rendered* treatment.
+
+---
+
+**Part 11 — the injected faults, so this ships checkable (§0.5).**
+
+1. Remove the `name` gate: shape 2 throws again, the whole-library arm reddens, and `rowStatsReadable`
+   reports `true` for a row nothing can name — R64-2 exactly.
+2. Remove the `countryCodes` container gate: shape 3 throws again. Remove only the *entry* gate: shape 4
+   silently reports zero countries and the covering table's `countryCodes: 'AT'` cell reddens on a count
+   of absorptions, not on a throw — which is the arm that proves the quiet half is covered too.
+3. Make `attribution.places.located` bypass `countOf`: `seen.places` reads `NaN` and the *every published
+   number is a number* arm of the covering table reddens.
+4. Accumulate absorptions inside the travelled walk again: §C2 and §C3 redden, and the Part 6 identity
+   fails on a planned row — one change, two independent reds, which is the evidence that Part 5 and Part 6
+   are the same decision.
+5. Make the reader treat `null` as a defect on any field: the reference library reports absorptions and the
+   *absent and `null` are values* arm reddens. A one-sided test on a classifier is a classifier that will
+   be inverted (A-34 Part 4).
+6. Give `rowStatsReadable` a second implementation again (re-inline the three-way split): the identity
+   assertion in Part 6 is what must redden, not a fixture table.
 
 
 ### 8.5 Observed travel — the shape Phase 5 must be able to land on

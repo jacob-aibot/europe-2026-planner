@@ -1596,6 +1596,78 @@ the one that costs code.**
 - ***How a criterion is written* gains rule 8**, which is R63-7 and R63-8 as one rule: a criterion admits
   exactly one implementation and counts exactly one population.
 
+**Revision 71, 2026-09-09.** **QA round 64 ran over two commits as one subject and its builder half is
+fixed and verified at `master` @ `e1e1973`** — the door binds each init field once, the two city maps became
+one pass, and two multi-reads nobody had counted (`datePrecision`, `meta`) came out with it (**R64-1**).
+Suite **1,760 pass / 0 fail**. **What is left is a design defect and it is wider than the finding that
+names it.** R64-2 says a `cities` **entry** kills the whole library's travel history and that one shape of
+it can be named by nothing. Before ruling those two I measured the neighbouring fields of the same stored
+row, and there are **three more**, all live at `e1e1973`: **`countryCodes: 42` throws the same way and is
+equally unnameable**; **`countryCodes: 'AT'` iterates its characters**, so a row's whole country list
+vanishes from the lifetime map in silence; and **`attribution: {places: {}}` publishes `seen.places`,
+`located.places` and `unattributed.places` as `NaN`** for the entire library. `ARCHITECTURE.md` revision
+68's §8.4 **A-87** rules the **class**, and **`I-26` builds it**.
+
+- **The obligation, stated at the level it lives at (R64-2).** `travelStats`' own docstring already claimed
+  *"@throws … **Two, and the list is exhaustive**"*, and that claim is **false as shipped**. A-87 Part 2
+  makes it true: **every stored field a derivation reads passes a gate total over `unknown`, read exactly
+  once, three-way** — absent/`null` is a **value** and takes the documented fallback uncounted, the declared
+  shape is the value, anything else present is a **defect** that takes the *same* documented fallback and is
+  **reported**. A container fails at its own level. **A method call is a dereference** (`.normalize`,
+  `.replace`, `for…of`), which is the shape all five findings wear. The obligation is discharged **per
+  record class at one reader**, never per call site — which is also what makes R64-1's *bind it once*
+  structural on this path instead of counted.
+- **A row is named on the SUCCESS path, not through a throw (R64-2's second half).** `TravelStats` gains
+  **`absorbed: readonly TravelStatsAbsorption[]`** — `{rowId, path, kind}`, every stored value the
+  derivation could not read. This **fires A-86 Part 8 residue 1's own trigger** (nine absorption sites would
+  otherwise be nine scalar counters); `unreadableCityDates` and `unreadableCityLists` **stay**, computed
+  from `absorbed` at one site, because they are what three shipped assertions pin core against
+  `packages/client` with. Naming stops being a property of the failure path — which is exactly what A-86
+  Part 4's guard broke for lists and what R64-2's second shape broke for entries.
+- **R64-3's behaviour half is ruled: absorption is lifecycle-blind (§C2/§C3).** The counters accumulate
+  inside the travelled walk today, so a corrupt **planned** row counts 0 while `rowStatsReadable` calls it
+  unreadable. **A-31 Part 3 governs the lifetime map** and its argument is about *inflation*; a corrupt
+  planned row is corrupt **today** and is not inflatable by planning. Absorptions are therefore accumulated
+  over **every row the library holds**; every count about travel — including `unnamedCities`, which is a
+  *census* fact rather than a *storage* fact — stays travelled-only. The same non-uniformity was condemned
+  once already on this exact walk (**QA R28-3**, in the file's own comment).
+- **`rowStatsReadable` is widened IN PLACE and re-expressed as one call to core.** **A-59 Part 7 residue 1's
+  trigger fired at `I-22` and nobody noticed** — `travelStats` has computed with `centre` since A-83 Part 8.
+  Its own question (*does this become `rowUsable`, or does a second predicate get added*) is answered: **no
+  rename, no sibling**, and the body becomes
+  `core.travelStats([row], row.startDate).absorbed.length === 0`, which **deletes** the second
+  implementation sequencing rule 1 forbids and turns A-86 Part 4 item 2's pin into an **identity**.
+- **The closure claim is a covering table over the TYPE's fields, not over the code's reads.** A-80 Part 10's
+  lesson one model layer down: every field the type declares × a fixed hostile shape set, each cell either
+  *absorbed at this path* or *inert*, so a field nothing reads is covered **before** anything reads it, and
+  A-87 Part 7 writes down what a round-65 finding on this class must look like.
+- **Two documents were false and are corrected in place.** **A-86 Part 8 residue 2** said a corrupt entry
+  *"contributes that entry as unlocated"*; it **throws**, and its stated trigger (*reachability*) was the
+  wrong question, since reachability was settled by the same argument that justified the guard one level up.
+  **A-31 Part 5 residue 2** (*"there is no `unreadableCodes` counter"*) is **discharged** by `absorbed`.
+- **R64-5 gets an affordance rather than a fourth recording.** The counts are a report with nothing behind
+  them: `rescanSummaries` visits rows *below* the current generation, so a corrupt row **at** it is reported
+  forever and never repaired. A-59 Part 5 declined to schedule the per-id forced recompute **because it
+  opens `Library.tsx`** — that reason is **false** for a store method plus a CLI command, so **`I-27`** is
+  queued for it. The *rendered* treatment is still A-59 Part 5's and still waits on `Library.tsx`.
+- **R64-4's criterion, which KD-116 makes the architect's.** A source-lift proves a line's **text**; an
+  end-to-end arm asserting an **absence** proves nothing about whether it ran, which is why mutant M1 left
+  `test/cli.test.ts` fully green. **Every source-lift assertion is paired with an end-to-end arm asserting a
+  PRESENCE in the output** (A-87 Part 8 item 4). `I-26`'s data-driven `cli.ts` block satisfies it by
+  construction.
+- **Ordering: `I-26` first, then `I-22b`, then `I-23`, then `I-27`.** `I-26` is queued ahead for the same
+  reason `I-25` was: **the adversarial round `e1e1973` already owes is the round that must cover it.** Its
+  subject is the census `e1e1973`'s own fix sits beside, and A-86 set the precedent of folding when the
+  subject is the same thing. `I-22b` shares no file with it. `I-27` is behind the picker work because a
+  repair affordance for hand-edited storage is not on Jacob's product path.
+- **Routing, and the pipeline state stated plainly.** **`e1e1973` is built and NOT yet adversarially
+  verified, and nothing in this arc has a manager verdict of SHIP.** `I-26` is **builder + breaker** — it
+  changes a core invariant and a published derived type — and **its round is the one already owed, not a
+  second one**: that round runs once over `e1e1973` **plus** `I-26` as one subject, *the read gate and the
+  census after round 64*. **If `I-26` slips, the owed round runs on `e1e1973` alone rather than waiting.**
+- **The picker UI remains fenced** (sequencing rule 9) and `.tsx` stays out of scope in every queued
+  increment; the visual direction is Codex's and is unresolved.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -6737,6 +6809,16 @@ stays at **88**. **No new `IssueCode`.**
 
 #### I-25 — a row the census absorbs is counted, and the number nothing bounds is written down (revision 70, `ARCHITECTURE.md` revision 67's §8.4 **A-86**, QA **R63-9**; **R63-6** and **R63-7** ride along)
 
+> **⚠ BUILT (`fcac762`) and adversarially run at revision 71.** QA round 64 covered `2b54c67` + `I-25` as
+> one subject. `unreadableCityLists` **holds** over sixteen present-and-not-an-array values, both
+> falsy-value arms, a `Proxy` over a real array, a `cities` that changes between reads, a JSON round trip
+> and the real store. What it did **not** cover is one level down — the entries **inside** an array — and
+> A-86 Part 8 residue 2, which described that case, was **false as written**. **Read `I-26` and §8.4 A-87
+> before touching `travelStats.ts` again.** Two findings against this entry ride there: the counter is
+> **lifecycle-scoped** and its docstring says *"library rows"* (**R64-3** §C2/§C3, ruled by A-87 Part 5),
+> and the `cli.ts` line's test pairing cannot see that the line stopped executing (**R64-4**, ruled by A-87
+> Part 8 item 4).
+
 **Read §8.4 A-86 whole — it is ~5k and it is the entry point — then A-59 Parts 3, 4 and 5. Nothing else.**
 Do **not** read A-85, A-84, A-83, §2 whole, §4 or §10. **Do not reopen the `Array.isArray` guard**: A-86
 Part 4 rules that R62-6's fix is correct and is not the defect.
@@ -6868,6 +6950,213 @@ record shape change**, **no corpus change**, **no migration rung**.
   one subject: *the door and the census after round 63*. It re-derives `I-24`'s exit under the two criteria
   corrected at revision 70 and treats neither correction as new work. **Two stop-and-report conditions:** a
   golden other than `travel-stats.json` moving, and the export count landing anywhere but 88.
+
+
+#### I-26 — the derive path reads a stored row through a gate, and the row it absorbed is named without a throw (revision 71, `ARCHITECTURE.md` revision 68's §8.4 **A-87**, QA **R64-2** MAJOR; **R64-3**'s behaviour half, **R64-4**'s criterion and **R64-5** ride along)
+
+**Read §8.4 A-87 whole — it is ~8k and it is the entry point to the derive path — then A-86 Part 4, then
+A-59 Parts 2, 3 and 4. Nothing else.** Do **not** read A-85, A-84, A-83, §2 whole, §4 or §10. **A-87 is not
+part of the pick family and does not require it.** **Do not reopen the `Array.isArray` guard, A-86 Parts 1–3,
+or anything at a build door**: this increment is entirely on the read side.
+
+**Why it exists.** `travelStats` promises in its own docstring that it throws **two** ways — a duplicate row
+id and a malformed trip date — and *"the list is exhaustive"*. Measured at `e1e1973`, it throws at least
+**four** ways and silently publishes wrong numbers two more: a `cities` array holding a non-object entry
+throws a raw `TypeError` that takes the **whole library's** travel history down; an entry whose `name` is
+not a string does the same **and passes `rowStatsReadable`**, so `travelHistory` returns
+`rowId: null, unreadableRows: []` and **nothing names the row** (**R64-2**); `countryCodes: 42` throws
+identically and is equally unnameable; `countryCodes: 'AT'` iterates its **characters**, so a row's whole
+country list disappears from the lifetime map in silence; and `attribution: {places: {}}` publishes
+`seen.places`, `located.places` and `unattributed.places` as **`NaN`** for the entire library. All six are
+one defect — a stored value dereferenced before anything asked what shape it was — and A-87 rules the class.
+
+**What it is NOT.** **No `.tsx`, no `apps/web` file of any kind.** **No new store method and no recompute
+affordance** — that is `I-27`. **No cap on any stored count** (A-86 Part 5 stands; `countOf` floors and does
+not cap). **No revert of the `Array.isArray` guard**, no change at any build door, no change to
+`TripSummaryRow`, `TripSummaryCity` or `Trip`. **No version movement**: `SCHEMA_VERSION` **5**,
+`SUMMARY_VERSION` **8**, `ROW_KEYS` **15**, A-39 Part 11's covering table **45**, §2.10's **runtime** export
+count **88**. **No new runtime export**, no new `IssueCode`, no corpus change, no migration rung, no rename
+of `rowStatsReadable`.
+
+- **Built, in four parts, in this order. Parts 1 and 2 are the only ones that change what the product
+  computes.**
+  1. **One module-private reader in `derive/travelStats.ts`, and the fold consumes its output**
+     (A-87 Parts 2 and 3). It runs **once per row over the whole library** and returns the gated values plus
+     the absorptions it made. Gates, each three-way (absent/`null` → the documented fallback, uncounted; the
+     declared shape → the value; anything else present → the **same** fallback and one absorption):
+     `cities` (list) · each `cities[i]` (must be a non-null object, tested exactly as `rowStatsReadable`
+     tests it) · `cities[i].name` through `typeof === 'string'` · `.countryCode` through the existing
+     `isMintedCode` · `.centre` through the existing `isLocatedCentre` · the `firstDay`/`lastDay` **pair**
+     through the existing `isUnreadableDay`, **entry-scoped, at most one absorption per entry** (A-59 Part
+     2's *one end unreadable makes the pair unusable*) · `countryCodes` (list) and each entry through
+     `isMintedCode` · `attribution`, `attribution.places`, `attribution.stops` (each a plain object or
+     absent) and `located`/`attributed` through the existing **`countOf`**. **An unreadable `name` behaves
+     exactly as a name folding to `''` already does** — the entry still counts in `seen.cities` and in
+     `located`/`unattributed` if its centre is readable, produces no city row, and increments
+     `unnamedCities`, whose docstring and `cli.ts` line widen by one clause (A-87 Part 3 rule 3).
+     **`key` and `countrySource` get no gate** — nothing reads them, and Part 4's table is what makes that
+     safe.
+  2. **`TravelStats` gains the channel, and the two existing scalars become views of it** (A-87 Part 4).
+     `absorbed: readonly TravelStatsAbsorption[]`, `{rowId, path, kind}`, in library order then path order,
+     over **every row in the library regardless of lifecycle** (A-87 Part 5 — this is R64-3 §C2/§C3's
+     behaviour half and it is the architect's change, not the builder's). `unreadableCityDates` and
+     `unreadableCityLists` are **computed from `absorbed` at one site** and keep their published meanings;
+     `unnamedCities` is untouched and stays **travelled-only**, because it is a census fact.
+     `TravelStatsAbsorption` is exported as a **type** beside `TravelStatsCity`, which does not move
+     `Object.keys(core).length`.
+  3. **`rowStatsReadable` is widened in place and stops being a second implementation**
+     (`packages/client/src/selectors/index.ts`, A-87 Part 6). Body:
+     `rowDatesReadable(row)` first, then `core.travelStats([row], row.startDate).absorbed.length === 0`,
+     inside a `catch` that returns `false`. **No rename, no sibling predicate, no signature change**, and
+     both of A-59 Part 4's refusals stand — not folded into `rowDatesReadable`, not folded into
+     `rowUnopenable`. Its docstring's subject changes from *"every date-shaped field"* to *"every stored
+     value this row carries"*.
+  4. **`cli.ts stats` gains one data-driven block** (A-87 Part 4). Both existing conditional sentences stay
+     **verbatim**; below them, one line per row holding absorptions —
+     `trip <id>: unreadable stored values at cities[3].name, countryCodes` — printed by a loop over
+     `absorbed`, so a new gate cannot be added and forgotten on the one surface that exists.
+- **Not built, and named so nobody adds it.** No `Library.tsx` treatment, no recompute button, no store
+  method, no `.tsx`, no `apps/web`, no change to `TravelHistoryResult`'s shape, no per-field `Issue`
+  channel, no cap on a stored count, no gate on `key` or `countrySource`, no `docs/design/`, no `qa/` file,
+  no lockfile, no new dependency, no generated data other than the one regenerated golden.
+- **User-visible outcome.** A library holding one hand-corrupted saved summary stops taking **every** trip's
+  travel history down with it, and stops silently publishing `NaN` and vanished country lists. `cairn stats`
+  names the trip and the exact field it could not read. Nothing a user with healthy data sees changes.
+- **Architecture / data model.** `TravelStats` gains **`absorbed`** and the type `TravelStatsAbsorption`.
+  **No stored type moves, no version constant moves, no runtime export is added, no port method, no reducer
+  action, no conflict rule, no screen, no dataset.** `TravelStats` is derived and never stored (**A-34**),
+  which is what keeps `SUMMARY_VERSION` still.
+- **Verification.** Tagged per **How a criterion is written**, rule 8 included. Every injected fault is run
+  **red-before-green** and its measured output recorded; a criterion asserted rather than run is not
+  discharged.
+  - **The five measured shapes stop being fatal, and this is the criterion the increment exists for**
+    `[stated]`: over a one-row library whose row is the reference trip with **one** value replaced,
+    `travelStats` **returns** for each of `cities: ['Vienna']`, `cities: [null]`, `cities: [{…, name: 42}]`,
+    `countryCodes: 42` and `attribution: {places: {}}`; each reports **exactly one** absorption naming that
+    row's id and the path (`cities[0]`, `cities[0]`, `cities[0].name`, `countryCodes`,
+    `attribution.places`); and `travelHistory` returns **`ok: true`** for all five. **N1, injected:** remove
+    the `name` gate → shape 3 throws, the arm reddens, and `rowStatsReadable` reports `true` for a row
+    nothing can name, which is R64-2 exactly.
+  - **The quiet half is covered too, and it is a separate arm because it does not throw** `[stated]`:
+    `countryCodes: 'AT'` reports **one** absorption at `countryCodes` and `countries` is **empty** — today
+    it reports nothing and the list vanishes; `attribution: {places: {located: '5', attributed: 0}}` reports
+    one absorption at `attribution.places.located` and `located.places` is a **number** (`countOf` reads
+    **0**), never the string `"05"`. **N2, injected:** gate the container and not the entries → the
+    `'AT'` cell reddens on a missing absorption rather than on a throw.
+  - **Absent and `null` are values, not defects** `[stated]`: rows with no `cities` key, `cities: null`, no
+    `attribution`, `attribution: undefined`, `centre: null`, `firstDay: null` and **`countryCodes: null`**
+    report **zero** absorptions each, and **the committed reference library reports `absorbed: []`**.
+    `countryCodes: null` is in this arm deliberately: it **throws** today and becomes a value under A-87
+    Part 3 rule 5, so it is the one behaviour change in this increment that is not a repair. **N3, injected:** treat `null` as
+    a defect on any one field → the reference library reports absorptions and reddens. **Both arms must be
+    run**: a one-sided test on a classifier is a classifier that will be inverted (A-34 Part 4).
+  - **Absorption is lifecycle-blind and the census is not** `[stated]`: a library holding one **travelled**
+    and one **planned** row, each with `cities: 'nope'`, reports `unreadableCityLists` **2** (today: 1 —
+    QA round 64 §C3), and `rowStatsReadable` is `false` for **both**; a **healthy planned** row still
+    contributes `seen.cities` **0**, `countries` **0** and `unnamedCities` **0**. **N4, injected:**
+    accumulate absorptions inside the travelled walk again → §C2 and §C3 redden **and** the identity in the
+    next criterion fails on the planned row — one change, two independent reds.
+  - **The predicate and the counter are one implementation** `[stated]`: over the eight-value `cities` table
+    the shipped pin already uses, **extended with the six shapes A-87 Part 6 widens the predicate to**
+    (`countryCodes` unreadable, `attribution` unreadable, and an entry with an unreadable `name`,
+    `countryCode` or `centre`), `rowStatsReadable(row) === false` **iff** `travelStats([row],
+    row.startDate).absorbed` is non-empty, over rows whose **trip dates are readable**. The dates are held
+    readable deliberately, because that predicate answers two questions and this assertion is about one of
+    them. **N5, injected:** re-inline the three-way split in `packages/client` → the assertion that must
+    redden is the **identity**, not a fixture table.
+  - **The covering table, which is the closure claim** `[stated]`: the row axis is the existing
+    **`ROW_KEYS`** (`Record<keyof TripSummaryRow, true>`, **15**) and the city axis is a **new sibling**
+    `Record<keyof TripSummaryCity, true>` (**7**), so both denominators are **compiler-maintained** and a
+    field added to either record breaks the build until the table covers it. Every key × the hostile shape
+    set A-87 Part 7 names: `travelStats` **returns**, every published number satisfies `Number.isFinite`,
+    and the cell's outcome is either *absorbed at this path, every other output equal to the healthy row's*
+    or *inert, every output equal to the healthy row's*. **The six row keys the derivation does not read
+    (`title`, `datePrecision`, `cityCount`, `dayCount`, `revision`, `summaryVersion`) and the two city keys
+    (`key`, `countrySource`) are asserted INERT**, which is what covers them before anything reads them.
+    **N6, injected:** make `key`'s cell absorb → the inert assertion reddens, proving the table's two
+    outcomes are distinguishable and neither is vacuous. **Widening either axis stays an architect's
+    ruling** (A-33 Part 2), unchanged.
+  - **The absorption is visible on the surface that exists, and the line is proved to RUN** `[stated]`:
+    `cli.ts stats` over the corrupt library prints the per-row line naming the trip id and the path, and
+    over the reference library prints **no such line at all**. **Per A-87 Part 8 item 4 this criterion has
+    two arms and both are required**: the source-lift arm that the block exists, and an **end-to-end arm
+    asserting the line is PRESENT in captured output** — R64-4's mutant M1 (an early `return` above the
+    block) must redden the second arm. **N7, injected:** run M1 → the presence arm reddens; today's
+    absence-only pairing stays green, which is the finding.
+  - **Nothing that is stored moves, and the classifier is checked rather than assumed** `[stated]`:
+    `SCHEMA_VERSION` **5**, `SUMMARY_VERSION` **8**, `ROW_KEYS` **15**, A-39 Part 11's covering table **45**
+    rows, `Object.keys(core).length` **88** and the subpath set equality **1** — each asserted by name.
+    `countShaped('absorbed')` is **false** and `SOURCE_ALLOW` gains **no** entry, asserted beside the two
+    existing `countShaped` assertions; the `ROW_PATHS.filter(countShaped) === ROW_COUNT_FIELDS` identity
+    still holds at **nine**.
+  - **Negative controls, which must stay green** — a red here is a defect in this increment: `npm test`
+    green; the reference trip's `countryCodes`, `countries.json`, `country-holes.json`,
+    `forgiveness-drops.json`, `gazetteer-probes.json` and `gazetteer-disagreements.json` **byte-for-byte
+    unchanged**; `seen.places` **95** against `located.places` **94**, `unattributed ≤ located ≤ seen` for
+    all three classes, `unnamedCities` **0**, `unreadableCityDates` **0** and `unreadableCityLists` **0**
+    over the reference library, unchanged from `I-25`; `packages/core/test/cityPick.test.ts`,
+    `pickCentre.test.ts` and `nullCentre.test.ts` **green unedited** — this increment touches no door;
+    `git show --stat` contains **no** `.tsx`, **no** `apps/web/`, **no** `qa/`, **no** `geo/gazetteer.gen.ts`
+    and **no** lockfile.
+  - **Regression** `[stated]`: `npm run test:tap` green with the new tests added. **`travel-stats.json`
+    moves — it gains `absorbed: []` in both clock blocks — and that is the only golden that moves**; any
+    other golden needing regeneration is a **finding, not an edit**. `npm run golden` leaves the tree clean
+    on a second run.
+- **Dependencies / blockers.** **`I-25`, built, on `master` at `fcac762`, with round 64's builder-routed
+  findings fixed at `e1e1973`.** Nothing else. `I-26` shares one file with `I-25` (`travelStats.ts`) and one
+  with `I-24` (`cli.ts`); it shares **no** file with `I-22b` or `I-23`, and unlike every increment since
+  `I-21` it touches **`packages/client/src`** — one function body and its docstring.
+- **Ship gate.** `npm test` green; `npm run typecheck` exit 0 on **both** projects; `npm run web:build`
+  succeeds and the main-chunk figure recorded against `I-25`'s; `Object.keys(core).length` re-measured and
+  **88**; the subpath set equality at **1**; **N1–N7 each run red-before-green with their measured output
+  recorded**. **`qa/i7a-idb-rowkeys.mjs` is NOT re-run and owes nothing** — `ROW_KEYS` does not move, so
+  A-36 Part 4's obligation does not fire; say so rather than leaving its absence to be read as an omission.
+  **Files touched: `packages/core/src/derive/travelStats.ts`, `packages/core/src/index.ts` (one type
+  export), `packages/client/src/selectors/index.ts` (one function body, one docstring), `cli.ts`,
+  `test/stats-storage.test.ts`, `test/cli.test.ts`, `fixtures/golden/travel-stats.json` (regenerated, never
+  hand-edited), `packages/core/test/` and `packages/client/test/` as the new assertions require, and
+  `docs/BUILD-NOTES.md`. Nothing else.**
+- **Route: builder + breaker, and the round is the one `e1e1973` already owes.** A change to a core
+  invariant and to a published derived type is **builder + breaker** under the delegation table. **This
+  increment does not get a round of its own**: round 64's builder-routed fix is built and not yet
+  adversarially verified, and `I-26`'s subject is the census that fix sits beside — A-86 set the precedent
+  of folding when the subject is the same thing. The confirming round therefore runs **once**, over
+  `e1e1973` **plus** `I-26`, as one subject: *the read gate and the census after round 64*. **If `I-26`
+  slips, that round runs on `e1e1973` alone rather than waiting for it.** **Three stop-and-report
+  conditions:** a golden other than `travel-stats.json` moving; `Object.keys(core).length` landing anywhere
+  but 88; and any cell of the covering table whose measured outcome is neither *absorbed* nor *inert* —
+  that is a sixth shape and it is the architect's, not the builder's.
+
+
+#### I-27 — a summary the census could not read can be re-derived, on the surface that exists (revision 71, `ARCHITECTURE.md` §8.4 **A-87** Part 10 residue 5 and **A-59** Part 5 item 3, QA **R64-5**)
+
+**Read A-87 Part 10 residue 5 and A-59 Part 5, and §4.3 A-30. Nothing else.**
+
+**Why it exists.** `I-26` makes every absorbed value visible and names the row it is on — and there is still
+**nothing the user can do about it**. `runRescan` visits rows where `(row.summaryVersion ?? 0) <
+SUMMARY_VERSION`, so a row hand-corrupted **at** the current generation is never outdated, the rescan skips
+it forever, and the report repeats itself on every render (QA round 64 §D2/§D3 measured both halves: a row
+**below** the generation is repaired and stops being counted; a row **at** it is not). A-59 Part 5 declined
+to schedule this **because it opens `Library.tsx`** — that reason is false for a store method plus a CLI
+command, and A-87 Part 10 residue 5 says so.
+
+**What it is NOT.** **No `.tsx`, no `apps/web`, no button, no chip, no copy.** The **rendered** treatment is
+still A-59 Part 5's and still waits on the first increment that opens `Library.tsx`. **No change to
+`travelStats`, to `absorbed`, or to any gate** — `I-26` owns those. **No version movement.**
+
+- **Built, in two parts.** (1) A **per-id forced recompute** on the store — re-derive one row from its
+  document and install it, ignoring `summaryVersion` — placed on the existing mutation serialization chain
+  (§4.2 rule 6c) and refusing rather than rebasing on a fence mismatch, exactly as every other mutation
+  does. (2) A `cairn` command that takes a trip id, calls it, and prints the row's absorptions before and
+  after.
+- **Verification** `[stated]`: a row corrupted **at** the current generation reports absorptions, is
+  **untouched** by `rescanSummaries` (unchanged from `I-26`), and reports **zero** absorptions after the
+  forced recompute; a row whose **document** is unopenable refuses with the row left as it was and nothing
+  silently emptied. **N1, injected:** make the forced recompute skip rows at the current generation → it
+  becomes `rescanSummaries` and the criterion reddens.
+- **Dependencies / blockers.** `I-26`. Sequenced **after** `I-22b` and `I-23`: a repair affordance for
+  hand-edited storage is not on the product path and the picker is.
+- **Route: builder + breaker, mandatory** — a new store method under the delegation table.
 
 
 #### I-23 — the gazetteer's filter becomes notability, the corpus is sharded, and a search fetches one shard (revision 67, `ARCHITECTURE.md` revision 64's §8.4 **A-83** Parts 1–7 and 10–11; **amended at revision 68** with parts 3a and 3b from revision 65's **A-84** Parts 5 and 6, QA **R61-3**)
