@@ -1325,6 +1325,44 @@ and blocks nothing.
   else in this arc. **R59-7 rides inside it** as one comment line (N13's header entry names the command that
   can see it). **R59-5 was fixed by the breaker in round 59 and needs nothing here.**
 
+**Revision 66, 2026-09-09.** **A new capability, and the first increment in eight revisions that is not a
+QA consequence: a bundled offline city gazetteer.** Jacob asked *"for people wanting to put in past trips —
+how would they do it? The ease of that is key … otherwise it's not a true sign of their travels"*, and
+BUILD-NOTES **KD-39** is why the answer today is *badly*: both trip-creation forms collect city names only,
+`createTrip` defaults `centre: {0,0}` and `countryCode: ''`, and a hand-entered city therefore contributes
+nothing to `countryCodes` and nothing to the lifetime map. `ARCHITECTURE.md` revision 63's §8.4 **A-82**
+rules it; **`I-21` builds it and `I-22` is queued behind it.**
+
+- **The dataset is `ne_10m_populated_places` at the same pinned tag `v5.1.2` as the country index** —
+  public domain, same repository, same generator standard, emitted into
+  `packages/core/src/geo/gazetteer.gen.ts`. Not a swap of a bigger file later: A-82 Part 1 measurement 4
+  puts GeoNames `cities15000` **above** `0-countryBudget.test.ts`'s 1 MiB type-stripping ceiling before
+  alternate names, so an upgrade is a change of representation and an architect's ruling.
+- **Two measurements changed the ruling and both are in A-82 Part 1.** The shipped `COUNTRY_INDEX`
+  contradicts the gazetteer on **98 named cities**, all border towns — so a row ships only where
+  `countryOf(row.centre)` agrees or is `null`, the 98 are refused **by name in a golden**, and **A-29 is
+  untouched, `countrySource` gains no value, `SUMMARY_VERSION` does not move**. And the scope's premise
+  that Vatican City returns `IT` is **too wide a reading of R54-5** — that is an area statement over a
+  480-cell sweep; the settlement's own point resolves `VA`, as do Monaco, San Marino, Andorra, Singapore,
+  Hong Kong and Valletta.
+- **`I-21` changes no record shape at all** — a generated dataset, one pure function, a `cli.ts` command,
+  two goldens and a budget test — which is exactly what makes it shippable and attackable on its own.
+  §2.10 moves **86 → 87**; the data itself sits behind a **second declared entry point**,
+  `@cairn/core/gazetteer`, dynamically imported, because unlike `COUNTRY_INDEX` (A-27 Part 9) the
+  gazetteer is **not on the write path**.
+- **`I-22` is queued and NOT built: the truthfulness migration.** `City.centre: LatLng | null`, because
+  `{0,0}` is a fabrication wearing the shape of a measurement and is **not** A-26 Part 1's honest `null`;
+  and a `City` field carrying the gazetteer row id, which is what would let the 98 refused border towns be
+  restored. **`KD-39` is half-closed by `I-21`** — closed for a city the user picked, open for one they
+  typed and we could not find.
+- **`I-21` is routed builder + breaker, MANDATORY** (`cairn/CLAUDE.md`'s delegation table: a new capability
+  touching the `packages/core` export surface). It is the first increment since the `I-15…I-20` arc that
+  gets a full adversarial round, and A-81 Part 8's closure does not apply to it — that closure is about the
+  door census and nothing else.
+- **Scope fence, stated in the increment because a builder will otherwise drift into it: NO `.tsx`.** The
+  visual direction is being rebuilt separately; `I-21` defines the backend contract a future form consumes
+  — the search API, the row shape, the label rule, the degradation rule — and not the form.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -5679,6 +5717,202 @@ a census row or a docstring.
   verification. **If any negative control reddens, or `ILLEGAL_SHAPE_CENSUS` reddens over the unmodified
   tree, that is a live defect and it goes back to the architect immediately** — that, and only that,
   reopens this arc.
+
+#### I-21 — the bundled offline city gazetteer: a typed city gets a real coordinate, and no shipped row may contradict the index we already ship (revision 66, `ARCHITECTURE.md` revision 63's §8.4 **A-82**)
+
+**The whole code consequence of `ARCHITECTURE.md` revision 63's §8.4 **A-82**. Read A-82 whole. Then read
+§8.4 clause 1 (the first four paragraphs, for the pinned-tag and licence discipline), **A-26 Part 2** (why
+the base scale is forgiving rather than accurate — this is the premise of A-82's central invariant) and
+**A-29 Part 3** (the four-step gate, which this increment relies on and does not change). Nothing else.**
+Do **not** read §2 whole, §4, §10, or any of A-76…A-81 — that arc is closed and unrelated.
+
+**Why it exists, in Jacob's own words.** *"For people wanting to put in past trips — how would they do it?
+The ease of that is key as well since many people will want to upload where they've been. Otherwise it's not
+a true sign of their travels."* **KD-39**: both trip-creation forms collect city names only, `createTrip`
+writes `centre: {lat:0, lng:0}` and `countryCode: ''`, so `countryOf` attributes nothing and a
+hand-entered trip puts no country on the lifetime map. This increment is the coordinate.
+
+**What it is NOT.** It is not a form, not a screen and not a UI decision. **No `.tsx` is opened.** The
+visual direction is being rebuilt separately; this increment ships the *contract a future form consumes* —
+the search function, the row shape, the label rule and the degradation rule. A builder who finds themselves
+editing a view has left the increment.
+
+- **Built, in seven parts, in this order. Part 1 is the generator and nothing downstream is written until
+  it reports.**
+  1. **`tools/gen-gazetteer.mjs`** — new, on `tools/gen-countries.mjs`'s standard, which is the bar and not
+     an aspiration. Fetches `geojson/ne_10m_populated_places.geojson` from
+     `nvkelso/natural-earth-vector` at the **pinned tag `v5.1.2`**, verifies its sha256 against the pin and
+     **REFUSES TO WRITE on a mismatch** (report the measured checksum; do not absorb it). Flags:
+     `--dry-run` (measure and audit, write nothing), `--audit-only` (audit the committed module, fetch
+     nothing). It reports rows read, rows shipped, rows refused **with the reason**, admin-1 dictionary
+     size, emitted bytes, and the three counts of A-82 Part 1's table. **Header comment carries the licence
+     citation and the "runs at generation time, by a human, once" paragraph, as its sibling does.**
+     **Determinism:** no clock, no randomness; emission order is A-82 Part 4's total order.
+  2. **The consistency invariant, A-82 Part 5, inside the generator.** A row is emitted **only if**
+     `countryOf(row.centre, COUNTRY_INDEX)` equals the row's own ISO code **or is `null`**. A row where both
+     are non-null and disagree is **refused**, named, and written to
+     `fixtures/golden/gazetteer-refusals.json`. Where the source carries no code (`-99`), the derived answer
+     is used if there is one and `''` is stored if there is not. **The generator imports `countryOf` and
+     `COUNTRY_INDEX` from `packages/core/src/index.ts`** — it is a `tools/` consumer, which is §2.10's P1,
+     exactly as `gen-golden.mjs` already is.
+  3. **`packages/core/src/geo/gazetteer.ts`** — new, hand-written, the analogue of `countryIndex.ts`:
+     the `Gazetteer` / `GazetteerRow` / `GazetteerHit` types of A-82 Part 3, `decodeGazetteer` (internal),
+     `foldPlaceName` (internal, **A-82 Part 3's five steps in that order, with the substitution table
+     verbatim**) and `searchGazetteer(query, gazetteer, opts?)`. Nothing here fetches, reads a file, or
+     knows what Natural Earth is. **`foldPlaceName` may not call `normalizeCityName` and
+     `normalizeCityName` may not call it** — A-82 Part 3 says why, and the two live in different modules on
+     purpose.
+  4. **`packages/core/src/geo/gazetteer.gen.ts`** — generated, committed, `GENERATED FILE — DO NOT EDIT`,
+     header on `countries.gen.ts`'s model (source, tag, sha256, row counts, refusal count, order, licence,
+     budget pointer). One string literal, one `decodeGazetteer` call, `export const GAZETTEER`.
+  5. **The export boundary, A-82 Part 9.** `packages/core/src/index.ts` gains **`searchGazetteer`** and the
+     three types — **and must not import `geo/gazetteer.gen.ts`, directly or transitively.**
+     `packages/core/package.json` gains `"./gazetteer": "./src/geo/gazetteer.gen.ts"` in `exports` (keep
+     `"."` as it is). §2.10 moves **86 → 87**; `surface.test.ts`'s list gains one name **and** a second,
+     separate set-equality assertion over the subpath at **exactly one runtime symbol, `GAZETTEER`**.
+  6. **`packages/core/test/storable.test.ts`'s `CENSUS` gains two rows** — `geo/gazetteer.ts` and
+     `geo/gazetteer.gen.ts` — with their two `import * as` statements. **This is not optional and it is not
+     a test edit of convenience:** A-78 Part 1's census checks its list against a recursive read of
+     `packages/core/src`, so two new modules **redden `npm run typecheck` until they are listed**. Neither
+     is a door (`searchGazetteer` returns `GazetteerHit[]`; `decodeGazetteer` returns a `Gazetteer`), so
+     **nothing is added to `DOORS`**. If either census reddens for any other reason, **STOP and report** —
+     that is a live finding.
+  7. **`cli.ts` gains `cities`** — `node cli.ts cities "<query>" [--limit N]` — printing one line per hit
+     as `label · lat,lng · countryCode`, and, on zero hits, an explicit **`no match: <query>`** line rather
+     than empty success. It is the P1 caller that makes `searchGazetteer` a surface symbol, and it is how a
+     tester exercises this whole increment **with no browser, no device and no UI**. It imports `GAZETTEER`
+     from the bare subpath `@cairn/core/gazetteer` (verified to resolve through the workspace symlink), not
+     by module path. The usage header gains its line.
+- **Not built, and named so nobody adds it.** **No `.tsx`, no `apps/web` file of any kind** — including
+  `boundaries.test.ts`'s `allowBare` entry for `@cairn/core/gazetteer`, which A-82 Part 9 specifies and
+  which belongs to the increment that adds the first web consumer, not to this one. **No change to any
+  record shape**: not `City`, not `CityInit`, not `createTrip`, not `Trip`. **`SCHEMA_VERSION` and
+  `SUMMARY_VERSION` do not move** and a moved one is a defect in this increment. **No change to
+  `derive/summary.ts`, `derive/country.ts`, `derive/travelStats.ts` or A-29's gate.** **No fuzzy matching,
+  no substring matching, no non-Latin name columns, no prefix trie** (A-82 Part 3 refuses each by name).
+  **No auto-matching of a typed name to a row without a human picking it** — A-82 Part 6 forbids it
+  outright. **No second subpath.** **No `qa/` file** and **no `docs/design/`**.
+- **User-visible outcome.** `node cli.ts cities "zurich"` returns *Zürich, Zürich, Switzerland* with its
+  coordinate; `cities "london"` returns three Londons in three countries, largest first; `cities
+  "hallstatt"` says **no match**, honestly. Nothing in the browser changes yet, and that is the point: the
+  next UI increment inherits a contract instead of inventing one.
+- **Architecture / data model.** §2.10 **86 → 87** plus a **second entry point** carrying one symbol.
+  `packages/core/src/geo/` gains two modules and `tools/` one generator. **No record class, no field, no
+  port, no selector, no `IssueCode`, no conflict rule, no version constant moves.**
+- **Verification.** Tagged per **How a criterion is written**. Every injected fault is run
+  **red-before-green** and its measured output recorded; a criterion asserted rather than run is not
+  discharged.
+  - **The invariant, and it is the criterion this increment lives or dies on** `[stated]`: a test asserts,
+    over **every** shipped row, that `countryOf(row.centre, COUNTRY_INDEX)` is either `row.countryCode` or
+    `null` — **zero exceptions, no allowlist**. **N1, injected:** disable the generator's refusal filter and
+    regenerate → this test fails **naming Maastricht** (or another of the refused set), and the shipped row
+    count rises by the refusal count. **A refusal count of 0 is itself a failure**: the filter that never
+    fires is the filter that was deleted.
+  - **The fold** `[stated]`: `foldPlaceName` is asserted against A-82 Part 3's twelve verified pairs
+    (`Zürich`→`zurich`, `Łódź`→`lodz`, `İstanbul`→`istanbul`, `Bærum`→`baerum`, `Tromsø`→`tromso`,
+    `Ağrı`→`agri`, `Đông Hà`→`dong ha`, `Bắc Kạn`→`bac kan`, `Nukuʻalofa`→`nukualofa`, `São Paulo`→`sao
+    paulo`, `Malmö`→`malmo`, `Ciudad Juárez`→`ciudad juarez`). **N2, injected:** delete `ł` from the
+    substitution table → the `lodz` case fails naming it. **N3, injected:** move `.normalize('NFD')` above
+    `.toLowerCase()` → the `İstanbul` case fails. Both faults are silent today and both are how this
+    feature stops working for a whole language.
+  - **Search shape, as ceilings not floors** (rule 4) `[stated]`: `searchGazetteer('ork', …)` returns
+    **exactly zero** rows whose name contains *York* — prefix, never substring; `searchGazetteer('york', …)`
+    **does** return New York, because a token prefix matches; `searchGazetteer('', …)` and a query that
+    folds to `''` return **exactly zero** rows and do not throw. **N4, injected:** change the matcher to
+    `includes` → the `'ork'` ceiling fails.
+  - **Disambiguation** `[stated]`: `searchGazetteer('london', …)` returns rows whose labels name **three
+    distinct countries**, `GB` first; **every** returned hit's `label` contains a country name, including
+    `Monaco` and `Singapore`, which have no admin-1. **N5, injected:** make `label` fall back to `name`
+    when `admin1` is `''` → the Monaco assertion fails. **N6, injected:** delete the descending-population
+    key from the comparator → the `london` probe returns Kentucky first and the probes golden diffs.
+  - **Determinism** `[stated]`: the same query over the same gazetteer returns a byte-identical result on
+    two runs, **and** over a shuffled copy of `rows` — the comparator is total, so shuffling may not change
+    the answer. **N7, injected:** delete the final `id` tie-break → the shuffled-copy assertion fails.
+  - **The two goldens** `[snapshot]`, each paired as rule 2 requires: `gazetteer-probes.json` is paired
+    with the `[stated]` fold and London assertions above; `gazetteer-refusals.json` is paired with the
+    `[stated]` invariant test. Both are written by the generator and both carry `$generatedBy`,
+    `$source`, `$sourceSha256` and `$what`, on `country-holes.json`'s model. **Coordinates ARE published
+    in both** — A-82 Part 10 says why, and `country-holes.json`'s `NO COORDINATES` line does not transfer:
+    its subject is the live planner's own records under §6.6, and this one's subject is a public-domain
+    dataset already committed in full.
+  - **The budget** `[stated]`: `packages/core/test/0-gazetteerBudget.test.ts`, on
+    `0-countryBudget.test.ts`'s model and with both of its rules — it **never imports the module it
+    guards** (`statSync` only) and `EMITTED_BYTES` is **the generator's own reported figure, pasted, not
+    rounded**. `TYPE_STRIPPING_CEILING` is the same **1,048,576**. **N8, injected:** append a kilobyte to
+    the generated file → the budget test fails naming the measured size.
+  - **The bundle boundary** `[stated]`: a test asserts that the module graph reachable from
+    `packages/core/src/index.ts` does **not** include `geo/gazetteer.gen.ts`. **N9, injected:** add
+    `export { GAZETTEER } from './geo/gazetteer.gen.ts'` to `index.ts` → that test fails **and**
+    `surface.test.ts`'s set equality fails naming `GAZETTEER`. **This is the fault that would silently cost
+    every user ~300 kB, and it is the one a future increment is most likely to commit.**
+  - **Generator determinism** `[stated]`: run `node tools/gen-gazetteer.mjs` **twice** and diff the emitted
+    file — **byte-identical**. Then run `--audit-only` against the committed module and record its report.
+  - **Negative controls, which must stay green** — a red here is a defect in this increment:
+    `fixtures/golden/core-*.json`, `countries.json`, `country-holes.json`, `forgiveness-drops.json`,
+    `travel-stats.json` and the sample sha **all unchanged**; `SCHEMA_VERSION` and `SUMMARY_VERSION`
+    unmoved, asserted by name; `0-countryBudget.test.ts` unmoved.
+  - **Regression** `[stated]`: `npm run test:tap` green with the new tests added, and **no existing test
+    edited except `surface.test.ts` (one name + one new assertion) and `storable.test.ts` (two census
+    rows)**. Any other test that needs editing is a finding, not an edit.
+  - **Cost, measured and published as a measurement.** `node --test packages/core` wall time before and
+    after, three runs each — the type stripper now parses a second large module. **A rise beyond 1.5× on
+    that command is a finding to report, not bytes to trim silently.**
+- **Dependencies / blockers.** **None. READY.** `countryOf` and `COUNTRY_INDEX` are built and on `master`
+  (I-5 / I-5a / I-5b / I-5c); `gen-countries.mjs` is the pattern and needs no change; the pinned tag is
+  reachable from this environment and was re-fetched on 2026-09-09. It blocks nothing, and `I-22` is the
+  only thing that waits on it.
+- **Ship gate.** `npm test` green; `npm run typecheck` exit 0 on **both** projects (the door and illegal
+  censuses green over the widened tree); the export count re-measured and **87**; the subpath set equality
+  at **1**; **N1–N9 each run red-before-green with their measured output recorded**; the generator run
+  twice byte-identical and `--audit-only` recorded; both goldens committed; the negative controls recorded
+  as unchanged. **And, per §8.4 A-27 Part 9: `npm run web:build` is run and the resulting bundle figure
+  recorded here** — baseline measured 2026-09-09 at `762e83e` is **1,029.59 kB raw / 332.57 kB gzip**, and
+  **the main chunk may not grow by more than 2 kB.** A main chunk that grew by the size of the dataset is a
+  **failed** ship gate, not a note.
+  **Files touched: `tools/gen-gazetteer.mjs`, `packages/core/src/geo/gazetteer.ts`,
+  `packages/core/src/geo/gazetteer.gen.ts`, `packages/core/src/index.ts`,
+  `packages/core/package.json`, `packages/core/test/gazetteer.test.ts`,
+  `packages/core/test/0-gazetteerBudget.test.ts`, `packages/core/test/surface.test.ts`,
+  `packages/core/test/storable.test.ts`, `cli.ts`, `fixtures/golden/gazetteer-probes.json`,
+  `fixtures/golden/gazetteer-refusals.json`, `docs/BUILD-NOTES.md` (this increment's addendum, and the
+  half-closure of KD-39). Nothing else** — no `.tsx`, no `apps/web`, no `packages/client`, no `qa/`, no
+  `docs/design/`, no lockfile, no new dependency.
+- **Route: builder + breaker, MANDATORY**, then the manager at the next batch boundary. `cairn/CLAUDE.md`'s
+  delegation table: a new capability **and** a change to the `packages/core` export surface, either of which
+  alone earns the breaker. **A-81 Part 8's closure does not apply here** — it closes the door census to
+  adversarial search and says nothing about a new dataset. **Two stop-and-report conditions:** the door or
+  illegal census reddening for any reason other than the two missing `CENSUS` rows, and a refusal count of
+  zero.
+
+#### I-22 — `City.centre` may be `null`, and a refused border town gets its country back — **QUEUED, not built**
+
+> **Status: QUEUED at revision 66, specified here so it is not rediscovered, and deliberately **not** routed
+> until `I-21` has shipped and been through its adversarial round.** It is the second half of **KD-39**.
+> `I-21` changes no record shape at all, which is what makes it attackable on its own; this one is a schema
+> migration and deserves its own round rather than riding in the wake of a search function.
+
+**Two residues of §8.4 A-82, both named in its Part 12, both cheapest now while there are no rows in the
+wild** (A-26 Part 7 and A-29 Part 5 have each said so; this is the fourth time).
+
+1. **`City.centre: LatLng | null`** — A-82 Part 7. `createTrip` writes `{lat:0, lng:0}` for a city nobody
+   located, and that is **not** A-26 Part 1's honest `null`: A-26's `null` is a real measurement the polygon
+   dataset cannot answer, and `{0,0}` is a value nobody measured wearing the shape of one. It attributes to
+   nothing only because the Atlantic is empty, and A-56 widened `TripSummaryCity` with `centre: LatLng` on
+   the stated ground that *"a `City.centre` is non-nullable"* — so every hand-entered city today is a
+   summary row claiming to be at 0°N 0°E, and the first surface that draws city pins draws them there.
+   **Touches:** `model/types.ts`, `serialize/fromJSON.ts` and `toJSON.ts`, `build/createTrip.ts`,
+   `SCHEMA_VERSION`, `derive/summary.ts`'s `TripSummaryCity`, `SUMMARY_VERSION`, `travelStats`'s
+   `located`/`unattributed.cities` census, and every frame that reads a city centre (§4.4).
+2. **A `City` field carrying the gazetteer row id**, which is what would let `derive/summary.ts` know that a
+   city's coordinate and its country code came from the **same** source, and therefore let the **98 refused
+   border towns** ship — Maastricht, Niagara Falls, Lugano, Arlon among them, all published by name in
+   `gazetteer-refusals.json`. It brings a third `countrySource` value and a `SUMMARY_VERSION` bump with it.
+   **A-29's precedence may not simply be inverted to get this** — A-82 Part 5 measured why: without the
+   field, *"the stated code wins"* is also *"a mistyped `HU` on Vienna puts Hungary on the lifetime map
+   permanently."*
+
+**Trigger.** `I-21` shipped and through its breaker round; or, sooner, a user reporting a city that is in
+the refusals golden. **Blocks nothing** and no other increment waits on it.
 
 #### I-10 — The participants editor, the profile grouping, and the access double-run — **DEFERRED at revision 55; 2c ships without it**
 

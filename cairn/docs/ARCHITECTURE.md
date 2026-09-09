@@ -1494,6 +1494,40 @@ trigger that reopens it: **an unopenable document in the wild.** **No `IssueCode
 export-count movement (§2.10 stays at 86), no `src` file, no `.tsx`, no `qa/`, no new dependency.**
 `ROADMAP.md` revision 65 carries the ledger entry and **I-20**.
 
+**Revision 63, 2026-09-09.** **A new capability, not a defect: a bundled offline city gazetteer, so a
+hand-entered past trip gets a real coordinate and therefore a real country.** Jacob's bar is *"the ease of
+that is key … otherwise it's not a true sign of their travels"* — **easy** and **true**, and BUILD-NOTES
+**KD-39** is the gap: both trip-creation forms collect city names only, `createTrip` defaults
+`centre: {0,0}` and `countryCode: ''`, so every hand-entered city attributes to nothing. **§8.4 A-82**
+rules it and `ROADMAP` **I-21** builds it. The dataset is `ne_10m_populated_places` from the **same
+repository and the same pinned tag `v5.1.2`** as the country index, public domain, emitted by a committed
+`tools/gen-gazetteer.mjs` into `packages/core/src/geo/gazetteer.gen.ts` — `countries.gen.ts`'s pattern a
+second time, in the same directory, at the same standard. **Two measurements taken for this ruling changed
+it.** (1) The shipped `COUNTRY_INDEX` and the gazetteer **disagree about 98 named cities** — all border
+towns, Maastricht→`BE`, Niagara Falls→`CA`, Lugano→`IT` — because A-26 Part 2's base scale is forgiving,
+not accurate; so the naive *"store the coordinate and let `countryOf` derive"* design would put Maastricht
+in Belgium on a lifetime map. The answer is a **consistency invariant at generation time**: a row ships only
+if `countryOf(row.centre)` is either the row's own code or `null`, the 98 are **refused and published by
+name** in a golden, and **A-29 is untouched, `countrySource` gains no value and `SUMMARY_VERSION` does not
+move.** (2) The scope's premise that *"Vatican City returns `IT` at every scale"* is **too wide a reading of
+R54-5**: that is a statement about area over a 480-cell sweep, and the settlement's own point resolves
+**`VA`** — as do Monaco, San Marino, Andorra, Singapore, Hong Kong and Valletta. The micro-states are
+already discharged by A-27's fill and forgiveness entries. Also ruled: the **fold** is a five-step ordered
+algorithm with an explicit substitution table (`ł ø đ ß æ ı …`) because NFD cannot reach those letters, and
+it is **not** `normalizeCityName` and may not be implemented in terms of it — identity versus matching,
+opposite failure costs; **prefix and token-prefix matching, no fuzzy, no substring, no non-Latin in v1**;
+a **total** ranking order so a query is pinnable in a golden; **a pick is the user's own** — the selection
+*is* the acceptance, so no badge, no review queue, no field on `City` — while an **auto-match with no human
+choosing is FORBIDDEN** without a further ruling; **KD-38's city→day fill is separate**, and an `ensureDays`
+default would flip `missing_lodging` across the whole corpus; and the data sits behind a **second declared
+entry point `@cairn/core/gazetteer`**, lazily imported, because unlike `COUNTRY_INDEX` (A-27 Part 9) the
+gazetteer is **not on the write path**. §2.10 moves **86 → 87** (`searchGazetteer`; `GAZETTEER` is on the
+subpath and is its own one-symbol set equality). Two residues are named and scheduled rather than absorbed:
+the 98 refused rows, and **`City.centre: LatLng | null`** — because `{0,0}` is a fabrication wearing the
+shape of a measurement, and it is *not* the same thing as A-26 Part 1's honest `null`. Both are
+**ROADMAP I-22**, and **KD-39 is half-closed** until it ships. `ROADMAP.md` revision 66 carries the ledger
+entry, **I-21** and **I-22**.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -9264,7 +9298,9 @@ written), 76 → 77 at Phase 2 **I-8e** (`isIsoDate`, §2.9 **A-46** Part 2), 77
 (`countryKeyPoint`, §4.4 **A-48** Part 2), 78 → 79 at Phase 2 **I-8h** (`countryParts`, §4.4 **A-49**
 Part 2), **79 → 83 at Phase 2 I-13** (`addPhoto`, `removePhoto`, `updatePhoto` and `readExif`, §10.1 and
 §10.2, **A-57** Part 6) and **83 → 86 at Phase 2 I-9** (`addParticipant`, `updateParticipant`,
-`removeParticipant`, §8.3 and §8.9), each for a stated reason.**
+`removeParticipant`, §8.3 and §8.9), **and 86 → 87 at Phase 2 I-21** (`searchGazetteer`, §8.4 **A-82**
+Part 9 — which also adds this section's first **second entry point**, `@cairn/core/gazetteer`, carrying
+exactly one runtime symbol that is *not* counted here), each for a stated reason.**
 
 **The photo four and the participant three, and one correction they carry.** *(The photo four joined
 `index.ts` and `surface.test.ts` at I-13 and this block was not updated in that commit, so §2.10's prose
@@ -9284,6 +9320,22 @@ in the client. `PARTICIPANT_KINDS` stays internal for `DATE_PRECISIONS`' reason 
 builder's shared enum, and a caller that can read it is a caller that will grow a second copy. `Participant`,
 `ParticipantKind`, `ParticipantId`, `ParticipantInit` and `ParticipantPatch` are **types** and are not part
 of the set-equality count.
+
+**`searchGazetteer(query, gazetteer, opts?)` joins at Phase 2 I-21, taking the count to 87, and it brings
+this section's FIRST second entry point** — §8.4 **A-82** Part 9. It joins under **P2** (A-82 names it) and
+**P1** (`cli.ts cities` calls it). It is `countryOf(at, index)`'s shape verbatim: pure, index injected,
+testable against a hand-built fixture. `foldPlaceName` and `decodeGazetteer` stay internal for group 1's
+reason, which is `countryIndex`/`decodeCountryIndex`'s reason verbatim — *a caller needs to pass an index,
+not to mint one* — and `foldPlaceName` additionally must not be reachable because it is **not**
+`normalizeCityName` and a caller that can reach both will use the wrong one (A-82 Part 3). **`GAZETTEER` is
+NOT on this list and is not part of the 87.** Unlike `COUNTRY_INDEX`, the gazetteer is **not on the write
+path** (A-27 Part 9 is the contrast), so its ~319 kB is reached by dynamic import through a **declared
+subpath**, `@cairn/core/gazetteer`, in `packages/core/package.json`'s `exports` map. That subpath is a
+**door, not a reach-in**: ceiling (1) still forbids importing `geo/gazetteer.gen.ts` by module path, the
+subpath carries **exactly one runtime symbol** and is asserted by its own set equality in
+`surface.test.ts`, and `boundaries.test.ts` allows the bare specifier for `apps/web` and nowhere else. A
+second subpath is an architect's ruling, not a builder's convenience. `Gazetteer`, `GazetteerRow` and
+`GazetteerHit` are **types** and are not part of the count.
 
 **`countryParts(code, index, thresholdKm)` joins at Phase 2 I-8h** under **P2** — §4.4 A-49 Part 2 specifies
 it by name — and under **P1**, because `worldMapFrame` calls it. It is in core for `countryKeyPoint`'s reason
@@ -16555,6 +16607,13 @@ import, which is why §2.2 **A-10** is a Phase 2 ruling: a `CityKey` is a minted
 the name, and cross-trip city identity is derived from the normalised name. A form that mints its own key
 is the defect (QA P2-2), not the fix.
 
+> **Revision 63 — and typing a name is not enough, which is what §8.4 A-82 is for.** A city typed into
+> either trip-creation form gets `centre: {0,0}` and `countryCode: ''` (**KD-39**), so it attributes to
+> nothing and the lifetime map this section exists to fill stays empty for exactly the trips it was
+> written for. **A-82** is the bundled gazetteer that gives a *picked* city a real coordinate and a real
+> country; **A-82 Part 7** is why a city we still cannot find must eventually carry
+> `centre: null` rather than a fabricated `{0,0}`, and that half is ROADMAP **I-22**, not built.
+
 **There is no `Trip.kind`, and manually-entered travel needs no new provenance value.** The certainty of a
 record is already `provenance.confidence`, and it already means exactly the right things:
 
@@ -18123,6 +18182,15 @@ script, no new command in any gate, and nothing about what is run changes** — 
 fix is prose.
 
 #### A-29 — a city's *stated* country fills a gap the coordinate cannot answer, never overrides one, and only if the index can draw it (revision 23, QA R26-5)
+
+> **Revision 63 pointer, not an amendment: A-82 leaves every clause of this ruling standing, deliberately.**
+> The gazetteer writes both `City.centre` and `City.countryCode`, and the obvious question — *does a
+> gazetteer-supplied code now outrank `countryOf`?* — is answered **no**, by making the disagreement
+> impossible at generation time instead of arbitrating it at read time. A gazetteer row ships only where
+> `countryOf(row.centre)` agrees with it or is silent, so this ruling's precedence never has to choose;
+> where it is silent, this gate admits the row's code and every such code passes step 4 by construction.
+> **`countrySource` gains no value here and `SUMMARY_VERSION` does not move.** A-82 Part 5 has the
+> measurement (98 border towns) and the reason inverting Part 3 item 3 was refused.
 
 A-26, A-27 and A-28 are three rulings about **the index**. This one is not about the index at all, and that
 is the reason the defect survived three adversarial rounds on the same paragraph: `City.countryCode` is not
@@ -20987,6 +21055,529 @@ That is the whole diff, and everything about it is what Part 6 claims:
    might be substitutes**. The lesson generalises to every clamp in `travelStats` — **decide what the row
    supplied before computing with it** — and it is why 6.3's block computes `obsA`/`obsB` first and
    `rawA`/`rawB` last.
+
+#### A-82 — a bundled gazetteer gives a typed city a real coordinate, no shipped row may contradict the index we already ship, and a picked city is the user's own (revision 63, Jacob's product direction 2026-09-09, BUILD-NOTES **KD-39**)
+
+Jacob asked the question this ruling answers, and the bar is in his own words:
+
+> *"For people wanting to put in past trips - how would they do it? The ease of that is key as well since
+> many people will want to upload where they've been. Otherwise it's not a true sign of their travels"*
+
+Two requirements, not one. **Easy**, and **true**. §8.1 already bought the first half — `TripInit` needs
+only a title and two dates, `ensureDays` mints the blank skeleton, and a 21-day 2019 trip with one city and
+no stops is a supported, silent, legal document. The second half is not bought at all, and **KD-39** names
+the hole exactly: both trip-creation forms collect cities as *names only*, `createTrip` defaults
+`centre: {lat:0, lng:0}` and `countryCode: ''`, so a hand-entered city contributes nothing to `countryCodes`
+and nothing to the lifetime map. A travel history assembled by typing is, today, a history with no
+geography in it.
+
+**The choice between a live geocoder and a bundled dataset was put to Jacob with its costs and he chose
+bundled.** That is not re-opened here and this ruling does not rest on re-deriving it; §8.4 clause 1 had
+already forbidden the network answer for a *coordinate* (*"sending a coordinate to a geocoding service is
+transmitting a location, which §6.1 forbids in every phase"*), Phase 3 is where a backend exists to hold a
+key, and `geo/countries.gen.ts` is 366 KB of vendored Natural Earth polygon data establishing that **a
+generated data module is data, not a dependency**. What follows is the design, and it is written against
+measurements taken on 2026-09-09 rather than against that argument.
+
+---
+
+**Part 1 — what was measured, because two of the assumptions this was scoped on are wrong.**
+
+Everything in this part was measured on **2026-09-09** against `nvkelso/natural-earth-vector` at the
+**same pinned tag `v5.1.2`** §8.4 already uses, and against the **committed** `COUNTRY_INDEX`. It is
+history against a fixed commit, in the count rule's sense (ROADMAP *How a criterion is written* rule 6):
+the numbers below exist to justify the ruling, the builder re-derives them, and the ones that must not
+drift live in a test or a golden, never in this paragraph.
+
+`geojson/ne_10m_populated_places.geojson` at that tag is **19,359,003 bytes**, sha256
+`9b8e3de09048ef00dfc70357dbb9fa324493f214b5e0ae4daf1aa79a8d10116b`, **7,342 features**, each carrying
+`NAME`, `NAMEASCII`, `NAMEALT`, `NAME_EN`, `ISO_A2`, `ADM0NAME`, `ADM1NAME`, `LATITUDE`, `LONGITUDE`,
+`POP_MAX` and a stable `NE_ID`.
+
+**Measurement 1 — the shipped index and this dataset disagree about 98 named cities, and the dataset is
+right.** For every feature carrying an ISO code, `countryOf(feature, COUNTRY_INDEX)` was evaluated:
+
+| outcome | rows | what it is |
+|---|---|---|
+| agrees with `ISO_A2` | 6,806 | the ordinary case |
+| `null` | 426 | A-26's honest hole — a coastal or island settlement outside the 1:110m ring |
+| **a different country** | **98** | Maastricht→`BE`, Niagara Falls→`CA`, Lugano→`IT`, Arlon→`LU`, Eagle Pass→`MX`, Gisenyi→`CD`, … |
+| no `ISO_A2` at all (`-99`) | 12 | Somaliland ×7, Kosovo ×3, Northern Cyprus ×2 |
+
+The 98 are **border towns**, without exception, and the error is **ours**, not the dataset's. A-26 Part 2
+already says why in as many words: the base scale was chosen because *"it is the most forgiving of the
+error that dominates this dataset's use"*, not because it is accurate, and a coarse ring bulges outward.
+A town two kilometres from a frontier falls inside the neighbour's generalised drawing. This is the same
+class as A-26 Part 3's eight misattributed codes, one layer down, and it means the naive design —
+*"store the coordinate, let `countryOf` derive the country"* — would put **Maastricht in Belgium** on a
+user's lifetime map. Part 5 is the ruling that follows from this and it is the most important one here.
+
+**Measurement 2 — the micro-state fear is already discharged, and the scoping note that raised it is
+reading R54-5 too widely.** The scope for this pass says *"Vatican City returns `IT` at every scale,
+measured `{IT:476, VA:4}` over a 480-cell sweep at round 54's R54-5"*, and infers that a gazetteer's own
+answer may be more correct than the derived one. **Measured: it is not, for any of them.** The Natural
+Earth point for **Vatican City resolves `VA`**; Monaco `MC`; San Marino `SM`; Andorra `AD`; Singapore
+`SG`; Hong Kong `HK`; Valletta `MT`. R54-5's `{IT:476, VA:4}` is a statement about **area** — a 480-cell
+grid over the Vatican's bounding box, most of which is Rome — and A-27's forgiveness entries plus A-27
+Part 3's area-ascending emission order are exactly what make the **settlement's own point** land in the
+4. A gazetteer row is not an arbitrary point in a bounding box; it is where the settlement is, which is
+where the country's own ring is drawn. **The disagreement class is border towns and nothing else.**
+
+**Measurement 3 — coverage is thin at exactly the places a traveller remembers, and no affordable dataset
+fixes that.** Against the 7,342-row layer: `Split`, `Dubrovnik`, `Kyoto`, `Cusco`, `Siem Reap`, `Chiang Mai`
+and `Banff` are present; **`Hvar`, `Vis`, `Interlaken`, `Positano`, `Hallstatt`, `Hakone`, `Cinque Terre`,
+`Ubud` and `Kotor` are absent.** GeoNames `cities15000` (34,135 rows) still misses all of Hvar, Vis,
+Interlaken, Positano, Hallstatt and Kotor; `cities5000` (69,700 rows) reaches Interlaken, Hakone and Kotor
+and still misses Hvar, Positano and Hallstatt; only `cities1000` (170,950 rows) reaches Hvar and Positano,
+and it still misses Hallstatt. **The miss is not the exotic tail. It is the routine case**, and Part 7 is
+written on that basis rather than on the hope that a bigger file closes it.
+
+**Measurement 4 — the bigger files do not fit the representation this project ships.** Packed one row per
+line with folded names, ISO code, an admin-1 dictionary index, population and quantised coordinates:
+`cities15000` is **1,705,329** bytes before alternate names, which is already above
+`0-countryBudget.test.ts`'s **1,048,576-byte type-stripping ceiling** for a single generated `.ts` module;
+`cities5000` is 3,502,430; `cities1000` is 8,592,672. Adding the Latin-script alternate names that make
+*"Bruges"* find *Brugge* and *"Nara"* find Nara, Japan roughly doubles each. A GeoNames upgrade is
+therefore **not a drop-in swap of a bigger file** — it is a change of representation, and Part 9 says so.
+
+**Measurement 5 — GeoNames has no pinnable ref.** The `cities*.zip` dumps are regenerated daily and carry
+no tag, no release and no version; every row carries its own modification date. §8.4's whole argument for
+`v5.1.2` over `master` — *"a committed generated module fetched from a moving ref is a measurement nobody
+can reproduce"* — applies to GeoNames with no tag at all to retreat to. Its licence is **CC-BY 4.0**, which
+would also be the first attribution obligation in this repo. Both are real and both are secondary to
+measurement 4.
+
+---
+
+**Part 2 — the dataset, where it lives, and the generator.**
+
+> **The gazetteer is `ne_10m_populated_places` from the same repository and the same pinned tag
+> `v5.1.2` as the country index, emitted by a committed generator into a committed generated module
+> `packages/core/src/geo/gazetteer.gen.ts`, decoded and searched by a hand-written
+> `packages/core/src/geo/gazetteer.ts`. The data is public domain, the source is pinned by tag and by
+> sha256, and no part of the shipped product fetches anything.**
+
+Five reasons this is the placement and not `apps/web`:
+
+1. **Precedent, exactly.** `countries.gen.ts` is a generated data module inside a zero-dependency package
+   and `countryIndex.ts` is its hand-written consumer. This is that pair a second time, in the same
+   directory, from the same repository, at the same tag, under the same licence citation. A second pattern
+   for the same problem is the thing §2.10 and §3 exist to prevent.
+2. **The search is domain logic, not view logic.** Folding *"Zurich"* onto *"Zürich"* decides what a
+   `City` record ends up containing. §3's line is that `core` is *"what keeps web, native, and server
+   agreeing on what a trip is"*; a fold that lives in `apps/web` is a fold `apps/mobile` writes a second
+   copy of, and A-14 has already ruled once that `normalizeCityName` lives in the lowest layer *"once"*
+   for exactly this reason.
+3. **`packages/core` is zero *dependency*, not zero *bytes*.** A-27 Part 9 already accepted a generated
+   dataset at ~36 % of the web bundle. The rule that matters is `boundaries.test.ts`'s: no bare specifier,
+   no Node builtin, no relative escape. A string literal breaks none of them.
+4. **The consumer that must not be forgotten is not a screen.** `cli.ts` gets a `cities` command in the
+   same increment (Part 9), which is what lets a tester exercise this with no browser, no device and no
+   UI — the phasing principle `BRIEF.md` states.
+5. **`apps/web` owns the *lazy boundary*, not the data.** Part 9 reconciles those two.
+
+**The generator is `tools/gen-gazetteer.mjs`**, held to `gen-countries.mjs`'s standard and no lower:
+
+- **Pinned by tag and by checksum.** `REPO = nvkelso/natural-earth-vector`, `TAG = v5.1.2`, file
+  `geojson/ne_10m_populated_places.geojson`, expected sha256 as measured in Part 1. **A fetch that does not
+  match is REPORTED and the run refuses to write** — never absorbed into a budget.
+- **Byte-reproducible.** No clock, no randomness, no reliance on source order or on `Map` iteration order:
+  rows are sorted by folded name, then by descending population, then by ISO code, then by `NE_ID`, which
+  is a **total** order. Two runs against the same input produce byte-identical output, and the increment's
+  ship gate runs it twice and diffs.
+- **`--dry-run` measures and audits without writing; `--audit-only` audits the committed module and
+  fetches nothing**, exactly as its sibling does, so the census in Part 10 can be re-derived offline.
+- **It reports, on every run:** rows read, rows shipped, rows refused with the reason, the admin-1
+  dictionary size, the emitted byte count, and the three census counts of Part 1's table.
+- **It runs at generation time, by a human, once.** Nothing in `packages/core`, `packages/client`,
+  `apps/web` or `cli.ts` fetches anything for this feature, in this phase or any other.
+
+**The upstream swap is a build-time data change.** Everything downstream of the generator sees
+`Gazetteer` — a decoded array of `GazetteerRow` — and nothing downstream knows the word *Natural Earth*.
+Replacing the source with GeoNames is a new generator arm plus a new `$source` string plus a licence
+citation, and **zero** consumer-code change, subject to Part 9's ceiling.
+
+---
+
+**Part 3 — the search contract. This is where the feature is won or lost.**
+
+```ts
+type GazetteerRow = {
+  readonly name: string;          // display form, the source's own spelling: 'Zürich', 'São Paulo'
+  readonly fold: string;          // foldPlaceName(name) — the matching form: 'zurich', 'sao paulo'
+  readonly alts: readonly string[]; // folded Latin-script alternates: 'zurich' for 'Zürich' is not one
+  readonly countryCode: CountryCode | '';  // '' is legal and honest — see Part 5
+  readonly admin1: string;        // '' when the source has none (city-states)
+  readonly population: number;    // POP_MAX, for ranking only. Never displayed as a fact about a city
+  readonly centre: LatLng;
+  readonly id: string;            // the source's stable row id (NE_ID), base-36
+};
+type Gazetteer = { readonly source: string; readonly rows: readonly GazetteerRow[] };
+```
+
+**The fold, stated as an ordered algorithm, because a paraphrase of it is not implementable.**
+
+```
+foldPlaceName(s):
+  1. s.toLowerCase()                       — locale-invariant. 'İstanbul' → 'i̇stanbul'
+  2. substitute, character by character, from the table below
+  3. .normalize('NFD')                     — guarded exactly as normalizeCityName guards it
+  4. delete every Unicode Mn (combining mark)
+  5. replace every run of characters that is neither \p{L} nor \p{N} with a single space; trim
+```
+
+The substitution table exists because **NFD does not decompose a letter whose diacritic is part of the
+glyph**, and those are the letters that make this feature fail silently:
+
+| in | out | | in | out | | in | out |
+|---|---|---|---|---|---|---|---|
+| `ł` | `l` | | `ø` | `o` | | `đ` | `d` |
+| `ð` | `d` | | `þ` | `th` | | `ß` | `ss` |
+| `æ` | `ae` | | `œ` | `oe` | | `ı` | `i` |
+| `ħ` | `h` | | `ŀ` | `l` | | `ʻ` `ʼ` | *(deleted)* |
+
+Verified on 2026-09-09 against this exact sequence: `Zürich`→`zurich`, `São Paulo`→`sao paulo`,
+`Łódź`→`lodz`, `Malmö`→`malmo`, `Tromsø`→`tromso`, `Bærum`→`baerum`, `Ağrı`→`agri`,
+`İstanbul`→`istanbul`, `Đông Hà`→`dong ha`, `Bắc Kạn`→`bac kan`, `Nukuʻalofa`→`nukualofa`,
+`Ciudad Juárez`→`ciudad juarez`. **Step 1 precedes step 3 and that ordering is load-bearing**: `İ`
+lowercases to `i` + U+0307, which step 4 then removes; do it the other way round and Turkish names fold
+wrong. **Steps 2–4 are not commutative either** — `ø` must be substituted before NFD, not after, because
+NFD leaves it alone and step 4 has nothing to strip.
+
+**`foldPlaceName` is NOT `normalizeCityName` and neither may be implemented in terms of the other.**
+`normalizeCityName` (§2.2 A-10, §2.14 A-14) is an **identity** key: it decides whether two trips are about
+the same city, it is stored nowhere, and folding accents into it would silently merge two genuinely
+different cities across a user's whole history. `foldPlaceName` is a **matching** key: it decides whether
+what a person typed reaches a row in a list they are about to choose from, where being generous costs one
+extra row on screen. Same shape, opposite failure cost. Both stay module-private; §2.10's group-1 reason
+holds for both — *a caller that can fold a name is a caller that will grow a second fold*.
+
+**The match rule.**
+
+> `searchGazetteer(query, gazetteer, opts?)` folds the query with `foldPlaceName`, returns `[]` for an
+> empty fold, and otherwise returns every row for which the folded query is a **prefix of the whole
+> folded name, of any folded alternate, or of any space-delimited token within either** — ranked by the
+> total order below and truncated to `opts.limit` (default 20).
+
+- **Prefix, not substring.** *"ork"* must not return *"New York"*: an interior match is noise at every
+  useful query length, and a list whose top rows are unexplainable is a list the user stops trusting.
+- **Token prefixes are in, so *"york"* finds *"New York"* and *"angeles"* finds *"Los Angeles"*.** This is
+  the one generosity that pays for itself, because a person recalling a trip types the distinctive word.
+- **No fuzzy matching, no edit distance, no phonetics in v1**, and this is a refusal rather than an
+  omission: a typo-tolerant matcher without a measured corpus of real typos is a guess, it produces
+  confidently wrong top rows, and *"Nara"* already reaches *Nara, Mali* without any help. Its trigger is
+  in Part 11.
+- **No non-Latin queries in v1.** The source carries `NAME_JA`, `NAME_ZH`, `NAME_RU` and twenty more
+  columns and they are **not** shipped; a query in a non-Latin script folds to itself and misses.
+  `BRIEF.md` defers i18n *"until strangers arrive"*, and Part 11 carries the trigger.
+- **A linear scan over the rows, and no prefix tree.** Measured scale is ~7,000 short strings; a trie is
+  a second data structure to keep correct, to serialize and to test, bought against a scan that is under a
+  millisecond. If the row count ever moves an order of magnitude this is a ruling to revisit, not a
+  performance bug to fix in place.
+
+---
+
+**Part 4 — disambiguation, and the rule that stops a wrong pick from ever being offered anonymously.**
+
+Paris FR and Paris TX; five Springfields; three Queenstowns; two Barcelonas; **three Londons — `GB`
+Westminster, `US` Kentucky, `CA` Ontario.** Measured over the layer, **199 folded names are carried by
+more than one row.**
+
+> **A row carries `countryCode`, `admin1` and `population`, and `searchGazetteer` returns a `label` it
+> computed itself. No consumer composes a label from parts, and no consumer may render a hit by `name`
+> alone.**
+
+```ts
+type GazetteerHit = GazetteerRow & { readonly label: string };
+// label = [name, admin1 (omitted when '' or equal to name), countryName] joined ', '
+//   'London, Westminster, United Kingdom'  ·  'London, Kentucky, United States'  ·  'Monaco, Monaco'
+```
+
+**The country *name* comes from the gazetteer's own source column (`ADM0NAME`), emitted as a small
+code→name table in the same generated module.** It is not a new dataset and not a new dependency: the
+generator already has the rows open, the table is ~230 entries, and the alternative — a consumer mapping
+`GB` to *"United Kingdom"* — is a fourth place in this repo that knows what a country is called.
+
+**The ranking is a total order**, so the same query returns the same rows in the same sequence on every
+run and on every platform, which is what makes it pinnable in a golden:
+
+1. an exact fold match before a prefix match;
+2. a prefix of the whole name before a prefix of a token;
+3. a prefix of the name before a prefix of an alternate;
+4. **descending `population`** — the honest tie-break, because the traveller who types *"London"* means
+   the one with nine million people far more often than the one in Kentucky;
+5. ascending `fold`; 6. ascending `countryCode`; 7. ascending `id`. Rules 5–7 exist only to make the
+   comparator total. They decide no answer a user will ever notice, and they are why a regeneration
+   cannot reshuffle the list.
+
+**`population` is a ranking input and is never surfaced as a fact.** `POP_MAX` is a metropolitan-area
+figure of uncertain vintage; rendering it would be this document's own objection in §8.4 decision 2 — *a
+number a user can be misled by* — arriving through a different door.
+
+---
+
+**Part 5 — derived versus stored, and the invariant that resolves it without a schema change.**
+
+§0.6 says derive rather than store. §8.4 clause 1 says `countryOf` derives a country from a coordinate.
+A-29 says a *stated* `City.countryCode` fills a gap the coordinate cannot answer and **never** overrides a
+non-null `countryOf`. Part 1 measurement 1 says our coordinate answer is **wrong for 98 named cities** and
+the gazetteer knows better. Those four cannot all be honoured by a rule that writes both fields and hopes.
+
+The tempting answer is to make the gazetteer's code authoritative. **It is refused**, and A-29 Part 3
+item 3 is the reason, unchanged: `derive/summary.ts` cannot tell a gazetteer-supplied `countryCode` from a
+hand-typed one, because `City` carries no provenance for it — so *"the stated code wins"* is also
+*"a mistyped `HU` on Vienna puts Hungary on the lifetime map permanently."* Inverting A-29 to buy 98 border
+towns would buy them with every typo any user ever makes.
+
+The ruling instead makes the disagreement impossible at the source:
+
+> **Consistency invariant (the gazetteer's shipping rule).** A row is emitted **only if** the shipped
+> `COUNTRY_INDEX` does not contradict it: `countryOf(row.centre, COUNTRY_INDEX)` is either the row's own
+> country code, or `null`. A row where the two are both non-null and disagree is **REFUSED**, named, and
+> published in the census of Part 10. Where the source carries no code at all, the derived answer is used
+> if there is one and `''` is stored if there is not.
+>
+> **Consequence, and it is the whole point: a consumer writes both `centre` and `countryCode` from the
+> picked row, and A-29 is untouched.** `countryOf` stays authoritative wherever it speaks, because
+> wherever it speaks it now agrees. Where it is silent — measured at **435** of the shipped rows, the
+> islands and coastlines of A-26's honest hole — A-29's four-step gate admits the row's code, and every
+> one of those codes passes step 4 by construction, because it came from the same country family the
+> index is built from. **`countrySource` gains no value and `SUMMARY_VERSION` does not move.**
+
+What this costs, stated plainly rather than buried: **98 real cities become unfindable**, Maastricht,
+Niagara Falls, Lugano and Arlon among them. That is 1.3 % of the layer, it is published by name rather
+than silently dropped, and it is the doctrine this section already runs on — §8.4 clause 1: *"a system
+that guesses a country is a system whose lifetime map is quietly wrong, and a wrong map is worse than an
+honest hole."* Applied here it reads: **we do not ship a row we would then have to contradict.** Part 12
+records what it would take to restore them, which is a `City` field and a schema migration, and it is
+deliberately not in this increment.
+
+**Three things this does not do.** It does not add a field to `City`. It does not touch `homeBase`
+(KD-55, re-affirmed a third time). It does not make the union additive — a gazetteer row attributes the
+city that carries it and nothing else, exactly as A-29 Part 4 item 1 already rules for `Place` and `Stop`.
+
+---
+
+**Part 6 — provenance: the pick is the acceptance.**
+
+> **A city created from a gazetteer hit is the user's own. It gets no `suggested` badge, no review queue,
+> no provenance field, and `City` gains nothing.**
+
+The root `CLAUDE.md` rule is *"never present my suggestions as Jacob's own plan — anything not from the
+source of truth stays visibly marked as ours until accepted."* The operative word is **accepted**. A
+gazetteer hit is offered, the user reads a label that names the country and the region, and the user picks
+one. **Nothing is written until they pick, so there is no unaccepted intermediate state for a badge to
+mark.** The selection *is* the acceptance, at the moment of entry, which is the earliest and cheapest
+place the rule can ever be satisfied. This is the same reading §8.1's provenance table already takes of a
+past trip typed from memory: `{source:'user', confidence:'asserted'}`, *"a human said so with nothing
+behind it"* — and a human who picked *London, Westminster, United Kingdom* out of three Londons has said
+so with rather more behind it than that.
+
+The coordinate attached to that pick is ours, and the honest description of it is *"the location of the
+settlement the user selected, from a public dataset, to about a kilometre"*. It is not a claim about where
+the user stood; §0.8 already draws that line — *a trip says "I was in Vienna, Aug 8–10", it does not say
+"I stood at these 112 points"* — and a city centre is precisely the granularity at which the document's
+own claim is true.
+
+**The fence this ruling puts around that answer, because it is the one that will be crossed.** The
+reasoning above holds *only* for a pick. **A flow that matches a name to a row without a human choosing
+it — a bulk import, an "we think you meant Paris, France", an auto-select-the-top-hit on blur — is a
+system assertion, it IS covered by the badge rule, and it is FORBIDDEN without a further ruling.** It
+would need the marking, the review step and the provenance the pick path does not, and building it as a
+convenience on top of `searchGazetteer` is how this project would violate its oldest rule while believing
+it had already discharged it.
+
+---
+
+**Part 7 — the miss case, and where the scope's reading of A-26 is right and where it is not.**
+
+The scoping note asks me to confirm that a typed city with no gazetteer match is covered by A-26 Part 1
+and `country-holes.json`'s `resolvesAt: null` rows. **Confirmed as to the country, and it does not cover
+the coordinate, and the difference is the residue this ruling leaves open.**
+
+- **A-26 Part 1 is about the absence of evidence *in the polygon dataset*.** We have a real coordinate for
+  `Blue Cave, Biševo`; no admin-0 polygon at any scale of the pinned family contains it; `null` is the
+  correct answer and not a defect. That reading is right, and it is the same reading here: **a city we
+  cannot locate has no country, and rendering it as unattributed is correct, tested and deliberate.**
+  `travelStats`'s `unattributed.cities` and its `located` twin (A-31) already exist to put that on screen
+  as a number rather than as a silence, and `unnamedCities` already refuses to merge a nameless city into
+  a blank row. Nothing new is needed for the *country* half of a miss.
+- **It does not cover the coordinate, because in the miss case there is no coordinate — there is a
+  fabrication.** `createTrip` writes `centre: {lat:0, lng:0}`. That is not an honest hole; it is a datum
+  in the Gulf of Guinea that happens to attribute to `null` because the Atlantic is empty. It differs
+  from A-26's null in the way that matters: **A-26's null is a real measurement the dataset cannot answer;
+  `{0,0}` is a value nobody measured, wearing the shape of one.** A sentinel that is also a valid
+  coordinate is precisely the class of defect §2.7 and §0.5 exist to refuse, and it is already loaded:
+  A-56 widened `TripSummaryCity` with `centre: LatLng` on the stated ground that *"a `City.centre` is
+  non-nullable, so the city census is already derivable"*, so every hand-entered city today is a summary
+  row claiming to be at 0°N 0°E, and the first surface that draws city pins will draw them there.
+
+> **Ruling.** For the *country*, a miss is unattributed and that is correct and final. For the
+> *coordinate*, `{0,0}` is a fabrication that must stop being written, and the fix is
+> `City.centre: LatLng | null` — a schema migration touching `SCHEMA_VERSION`, the parser, `createTrip`,
+> `TripSummaryCity`, `SUMMARY_VERSION` and every map frame that reads a city centre. **It is NOT in this
+> increment**, it is specified as ROADMAP **I-22**, and until it ships **KD-39 is half-closed**: closed
+> for a city the user picked, open for a city they typed and we could not find. That half is named in
+> `BUILD-NOTES.md` rather than left to be rediscovered.
+
+Splitting it here is not squeamishness about the migration. It is that **I-21 changes no record shape at
+all** — it adds a dataset, a pure function and a CLI command — which is what makes it independently
+shippable, independently attackable, and completable by one builder, and I-22 is a migration that deserves
+its own adversarial round rather than riding in the wake of a search function.
+
+---
+
+**Part 8 — KD-38's city→day fill is SEPARATE, and an `ensureDays` default would be a defect.**
+
+KD-38's remaining half asks whether a `cities`-fill option belongs on `createTrip`/`ensureDays`, so that
+attributing a past trip's days to its city costs one dispatch rather than N. **Ruled: not in this
+increment, and never as a change to `ensureDays`' default.**
+
+**The reason is measured and it is in KD-38 itself.** `ensureDays` mints `primaryCity: 'transit'` with
+`cities: ['transit']`, and **`missing_lodging` skips transit days by design.** A blank day that named a
+city instead would be a day with an uncovered night, so changing that default would make **every** blank
+day of **every** trip in the system loud — the reference trip, the goldens, `past-trip.test.ts`'s six
+cases and §8.2's whole gate. KD-38's own measurement is that criterion 3's silence had two independent
+causes and the transit default was one of them. A convenience that flips a conflict rule's output across
+the corpus is not a convenience.
+
+If it returns, it returns as **an explicit opt-in argument on `createTrip` only** — a caller asking for
+the trip's first city to be written onto the days *it is minting right now* — and never as behaviour in
+`ensureDays`' maintenance path, which runs on every date-range edit for the life of the document. It is
+orthogonal to this ruling: it is about which day a city occupies, and the gazetteer is about where a city
+is. Bundling them would put a conflict-rule blast radius inside a dataset increment.
+
+---
+
+**Part 9 — the bundle boundary, the budget, and the ceiling.**
+
+**Measured 2026-09-09, `npm run web:build` on `master` at `762e83e`:** the main chunk is
+**1,029.59 kB raw / 332.57 kB gzip**. A-27 Part 9's standing obligation applies to every increment that
+moves a generated module's byte count, and this is one.
+
+**The gazetteer is not on the write path, and that is the whole difference from `COUNTRY_INDEX`.** A-27
+Part 9 accepted the country index in the main chunk because from I-6 it is required by `tripSummary`,
+which runs inside every document write, so *"it can never be lazily loaded behind the map route without
+putting an `await` where §0.6 and §2.2b forbid one."* The gazetteer is touched only while a human is
+typing a city name into a form. There is no write it is synchronously required by, in this phase or any
+later one.
+
+> **The boundary.** `packages/core/src/index.ts` exports the **functions and types** —
+> `searchGazetteer` and its type family — and **must not import `geo/gazetteer.gen.ts`, directly or
+> transitively.** The data is reached through a **second declared entry point**,
+> `@cairn/core/gazetteer`, added to `packages/core/package.json`'s `exports` map, exporting exactly one
+> runtime symbol, `GAZETTEER`. A consumer writes `const { GAZETTEER } = await
+> import('@cairn/core/gazetteer')` and passes it to `searchGazetteer`, which is `countryOf(at, index)`'s
+> shape verbatim — pure, index injected, testable against a hand-built five-row fixture.
+
+Three consequences, all enforced rather than asserted:
+
+1. **§2.10 moves 86 → 87** for `searchGazetteer` under **P2** (this ruling names it) and **P1**
+   (`cli.ts cities` calls it). `foldPlaceName` and `decodeGazetteer` stay internal for group 1's reason,
+   which is `countryIndex`/`decodeCountryIndex`'s reason verbatim: *a caller needs to pass an index, not
+   to mint one.* `GAZETTEER` is **not** on `index.ts` and is not part of that count; the subpath is a
+   **second enumerated surface**, asserted by its own set equality in `surface.test.ts` at exactly one
+   symbol, so it cannot quietly grow into a back door around §2.10. This is a subpath **door**, not a
+   reach-in: ceiling (1) forbids importing `geo/gazetteer.gen.ts` **by module path**, and adding
+   `@cairn/core/gazetteer` to `boundaries.test.ts`'s `allowBare` list for `apps/web` and nowhere else is
+   what keeps the exception from spreading.
+2. **The main chunk may not grow by more than 2 kB.** `searchGazetteer` plus its fold table is a few
+   hundred bytes of code. The increment records the measured `npm run web:build` figure against
+   1,029.59 kB, and **a main chunk that grew by the size of the dataset is the failure this boundary
+   exists to catch** — not a warning, a failed ship gate.
+3. **A size budget test, `0-gazetteerBudget.test.ts`, on `0-countryBudget.test.ts`'s model**, including
+   the two rules that file states: it **never imports the module it guards** (`statSync` only, because a
+   guard that must load a module too large to load fails with a stripper error instead of a number), and
+   the number is **the generator's own reported output**, pasted, not rounded and not chosen.
+   **`TYPE_STRIPPING_CEILING` is the same 1,048,576 bytes**, and it is a ceiling on the *generated module*
+   because `node --test packages/core` hands it to Node's type stripper on every run.
+
+**The architect's prototype measured** 7,244 rows shipped / 98 refused, a payload of 306,531 bytes
+(162,411 gzipped) and ~319 kB as a `.ts` string literal, against `countries.gen.ts`'s 374,659. **That is
+an estimate and the budget is not it**: §8.4's rule holds — *the builder measures, and the number goes in
+the test, not in this paragraph.*
+
+**The ceiling is what makes the GeoNames upgrade a real decision rather than a swap.** Part 1 measurement
+4 puts `cities15000` above 1 MiB before alternate names. So the upgrade path is honest but conditional:
+below the ceiling it is a generator arm and a licence citation; above it, it is a change of representation
+— a fetched asset rather than a `.ts` module — and that is an architect's ruling, not a builder's.
+
+---
+
+**Part 10 — determinism, and the two fixtures that pin it.**
+
+A regeneration that silently moves a coordinate must redden something. Two goldens, both on
+`country-holes.json`'s model, both written by the generator, both `[snapshot]` and therefore both paired
+per *How a criterion is written* rule 2:
+
+1. **`fixtures/golden/gazetteer-probes.json`** — a named probe list of queries (at minimum: `zurich`,
+   `Zürich`, `sao paulo`, `London`, `Paris`, `springfield`, `york`, `lodz`, `istanbul`, `bac kan`,
+   `vatican`, `nara`, `hvar`) with, for each, the top hits as `{id, name, countryCode, admin1, centre}`.
+   This pins **the answer**, not the mechanism: a fold that stops handling `ł`, a comparator whose tie
+   moves, or a coordinate that shifted between source revisions all show up here as a diff. Paired with
+   `[stated]` assertions in the test for the folds and the three Londons.
+2. **`fixtures/golden/gazetteer-refusals.json`** — every row the consistency invariant refused, as
+   `{id, name, statedCountry, derivedCountry}`. This is the analogue of `country-holes.json` and it does
+   the same job: it makes a deliberate hole **countable, nameable and reviewable** instead of invisible.
+   It is also the input I-22 restores from. A refusal count that changes when the country index next
+   changes is a diff a reviewer must look at, which is the point.
+
+**`NE_ID` is carried as `GazetteerRow.id` precisely so these diffs are readable.** Without a stable row
+identity a regeneration is a wall of reordered lines; with one, a moved coordinate is one row changing on
+one key.
+
+**Coordinates may be published in these fixtures, and that is a difference from `country-holes.json` worth
+stating** so nobody "fixes" it: that file carries `NO COORDINATES: ids and names only` because its subject
+is *the live planner's own records*, under the read-only boundary and §6.6's redaction rule. These two
+fixtures' subject is a public-domain dataset that is already committed in full. §6.1 governs *observed*
+location — a fix stream, a library index — and a city centre from Natural Earth is neither, exactly as
+§8.4 already argues for a country code.
+
+**And a determinism rule with teeth:** the ship gate runs the generator **twice** and requires
+byte-identical output, and runs `--audit-only` against the committed module. A generator that is
+reproducible only on the machine that first ran it is not reproducible.
+
+---
+
+**Part 11 — what is deferred, with the trigger that reopens each.**
+
+1. **Fuzzy / typo-tolerant matching.** Deferred. **Trigger:** a measured corpus of real queries that miss
+   — not a hypothetical typo. Until then a miss is a miss and the product says so.
+2. **Non-Latin-script queries.** Deferred; the source's twenty language-name columns exist and are not
+   shipped. **Trigger:** `BRIEF.md`'s own — strangers arrive, or a user asks for it. It is a generator
+   change and a budget re-measure, not a redesign.
+3. **A larger gazetteer (GeoNames `cities5000`/`cities15000`).** Deferred, and now with a measured price
+   (Part 1 measurements 3–5). **Trigger:** misses observed against real use, *and* an answer to the
+   1 MiB ceiling and to CC-BY attribution. It is the second thing to try, not the first.
+4. **Live geocoding.** Stays in reserve for **Phase 3**, when a backend exists to hold a key and proxy it,
+   and when usage data shows whether coverage is a real problem. §8.4 clause 1's privacy argument does not
+   expire; a Phase 3 proxy is what would let it be honoured while a network is involved.
+5. **The named successor, and it is better than all of the above: Phase 6 photo EXIF GPS.** *"Import your
+   photos and we'll work out where you were"* produces a **measured** record rather than a remembered one,
+   which is the difference between this feature and the truth it is standing in for. The foundation
+   already ships — `packages/core/src/photo/exif.ts` extracts GPS (§10.2, **A-57**, **A-58**). **The
+   honest constraint is A-58's:** iOS Safari strips EXIF at the `<input type=file>` boundary, so the web
+   path gets little of it; the native app with `expo-media-library` gets it properly. **Trigger:** Phase 6,
+   the native shell. **Not designed here, and typing does not become obsolete when it arrives** — a 2009
+   trip has no geotagged photos, and the gazetteer is how that trip is ever recorded at all.
+
+---
+
+**Part 12 — residues, each with what would fire it.**
+
+1. **The 98 refused border towns.** Restoring them needs a way for `derive/summary.ts` to know that a
+   city's coordinate and its country code came from the *same* source, which is a field on `City` — the
+   gazetteer row id is the natural one, since it is already carried — plus a third `countrySource` value
+   and a `SUMMARY_VERSION` bump. **Trigger:** I-22, or a user reporting a missing city that is in the
+   refusals golden. Cheapest while there are no rows in the wild (A-26 Part 7, A-29 Part 5 — the fourth
+   time this document has said so).
+2. **`City.centre: LatLng | null`.** Part 7. Specified as I-22 and not built here.
+3. **The reference corpus is one Adriatic trip, and A-26 Part 2 already warns about exactly this.** Part 1
+   measurement 3's coverage list is drawn from general travel knowledge, not from a corpus of Cairn users,
+   because there is no such corpus. **Trigger:** a second real trip. When one exists, re-derive
+   measurement 3 before ruling on dataset size.
+4. **The admin-1 names are the source's own and are not localised** — `Splitsko-Dalmatinska`, `Wien`,
+   `Attiki`. They disambiguate correctly and read oddly. **Trigger:** the same as residue 2 of Part 11.
 
 ### 8.5 Observed travel — the shape Phase 5 must be able to land on
 

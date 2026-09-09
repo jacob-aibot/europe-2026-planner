@@ -19,6 +19,44 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟦 NEW: CAIRN WILL KNOW WHERE YOUR OLD TRIPS ACTUALLY WERE. As of 2026-09-09 this block is
+> the newest and it supersedes every block below it.** This is the first change in eight rounds that is a
+> **new capability** rather than a repair, and it comes straight from your question: *"for people wanting to
+> put in past trips — how would they do it? The ease of that is key … otherwise it's not a true sign of
+> their travels."*
+>
+> **The problem, in one sentence.** Today you can record a past trip in about ten seconds — a title, two
+> dates, a few city names — and Cairn will keep it faithfully, but it has **no idea where those cities
+> are**. Every hand-typed city is silently filed at latitude 0, longitude 0, a point in the Atlantic off
+> west Africa, so a lifetime of remembered travel puts **nothing** on the map of everywhere you have been.
+> That is the one thing standing between "I typed my old trips in" and "this is a true record of my
+> travels."
+>
+> **What is being built.** A city list — about 7,200 cities — **bundled inside the app**. You type
+> *"Zurich"*, it offers *Zürich, Switzerland*; you pick it, and the city arrives with a real location and a
+> real country, which is what puts it on your map. It works **offline**, it sends **nothing** about your
+> travels to anyone, and it needs no account and no internet — the same choice already made for the
+> country map. It also handles accents and spellings properly: *Zurich* finds *Zürich*, *Sao Paulo* finds
+> *São Paulo*, *Lodz* finds *Łódź*.
+>
+> **Two honest limits, both deliberate, both written down rather than discovered later.** First, **small
+> places are missing** — Hallstatt, Positano, Hvar and Interlaken are not in a list this size, and no
+> affordable list has all of them. A city we cannot find is shown as *unlocated* rather than guessed at,
+> which is the same rule the country map already follows: an honest gap beats a confident wrong answer.
+> Second, **98 border towns are deliberately left out** — Maastricht, Lugano, Niagara Falls and 95 others
+> — because Cairn's own country map draws them on the wrong side of the line, and shipping a city we would
+> then have to contradict is worse than shipping neither. They are listed by name and they come back in the
+> follow-up increment.
+>
+> **The better long-term answer is already named, and it is your photos.** *"Import your photos and we'll
+> work out where you were"* produces a **measured** record instead of a remembered one, and the photo
+> groundwork that reads a photo's location is already built. It needs the phone app (Phase 6) to work
+> properly, because Safari strips that information out on the web. Typing does not become obsolete when it
+> arrives — a 2009 trip has no geotagged photos — but it stops being the only way.
+>
+> **What changes on your phone today: nothing.** This increment is the machinery and a command-line way to
+> exercise it; no screen is touched, because the visual direction is being redone separately.
+
 > **🟧 THE CHECK CAN NOW OPEN EVERY KIND OF BOX — BUT IT STILL MISSES THE DOOR THAT IS SITTING
 > IN PLAIN SIGHT NEXT TO ONE. As of 2026-09-08, this block is the newest and it supersedes every
 > block below it, including the tester's previous report.** Nothing on your phone changes.
