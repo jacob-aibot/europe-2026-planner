@@ -5,7 +5,7 @@
  * never mutate their input.
  */
 import type {
-  BookingId, CityKey, ClockTime, ConflictId, Currency, DayId, IsoDate,
+  BookingId, CityKey, ClockTime, ConflictId, CountryCode, Currency, DayId, IsoDate,
   ParticipantId, PhotoId, PlaceId, RuleId, StopId, TripId, UserId,
 } from './ids.ts';
 
@@ -193,6 +193,31 @@ export type Participant = {
 
 // ---------------------------------------------------------------- trip (§2.2)
 
+/**
+ * **What a human picked out of the gazetteer, recorded whole** — §8.4 **A-84** Part 3.
+ *
+ * Three facts copied off **one shipped gazetteer row at the moment the user chose it**, so that
+ * the pair (*where*, *which country*) can never be re-composed out of two fields that move
+ * independently. `derive/summary.ts` reads the country off **this** record and never off
+ * `City.countryCode`; `serialize/fromJSON.ts` accepts it whole or refuses it whole.
+ *
+ * **Nothing resolves `rowId`.** It is shape-checked and stored, never looked up: the corpus is
+ * behind a lazy subpath and off the write path, and re-resolving a row on every read is the
+ * design in which a regeneration silently changes a user's map (§0.6, A-83 Part 8's own clause).
+ */
+export type CityPick = {
+  /** The row's id, `'<source>:<row>'` — `'ne:j64n0x'`, `'gn:2661552'`. Shape-checked, never resolved. */
+  readonly rowId: string;
+  /**
+   * The row's **own** centre, copied at pick time. This field is what makes a pick
+   * *invalidatable*: the pick attributes only while `City.centre` is exactly equal to it
+   * (A-84 Part 3 clause 3). A pick without a coordinate is not a pick, so it is never `null`.
+   */
+  readonly centre: LatLng;
+  /** The row's **own** country code, copied at pick time. `null` when the source states none. */
+  readonly countryCode: CountryCode | null;
+};
+
 export type City = {
   key: CityKey;
   name: string;
@@ -208,22 +233,28 @@ export type City = {
    */
   centre: LatLng | null;
   /**
-   * The gazetteer row the user **PICKED**, `'<source>:<row>'` — `'ne:j63zkv'` today, `'gn:…'`
-   * after I-23. `null` for a city they typed.
+   * **What a human PICKED out of the gazetteer, recorded whole** — §8.4 **A-84** Part 3, which
+   * replaces A-83 Part 8's `placeId: string | null`. `null` for a city they typed.
+   *
+   * **It is a record and not a pointer, and that is the whole ruling.** A bare id is a string a
+   * partial write can leave behind while the fields it was paired with move underneath it: QA
+   * round 61 measured `setTripMeta(trip, {cities})` turning `{CH, picked}` into `{HU, picked}` in
+   * one call, because `derive/summary.ts` read the city's **own typed `countryCode`** on the
+   * picked path and nothing in `packages/core` can resolve an id to a row (the corpus is behind a
+   * lazy subpath, off the write path). So the pick carries the row's own coordinate and the row's
+   * own code, and **no write to one field can re-compose it into a different claim**.
    *
    * **What a human picked, never what a system matched.** A-82 Part 6 forbids matching a typed
    * name to a row without a human choosing it — no bulk import, no *"we think you meant Paris"*,
-   * no auto-select-the-top-hit on blur — and **that fence is what makes the precedence in §8.4
-   * A-83 Part 8 safe**. With it, `derive/summary.ts` can tell a gazetteer-supplied `countryCode`
-   * from a hand-typed one, which is exactly the provenance A-29 Part 3 item 3 said was missing;
-   * so a picked city's own code outranks `countryOf`, and a **typed** city's code still loses to
-   * it, permanently. Write this field from anything other than a human's pick and a mistyped `HU`
-   * on Vienna puts Hungary on a lifetime map forever.
+   * no auto-select-the-top-hit on blur — and A-84 Part 3 clause 4 turns that from a prohibition
+   * everyone must remember into a **signature**: `cityPickFromRow(row: GazetteerRow)` is the only
+   * mint, and a caller that does not hold a row cannot call it.
    *
    * It is **provenance, not authentication**: a user who hand-edits their own document to invent
-   * one puts a country on their own map, which is the trust boundary §2.1 already draws.
+   * one puts a country on their own map, which is the trust boundary §2.1 already draws. What
+   * A-84 closes is the *slip* — an accident can no longer forge one.
    */
-  placeId: string | null;
+  pick: CityPick | null;
   order: number;
   meta?: { flagEmoji?: string; color?: string };
 };
@@ -498,8 +529,23 @@ export type DisplayStatus = 'own' | 'suggested' | 'candidate' | 'imported' | 're
  *     read `centre: null` into a type that says it cannot be null and draw the city at 0°N 0°E or
  *     crash reading `.lat`. The 3 → 4 rung also converts: a stored `{lat: 0, lng: 0}` becomes
  *     `null`, because that value was never a measurement.
+ *   - **5** — `City.placeId: string | null` becomes `City.pick: CityPick | null` (§8.4 **A-84**
+ *     Part 8, ROADMAP I-22a). A **type change**, so A-72's *"a new scalar with a total default"*
+ *     arm does not apply. The 4 → 5 rung **drops `placeId`, writes `pick: null`, and counts what
+ *     it dropped**; it may **not** promote, because composing `{rowId: placeId, centre:
+ *     city.centre, countryCode: city.countryCode}` mints a *verified* record out of exactly the
+ *     three unverified fields A-84 exists to stop being read as one, and would re-create QA
+ *     R61-1 inside the migration.
+ *
+ * ---
+ *
+ * **The law, written here because this docstring is what a bumper actually reads** (§8.4 A-84
+ * Part 8): **every `SCHEMA_VERSION` bump adds `|S|` rows to §8.4 A-39 Part 11's covering table in
+ * `test/stats-storage.test.ts`, and the increment that bumps this constant owns those rows.** The
+ * table's document-generation axis is `SCHEMA_VERSION`'s own domain; the set is pairwise-minimal
+ * and tight, so a bump can no longer be absorbed into it.
  */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 export type TripMeta = {
   /** Pool section headings, carried over from `OPTIONAL[city].title/note`. */
@@ -571,7 +617,7 @@ export type Trip = {
    */
   participants: Participant[];
   revision: number;
-  schemaVersion: 4;
+  schemaVersion: 5;
   meta?: TripMeta;
 };
 

@@ -77,7 +77,7 @@ test('cli export still writes a file inside cairn/', () => {
 
 test('cli export with no target still prints to stdout', () => {
   const r = cli('export');
-  assert.match(r.out.slice(0, 60), /^\{\s*"schemaVersion": 4/);
+  assert.match(r.out.slice(0, 60), /^\{\s*"schemaVersion": 5/);
 });
 
 test('the live planner is not writable through any cli command', () => {
@@ -161,7 +161,7 @@ test('cli export --force overwrites deliberately', () => {
     writeFileSync(target, 'STALE');
     const r = cli('export', target, '--force');
     assert.equal(r.code, 0, r.err);
-    assert.match(readFileSync(target, 'utf8').slice(0, 40), /^\{\s*"schemaVersion": 4/);
+    assert.match(readFileSync(target, 'utf8').slice(0, 40), /^\{\s*"schemaVersion": 5/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -390,7 +390,7 @@ test('A-56 Part 5: `centre` reached no committed golden, and travel-stats.json c
   // which are not coordinates, and which the "NO COORDINATES" header does not forbid.
   const stats = readFileSync(join(dir, 'travel-stats.json'), 'utf8');
   assert.match(stats, /"firstVisit": "2026-08-08"/, 'travel-stats.json has no city dates in it');
-  assert.match(stats, /"summaryVersion": 6/, 'travel-stats.json was not regenerated at SUMMARY_VERSION 6');
+  assert.match(stats, /"summaryVersion": 7/, 'travel-stats.json was not regenerated at SUMMARY_VERSION 7');
 });
 
 test('cli stats prints no marker and no legend when the trip is over', () => {

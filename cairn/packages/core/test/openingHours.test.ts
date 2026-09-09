@@ -343,7 +343,7 @@ test('A-20 assertion 5: the clock-shape regex appears exactly once in packages/c
   assert.match(matches[0], /^model\/openingHours\.ts:/);
 });
 
-test('A-20 assertion 6: isOpeningHours is NOT on the public surface (§2.10 is 87, and none of them is this)', async () => {
+test('A-20 assertion 6: isOpeningHours is NOT on the public surface (§2.10 is 88, and none of them is this)', async () => {
   const core = await import('../src/index.ts');
   // 71 at revision 19; 73 since Phase 2 I-5 added `countryOf` and `COUNTRY_INDEX` under §8.4
   // clause 1; 74 since Phase 2 I-6 added `SUMMARY_VERSION` under §8.4 clause 3; 75 since
@@ -365,10 +365,14 @@ test('A-20 assertion 6: isOpeningHours is NOT on the public surface (§2.10 is 8
   // search, `countryOf(at, index)`'s shape verbatim. `GAZETTEER` itself is NOT part of this count:
   // it is a second declared entry point, `@cairn/core/gazetteer`, because the dataset is not on
   // any write path and must stay out of every consumer's main chunk.
+  // **88 since ROADMAP I-22a added `cityPickFromRow` under §8.4 A-84 Part 3 clause 4** — the only
+  // mint for a `CityPick`, and it takes a `GazetteerRow` rather than a string precisely so that
+  // A-82 Part 6's *"auto-match FORBIDDEN"* is a signature rather than a prohibition. It sits on
+  // the main surface and not behind the subpath because it is nine lines and touches no data.
   // The assertion
   // this test exists for is the loop below — the size is the tripwire that says a widening
   // happened at all, and it is re-derived by counting, never quoted.
-  assert.equal(Object.keys(core).length, 87);
+  assert.equal(Object.keys(core).length, 88);
   for (const name of ['isClockTime', 'readWeeklyEntry', 'isOpeningHours']) {
     assert.equal(name in core, false, `${name} widened §2.10's surface`);
   }

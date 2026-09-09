@@ -13,6 +13,13 @@
  *     may **silently** contradict the index*), and that needs `City.placeId`: **the row a human
  *     picked**, which is exactly the provenance A-29 Part 3 item 3 said was missing.
  *
+ * **Revision 65 / ROADMAP I-22a: `City.placeId` is REPLACED by `City.pick: CityPick | null`**
+ * (§8.4 **A-84** Part 3). A bare id is a pointer nothing on the derive path can resolve, and QA
+ * round 61 measured the consequence — the picked arm read the city's **own typed `countryCode`**.
+ * **Everything in this file about `centre` stands unchanged; everything about the pick moved to
+ * `cityPick.test.ts`**, which is where A-84's four clauses and criteria N1–N10 live. What is left
+ * here of the pick is the minimum that keeps this file's own round trips honest.
+ *
  * **The one thing to get right, stated here because it looks like drift and is not.** A picked
  * city's own `countryCode` outranks `countryOf`, and **only** for a picked city. A mistyped `HU`
  * on a hand-typed Vienna still loses to `countryOf`, permanently — that is what A-29 Part 3 item 3
@@ -42,13 +49,20 @@ const VIENNA = { lat: 48.2082, lng: 16.3738 };
  * outward and draws the second city of Switzerland on the French side of the frontier.
  */
 const IN_FRANCE = { lat: 46.21, lng: 6.14 };
+/**
+ * **§8.4 A-84 Part 3** — the pick this file uses wherever I-22 used `placeId: 'ne:abc'`. Its
+ * `centre` equals `IN_FRANCE`, so it is **live**; `cityPick.test.ts` is where a stale one lives.
+ */
+const GENEVA_PICK = { rowId: 'ne:j64n0x', centre: { lat: 46.21, lng: 6.14 }, countryCode: 'CH' as const };
 
 // ---------------------------------------------------------------------------
 // Part 1 — the record.
 // ---------------------------------------------------------------------------
 
-test('I-22 A-83 Part 8: SCHEMA_VERSION is 4', () => {
-  assert.equal(SCHEMA_VERSION, 4);
+test('I-22 / I-22a: SCHEMA_VERSION is 5', () => {
+  // 4 at I-22 (`centre` widened); **5 at I-22a** (§8.4 A-84 Part 8 — `placeId` becomes `pick`,
+  // which is a type change and not a new scalar with a total default).
+  assert.equal(SCHEMA_VERSION, 5);
 });
 
 test('I-22 A-83 Part 8: a city nobody located has centre `null`, not {0,0}', () => {
@@ -60,62 +74,63 @@ test('I-22 A-83 Part 8: a city nobody located has centre `null`, not {0,0}', () 
     ctx('typed'),
   );
   assert.equal(trip.cities[0].centre, null, 'createTrip still fabricates a coordinate');
-  assert.equal(trip.cities[0].placeId, null, '`placeId` is null for a city nobody picked');
+  assert.equal(trip.cities[0].pick, null, '`pick` is null for a city nobody picked');
 });
 
-test('I-22 A-83 Part 8: `CityInit` carries both fields through `createTrip`', () => {
+test('I-22 / I-22a: `CityInit` carries both fields through `createTrip`', () => {
   const trip = createTrip(
     {
       title: 'Picked', startDate: '2019-03-01', endDate: '2019-03-04', homeCurrency: 'EUR',
-      cities: [{ key: 'geneva', name: 'Geneva', centre: IN_FRANCE, countryCode: 'CH', placeId: 'ne:abc' }],
+      cities: [{ key: 'geneva', name: 'Geneva', centre: IN_FRANCE, countryCode: 'CH', pick: GENEVA_PICK }],
     },
     ctx('picked'),
   );
   assert.deepEqual(trip.cities[0].centre, IN_FRANCE);
-  assert.equal(trip.cities[0].placeId, 'ne:abc');
+  assert.deepEqual(trip.cities[0].pick, GENEVA_PICK);
 });
 
 // ---------------------------------------------------------------------------
 // Part 2 — serialization and the migration.
 // ---------------------------------------------------------------------------
 
-test('I-22: toJSON emits `centre: null` and `placeId`, and fromJSON reads them back', () => {
+test('I-22 / I-22a: toJSON emits `centre: null` and `pick`, and fromJSON reads them back', () => {
   const trip = createTrip(
     {
       title: 'Round trip', startDate: '2019-03-01', endDate: '2019-03-04', homeCurrency: 'EUR',
       cities: [
         { key: 'kyoto', name: 'Kyoto' },
-        { key: 'geneva', name: 'Geneva', centre: IN_FRANCE, countryCode: 'CH', placeId: 'ne:abc' },
+        { key: 'geneva', name: 'Geneva', centre: IN_FRANCE, countryCode: 'CH', pick: GENEVA_PICK },
       ],
     },
     ctx('rt'),
   );
   const text = toJSON(trip);
   const raw = JSON.parse(text) as { schemaVersion: number; cities: Array<Record<string, unknown>> };
-  assert.equal(raw.schemaVersion, 4);
+  assert.equal(raw.schemaVersion, 5);
   assert.equal(raw.cities[0].centre, null, 'toJSON did not emit a null centre');
-  assert.equal(raw.cities[0].placeId, null);
-  assert.equal(raw.cities[1].placeId, 'ne:abc');
+  assert.equal(raw.cities[0].pick, null);
+  assert.deepEqual(raw.cities[1].pick, GENEVA_PICK);
   const back = fromJSON(text);
   assert.equal(back.cities[0].centre, null);
-  assert.equal(back.cities[0].placeId, null);
+  assert.equal(back.cities[0].pick, null);
   assert.deepEqual(back.cities[1].centre, IN_FRANCE);
-  assert.equal(back.cities[1].placeId, 'ne:abc');
+  assert.deepEqual(back.cities[1].pick, GENEVA_PICK);
   assert.equal(toJSON(back), text, 'the document does not round-trip byte for byte');
 });
 
-test('I-22: fromJSON refuses a non-string, non-null `placeId` with a named reason', () => {
+test('I-22 / I-22a: fromJSON refuses a `pick` that is not an object or null, with a named reason', () => {
   const trip = createTrip(
-    { title: 'Bad placeId', startDate: '2019-03-01', endDate: '2019-03-02', homeCurrency: 'EUR', cities: [{ key: 'k', name: 'K' }] },
+    { title: 'Bad pick', startDate: '2019-03-01', endDate: '2019-03-02', homeCurrency: 'EUR', cities: [{ key: 'k', name: 'K' }] },
     ctx('bad'),
   );
   const doc = JSON.parse(toJSON(trip)) as { cities: Array<Record<string, unknown>> };
-  doc.cities[0].placeId = 42;
+  doc.cities[0].pick = 42;
   assert.throws(
     () => fromJSON(JSON.stringify(doc)),
-    (e: unknown) => e instanceof TripParseError && /\$\.cities\[0\]\.placeId/.test((e as TripParseError).path),
-    'a numeric placeId was accepted',
+    (e: unknown) => e instanceof TripParseError && /\$\.cities\[0\]\.pick/.test((e as TripParseError).path),
+    'a numeric pick was accepted',
   );
+  // The whole ceiling — every field, every shape — is `cityPick.test.ts`'s N5.
 });
 
 test('I-22: fromJSON refuses a `centre` that is neither an object nor null', () => {
@@ -150,16 +165,20 @@ function v3DocWithTwoCities(): Record<string, unknown> {
     ctx('v3'),
   );
   const doc = JSON.parse(toJSON(trip)) as Record<string, unknown>;
-  // Age it: schemaVersion 3, and no `placeId` key on any city — the shape a v3 document has.
+  // Age it: schemaVersion 3, and no `placeId` and no `pick` key on any city — the shape a v3
+  // document has. (`pick` is what `toJSON` writes today; the rung under test is 3 → 4, and the
+  // 4 → 5 rung above it is `cityPick.test.ts`'s.)
   doc.schemaVersion = 3;
-  for (const c of doc.cities as Array<Record<string, unknown>>) delete c.placeId;
+  for (const c of doc.cities as Array<Record<string, unknown>>) { delete c.placeId; delete c.pick; }
   return doc;
 }
 
 test('I-22 A-83 Part 8: the 3 → 4 rung nulls exactly the {0,0} centres and leaves every other one alone', () => {
   const doc = v3DocWithTwoCities();
+  // **The ladder climbs the whole way**, so this asserts what a v3 document looks like at the
+  // CURRENT version: the 3 → 4 rung's conversion, then the 4 → 5 rung on top of it.
   const migrated = migrateDoc(doc) as { schemaVersion: number; cities: Array<Record<string, unknown>> };
-  assert.equal(migrated.schemaVersion, 4);
+  assert.equal(migrated.schemaVersion, SCHEMA_VERSION);
   assert.equal(migrated.cities.length, 2);
   // **The unchanged-coordinate assertion goes FIRST and it names the city.** N4 makes the rung
   // null every centre, and the failure a reader wants is *"Vienna"*, not *"2 !== 1"*.
@@ -174,13 +193,13 @@ test('I-22 A-83 Part 8: the 3 → 4 rung nulls exactly the {0,0} centres and lea
     migrated.cities[1].centre, VIENNA,
     'the rung moved a REAL coordinate. Vienna is not at 0°N 0°E and the rung may not touch it.',
   );
-  assert.equal(migrated.cities[0].placeId, null, 'the rung did not fill placeId');
-  assert.equal(migrated.cities[1].placeId, null);
+  assert.equal(migrated.cities[0].pick, null, 'the ladder did not leave `pick: null`');
+  assert.equal(migrated.cities[1].pick, null);
   // …and the migrated document parses and re-serialises.
   const trip = fromJSON(JSON.stringify(migrated));
   assert.equal(trip.cities[0].centre, null);
   assert.deepEqual(trip.cities[1].centre, VIENNA);
-  assert.equal(JSON.parse(toJSON(trip)).schemaVersion, 4);
+  assert.equal(JSON.parse(toJSON(trip)).schemaVersion, SCHEMA_VERSION);
 });
 
 test('I-22: the 3 → 4 rung REPORTS what it converted, and the count is 1 for that document', () => {
@@ -191,11 +210,11 @@ test('I-22: the 3 → 4 rung REPORTS what it converted, and the count is 1 for t
   assert.equal(migrateDocWithReport(migrateDoc(doc)).report.nulledOriginCentres, 0);
 });
 
-test('I-22: a build that reads up to 4 refuses a 5, and the ladder still names the version it was handed', () => {
+test('I-22 / I-22a: a build that reads up to 5 refuses a 6, and the ladder still names the version it was handed', () => {
   const doc = migrateDoc(v3DocWithTwoCities()) as Record<string, unknown>;
   assert.throws(
-    () => migrateDoc({ ...doc, schemaVersion: 5 }),
-    /this build reads up to 4\. Update the app\./,
+    () => migrateDoc({ ...doc, schemaVersion: 6 }),
+    /this build reads up to 5\. Update the app\./,
   );
   assert.throws(
     () => migrateDoc({ ...doc, schemaVersion: 0 }),
@@ -208,22 +227,26 @@ test('I-22: a build that reads up to 4 refuses a 5, and the ladder still names t
 // ---------------------------------------------------------------------------
 
 /**
- * One city, `centre` inside France's ring, `countryCode: 'CH'`, and `placeId` either set or not.
- * Everything else is held equal, so the only thing that can move the answer is `placeId`.
+ * One city, `centre` inside France's ring, `countryCode: 'CH'`, and a live pick either present or
+ * not. Everything else is held equal, so the only thing that can move the answer is the pick.
+ *
+ * **I-22a**: the pick's own `countryCode` is what answers now, not the city's. Here the two agree
+ * (`'CH'` in both places), which is what keeps this a test about PRECEDENCE; the case where they
+ * disagree — round 61's `HU` — is `cityPick.test.ts`'s N1.
  */
-function precedenceRow(placeId: string | null): TripSummaryRow {
+function precedenceRow(picked: boolean): TripSummaryRow {
   const trip = createTrip(
     {
       title: 'Geneva-ish', startDate: '2019-03-01', endDate: '2019-03-04', homeCurrency: 'EUR',
-      cities: [{ key: 'geneva', name: 'Geneva', centre: IN_FRANCE, countryCode: 'CH', ...(placeId === null ? {} : { placeId }) }],
+      cities: [{ key: 'geneva', name: 'Geneva', centre: IN_FRANCE, countryCode: 'CH', ...(picked ? { pick: GENEVA_PICK } : {}) }],
     },
-    ctx(`prec-${placeId ?? 'none'}`),
+    ctx(`prec-${picked ? 'pick' : 'none'}`),
   );
   return tripSummary(trip, COUNTRY_INDEX);
 }
 
 test('I-22 A-83 Part 8 clause 2: a PICKED city\'s own country outranks countryOf — {CH, picked}', () => {
-  const row = precedenceRow('ne:abc');
+  const row = precedenceRow(true);
   assert.deepEqual(
     { countryCode: row.cities[0].countryCode, countrySource: row.cities[0].countrySource },
     { countryCode: 'CH', countrySource: 'picked' },
@@ -233,7 +256,7 @@ test('I-22 A-83 Part 8 clause 2: a PICKED city\'s own country outranks countryOf
 });
 
 test('I-22 A-83 Part 8 clause 3: a TYPED city\'s code still loses to countryOf, permanently — {FR, coordinate}', () => {
-  const row = precedenceRow(null);
+  const row = precedenceRow(false);
   assert.deepEqual(
     { countryCode: row.cities[0].countryCode, countrySource: row.cities[0].countrySource },
     { countryCode: 'FR', countrySource: 'coordinate' },
@@ -272,8 +295,10 @@ test('I-22 A-83 Part 8 clause 1: a null centre means no coordinate attribution, 
 // `null` is a first-class centre, as a ceiling (verification rule 4).
 // ---------------------------------------------------------------------------
 
-test('I-22: SUMMARY_VERSION is 6', () => {
-  assert.equal(SUMMARY_VERSION, 6);
+test('I-22 / I-22a: SUMMARY_VERSION is 7', () => {
+  // 6 at I-22 (`centre` nullable, `countrySource` gained `'picked'`); **7 at I-22a** (§8.4 A-84
+  // Part 3 — the picked DERIVATION changes and no key moves).
+  assert.equal(SUMMARY_VERSION, 7);
 });
 
 test('I-22 ceiling: one located and one unlocated city — two rows, exactly one null centre, exactly one unlocated, ZERO cities at {0,0}', () => {

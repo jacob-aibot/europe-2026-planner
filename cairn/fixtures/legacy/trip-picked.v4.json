@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 4,
+  "id": "trip-v4fix",
+  "title": "A v4 document, committed",
+  "ownerId": "local",
+  "startDate": "2019-03-01",
+  "endDate": "2019-03-04",
+  "datePrecision": "exact",
+  "homeCurrency": "EUR",
+  "homeBase": null,
+  "party": {
+    "adults": 1,
+    "children": 0
+  },
+  "cities": [
+    {
+      "key": "geneva",
+      "name": "Geneva",
+      "countryCode": "CH",
+      "centre": {
+        "lat": 46.21,
+        "lng": 6.14
+      },
+      "placeId": "ne:j64n0x",
+      "order": 0
+    },
+    {
+      "key": "kyoto",
+      "name": "Kyoto",
+      "countryCode": "JP",
+      "centre": null,
+      "placeId": null,
+      "order": 1
+    }
+  ],
+  "days": [
+    {
+      "id": "2019-03-01",
+      "date": "2019-03-01",
+      "primaryCity": "transit",
+      "cities": [
+        "transit"
+      ],
+      "title": "",
+      "subtitle": "",
+      "stops": [],
+      "provenance": {
+        "source": "user",
+        "state": "accepted",
+        "confidence": "confirmed",
+        "addedAt": "2026-06-15",
+        "acceptedAt": "2026-06-15",
+        "actorUserId": null
+      }
+    },
+    {
+      "id": "2019-03-02",
+      "date": "2019-03-02",
+      "primaryCity": "transit",
+      "cities": [
+        "transit"
+      ],
+      "title": "",
+      "subtitle": "",
+      "stops": [],
+      "provenance": {
+        "source": "user",
+        "state": "accepted",
+        "confidence": "confirmed",
+        "addedAt": "2026-06-15",
+        "acceptedAt": "2026-06-15",
+        "actorUserId": null
+      }
+    },
+    {
+      "id": "2019-03-03",
+      "date": "2019-03-03",
+      "primaryCity": "transit",
+      "cities": [
+        "transit"
+      ],
+      "title": "",
+      "subtitle": "",
+      "stops": [],
+      "provenance": {
+        "source": "user",
+        "state": "accepted",
+        "confidence": "confirmed",
+        "addedAt": "2026-06-15",
+        "acceptedAt": "2026-06-15",
+        "actorUserId": null
+      }
+    },
+    {
+      "id": "2019-03-04",
+      "date": "2019-03-04",
+      "primaryCity": "transit",
+      "cities": [
+        "transit"
+      ],
+      "title": "",
+      "subtitle": "",
+      "stops": [],
+      "provenance": {
+        "source": "user",
+        "state": "accepted",
+        "confidence": "confirmed",
+        "addedAt": "2026-06-15",
+        "acceptedAt": "2026-06-15",
+        "actorUserId": null
+      }
+    }
+  ],
+  "pool": [],
+  "places": [],
+  "bookings": [],
+  "resolutions": [],
+  "photos": [],
+  "participants": [],
+  "revision": 1
+}

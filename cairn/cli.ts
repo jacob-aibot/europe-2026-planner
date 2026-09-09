@@ -253,6 +253,13 @@ function cmdStats() {
   // The legend prints once, and only when something is actually marked.
   if (provisional) out(LEGEND);
   out('');
+  // §8.4 **A-84** Part 7 item 1 (QA **R61-6**). `seen` is what there WAS, per class, counted as
+  // RECORDS, and it prints ABOVE `located` because it is the denominator `located` is a fraction
+  // of. `seen − located` is the number of records with no coordinate at all — a number no
+  // `TravelStats` field could answer before, because `cities` groups by name across trips.
+  // **`places` is a lower bound** (BUILD-NOTES **KD-115**): no stored summary row carries a total
+  // place count, so an unlocated place is invisible here and this column equals `located`.
+  out(`  records seen cities ${s.seen.cities} · places ${s.seen.places} · stops ${s.seen.stops}`);
   out(`  located      cities ${s.located.cities} · places ${s.located.places} · stops ${s.located.stops}`);
   out(
     `  could not place  cities ${s.unattributed.cities} · places ${s.unattributed.places} · ` +

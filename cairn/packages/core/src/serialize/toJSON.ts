@@ -24,7 +24,11 @@ function city(c: City) {
     // §8.4 A-83 Part 8. `null` is a value and is emitted as one — `omitUndef` drops only
     // `undefined`, so a null centre survives the write and comes back through `parseCentre`.
     centre: c.centre === null ? null : { lat: c.centre.lat, lng: c.centre.lng },
-    placeId: c.placeId,
+    // §8.4 A-84 Part 3. The record whole, field by field, or `null` — never `c.pick` passed
+    // through, because an aliased sub-object is what A-20 deletes wherever it appears.
+    pick: c.pick === null
+      ? null
+      : { rowId: c.pick.rowId, centre: { lat: c.pick.centre.lat, lng: c.pick.centre.lng }, countryCode: c.pick.countryCode },
     order: c.order,
     meta: c.meta ? omitUndef({ flagEmoji: c.meta.flagEmoji, color: c.meta.color }) : undefined,
   });

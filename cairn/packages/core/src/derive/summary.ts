@@ -180,8 +180,17 @@ export function cityRange(trip: Trip, cityKey: CityKey): string | null {
  *     row's own country where the coarse ring would have overruled it. No top-level key moves;
  *     `ROW_KEYS` does not grow and `ROW_PATHS` goes 24 → 25 (`cities[].centre` is a leaf when it
  *     is null and two leaves when it is not).
+ *   - **7** — ROADMAP I-22a (§8.4 **A-84** Part 3): the **picked derivation changes**.
+ *     `City.placeId` became `City.pick`, the country is read off the **pick** and never off
+ *     `City.countryCode`, and a pick whose `centre` no longer equals the city's is **stale** and
+ *     attributes nothing. A version-6 row over the same document can therefore differ in two
+ *     ways: a city whose typed `countryCode` was being reported as `'picked'` (QA **R61-1**) now
+ *     reports the pick's own country or falls to A-29, and a city whose coordinate was moved
+ *     after the pick now reports the coordinate. **No key moves at either level** and
+ *     `countrySource` gains **no** fourth value — a stale pick is not a source — so `ROW_KEYS`,
+ *     `ROW_PATHS` and `CITY_KEYS` are all unchanged.
  */
-export const SUMMARY_VERSION = 6;
+export const SUMMARY_VERSION = 7;
 
 /**
  * A city's **stated** country code, accepted or refused — §8.4 **A-29** Part 3. Module-private:
@@ -381,11 +390,13 @@ export type TripSummaryRow = {
  * never overrides a coordinate, it is never read for any record other than the `City` that
  * carries it, and it reaches `countryCodes` only through that city's own entry.
  *
- * **§8.4 A-83 Part 8 amends that by exactly one clause, and only for a city the user PICKED.**
- * `City.placeId` is the provenance A-29 Part 3 item 3 said was missing: where it is non-null the
- * `(centre, countryCode)` pair came from one shipped gazetteer row a human chose, and the row's
- * code outranks `countryOf` as `countrySource: 'picked'`. Where it is `null`, A-29 stands
- * verbatim — see the block comment at the per-city map below, which is where the rule lives.
+ * **§8.4 A-84 Part 3 amends that by exactly one clause, and only for a city the user PICKED.**
+ * `City.pick` is the provenance A-29 Part 3 item 3 said was missing — a **record**, not a
+ * pointer: where it is non-null and still describes the city, the row's own code outranks
+ * `countryOf` as `countrySource: 'picked'`. The city's own `countryCode` is **not consulted on
+ * that path at all** (QA **R61-1**). Everywhere else — no pick, a stale pick, a pick with no
+ * drawable country — A-29 stands verbatim; see the block comment at the per-city map below,
+ * which is where the rule lives.
  *
  * @throws {Error} programmer error only: a missing country index.
  */
@@ -432,38 +443,62 @@ export function tripSummary(trip: Trip, index: CountryIndex): TripSummaryRow {
       lastDay: range === null ? null : range.last,
     };
     // ---------------------------------------------------------------------
-    // §8.4 **A-83 Part 8**'s precedence, in order, and it is A-29's FIRST amendment.
+    // §8.4 **A-84 Part 3**'s precedence, in order. It replaces A-83 Part 8 clause 2 and leaves
+    // A-29 Part 3 standing verbatim.
     //
-    //   1. `centre === null`  ⇒ there is no coordinate attribution to be had.
-    //   2. `placeId !== null` ⇒ the pair (`centre`, `countryCode`) came from ONE shipped
-    //      gazetteer row that a HUMAN PICKED, and the row's code is the answer. It outranks
-    //      `countryOf`, and `countrySource` is `'picked'`.
-    //   3. `placeId === null` ⇒ **A-29 stands verbatim and unamended**: `countryOf` first, and
-    //      only in its silence is the stated code admitted through the four-step gate.
+    //   1. `centre === null` ⇒ there is no coordinate attribution to be had.
+    //   2. `pick !== null` **and the pick is LIVE** (`city.centre` exactly equals `pick.centre`)
+    //      **and** `pick.countryCode` is non-null **and** the shipped index can draw it ⇒
+    //      **`pick.countryCode`** is the answer, `countrySource: 'picked'`, outranking
+    //      `countryOf`.
+    //   3. anything else ⇒ **A-29 stands verbatim and unamended**: `countryOf` first, and only in
+    //      its silence is the city's own stated code admitted through the four-step gate.
     //
-    // **Why 2 is not the drift A-29 Part 3 item 3 refuses, and the difference is the field.**
+    // **`c.countryCode` is not read on this path AT ALL.** That is QA **R61-1**: the shipped code
+    // tested `c.placeId !== null` and then handed the city's **own typed `countryCode`** to
+    // `acceptStatedCountry`, so `setTripMeta(trip, {cities})` turned `{CH, picked}` into
+    // `{HU, picked}` in one call. `acceptStatedCountry` is deliberately **not** called here
+    // either: its job is to forgive a typed string — trim, uppercase — and a pick is not typed.
+    // The drawability set is consulted directly instead.
+    //
+    // **Why 2 is not the drift A-29 Part 3 item 3 refuses, and the difference is the FIELD.**
     // Item 3's stated reason for refusing *"the stated code wins"* is that *"`derive/summary.ts`
     // cannot tell a gazetteer-supplied `countryCode` from a hand-typed one, because `City`
-    // carries no provenance for it"*. `placeId` is exactly that provenance, it is written only
-    // by a human's pick (A-82 Part 6's fence, now load-bearing), and **a mistyped `HU` on a
-    // typed Vienna still loses to `countryOf` under clause 3, forever.** A reviewer who finds
-    // this arm firing for a city with `placeId: null` has found the defect the whole ruling is
-    // written around.
+    // carries no provenance for it"*. A bare `placeId` was **not** that provenance — nothing
+    // paired it with anything. `pick` is: `summary.ts` tells the two apart by reading a
+    // **different field**, not by reading the same field under a flag. A mistyped `HU` on a typed
+    // Vienna still loses to `countryOf` under clause 3, forever.
+    //
+    // **A pick describes a POINT, and a pick that no longer describes this city is inert**
+    // (clause 3). Exact equality is safe: both values are 4 dp decimals, JSON round-trips them
+    // unchanged, and no migration rung rewrites a located coordinate. The equality is asked HERE
+    // rather than enforced at the doors because a door rule is a rule every future door has to
+    // remember, and A-77…A-81 spent six adversarial rounds establishing that the eleventh door is
+    // always the one nobody remembered. A stale pick is **kept** — it is the user's own record of
+    // what they did — and `countrySource` gains no fourth value for it.
     //
     // The gazetteer wins over the ring because the disagreement is not symmetric: A-26 Part 2
     // chose the base scale for being *"the most forgiving of the error that dominates this
     // dataset's use"* rather than for accuracy, and a coarse ring bulges outward — so the
     // polygon is wrong about a town two kilometres from a frontier and the gazetteer is right.
     // ---------------------------------------------------------------------
-    if (c.placeId !== null) {
-      const picked = acceptStatedCountry(c.countryCode, drawable);
-      if (picked !== null) {
-        return { key: c.key, name: c.name, countryCode: picked, countrySource: 'picked', ...place };
-      }
-      // A picked row whose code the shipped index cannot DRAW falls through to clause 3, which
-      // is A-29 step 4's own reasoning: the gate's alphabet is the set of countries this product
-      // can draw, and a code outside it would name a country the map silently omits.
+    if (
+      c.pick !== null &&
+      c.centre !== null &&
+      c.centre.lat === c.pick.centre.lat &&
+      c.centre.lng === c.pick.centre.lng &&
+      c.pick.countryCode !== null &&
+      drawable.has(c.pick.countryCode)
+    ) {
+      return {
+        key: c.key, name: c.name, countryCode: c.pick.countryCode, countrySource: 'picked', ...place,
+      };
     }
+    // Anything else — no pick, a STALE pick, a pick stating no country, or a pick stating one the
+    // shipped index cannot DRAW — falls through to clause 3, which is A-29 Part 3 verbatim. The
+    // drawability test is A-29 step 4's own reasoning: the gate's alphabet is the set of
+    // countries this product can draw, and a code outside it would name a country the lifetime
+    // map silently omits.
     // §8.4 A-29: the coordinate is asked first and its answer is final when it has one. Only
     // where it is `null` — the dataset has no evidence, which A-26 ruled is the *correct*
     // answer rather than a hole to fill by snapping — is the city's own stated code consulted.

@@ -26,7 +26,7 @@
  * cost. Both stay module-private, and this module imports nothing from `model/cityName.ts`.
  */
 import type { CountryCode } from '../model/ids.ts';
-import type { LatLng } from '../model/types.ts';
+import type { CityPick, LatLng } from '../model/types.ts';
 
 /** One settlement, as the gazetteer stores it (A-82 Part 3). */
 export type GazetteerRow = {
@@ -47,8 +47,8 @@ export type GazetteerRow = {
    * The source's stable row id, **prefixed with the dataset that minted it**: `'ne:<NE_ID base 36>'`
    * today, `'gn:…'` after I-23 (§8.4 **A-83** Part 8).
    *
-   * The prefix is not decoration. This value is what a `City.placeId` persists, so a stored pick
-   * has to say **which corpus** it came from — otherwise a regeneration onto a different source
+   * The prefix is not decoration. This value is what a `CityPick.rowId` persists, so a stored
+   * pick has to say **which corpus** it came from — otherwise a regeneration onto a different source
    * turns every stored id into a collision waiting to be misread. It is also still what makes a
    * regeneration diff readable, which is A-82 Part 2's own reason for carrying it.
    */
@@ -63,8 +63,9 @@ export type GazetteerRow = {
    * **differ** — 98 rows today, among them Brazzaville, Geneva, Jerusalem, Maastricht, Lugano
    * and Arlon, every one of which A-82 Part 5 refused outright. A row that would contradict the
    * index *without* carrying this record is still **REFUSED**; what changed is that carrying it
-   * is now possible, because `City.placeId` lets `derive/summary.ts` tell a picked pair from a
-   * typed field.
+   * is now possible, because `City.pick` lets `derive/summary.ts` tell a picked pair from a
+   * typed field — §8.4 **A-84** Part 3: the pair is carried on the pick itself, so `summary.ts`
+   * reads a different field rather than the same field under a flag.
    *
    * A coarse ring bulges outward (A-26 Part 2), so where the two disagree the gazetteer is
    * generally right and the polygon is generally wrong about a town near a frontier — which is
@@ -368,4 +369,32 @@ export function decodeGazetteer(meta: { source: string }, packed: string): Gazet
     });
   }
   return { source: meta.source, countryNames, rows };
+}
+
+/**
+ * **The only mint for a `CityPick`** — §8.4 **A-84** Part 3 clause 4. Pure, synchronous, no
+ * corpus, no network, no id factory.
+ *
+ * **It takes a ROW, not a string, and that is the enforcement.** A-82 Part 6 forbids an
+ * auto-match — a system pairing a typed name with a row without a human choosing it — and this
+ * signature turns that prohibition into a shape: a caller that does not hold a `GazetteerRow`
+ * cannot produce a pick, and the only way to hold one is `searchGazetteer`, which is what a human
+ * is looking at when they choose.
+ *
+ * It copies three things and derives nothing: the row's id, a **fresh** copy of the row's centre
+ * (never the row's own object — an aliased corpus is a write to a trip landing in the gazetteer),
+ * and the row's country code, with any value that is not two uppercase letters mapped to `null`.
+ * That last clause is what makes the mint and `parseCityPick` **agree** rather than merely
+ * coexist: the corpus carries `''` for a row whose source stated no code, and a pick carrying
+ * `''` would be a document this build refuses to open.
+ *
+ * @throws nothing.
+ */
+export function cityPickFromRow(row: GazetteerRow): CityPick {
+  const code = row.countryCode;
+  return {
+    rowId: row.id,
+    centre: { lat: row.centre.lat, lng: row.centre.lng },
+    countryCode: /^[A-Z]{2}$/.test(code) ? (code as CountryCode) : null,
+  };
 }

@@ -397,8 +397,8 @@ test('A-29: a stated code on a city does NOT rescue that city\'s places and stop
   assert.equal(row.stopCount, 0, 'INCONCLUSIVE: the fixture grew stops');
 });
 
-test('A-83 Part 8: SUMMARY_VERSION is 6 — `centre` became nullable and `countrySource` gained `picked`', () => {
-  assert.equal(SUMMARY_VERSION, 6);
+test('A-84 Part 3: SUMMARY_VERSION is 7 — the PICKED derivation changed (A-83 Part 8 put it at 6)', () => {
+  assert.equal(SUMMARY_VERSION, 7);
 });
 
 test('A-29 non-regression: the reference trip does not move, and every city is coordinate-derived', () => {

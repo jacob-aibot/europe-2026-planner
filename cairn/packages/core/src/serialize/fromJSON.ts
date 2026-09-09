@@ -15,13 +15,14 @@
  * parser is the invariant* and a parser edited "for the doors" would break that on the spot.
  */
 import type {
-  Booking, City, CostEstimate, DatePrecision, Day, LatLng, Money, OpeningHours, Participant, PhotoAsset,
+  Booking, City, CityPick, CostEstimate, DatePrecision, Day, LatLng, Money, OpeningHours, Participant, PhotoAsset,
   PhotoAttachRef, PhotoDerivative, Place, PlaceLink,
   Provenance, Stop, StopPlacement, Ticket, Trip, ConflictResolution,
 } from '../model/types.ts';
 import { DATE_PRECISIONS, PARTICIPANT_KINDS, SCHEMA_VERSION } from '../model/types.ts';
 import { isClockTime } from '../model/openingHours.ts';
 import { isIsoDate } from '../model/ids.ts';
+import type { CountryCode } from '../model/ids.ts';
 import { TripParseError } from './parseError.ts';
 import { migrateDoc } from './migrate.ts';
 
@@ -341,6 +342,60 @@ function parseCentre(v: unknown, path: string): LatLng | null {
   return { lat: numOf(centre.lat, `${path}.lat`), lng: numOf(centre.lng, `${path}.lng`) };
 }
 
+/**
+ * **§8.4 A-84 Part 3 clause 2: a pick is ONE value — accepted whole or refused whole.**
+ *
+ * This is the shape rule A-83 never wrote, and it is where R61-1's whole class of malformed
+ * values stops being *"a value that falls through"* and becomes *"a document that does not
+ * open"*: `''`, `'   '`, `':'`, `'x'`, `'null'`, `'ne:'` and a 4 kB string are refused **here**,
+ * at a named JSON path, rather than silently declining to attribute three layers down.
+ *
+ * Three fields, each with its own reason for its own rule:
+ *
+ *   - **`rowId`** — `/^[a-z]{2,8}:[A-Za-z0-9_-]{1,32}$/`. The prefix is the corpus that minted the
+ *     row (`ne:` today, `gn:` after I-23), so a stored pick says *which* dataset it came from.
+ *     **Nothing ever resolves it** (A-84 Part 2): the corpus is behind a lazy subpath and off the
+ *     write path, and a parser that awaited a row would stop being pure and synchronous.
+ *   - **`centre`** — a `LatLng` through `parseCentre`, and **never `null`**. A pick without a
+ *     coordinate is not a pick, and clause 3's staleness test needs it.
+ *   - **`countryCode`** — `null`, or `/^[A-Z]{2}$/`, **uppercase exactly and not trimmed**.
+ *     A-29's trim-and-uppercase forgiveness is deliberately *refused* here: a pick is **copied
+ *     off a row**, not typed, so `' hu '` in a pick is evidence the value was typed and the
+ *     record is not what it claims to be.
+ *
+ * **This runs at every build door and not just at the storage boundary**, because it runs in the
+ * parser and §2.1 A-77…A-81 put every door behind the parser through `commit`. No new mechanism
+ * is added for it, which is the point.
+ *
+ * `undefined` is refused rather than defaulted — `centre`'s own layering, verbatim: `migrateDoc`
+ * runs in front of this parser and is the layer that supplies a missing field.
+ */
+function parseCityPick(v: unknown, path: string): CityPick | null {
+  if (v === null) return null;
+  const o = obj(v, path);
+  const rowId = str(o.rowId, `${path}.rowId`);
+  if (!/^[a-z]{2,8}:[A-Za-z0-9_-]{1,32}$/.test(rowId)) {
+    throw new TripParseError(
+      "expected a gazetteer row id of the form '<source>:<row>' — two to eight lowercase letters, " +
+        'a colon, then one to thirty-two of [A-Za-z0-9_-]',
+      `${path}.rowId`,
+    );
+  }
+  const centre = parseCentre(o.centre, `${path}.centre`);
+  if (centre === null) {
+    throw new TripParseError('expected a coordinate — a pick without one is not a pick', `${path}.centre`);
+  }
+  const raw = o.countryCode;
+  if (raw !== null && (typeof raw !== 'string' || !/^[A-Z]{2}$/.test(raw))) {
+    throw new TripParseError(
+      'expected null or exactly two UPPERCASE letters — a pick is copied off a row, never typed, ' +
+        "so ' hu ' is evidence this record is not what it claims to be",
+      `${path}.countryCode`,
+    );
+  }
+  return { rowId, centre, countryCode: raw as CountryCode | null };
+}
+
 export function parseCity(v: unknown, path: string): City {
   const o = obj(v, path);
   const meta = o.meta === undefined ? undefined : obj(o.meta, `${path}.meta`);
@@ -349,10 +404,10 @@ export function parseCity(v: unknown, path: string): City {
     name: str(o.name, `${path}.name`),
     countryCode: str(o.countryCode, `${path}.countryCode`),
     centre: parseCentre(o.centre, `${path}.centre`),
-    // §8.4 A-83 Part 8. A string or `null`, and nothing else — which is A-74 Part 4's reason
-    // there is no `validateTrip` code for it: the parser already refuses everything that is not
-    // one of those two, and a cast is not a producer.
-    placeId: strOrNull(o.placeId, `${path}.placeId`),
+    // §8.4 A-84 Part 3 clause 2. The object whole or `null`, and nothing else — which is A-74
+    // Part 4's reason there is no `validateTrip` code for it: the parser already refuses
+    // everything that is not one of those two, and a cast is not a producer.
+    pick: parseCityPick(o.pick, `${path}.pick`),
     order: numOf(o.order, `${path}.order`),
     ...(meta
       ? {

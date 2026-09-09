@@ -140,22 +140,21 @@ for (const r of codeless) {
   const hit = searchGazetteer(r.name, GAZETTEER, { limit: 20 }).find((h) => h.id === r.id);
   console.log(`    ${r.name} -> label "${hit ? hit.label : '(not reachable by its own name)'}"`);
 }
-const refusals = JSON.parse(readFileSync(new (globalThis.URL)('../fixtures/golden/gazetteer-refusals.json', import.meta.url), 'utf8'));
-console.log(`  refusals golden total ${refusals.total}, rows ${refusals.refused.length}`);
+const refusals = JSON.parse(readFileSync(new (globalThis.URL)('../fixtures/golden/gazetteer-disagreements.json', import.meta.url), 'utf8'));
+console.log(`  disagreements golden total ${refusals.total}, rows ${refusals.disagreements.length}`);
 const shippedIds = new Set(GAZETTEER.rows.map((r) => r.id));
-const leaked = refusals.refused.filter((r) => shippedIds.has(r.id));
-console.log(`  refused rows that nevertheless SHIP : ${leaked.length}`);
-for (const r of leaked) console.log(`    ${r.name}`);
-const goldenIds = new Set(refusals.refused.map((r) => r.id));
+const leaked = refusals.disagreements.filter((r) => shippedIds.has(r.id));
+console.log(`  disagreeing rows that SHIP (A-83 Part 8: all of them, carrying the record) : ${leaked.length}`);
+const goldenIds = new Set(refusals.disagreements.map((r) => r.id));
 const rawRefusedIds = new Set([...qn.disagreed.keys()].map((i) => (Number(i) >>> 0).toString(36)));
 const missingFromGolden = [...rawRefusedIds].filter((i) => !goldenIds.has(i));
 console.log(`  quantised-census refusals absent from the golden : ${missingFromGolden.length}`);
 
 // distance from each refused row to its stated country, so "they are border towns" is measured
 console.log('');
-console.log('  the 98 refusals, stated -> derived pairs, counted:');
+console.log('  the 98 disagreements, stated -> derived pairs, counted:');
 const pairs = new Map();
-for (const r of refusals.refused) {
+for (const r of refusals.disagreements) {
   const k = `${r.statedCountry} -> ${r.derivedCountry}`;
   pairs.set(k, (pairs.get(k) ?? 0) + 1);
 }

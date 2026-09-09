@@ -5,7 +5,7 @@
  * one of them bumps `Trip.revision`, which is what the client's derived-cache invalidation
  * keys off (§4.2 rule 3).
  */
-import type { City, DatePrecision, Trip, TripMeta } from '../model/types.ts';
+import type { City, CityPick, DatePrecision, Trip, TripMeta } from '../model/types.ts';
 import type { CityKey, Currency, IdFactory, IsoDate, UserId } from '../model/ids.ts';
 import { LOCAL_OWNER, SCHEMA_VERSION } from '../model/types.ts';
 import { ensureDays } from './days.ts';
@@ -69,11 +69,16 @@ export type CityInit = {
    */
   centre?: { lat: number; lng: number } | null;
   /**
-   * The gazetteer row the user **picked** (§8.4 A-83 Part 8). Defaults to `null`, which is what
-   * a typed city has. **Nothing in this repository may fill it from a name match** — A-82 Part 6
-   * forbids it and `summary.ts`'s precedence is why the fence has to hold.
+   * What the user **picked** out of the gazetteer, recorded whole (§8.4 **A-84** Part 3).
+   * Defaults to `null`, which is what a typed city has. **Nothing in this repository may fill it
+   * from a name match** — A-82 Part 6 forbids it, and clause 4 makes that a signature: the only
+   * mint is `cityPickFromRow(row)`, so a caller who does not hold a row cannot produce one.
+   *
+   * Its shape is **not checked here**. `commit` routes every city this function writes through
+   * `fromJSON`'s own `parseCity`, which is where the rule lives and where every other door
+   * inherits it (§2.1 A-77…A-81).
    */
-  placeId?: string | null;
+  pick?: CityPick | null;
   order?: number;
   meta?: { flagEmoji?: string; color?: string };
 };
@@ -123,7 +128,7 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
     // measured, wearing the shape of one"*, and every hand-entered city was a summary row
     // claiming 0°N 0°E. `??` and not `||` for the same reason the key above uses it.
     centre: c.centre ?? null,
-    placeId: c.placeId ?? null,
+    pick: c.pick ?? null,
     order: c.order ?? i,
     ...(c.meta ? { meta: c.meta } : {}),
   }));

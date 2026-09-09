@@ -108,6 +108,29 @@ export type TravelStats = {
   cities: TravelStatsCity[];
   trips: { planned: number; active: number; completed: number };
   daysTravelled: number;
+  /**
+   * **What there WAS, per record class, counted as RECORDS** — §8.4 **A-84** Part 7 item 1
+   * (QA **R61-6**). `seen − located` is the number of records with no coordinate at all, and it
+   * is the only way that number is derivable: `cities` groups by `nameKey` **across trips**, so
+   * two trips each holding an unlocated Paris subtract to **1** where there are **2** records.
+   *
+   * **`seen`, not `unlocated`** — two stored counts that can disagree is the defect, not the fix.
+   * The type's own invariant is `unattributed <= located <= seen`, per class, and it holds by
+   * construction: every summand below is clamped to the `located` it sits beside.
+   *
+   * **`places` is a LOWER BOUND today, and that is disclosed rather than hidden.** A
+   * `TripSummaryRow` carries `cityCount`, `dayCount`, `stopCount` and `poolCount` but **no total
+   * place count**, so an unlocated `Place` is invisible to this census and `seen.places` equals
+   * `located.places`. Cities are exact (`cities[]` is on the row, record by record) and stops are
+   * exact (`stopCount + poolCount` is every stop the census walks). Closing the place hole needs
+   * a field on the stored row, which is an architect's ruling and A-84 does not make it —
+   * BUILD-NOTES **KD-115**.
+   *
+   * **No version moves for this field.** `TravelStats` is derived and never stored (A-34's
+   * precedent, already load-bearing for `provisional` and `unnamedCities`), and
+   * `test/stats-storage.test.ts`'s 6b-5 pins it.
+   */
+  seen: TravelRecordCensus;
   /** What there was to attribute. The denominator, and the *"no places yet"* test. */
   located: TravelRecordCensus;
   /** The honest hole, on screen. Never greater than `located`, per class. */
@@ -173,6 +196,18 @@ const inDomain = (n: number): number => Math.min(DOMAIN_MAX, Math.max(DOMAIN_MIN
  * index-free (A-31 Part 4), and membership is the mint's job.
  */
 const isMintedCode = (v: unknown): v is CountryCode => typeof v === 'string' && /^[A-Z]{2}$/.test(v);
+
+/**
+ * **§8.4 A-84 Part 7 item 1 + A-37 Part 3's idiom, one field over.** A stored count, read as a
+ * count or as nothing.
+ *
+ * `stopCount` and `poolCount` have been on the row since generation 1, but a stored row is not a
+ * validated document: a hand-edited one can carry `'12'`, `-1`, `1.5` or `NaN`. Every one of
+ * those is **one answer** — *this row does not say how many records it had* — and contributes
+ * `0`, which the `Math.max` at the accumulation site then floors at the row's own `located`.
+ */
+const countOf = (v: unknown): number =>
+  typeof v === 'number' && Number.isInteger(v) && v >= 0 ? v : 0;
 
 /**
  * **§8.4 A-83 Part 8 + A-37 Part 3's idiom.** Whether a stored `cities[].centre` is a coordinate.
@@ -380,6 +415,8 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
   // check below: an entry that folds to `''` produces no city row and therefore falls back to
   // nothing. It is already counted, once, in `unnamedCities`.
   let unreadableCityDates = 0;
+  let seenCities = 0;
+  let seenStops = 0;
   let locatedCities = 0;
   let unattributedCities = 0;
   let locatedPlaces = 0;
@@ -395,6 +432,12 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
     // lets core throw on programmer error only. A missing census contributes **nothing** to
     // either side of the place/stop hole rather than being invented; the row's cities are still
     // walked, because `cities[]` has been on the row since version 3.
+    // **A-84 Part 7 item 1.** `seen` is accumulated in the same walk, per row, and each summand
+    // is clamped to the `located` beside it — R28-4's clamp, one field over: a row out of storage
+    // that claims more located records than it carries would otherwise break
+    // `located <= seen` for the whole library rather than for itself.
+    const stopRecords = countOf(row.stopCount) + countOf(row.poolCount);
+    let rowLocatedStops = 0;
     const census = row.attribution;
     if (census) {
       if (census.places) {
@@ -405,10 +448,12 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
         unattributedPlaces += Math.max(0, census.places.located - census.places.attributed);
       }
       if (census.stops) {
+        rowLocatedStops = census.stops.located;
         locatedStops += census.stops.located;
         unattributedStops += Math.max(0, census.stops.located - census.stops.attributed);
       }
     }
+    seenStops += Math.max(stopRecords, rowLocatedStops);
     // The city census is derivable from `cities[]` alone, which is why the row carries no city
     // census of its own.
     //
@@ -428,6 +473,7 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
     // rescan reaches it, which is the honest answer for a row that does not say where the city
     // is (§8.4 clause 3's rescan is what closes the gap, and it runs before anything claims the
     // lifetime map is complete).
+    seenCities += Array.isArray(row.cities) ? row.cities.length : 0;
     for (const c of row.cities) {
       const located = isLocatedCentre((c as { centre?: unknown }).centre);
       if (located) locatedCities++;
@@ -584,6 +630,14 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
     cities,
     trips,
     daysTravelled,
+    // **A-84 Part 7 item 1.** `places` is `located` exactly: no stored row carries a total place
+    // count, so an unlocated place is invisible here. The `Math.max` is what keeps
+    // `located <= seen` true for every class rather than for two of them.
+    seen: {
+      cities: Math.max(seenCities, locatedCities),
+      places: locatedPlaces,
+      stops: Math.max(seenStops, locatedStops),
+    },
     located: { cities: locatedCities, places: locatedPlaces, stops: locatedStops },
     unattributed: {
       cities: unattributedCities,

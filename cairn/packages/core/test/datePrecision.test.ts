@@ -193,7 +193,9 @@ test('no schemaVersion bump for datePrecision — the field is additive with a t
   assert.equal(base().schemaVersion, SCHEMA_VERSION);
   assert.equal(JSON.parse(toJSON(base())).schemaVersion, SCHEMA_VERSION);
   // The bumps that DID happen are photos' and participants', each stated where it is decided.
-  assert.equal(SCHEMA_VERSION, 4);
+  // 4 at I-22 (`City.centre` widened); **5 at I-22a** (§8.4 A-84 Part 8 — `City.placeId`
+  // becomes `City.pick`, a TYPE change). Still nothing of `datePrecision`'s doing.
+  assert.equal(SCHEMA_VERSION, 5);
 });
 
 /**

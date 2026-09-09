@@ -34,7 +34,7 @@
 
 // ---- model (7) ---------------------------------------------------------------
 export type {
-  Trip, City, Day, Stop, StopPlacement, Place, PlaceLink, Booking, BookingKind, Ticket,
+  Trip, City, CityPick, Day, Stop, StopPlacement, Place, PlaceLink, Booking, BookingKind, Ticket,
   CostEstimate, Money, MoneyBasis, Provenance, ProvenanceSource, ProvenanceState,
   ProvenanceConfidence, Conflict, ConflictKind, ConflictResolution, ConflictSeverity,
   Leg, Issue, IssueCode, Ref, RefKind, LatLng, StopCategory, StopFlag, TravelMode, TravelRole,
@@ -135,7 +135,12 @@ export type { CountryIndex, CountryEntry, CountryEntryInit, CountryRing, Country
 // `countryIndex`/`decodeCountryIndex`'s reason verbatim — *a caller needs to pass a dataset, not
 // to mint one* — and `foldPlaceName` additionally must not be reachable because it is **not**
 // `normalizeCityName` and a caller that can reach both will use the wrong one (A-82 Part 3).
-export { searchGazetteer } from './geo/gazetteer.ts';
+//
+// `cityPickFromRow` joins at ROADMAP I-22a (§8.4 **A-84** Part 3 clause 4) — 87 → 88. It is the
+// ONLY mint for a `CityPick`, it is pure and it touches no data, so it belongs beside
+// `searchGazetteer` on the main surface rather than behind the subpath: the subpath is the
+// ~380 kB corpus, and this function is nine lines. The subpath stays at exactly one symbol.
+export { searchGazetteer, cityPickFromRow } from './geo/gazetteer.ts';
 export type { Gazetteer, GazetteerRow, GazetteerHit, GazetteerSearchOptions } from './geo/gazetteer.ts';
 // `lifecycle` joins in revision 10 under P2: §8.1 names it, and §8.9 is the documentation
 // change §2.10's own rule requires before a symbol may reach this file.

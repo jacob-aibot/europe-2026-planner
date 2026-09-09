@@ -12,7 +12,7 @@
  * against cannot be "110 against 50, enumerated". BUILD-NOTES KD-33, which supersedes
  * KD-19 — the entry that recorded the gap as enumerated rather than narrowed.
  *
- * So: one array, **87** entries, set equality both ways. (69 in revision 5; `reassertRetirements`
+ * So: one array, **88** entries, set equality both ways. (69 in revision 5; `reassertRetirements`
  * joins in revision 6 under §2.7 A-5; `lifecycle` joins in revision 10 under §8.1/§8.9,
  * Phase 2 I-1; `countryOf` and `COUNTRY_INDEX` join under §8.4 clause 1, Phase 2 I-5; `SUMMARY_VERSION`
  * joins under §8.4 clause 3, Phase 2 I-6; `travelStats` joins under §8.4 clause 2 / A-31, Phase 2 I-7;
@@ -50,10 +50,11 @@
  * the parser's and the builder's shared enum and a caller that can read it is a caller that will
  * grow a second copy. `Participant`, `ParticipantKind`, `ParticipantId`, `ParticipantInit` and
  * `ParticipantPatch` are **types** and do not count.
- * **`searchGazetteer` joins at Phase 2 I-21** under §8.4 **A-82** Part 9 — 86 → 87. P2 (that
+ * **`searchGazetteer` joins at Phase 2 I-21** under §8.4 **A-82** Part 9 — 86 → 87, and
+ * **`cityPickFromRow` joins at I-22a** under §8.4 **A-84** Part 3 clause 4 — 87 → **88**. P2 (that
  * ruling names it) and P1 (`cli.ts cities` calls it). It brings §2.10's **first second entry
  * point**, `@cairn/core/gazetteer`, which carries exactly one runtime symbol and gets its **own**
- * set equality below rather than joining this list — `GAZETTEER` is not part of the 87, because
+ * set equality below rather than joining this list — `GAZETTEER` is not part of the 88, because
  * unlike `COUNTRY_INDEX` the gazetteer is not on the write path and its ~380 kB is dynamically
  * imported. `foldPlaceName` and `decodeGazetteer` stay internal for `countryIndex`/
  * `decodeCountryIndex`'s reason verbatim — *a caller needs to pass a dataset, not to mint one* —
@@ -102,9 +103,12 @@ const THE_LIST = [
   'cityRange', 'daysForCity', 'orderedCities', 'weekdayOf', 'tripSummary',
   'geoCheck', 'GEO_LIMIT_KM', 'lifecycle', 'countryOf', 'countryKeyPoint', 'countryParts', 'COUNTRY_INDEX', 'SUMMARY_VERSION',
   'travelStats',
-  // geo (1) — §8.4 A-82 Part 9, Phase 2 I-21. `GAZETTEER` is NOT here: see the subpath assertion
-  // at the foot of this file.
-  'searchGazetteer',
+  // geo (2) — §8.4 A-82 Part 9 (Phase 2 I-21) and §8.4 **A-84** Part 3 clause 4 (I-22a).
+  // `GAZETTEER` is NOT here: see the subpath assertion at the foot of this file, which stays at
+  // exactly one symbol. `cityPickFromRow` is on THIS surface and not behind the subpath because
+  // it is a pure nine-line function over a row the caller already holds — the subpath exists for
+  // the ~380 kB dataset, not for the type.
+  'searchGazetteer', 'cityPickFromRow',
   // conflict (6)
   'detectConflicts', 'RULES', 'resolveConflict', 'unresolveConflict', 'syncResolutions',
   'reassertRetirements',
@@ -125,9 +129,9 @@ const THE_LIST = [
 const runtimeExports = () =>
   Object.keys(core).filter((k) => typeof (core as Record<string, unknown>)[k] !== 'undefined');
 
-test('§2.10 is 87 symbols, and the list in this file is exactly that long', () => {
-  assert.equal(THE_LIST.length, 87, 'the transcribed list is no longer §2.10\'s stated size');
-  assert.equal(new Set(THE_LIST).size, 87, 'the list has a duplicate');
+test('§2.10 is 88 symbols, and the list in this file is exactly that long', () => {
+  assert.equal(THE_LIST.length, 88, 'the transcribed list is no longer §2.10\'s stated size');
+  assert.equal(new Set(THE_LIST).size, 88, 'the list has a duplicate');
 });
 
 /**
@@ -135,7 +139,7 @@ test('§2.10 is 87 symbols, and the list in this file is exactly that long', () 
  * Phase 2 I-21.
  *
  * `@cairn/core/gazetteer` carries **exactly one runtime symbol**, `GAZETTEER`, and it is *not* part
- * of the 87 above. The subpath exists because unlike `COUNTRY_INDEX` the gazetteer is **not on the
+ * of the 88 above. The subpath exists because unlike `COUNTRY_INDEX` the gazetteer is **not on the
  * write path**, so its ~380 kB is dynamically imported rather than shipped in every consumer's main
  * chunk. It is a **door, not a reach-in**: ceiling (1) still forbids importing `geo/gazetteer.gen.ts`
  * by module path, and this assertion is what keeps the subpath from quietly growing into a back door

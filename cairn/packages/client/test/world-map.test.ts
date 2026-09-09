@@ -74,6 +74,9 @@ function statsOf(
     cities: [],
     trips: { planned: 0, active: 0, completed: 1 },
     daysTravelled: 10,
+    // §8.4 **A-84** Part 7 item 1: `seen` is what there WAS, per class. This fixture is about
+    // countries and carries no city, place or stop, so all three are zero beside `located`.
+    seen: { cities: 0, places: 0, stops: 0 },
     located: { cities: 0, places: 0, stops: 0 },
     unattributed: { cities: 0, places: 0, stops: 0 },
     unnamedCities: 0,

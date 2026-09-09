@@ -1,7 +1,7 @@
 /**
  * Document migration.
  *
- * **There are four schema versions since ROADMAP I-22 (§8.4, A-83 Part 8).** `migrateDoc` is a
+ * **There are five schema versions since ROADMAP I-22a (§8.4, A-84 Part 8).** `migrateDoc` is a
  * pass-through with defaults for the current version, a **ladder** of successive upgrades for
  * anything below it, and a loud, specific failure for anything else. The *call site* was put in
  * place before the first real migration existed rather than being retrofitted into every reader;
@@ -28,7 +28,9 @@
  * `photos` is decided by clause 3 (A-57 Part 5, which A-72 generalises rather than supersedes),
  * `participants` is decided by clause 3 without an argument, **`City.centre: LatLng | null` is
  * decided by clause 2** (§8.4 A-83 Part 8 — a widening of an existing field's value domain, and
- * `City.placeId` rides along in the same bump because it would not have earned one alone), and
+ * `City.placeId` rides along in the same bump because it would not have earned one alone),
+ * **`City.pick` replacing `City.placeId` is decided by neither clause and by A-84 Part 8 instead
+ * — it is a TYPE CHANGE, so the *"new scalar with a total default"* arm does not apply** — and
  * the next one is decided by a builder rather than by a ruling. **A mechanism used when someone remembers to argue for it is
  * not a mechanism** — and since the copy path gives up the cheap "carry unknown keys" answer on
  * purpose, `SCHEMA_VERSION` is the only downgrade-safety mechanism this design has left.
@@ -102,6 +104,15 @@ export type MigrationReport = {
    * measurement and not a flag.
    */
   nulledOriginCentres: number;
+  /**
+   * How many non-null `cities[].placeId` values the 4 → 5 rung **discarded** (§8.4 **A-84**
+   * Part 8). Rounds 60 and 61 both walked the callers and **no product surface has ever written
+   * a non-null `placeId`**, so this is zero on every document that exists — and the criterion
+   * that asserts it is zero over every committed fixture is what makes A-84 Part 7 item 3's rule
+   * (*"a rung that rewrites or discards a value a person typed or picked owes the user a record;
+   * a rung that deletes a fabrication does not"*) checkable rather than assumed.
+   */
+  droppedPlaceIds: number;
 };
 
 /**
@@ -112,7 +123,16 @@ export type MigrationReport = {
  */
 type Rung = (doc: Record<string, unknown>, tally: MigrationReport) => Record<string, unknown>;
 
-/** Exactly `{lat: 0, lng: 0}`, and nothing else — not near it, not `{0,0,extra}`. */
+/**
+ * `{lat: 0, lng: 0}` — exactly those two values, and **not near** them.
+ *
+ * **QA R61-8: it ACCEPTS `{lat: 0, lng: 0, alt: 5}`, and the old docstring's *"not `{0,0,extra}`"*
+ * was false.** The behaviour is right and the sentence was wrong, so the sentence moved. The rung
+ * exists to delete a fabrication `createTrip` used to write, and it is keyed on the two fields
+ * that fabrication consists of; an extra key beside them does not make the point a measurement,
+ * and `parseCentre` rebuilds a coordinate from `lat`/`lng` alone anyway, so the extra key was
+ * never going to survive the parser that runs immediately after this.
+ */
 function isOrigin(v: unknown): boolean {
   if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
   const o = v as Record<string, unknown>;
@@ -122,6 +142,12 @@ function isOrigin(v: unknown): boolean {
 /**
  * **v3 → v4** (§8.4 **A-83** Part 8, ROADMAP I-22): `City.centre` widens to `LatLng | null` and
  * `City.placeId` arrives.
+ *
+ * **QA R61-9, recorded rather than fixed: a document already stamped `4` that carries a `{0, 0}`
+ * centre is NOT swept.** The ladder only climbs — `migrateDocWithReport` enters at the version
+ * the document claims and runs the rungs above it — so this rung never sees such a document. That
+ * is the ladder's design and not an oversight: a rung that also ran *below* its own floor would
+ * be a repair pass, and a repair pass has no version at which it stops.
  *
  * The rule's **second** clause — a widening of an existing field's value domain — and this rung
  * is a **ruling, not a convenience**:
@@ -158,6 +184,37 @@ function v3ToV4(doc: Record<string, unknown>, tally: MigrationReport): Record<st
 }
 
 /**
+ * **v4 → v5** (§8.4 **A-84** Part 8, ROADMAP I-22a): `City.placeId: string | null` becomes
+ * `City.pick: CityPick | null`.
+ *
+ * A **type change**, so A-72's *"a new scalar with a total default"* arm does not apply and the
+ * version moves. The rung **drops `placeId`, writes `pick: null`, and counts what it dropped**.
+ *
+ * **It may NOT promote, and this is a ruling rather than a simplification.** Composing
+ * `{rowId: placeId, centre: city.centre, countryCode: city.countryCode}` would mint a *verified*
+ * record out of exactly the three unverified fields A-84 exists to stop being read as one — the
+ * pair the shipped code composed and QA R61-1 measured — and would therefore **re-create R61-1
+ * inside the migration**, where no parser and no derive rule can see it. So the rung discards
+ * rather than promotes, and the discarded count is published: rounds 60 and 61 both walked the
+ * callers and no product surface has ever written a non-null `placeId`, so on every document that
+ * exists the count is **zero**, and the criterion that asserts so is what makes that claim
+ * checkable.
+ *
+ * A document that somehow already carries a `pick` keeps it — `v1ToV2`'s clause, one field over.
+ */
+function v4ToV5(doc: Record<string, unknown>, tally: MigrationReport): Record<string, unknown> {
+  const cities = Array.isArray(doc.cities) ? doc.cities : null;
+  if (cities === null) return { ...doc, schemaVersion: 5 };
+  const next = cities.map((c) => {
+    if (typeof c !== 'object' || c === null || Array.isArray(c)) return c;
+    const { placeId, ...rest } = c as Record<string, unknown>;
+    if (placeId !== null && placeId !== undefined) tally.droppedPlaceIds += 1;
+    return { ...rest, pick: rest.pick === undefined ? null : rest.pick };
+  });
+  return { ...doc, cities: next, schemaVersion: 5 };
+}
+
+/**
  * **The ladder** (A-72 Part 5 item 3), keyed by the version each step upgrades **from**. Every
  * entry raises `schemaVersion` by exactly one, so a v1 document walks the whole table and arrives
  * at `SCHEMA_VERSION` rather than stopping at 2.
@@ -170,13 +227,15 @@ const UPGRADES = new Map<number, Rung>([
   [1, v1ToV2],
   [2, v2ToV3],
   [3, v3ToV4],
+  [4, v4ToV5],
 ]);
 
 /**
  * Upgrades a raw document to the current schema version **and reports what the ladder
  * converted**. Pure.
  *
- * **Not on §2.10's export surface, deliberately** (ROADMAP I-22 keeps the count at 87). A
+ * **Not on §2.10's export surface, deliberately** (ROADMAP I-22a keeps the count at 88 — the one
+ * symbol it adds is `cityPickFromRow`, not this). A
  * caller that needs a `Trip` calls `fromJSON`; a caller that needs the number reaches this by
  * module path, which is what `packages/core/test/nullCentre.test.ts` does.
  *
@@ -203,7 +262,7 @@ export function migrateDocWithReport(doc: unknown): { doc: unknown; report: Migr
   // rather than an intermediate one it was carried to.
   let cur = raw;
   let at = v;
-  const report: MigrationReport = { nulledOriginCentres: 0 };
+  const report: MigrationReport = { nulledOriginCentres: 0, droppedPlaceIds: 0 };
   while (at < SCHEMA_VERSION) {
     const step = UPGRADES.get(at);
     if (step === undefined) break;

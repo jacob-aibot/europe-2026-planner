@@ -165,8 +165,9 @@ export function importLegacyDays(legacy: LegacyConstants, opts: ImportOpts): Imp
       // §8.4 A-83 Part 8: a city the legacy source could not locate records `null`, not a
       // coordinate in the Gulf of Guinea. The `unknown_city_key` warning above is what names it.
       centre: centre ?? null,
-      // The legacy planner has no gazetteer and nobody picked anything — A-82 Part 6.
-      placeId: null,
+      // The legacy planner has no gazetteer and nobody picked anything — A-82 Part 6, and
+      // §8.4 A-84 Part 3 clause 4 makes that a signature: there is no row here to mint from.
+      pick: null,
       order: i,
       meta: { ...(meta.flag ? { flagEmoji: meta.flag } : {}), ...(meta.color ? { color: meta.color } : {}) },
     };

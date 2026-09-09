@@ -408,7 +408,7 @@ test('fromJSON round-trips a participant carrying a userId a later build wrote',
 // Unlike photos', that channel has no `DB_VERSION` standing in front of it (A-72 Part 2).
 //
 // S1–S4 are A-72 Part 7's criteria. **S5 is the two pins** — `photos.test.ts`'s
-// *"SCHEMA_VERSION is 4"* and `datePrecision.test.ts`'s `assert.equal(SCHEMA_VERSION, 4)` — and it
+// *"SCHEMA_VERSION is 5"* and `datePrecision.test.ts`'s `assert.equal(SCHEMA_VERSION, 5)` — and it
 // lives there rather than here, because a pin that reads the constant it is pinning is not a pin.
 //
 // **The numbers below moved 3 → 4 at ROADMAP I-22 (§8.4 A-83 Part 8), and nothing else did.** The
@@ -424,30 +424,31 @@ test('fromJSON round-trips a participant carrying a userId a later build wrote',
  * `migrateDoc` extended with a **second `if`** rather than rebuilt as a ladder. Such a build sends
  * the v1 document through `v1ToV2` and stops at 2, and this is the only assertion that says so.
  */
-test('A-72 S1: the real v1 fixture arrives at schemaVersion 4 with photos: [] AND participants: []', () => {
+test('A-72 S1: the real v1 fixture arrives at schemaVersion 5 with photos: [] AND participants: []', () => {
   const text = readFileSync(new URL('../../../fixtures/legacy/trip-598cd7f.v1.json', import.meta.url), 'utf8');
   const raw = JSON.parse(text) as Record<string, unknown>;
   assert.equal(raw.schemaVersion, 1, 'INCONCLUSIVE: the fixture is not a version-1 document');
   assert.equal('participants' in raw, false, 'INCONCLUSIVE: the fixture already carries a `participants` key');
 
   const migrated = migrateDoc(raw) as Record<string, unknown>;
-  assert.equal(migrated.schemaVersion, 4, 'the ladder stopped short — a v1 document did not reach 4');
+  assert.equal(migrated.schemaVersion, 5, 'the ladder stopped short — a v1 document did not reach 5');
   assert.deepEqual(migrated.photos, []);
   assert.deepEqual(migrated.participants, []);
 
   const parsed = fromJSON(text);
-  assert.equal(parsed.schemaVersion, 4);
+  assert.equal(parsed.schemaVersion, 5);
   assert.deepEqual(parsed.photos, []);
   assert.deepEqual(parsed.participants, []);
-  // **ROADMAP I-22's round trip over a pinned older document.** The v1 fixture's cities carry
-  // real coordinates, so the 3 → 4 rung must leave every one of them alone, and every city must
-  // come back carrying `placeId: null`.
+  // **ROADMAP I-22 / I-22a's round trip over a pinned older document.** The v1 fixture's cities
+  // carry real coordinates, so the 3 → 4 rung must leave every one of them alone, and the 4 → 5
+  // rung must bring every city back carrying `pick: null` (§8.4 **A-84** Part 8 — the rung drops
+  // `placeId` and may not promote it).
   assert.ok(parsed.cities.length > 0, 'INCONCLUSIVE: the pinned fixture has no cities');
   for (const c of parsed.cities) {
     assert.notEqual(c.centre, null, `the 3 → 4 rung nulled ${c.name}'s real coordinate`);
-    assert.equal(c.placeId, null, `${c.name} did not get placeId: null`);
+    assert.equal(c.pick, null, `${c.name} did not get pick: null`);
   }
-  assert.equal((JSON.parse(toJSON(parsed)) as Record<string, unknown>).schemaVersion, 4);
+  assert.equal((JSON.parse(toJSON(parsed)) as Record<string, unknown>).schemaVersion, 5);
 });
 
 /**
@@ -463,7 +464,7 @@ test('A-72 S2: a document from the future keeps its "Update the app." refusal, b
   assert.ok(err instanceof TripParseError, 'a schemaVersion 99 document was accepted');
   assert.equal(
     (err as TripParseError).message,
-    'document is schemaVersion 99; this build reads up to 4. Update the app. (at $.schemaVersion)',
+    'document is schemaVersion 99; this build reads up to 5. Update the app. (at $.schemaVersion)',
   );
   assert.equal((err as TripParseError).path, '$.schemaVersion');
 });
@@ -472,12 +473,12 @@ test('A-72 S2: a document from the future keeps its "Update the app." refusal, b
  * **A-72 S3.** The bump is not allowed to cost the round trip: participants survive it in order,
  * the emitted version is the new one, and a second `toJSON` is byte-identical to the first.
  */
-test('A-72 S3: two participants round-trip in order, at schemaVersion 4, byte-identically', () => {
+test('A-72 S3: two participants round-trip in order, at schemaVersion 5, byte-identically', () => {
   const { trip, c } = tripWithDays();
   let t = addParticipant(trip, { displayName: 'Ada' }, c);
   t = addParticipant(t, { displayName: 'Grace', note: 'her mother' }, c);
   const once = toJSON(t);
-  assert.equal((JSON.parse(once) as Record<string, unknown>).schemaVersion, 4, 'toJSON emitted the old version');
+  assert.equal((JSON.parse(once) as Record<string, unknown>).schemaVersion, 5, 'toJSON emitted the old version');
   const parsed = fromJSON(once);
   assert.deepEqual(parsed.participants, t.participants);
   assert.equal(toJSON(parsed), once, 'the second toJSON is not byte-identical to the first');
