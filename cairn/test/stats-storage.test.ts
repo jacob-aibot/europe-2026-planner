@@ -423,10 +423,15 @@ test('A-59 Part 3: `unreadableCityDates` is not count-shaped, so the allow-list 
  * and for its reason. `unreadableCityLists` ends in `Lists`, which matches neither `PLURAL` nor
  * `SHAPE`, so `countShaped` is **false** and `SOURCE_ALLOW` gains no entry.
  *
- * **Asserted rather than assumed, and the assertion is the tripwire.** A later rename to
- * something ending in `Cities` turns the classifier true, and this file's source walk then fails
- * loudly — instead of quietly requiring a **tenth** `ROW_COUNT_FIELDS` entry and the architect's
- * ruling A-33 Part 2 reserves for one.
+ * **Asserted rather than assumed, and the reach of the tripwire is stated rather than implied
+ * — QA R64-7.** A rename whose name **ENDS** in `Cities` — `unreadableCities` — turns the
+ * classifier true, and this file's source walk then fails loudly instead of quietly requiring a
+ * **tenth** `ROW_COUNT_FIELDS` entry and the architect's ruling A-33 Part 2 reserves for one.
+ * **That is one rename and not the class**: `PLURAL` and `SHAPE` are suffix-anchored, so
+ * `citiesUnreadable`, `unreadableCitiesList` and `cityListsUnreadable` are every bit as
+ * count-shaped to a reader and `false` to `countShaped`. The negative control below covers the
+ * rename it names; widening the classifier is A-33 Part 2's ruling and not a builder's, and
+ * nothing about the shipped behaviour is wrong either way.
  */
 test('A-86 Part 4: `unreadableCityLists` is not count-shaped, so the allow-list stays as it is', () => {
   assert.equal(countShaped('unreadableCityLists'), false);

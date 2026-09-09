@@ -153,10 +153,20 @@ export type TravelStats = {
    */
   unreadableCityDates: number;
   /**
-   * §8.4 **A-86** Part 4 (QA **R63-9**). Library rows whose STORED `cities` was **present and
-   * not an array**, so the row contributed **no** cities to the census at all. Counted **per
-   * row**: a row says *"these are my cities"* once, and a single unreadable answer is one
-   * absorption however many entries it was meant to hold.
+   * §8.4 **A-86** Part 4 (QA **R63-9**). **Travelled** library rows — `active` or `completed`,
+   * the same population every other city number here is drawn from — whose STORED `cities` was
+   * **present and not an array**, so the row contributed **no** cities to the census at all.
+   * Counted **per row**: a row says *"these are my cities"* once, and a single unreadable answer
+   * is one absorption however many entries it was meant to hold.
+   *
+   * **`Travelled`, not *"library"*, and QA R64-3 is why the word is here.** The count is
+   * accumulated inside the travelled walk, because A-31 Part 3's rule is that a lifetime number
+   * may not be moved by a trip nobody has taken — so a **planned** row whose `cities` is corrupt
+   * counts **0**, and nothing was absorbed to count: its cities are never read. The pin below is
+   * therefore over travelled rows, and `packages/client/test/row-stats-readable.test.ts` asserts
+   * the planned boundary explicitly rather than leaving the two predicates to disagree where no
+   * fixture looks. Whether a planned row's corruption deserves a number of its own is A-59
+   * Part 5's surface question and an architect's.
    *
    * **`undefined` and `null` are values, not defects, and are NOT counted** — a row minted
    * before summary generation 3 carries no `cities` key, and contributing none is its correct

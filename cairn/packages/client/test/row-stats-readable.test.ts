@@ -280,6 +280,10 @@ const STORED_CITIES: Array<[label: string, value: unknown]> = [
 ];
 
 test('I-25 Part 1 (A-86 Part 4 item 2): `unreadableCityLists` increments on exactly the values `rowStatsReadable` calls unreadable', () => {
+  // **TRAVELLED rows — QA R64-3.** Every fixture below starts in 2026-03 against a
+  // `TODAY` of 2026-06-15, so every one of them is `completed` and therefore inside the walk
+  // that accumulates the count. That is the population the pin holds over, and the arm below
+  // states what happens outside it rather than leaving it uncovered.
   for (const [label, value] of STORED_CITIES) {
     // The DATES are held readable deliberately: `rowStatsReadable` answers two questions and
     // this assertion is about one of them. A row with a bad `startDate` would be `false` for a
@@ -305,4 +309,38 @@ test('I-25 Part 1: the corrupt row is now sayable end to end — `ok: true`, and
   assert.equal(res.ok, true, 'the guard was reverted — one corrupt row took the library down again');
   if (!res.ok) return;
   assert.equal(res.stats.unreadableCityLists, 1, 'the absorption is still silent — R63-9 exactly');
+});
+
+/**
+ * **QA R64-3 (MINOR): the pin above is narrower than *"library rows"*, and this arm is the
+ * boundary rather than a second copy of the rule.**
+ *
+ * `unreadableCityLists` is accumulated inside `travelStats`' **travelled** walk — `active` or
+ * `completed` — because A-31 Part 3's rule is that a lifetime number may not be moved by a trip
+ * nobody has taken. `rowStatsReadable` has no lifecycle at all: it asks *"does every date-shaped
+ * field this row carries read as an `IsoDate`, and is its `cities` walkable"*, of any row. So on
+ * a **planned** row with a corrupt `cities` the two answers differ — `false` and `0` — and the
+ * eight-value table above cannot see it, because all eight of its fixtures are travelled.
+ *
+ * **The behaviour is not changed here and this arm does not assert that it should be.** A planned
+ * row's cities are never read, so nothing was absorbed and there is nothing to count; whether a
+ * planned row's corruption deserves its own number is A-59 Part 5's surface question and an
+ * architect's, not a builder's. What this arm buys is that the disagreement is **measured and
+ * named** — if the walk ever moves, this goes red and says which side moved.
+ */
+test('I-25 Part 1 (QA R64-3): the pin is over TRAVELLED rows — a PLANNED corrupt row is `false` and counts 0', () => {
+  const planned = { ...row({ id: 't-planned', startDate: '2027-03-01', endDate: '2027-03-20' }), cities: 'nope' } as unknown as TripSummaryRow;
+  assert.equal(rowLifecycle(planned, TODAY), 'planned', 'the fixture is not planned, so it proves nothing');
+  assert.equal(rowStatsReadable(planned), false, '`rowStatsReadable` has no lifecycle and never had one');
+  assert.equal(
+    core.travelStats([planned], TODAY).unreadableCityLists, 0,
+    'the count moved for a trip nobody has taken (A-31 Part 3) — or the walk changed and the ' +
+      'docstring on `TravelStats.unreadableCityLists` now over-claims in the other direction',
+  );
+  // The same row, travelled, IS counted — which is what makes the line above a statement about
+  // the lifecycle and not about the value.
+  const travelled = { ...planned, id: 't-travelled', startDate: '2019-04-01', endDate: '2019-04-09' } as unknown as TripSummaryRow;
+  assert.equal(core.travelStats([travelled], TODAY).unreadableCityLists, 1);
+  // And a library holding both counts exactly the travelled one.
+  assert.equal(core.travelStats([planned, travelled], TODAY).unreadableCityLists, 1);
 });

@@ -139,17 +139,46 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
   // commit (**BUILD-NOTES KD-108**), because a `<` between two strings one of which is not a date
   // answers a question nobody asked: `'2026-03-02' < '2026-13-45'` is true, so a mistyped MONTH
   // used to be reported as a reversed range. Parse first, ordering second, A-35's span cap third.
-  const cities: City[] = (init.cities ?? []).map((c, i) => ({
-    // §2.2 A-10. `??` and not `||`: an explicit key is honoured verbatim, and `''` is a key
-    // the document already carries — minting over it would silently orphan every
-    // `Day.primaryCity`, `Place.cityKey` and pool placement pointing at it. `validateTrip`
-    // is what says such a document is broken (§2.9); `createTrip` does not repair it.
-    key: c.key ?? ctx.ids.newId('city'),
-    name: c.name,
-    countryCode: c.countryCode ?? '',
-    // §8.4 A-83 Part 8 / A-82 Part 7. `{0,0}` used to stand here; it is *"a value nobody
-    // measured, wearing the shape of one"*, and every hand-entered city was a summary row
-    // claiming 0°N 0°E.
+  // **QA R64-1 (MAJOR) — ONE normalisation pass, and every caller-owned property is read into a
+  // local exactly once.** This map used to be two: a record map that read `c.centre` twice (the
+  // ternary short-circuits, so it is two reads and not one) and a second `(init.cities ?? [])
+  // .map(...)` below it that read `c.centre` a third time to compute `wroteCentre`. Measured,
+  // the door read `CityInit.centre` **three** times per city and `init.cities` **twice**, and a
+  // caller-owned object may be reactive — a `Proxy`, a framework store, a form model — so reads
+  // that can disagree are reads that do:
+  //
+  //   - a `centre` getter yielding `undefined` on the first read and a real coordinate on the
+  //     second stored `{centre: null, pick: live}` and reported `{null, null}` — R62-2's own
+  //     reproduction string, reached through the door built to prevent it, with nobody writing
+  //     `null`;
+  //   - `wroteCentre` was index-aligned to the **second** read of `init.cities` while
+  //     `standOnPicks` maps the first, so a `cities` getter returning a shorter array the second
+  //     time silently moved a city the caller **did** locate onto its pick's coordinate and then
+  //     attributed it `{CH, picked}` with confidence — the worse of the two, and it needs no
+  //     disagreement about `undefined` at all.
+  //
+  // **§8.4 A-86 Part 2's trigger names the fix in as many words** — *"bind the value once, write
+  // it into both fields"* — and this is it, applied to every field rather than to `centre`.
+  // §2.1 **A-23**'s standing rule is the general form: *within one traversal, a field of a
+  // caller-supplied value is read exactly once; the value that was checked is the value that is
+  // used, compared, redacted and emitted.* `packages/core/test/pickCentre.test.ts` measures it
+  // with a counting accessor on all seven `CityInit` fields, on all eleven of `TripInit`'s, and
+  // on `init.cities` itself. **Nothing below this pass may reach for `init` or `c` again.**
+  const cityInits = init.cities ?? [];
+  const minted = cityInits.map((c, i) => {
+    // The seven reads. Everything downstream — the record, `wroteCentre`, `standOnPicks` — takes
+    // the local, so no two consumers can be handed different answers to the same question.
+    const key = c.key;
+    const name = c.name;
+    const countryCode = c.countryCode;
+    const centre = c.centre;
+    const pick = c.pick;
+    const order = c.order;
+    const meta = c.meta;
+    //
+    // §8.4 A-83 Part 8 / A-82 Part 7. `{0,0}` used to stand in for a missing `centre`; it is
+    // *"a value nobody measured, wearing the shape of one"*, and every hand-entered city was a
+    // summary row claiming 0°N 0°E. The honest hole is `null`.
     //
     // **§8.4 A-85 Part 2 (QA R62-2, ROADMAP I-24), and the shape of the test is the ruling.**
     // `c.centre ?? null` stood here and it is what made the shortest call a picker screen writes
@@ -163,8 +192,10 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
     // reports `{null, null}`. In the stored document they are the same two fields — only a door
     // can tell them apart, so the rule lives at the door.
     //
-    // **The presence test is `c.centre !== undefined`. There is ONE spelling and this is it —
-    // §8.4 A-86 Part 1 (QA R63-7, ROADMAP I-25 Part 2).** A-85 Part 2's *"does not carry a
+    // **The presence test is `centre !== undefined`. There is ONE spelling and this is it —
+    // §8.4 A-86 Part 1 (QA R63-7, ROADMAP I-25 Part 2)**, and since R64-1 there is also one
+    // **expression**: this constant is what the record and `wroteCentre` both consume, so the
+    // two can no longer be computed over two different reads. A-85 Part 2's *"does not carry a
     // `centre` key"* read as `'centre' in c`, and I-24 Part 1 wrote the rule both ways; the two
     // differ on exactly one input, `{name, centre: undefined, pick}`, which `in` refuses at
     // `$.cities[0].centre` and `!== undefined` defaults. A-86 Part 1 rules `!== undefined`, and
@@ -178,10 +209,10 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
     //   - **`in` refuses a call that type-checks and is correct.** `{...defaults, ...patch}`
     //     leaves `centre: undefined` behind whenever `patch` carries no centre — the ordinary
     //     shape of a form's submit handler, which is the caller the picker will be;
-    //   - **it is already this door's settled convention**, stated four fields down for
-    //     `datePrecision` and recorded as BUILD-NOTES **KD-101**: absent and `undefined` mean
-    //     *take the default*, and `null` is a value the caller supplied. A second convention on
-    //     a neighbouring field of the same object is how the next reader gets it wrong.
+    //   - **it is already this door's settled convention**, stated below for `datePrecision` and
+    //     recorded as BUILD-NOTES **KD-101**: absent and `undefined` mean *take the default*, and
+    //     `null` is a value the caller supplied. A second convention on a neighbouring field of
+    //     the same object is how the next reader gets it wrong.
     //
     // **This is a read of the PROPERTY, not of the own-property table — A-86 Part 2, and it is
     // written here so nobody adds a guard.** An INHERITED `centre` (`Object.create({centre:
@@ -193,9 +224,15 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
     // have to be applied to all five of `centre`, `pick`, `order`, `meta` and `key` rather than
     // to one.
     //
-    // **The pick's coordinate is NOT read here — QA R63-1 (MAJOR) and R63-2.** This expression
-    // used to be `c.pick ? {lat: c.pick.centre.lat, lng: c.pick.centre.lng} : null`, which put a
-    // raw dereference in FRONT of the parser that A-84 Part 3 clause 2 says refuses a malformed
+    // Which cities the caller wrote a `centre` for is captured HERE, beside the record it is
+    // aligned with, because it is the INIT that holds the distinction and the stored document
+    // does not (A-85 Part 2 clause 2) — and because an alignment computed in a second traversal
+    // is an alignment a second traversal can lose (R64-1's second shape).
+    const wroteCentre = centre !== undefined;
+    //
+    // **The pick's coordinate is NOT read here — QA R63-1 (MAJOR) and R63-2.** The record used to
+    // be built from `c.pick ? {lat: c.pick.centre.lat, lng: c.pick.centre.lng} : null`, which put
+    // a raw dereference in FRONT of the parser that A-84 Part 3 clause 2 says refuses a malformed
     // pick *"at a named JSON path, at every door"*. Two harms, both measured:
     //
     //   - a pick with **no `centre`** — clause 2's own case, *"a pick without a coordinate is not
@@ -211,26 +248,29 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
     // So the door writes the honest hole here and stands the city on the pick **below the commit**
     // (`standOnPicks`), off the record the parser returned. One rule, one read, and the refusal
     // path no longer depends on whether `centre` was written.
-    centre: c.centre !== undefined ? c.centre : null,
-    pick: c.pick ?? null,
-    order: c.order ?? i,
-    ...(c.meta ? { meta: c.meta } : {}),
-  }));
-  // Which cities the caller wrote a `centre` for, captured beside the map above because it is the
-  // INIT that holds the distinction and the stored document does not (A-85 Part 2 clause 2).
-  //
-  // **The presence test is `c.centre !== undefined`, one spelling — §8.4 A-86 Part 1 (QA R63-7),
-  // and it is the SAME expression the map above uses, deliberately.** `'centre' in c` is refused:
-  // the declared type cannot separate `{name, pick}` from `{name, centre: undefined, pick}` (no
-  // `exactOptionalPropertyTypes`), `in` would refuse a `{...defaults, ...patch}` call that type-
-  // checks and is correct, and `!== undefined` is this door's settled convention for an INIT —
-  // stated further down for `datePrecision` and recorded as BUILD-NOTES **KD-101**: absent and
-  // `undefined` mean *take the default*, and `null` is a value the caller supplied.
-  //
-  // **A-86 Part 2: this reads the property, not the own-property table.** An inherited `centre`
-  // is honoured exactly as a written one, and `hasOwnProperty` may not be introduced here — an
-  // own-key guard above the parser's chain read is R63-1's shape recurring.
-  const wroteCentre: boolean[] = (init.cities ?? []).map((c) => c.centre !== undefined);
+    const city: City = {
+      // §2.2 A-10. `??` and not `||`: an explicit key is honoured verbatim, and `''` is a key
+      // the document already carries — minting over it would silently orphan every
+      // `Day.primaryCity`, `Place.cityKey` and pool placement pointing at it. `validateTrip`
+      // is what says such a document is broken (§2.9); `createTrip` does not repair it.
+      key: key ?? ctx.ids.newId('city'),
+      name,
+      countryCode: countryCode ?? '',
+      centre: wroteCentre ? centre : null,
+      pick: pick ?? null,
+      order: order ?? i,
+      ...(meta ? { meta } : {}),
+    };
+    return { city, wroteCentre };
+  });
+  const cities: City[] = minted.map((m) => m.city);
+  const wroteCentre: readonly boolean[] = minted.map((m) => m.wroteCentre);
+  // The trip's own two multi-read fields, bound for R64-1's reason and no other: the record
+  // below read `init.datePrecision` twice (the `=== undefined` test and the else-branch) and
+  // `init.meta` twice (the guard and the spread). Same class as `c.centre`'s three reads, same
+  // fix — bound once here, consumed once below.
+  const datePrecision = init.datePrecision;
+  const tripMeta = init.meta;
   const base: Trip = {
     id: init.id ?? ctx.ids.newId('trip'),
     title: init.title,
@@ -247,7 +287,7 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
     // shipped QA P2-7 test. Absent and `undefined` mean *take the default* for an INIT; `null` is
     // a value the caller supplied, so it reaches the record and the parser refuses it at
     // `$.datePrecision`.
-    datePrecision: init.datePrecision === undefined ? 'exact' : init.datePrecision,
+    datePrecision: datePrecision === undefined ? 'exact' : datePrecision,
     homeBase: init.homeBase ?? null,
     party: init.party ?? { adults: 1, children: 0 },
     cities,
@@ -264,7 +304,7 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
     participants: [],
     revision: 0,
     schemaVersion: SCHEMA_VERSION,
-    ...(init.meta ? { meta: init.meta } : {}),
+    ...(tripMeta ? { meta: tripMeta } : {}),
   };
   // §2.1 **A-77**, twice, and the first one is about the message rather than the check.
   //
@@ -313,6 +353,9 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
  *        than `undefined`? (A-86 Part 1's one spelling; an INHERITED `centre` counts, A-86
  *        Part 2.) Such a `centre` is honoured verbatim, `null` included — that is A-84 Part 3
  *        clause 3's erase case, and it is a distinction only a door can see.
+ *        **The alignment is structural since QA R64-1**: both this array and `trip.cities` come
+ *        out of the SAME traversal of the same single read of `init.cities`, so there is no
+ *        second read for the two to be aligned against differently.
  */
 function standOnPicks(trip: Trip, wroteCentre: readonly boolean[]): Trip {
   let moved = false;

@@ -324,3 +324,143 @@ test('I-24 Part 3: the whole committed reference trip reports ZERO city coordina
     'a real trip reddening here means the `Place` arm was copied, or the range test is wrong',
   );
 });
+
+// ===========================================================================
+// Part 1, QA round 64 — **R64-1 (MAJOR)**: the door reads each init field ONCE.
+//
+// R63-2's fix moved the `pick.centre` read below the commit and, in the same edit, added a
+// **second** read of `c.centre`: the record's `c.centre !== undefined ? c.centre : null` is two
+// reads (short-circuiting), and `wroteCentre`'s own `c.centre !== undefined` a few lines below
+// is a third. `init.cities` was read twice for the same reason — once for the record map, once
+// for `wroteCentre` — while `standOnPicks` maps the FIRST. Both were measured, and both have a
+// consequence a caller cannot see:
+//
+//   - a `centre` getter yielding `undefined` first and a coordinate after stores
+//     `{centre: null, pick: live}` and reports `{null, null}` — R62-2's own reproduction string,
+//     reached through the door built to prevent it, with nobody writing `null`;
+//   - a `cities` getter returning a shorter array the second time misaligns `wroteCentre`, so a
+//     city the caller **did** locate is silently moved onto its pick's coordinate — `{lat:50,
+//     lng:14}` written, `{46.21, 6.14}` stored — and then attributed `{CH, picked}` with
+//     confidence.
+//
+// A-86 Part 2's trigger names the fix in as many words — *bind the value once, write it into
+// both fields* — so the door now normalises each `CityInit` in ONE pass, reading every property
+// into a local, and the record, `wroteCentre` and `standOnPicks` all consume the local. The
+// three tests below are the property itself, then each fault.
+// ===========================================================================
+
+/** Every field a `CityInit` may carry, wrapped in a counting accessor over a STABLE value. */
+function countingCity(values: Record<string, unknown>, counts: Record<string, number>) {
+  const c: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(values)) {
+    counts[k] = 0;
+    Object.defineProperty(c, k, {
+      enumerable: true,
+      get() {
+        counts[k] += 1;
+        return v;
+      },
+    });
+  }
+  return c;
+}
+
+test('I-25/R64-1: every `CityInit` field is read exactly ONCE, and so is `init.cities`', () => {
+  const counts: Record<string, number> = {};
+  const city = countingCity(
+    {
+      key: 'geneva',
+      name: 'Geneva',
+      countryCode: 'CH',
+      centre: { lat: 48.2082, lng: 16.3738 },
+      pick: cityPickFromRow(GENEVA),
+      order: 0,
+      meta: { flagEmoji: '🇨🇭' },
+    },
+    counts,
+  );
+  let cityListReads = 0;
+  const init = {
+    title: 'T', startDate: '2026-08-07', endDate: '2026-08-08',
+    get cities() {
+      cityListReads += 1;
+      return [city as never];
+    },
+  };
+  createTrip(init, ctx('r64a'));
+  assert.deepEqual(
+    counts,
+    { key: 1, name: 1, countryCode: 1, centre: 1, pick: 1, order: 1, meta: 1 },
+    'a field of a caller-owned object read twice is a field two reads can disagree about (A-23)',
+  );
+  assert.equal(cityListReads, 1, '`init.cities` is read once — `wroteCentre` may not map a second read');
+});
+
+test('I-25/R64-1: every `TripInit` field is read exactly ONCE too — the class, not the instance', () => {
+  const counts: Record<string, number> = {};
+  const init = countingCity(
+    {
+      id: 'trip-1',
+      title: 'T',
+      startDate: '2026-08-07',
+      endDate: '2026-08-08',
+      ownerId: 'u1',
+      homeCurrency: 'EUR',
+      homeBase: null,
+      party: { adults: 1, children: 0 },
+      cities: [{ name: 'Geneva', pick: cityPickFromRow(GENEVA) }],
+      datePrecision: 'exact',
+      meta: { note: 'n' },
+    },
+    counts,
+  );
+  createTrip(init as never, ctx('r64b'));
+  const twice = Object.entries(counts).filter(([, n]) => n !== 1);
+  assert.deepEqual(twice, [], `these \`TripInit\` fields were not read exactly once: ${JSON.stringify(counts)}`);
+});
+
+test('I-25/R64-1 fault 1: a `centre` getter yielding `undefined` then a point cannot mint a pick STALE AT BIRTH', () => {
+  let reads = 0;
+  const shifting = {
+    name: 'Geneva',
+    pick: cityPickFromRow(GENEVA),
+    get centre() {
+      reads += 1;
+      return reads === 1 ? undefined : { lat: 48.2082, lng: 16.3738 };
+    },
+  };
+  const trip = createTrip(
+    { title: 'T', startDate: '2026-08-07', endDate: '2026-08-08', cities: [shifting as never] },
+    ctx('r64c'),
+  );
+  const city = trip.cities[0];
+  assert.equal(reads, 1, 'the door read the caller-owned getter more than once');
+  // Whichever value the ONE read took, the two fields agree: the pick is live, never stale at
+  // birth. With `undefined` on that read, absence means *the point the pick names* (A-85 Part 2).
+  assert.deepEqual(city.centre, city.pick?.centre);
+  assert.deepEqual(attribution(trip), { countryCode: 'CH', countrySource: 'picked', countryCodes: ['CH'] });
+});
+
+test('I-25/R64-1 fault 2: a shorter second read of `init.cities` cannot move a city the caller LOCATED', () => {
+  const pick = cityPickFromRow(GENEVA);
+  const VIENNA = { lat: 48.2082, lng: 16.3738 };
+  const PRAGUE = { lat: 50, lng: 14 };
+  let reads = 0;
+  const init = {
+    title: 'T', startDate: '2026-08-07', endDate: '2026-08-08',
+    get cities() {
+      reads += 1;
+      return reads === 1
+        ? [{ name: 'A', pick, centre: VIENNA }, { name: 'B', pick, centre: PRAGUE }]
+        : [{ name: 'A', pick, centre: VIENNA }];
+    },
+  };
+  const trip = createTrip(init, ctx('r64d'));
+  assert.equal(reads, 1);
+  assert.deepEqual(
+    trip.cities.map((c) => c.centre), [VIENNA, PRAGUE],
+    'a city the caller located was moved onto its pick and then attributed with confidence',
+  );
+  const s = tripSummary(trip, COUNTRY_INDEX);
+  assert.deepEqual(s.cities.map((c) => [c.countryCode, c.countrySource]), [['AT', 'coordinate'], ['CZ', 'coordinate']]);
+});

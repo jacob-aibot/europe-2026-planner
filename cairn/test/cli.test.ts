@@ -15,7 +15,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import * as core from '../packages/core/src/index.ts';
 
@@ -655,4 +655,101 @@ test('I-25 Part 1: over the reference library `cli stats` prints no such line at
   // …and the two lines beside it stay silent too, which is what makes the assertion above a
   // statement about a clean library rather than about a regex that matches nothing.
   assert.equal(/no usable name|unreadable stored dates/.test(r.out), false, r.out);
+});
+
+/**
+ * **QA R64-4 (MINOR) — the pairing above passes while the shipped line rots.**
+ *
+ * Mutant **M1** (`qa/r64-mutants.sh`) puts an early `return;` above the three conditional count
+ * lines, making all three **unreachable**, and both tests above stay green: the source-lifted arm
+ * proves the sentence and the conditional by executing ONE line out of context, and the
+ * end-to-end arm asserts only an **absence**, which a line that never runs satisfies perfectly.
+ * Neither can see that the line is dead.
+ *
+ * So this arm executes the **whole of `cmdStats`' shipped body** — lifted out of `cli.ts`, not
+ * copied — with a `core` whose `tripSummary` hands back a corrupt row, and asserts a
+ * **presence**. The count is `travelStats`' real one over a real `TripSummaryRow` whose stored
+ * `cities` is a string, which is the shape the shipped command cannot mint for itself (`cmdStats`
+ * builds its library from `tripSummary`, which always produces a real array — that is why the
+ * positive arm is unreachable end to end and why the body is run this way instead).
+ *
+ * A dead line prints nothing, so M1 reddens here. So do M2 (the whole body returns), M3 (the
+ * sentence changed) and M4 (the wrong field read).
+ */
+function cmdStatsBody(): string {
+  const src = readFileSync(join(CAIRN, 'cli.ts'), 'utf8');
+  const start = src.indexOf('function cmdStats() {');
+  assert.notEqual(start, -1, '`cli.ts` no longer declares `function cmdStats()`');
+  const open = src.indexOf('{', start);
+  let depth = 0;
+  let end = -1;
+  for (let i = open; i < src.length; i += 1) {
+    if (src[i] === '{') depth += 1;
+    else if (src[i] === '}') {
+      depth -= 1;
+      if (depth === 0) { end = i; break; }
+    }
+  }
+  assert.notEqual(end, -1, '`cmdStats` has no matching closing brace');
+  const body = src.slice(open + 1, end);
+  // The brace walk is naive about braces inside strings, so it says what it thinks it found:
+  // an imbalance shows up here rather than as a confusing syntax error two steps later.
+  assert.match(body.trimEnd().split('\n').pop() ?? '', /^\s*if \(s\.unreadableCityLists\) out\(/,
+    'the lifted body does not end at the line it is supposed to end at — the brace walk slipped');
+  return body;
+}
+
+test('I-25 Part 1 (QA R64-4): the shipped `cmdStats` body PRINTS the line — an unreachable line is caught', async () => {
+  // A real row, corrupted the one way `unreadableCityLists` counts: `cities` present, not an array.
+  const travelled = core.createTrip(
+    { title: 'Vienna', startDate: '2019-04-01', endDate: '2019-04-09', cities: [{ name: 'Vienna' }] },
+    { ids: core.sequentialIds('r64-4-'), now: '2019-04-01' },
+  );
+  const corrupt = { ...core.tripSummary(travelled, core.COUNTRY_INDEX), cities: 'AT,HR,CZ' };
+  const stubCore = {
+    COUNTRY_INDEX: core.COUNTRY_INDEX,
+    tripSummary: () => corrupt,
+    travelStats: core.travelStats,
+  };
+  const printed: string[] = [];
+  const dir = mkdtempSync(join(CAIRN, 'cmdstats-lift-'));
+  try {
+    // `cairn/` is `"type": "module"`, so a `.ts` file written here is stripped and loaded as ESM
+    // — the same type-stripping run that executes this test file. The body's own annotations
+    // therefore need no handling, and the shipped text is executed verbatim.
+    const file = join(dir, 'lifted-cmd-stats.ts');
+    writeFileSync(file, `export function cmdStats(core, trip, today, todayIsValid, out) {\n${cmdStatsBody()}\n}\n`);
+    const mod = await import(pathToFileURL(file).href) as {
+      cmdStats: (
+        c: unknown, t: unknown, today: string, valid: () => boolean, out: (s: string) => void,
+      ) => void;
+    };
+    mod.cmdStats(stubCore, travelled, '2026-06-15', () => true, (s) => printed.push(s));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  assert.ok(
+    printed.includes('  trips whose stored city list could not be read: 1'),
+    'the shipped line did not print when the count was 1 — it is unreachable, renamed or rewritten:\n' +
+      printed.join('\n'),
+  );
+  // The control: the same body over a clean library prints no such line, so the assertion above
+  // is about the count and not about a line that prints unconditionally.
+  const clean: string[] = [];
+  const dir2 = mkdtempSync(join(CAIRN, 'cmdstats-lift-'));
+  try {
+    const file2 = join(dir2, 'lifted-cmd-stats.ts');
+    writeFileSync(file2, `export function cmdStats(core, trip, today, todayIsValid, out) {\n${cmdStatsBody()}\n}\n`);
+    const mod2 = await import(pathToFileURL(file2).href) as {
+      cmdStats: (
+        c: unknown, t: unknown, today: string, valid: () => boolean, out: (s: string) => void,
+      ) => void;
+    };
+    mod2.cmdStats(core, travelled, '2026-06-15', () => true, (s) => clean.push(s));
+  } finally {
+    rmSync(dir2, { recursive: true, force: true });
+  }
+  assert.equal(clean.some((l) => /stored city list/.test(l)), false, clean.join('\n'));
+  // …and it printed SOMETHING, so "no such line" is a statement about a working command.
+  assert.ok(clean.some((l) => /^travel statistics as of /.test(l)), clean.join('\n'));
 });
