@@ -4109,3 +4109,59 @@ tree is safe. **Every new probe in `qa/` must do the same; do not add another `g
 restore.** Separately, `r58-fix-probe.sh` **no longer runs at all** — the repair it measured shipped
 in `386c459`, so its `Members`/`Carries` anchors no longer exist and its `assert` raises on every
 invocation. It carries a SUPERSEDED banner; its living successor is `r59-nonnullable.sh`.
+
+---
+
+**Round 60 — the mandatory adversarial pass over I-21 / §8.4 A-82** (the bundled offline city
+gazetteer). Four probes, all plain Node, no browser, run from `cairn/`:
+
+```bash
+node qa/r60-coverage.mjs             # the coverage hit rate: 171 destinations, 4 buckets
+node qa/r60-coverage.mjs --misses    # …misses only
+node qa/r60-fold-search.mjs          # fold beyond A-82's twelve; the ceilings; totality; labels
+node qa/r60-kd113.mjs                # KD-113's premise, re-derived from the codepoint
+R60_SOURCE=/path/to/ne_10m_populated_places.geojson node qa/r60-invariant.mjs
+```
+
+**`r60-coverage.mjs` is the round's headline and the number nobody had (R60-1).** A 171-entry
+corpus — 72 famous small towns and villages, 23 island/beach destinations, 26 national-park
+gateways, and **50 ordinary large cities as a control** — scored strictly: a HIT is a returned row
+whose `fold` or one of whose `alts` **equals** the query *and* whose `countryCode` is the country
+the place is actually in. Result: **village 6.9 %, island 21.7 %, park gateway 61.5 %, travel
+corpus overall 21.5 %, control 100 %**, with every miss named. It needs no network and no source
+file — it reads the committed `GAZETTEER` through the `@cairn/core/gazetteer` subpath.
+
+**`r60-invariant.mjs` re-derives A-82 Part 5 from the pinned bytes**, not from BUILD-NOTES. Seven
+sections: the pin (bytes/sha256/feature count), the **raw** census (6,806 / 426 / 98 / 12 —
+A-82 Part 1 reproduces exactly), the **quantised** census (6,805 / 427 / 98 / 12), **§D the
+quantisation question** (of 7,342 rows exactly one changes its derived country under 4 dp rounding
+and it changes to `null`; **zero** cross into a different country, in either direction), **§E the
+refusal set at raw vs quantised** (identical — quantisation neither hides nor invents a refusal),
+§F the shipped invariant walked with no allowlist (0 contradicted), and §G the refusal cost that
+became **R60-2** — the 98 ranked by population, opening on Brazzaville, Geneva and Jerusalem, plus
+the two refusals that are *substituted* rather than absent (Windsor, Saint-Georges). It fetches the
+19 MB pinned layer once to `/tmp` unless `R60_SOURCE` points at a copy.
+
+**`r60-fold-search.mjs`** is the ceiling probe. §A folds 39 cases **outside** A-82 Part 3's twelve —
+Turkish `İ`/`ı` in both directions and in caps, `ß` in four positions, `þ ð ø æ œ ŀ ħ đ`, Vietnamese
+stacked marks, U+02BB deleted rather than spaced, and the deferred scripts asserted **as deferred**.
+§B proves `foldPlaceName` and `normalizeCityName` have not collapsed. §C is the prefix/token-prefix
+ceiling and the no-fuzzy refusal. §D shuffles the 7,244-row array 5 ways plus a full reversal across
+30 queries — **180 permutations, zero reorderings** — and names the 6 tie groups the `id` key
+actually decides (the builder's list elided **Wilmington US**). §E is **R60-4** (nine bare-name
+labels) and the one duplicate-label pair. §F is **R60-6** (`limit` unvalidated). §G is **R60-9**
+(37 mojibake `admin1` values reaching the label). §H is **R60-5** (the generator guards `\` and
+`${` but not `|` or a newline). It exits 1 on §E, which is the finding, not a broken probe.
+
+**`r60-kd113.mjs` is a one-claim probe and the claim is false (R60-3).** Built from
+`String.fromCodePoint(0x0130)` rather than a pasted glyph: `U+0130 → U+0049 U+0307` under NFD **and**
+NFKD, so KD-113's *"U+0130 has no canonical decomposition"* — a sentence that is in **shipped
+source** at `packages/core/src/geo/gazetteer.ts:132` and that the builder asks the architect to write
+into A-82 — does not hold. §B re-runs KD-113's own six-ordering table plus the two it did not, and
+§C isolates which ordering constraints are load-bearing: **step 1 before step 2 (yes), NFD present
+at all (yes), step 1 before step 3 (no — KD-113's correct conclusion), step 1 before step 4 (no —
+KD-113's replacement claim, also wrong)**. The `İ` pair pins nothing about the ordering.
+
+None of the four writes to the repo. `r60-invariant.mjs` writes only to `/tmp` (or reuses
+`R60_SOURCE`); the generator determinism and checksum-refusal runs behind round 60's status note were
+done in a throwaway `git worktree`, never in the live tree.

@@ -19,6 +19,57 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟥 TESTED: IT WORKS EXACTLY AS DESIGNED, AND IT FINDS ONE PLACE IN FIVE. As of 2026-09-09
+> this block is the newest and it supersedes every block below it, including the builder's block
+> directly under it.** Nothing on your phone changes.
+>
+> **The machinery is right, and I checked the parts that matter most.** The city list is built from
+> the exact file it says it is — same size, same fingerprint, same 7,342 cities. The one rule the
+> whole thing turns on — *never ship a city our own country map would put in the wrong nation* —
+> holds for **every one of the 7,244 cities that ship, with no exceptions list**. I re-derived it
+> from the original data rather than taking the builder's word: **zero** cities in the wrong
+> country. I also checked the thing nobody had: rounding each city's position to about 11 metres
+> (which is what actually gets stored) moves **exactly one** city's country answer, and it moves it
+> to *"we don't know"*, never to a **wrong** country. Build it twice and you get byte-identical
+> files. It handles accents, Turkish, German, Vietnamese and Polish spellings correctly on 39 cases
+> nobody had tried. The city list is **not** in the app people download — the app grew by 1.4 kB,
+> not 380 kB. All of that is solid.
+>
+> **What I have to tell you is about coverage, and it is the answer to your own question.** You
+> asked how someone puts in their past trips, and said the ease of it is the point *"otherwise it's
+> not a true sign of their travels."* So I built a list of 171 places people actually log — 72
+> famous villages and small towns, 23 islands and beaches, 26 national-park towns, and 50 ordinary
+> big cities as a control — and measured how many Cairn can find.
+>
+> **Big cities: 50 out of 50. Everywhere else: 26 out of 121 — about one in five.**
+>
+> Villages are the worst at **7 %**. Missing, by name: Hallstatt, Positano, Amalfi, Ravello, all
+> five Cinque Terre villages, Santorini, Mykonos, Capri, Ibiza, Hvar, Zermatt, Interlaken,
+> Lauterbrunnen, Grindelwald, Chamonix, Mont-Saint-Michel, Carcassonne, Colmar, Sintra, Ronda,
+> Český Krumlov, Rothenburg, Bled, Kotor, Matera, Assisi, San Gimignano, Taormina, Delphi, Ubud,
+> Hoi An, Sa Pa, Nikko, Hakone, Takayama, Chefchaouen, Essaouira, Jaisalmer, Hampi, Tulum, Sedona,
+> Estes Park, Whistler, and about fifty more. **A person recording a 2019 Amalfi Coast trip gets
+> nothing at all**, and falls back to typing — which still files the city in the Atlantic, because
+> that fix is the *next* increment and is deliberately not in this one.
+>
+> This is not a mistake by the person who built it. The design document said in advance that
+> *"the miss is not the exotic tail, it is the routine case"*, and it named a bigger list as the
+> next thing to try. What nobody had was **the number**, and now there is one. My recommendation to
+> the designer is that 21 % is not a *"wait for someone to complain"* situation — it is the
+> complaint.
+>
+> **And one correction to what you were told above.** The block below says 98 border towns are left
+> out and names *"Maastricht, Lugano, Niagara Falls and 95 others"* — all small. Ranked by size,
+> the list actually opens with **Brazzaville** (1.36 million, the capital of the Republic of the
+> Congo), **Geneva** (1.24 million) and **Jerusalem** (1.03 million). Nineteen of the 98 have over
+> 100,000 people and two are national capitals. `cities geneva` says *"no match"*. Geneva is not a
+> border town in any sense you would recognise, and the cost of that rule should be described with
+> its real examples rather than its four smallest ones.
+>
+> **Verdict: send back to the designer.** No data loss, no privacy problem, nothing broken — two
+> design decisions to revisit (how big the city list needs to be, and how the left-out cities are
+> described and eventually restored) and seven small tidying items. **1,685** automated checks pass.
+
 > **🟦 NEW: CAIRN WILL KNOW WHERE YOUR OLD TRIPS ACTUALLY WERE. As of 2026-09-09 this block is
 > the newest and it supersedes every block below it.** This is the first change in eight rounds that is a
 > **new capability** rather than a repair, and it comes straight from your question: *"for people wanting to
