@@ -4286,3 +4286,67 @@ actually does — seed a **sample** of axis D, {floor, previous, current} — an
 `test/stats-storage.test.ts`'s 40 rows as the cover. **No assertion and no behaviour changed.**
 
 `r62-pick.mjs` writes nothing: every fixture is built in memory and `fixtures/` is read only.
+
+---
+
+**Round 63** is the adversarial pass over **I-24** / §8.4 **A-85** — *a pick is minted onto the
+point it names, the place census gains its denominator, and the pick's coordinate is
+range-checked*. One probe, run from `cairn/`:
+
+```bash
+node --experimental-strip-types qa/r63-i24.mjs   # 10 sections; 79 ok, 13 FAIL, 3 GAP at 9817fe0
+```
+
+Its `FAIL` lines are the findings, not a broken probe. **§C's seven** are **R63-1** (the round's
+headline): I-24 Part 1 put `c.pick.centre.lat` in front of the parser, so six malformed-pick
+shapes — including `{rowId, countryCode}` with no `centre`, which is A-84 Part 3 clause 2's own
+case — leave `createTrip` as a bare `TypeError` with no path, no city and no `rowId` **whenever
+the caller wrote no `centre` key**, while the same six with `centre: null` written out loud are
+refused correctly. The seventh is the getter case (**R63-2**), which mints a born-stale pick
+through the door with nobody writing `centre: null`. **§F's two** are **R63-4** (two assertion
+messages that did not move with the covering table: *"32 S×C"*, *"16 V×S"*; the table covers 36
+and 18). **§I's three** are **R63-3** (three plain-Node fixtures that represent pre-generation-8
+rows and carry `placeCount`, one of them R44-1's own `versionOneRow`). The three `GAP` lines are
+**R63-6** (a stored `placeCount` is believed without a ceiling), the new `ref.kind: 'trip'` shape
+of a `lat_lng_out_of_range` issue, and **R63-9** (R62-6's live guard turns a loud failure into a
+silent under-count that `rowStatsReadable` can no longer be asked about).
+
+The sections, and what each is for:
+
+- **§A** the door census **run**, not reasoned about: who constructs a `City`, who consumes a
+  `CityInit`, the four `CityInit` shapes end to end, `setTripMeta` pushed with a city carrying
+  **no `centre` key** and one carrying `centre: undefined` (both refused at `$.centre`, which is
+  what makes A-85 Part 2 clause 4's type-level claim true at runtime), `mergeTrips` in both
+  orientations, the 3 → 4 rung over four centres including `{-0, 0}`, and `copyStopInto` across a
+  person boundary.
+- **§B** the `!== undefined` / `'centre' in c` adjudication, by measuring what the **other**
+  spelling would do — a parse refusal, not a born-stale pick — plus the inherited-key case the
+  criterion covers under neither.
+- **§C** the malformed pick at the door — **R63-1**, **R63-2**.
+- **§D** `placeCount` end to end: a gen-7 row read by a gen-8 build (and `rowStatsReadable` /
+  `rowLifecycle` unmoved by it, which is round 44's R44-1 class asked again), 14 hostile stored
+  values, the invariant over a deliberately inconsistent library, the **rescan driven through
+  `createStore` + `memoryStorage`** to storage and back, the unopenable-document arm, and a trip
+  with no places at all.
+- **§E** the range check: both subjects, `±90`/`±180`/`-0`/`90.0000001`, a null centre, a
+  pick-only city, non-finite coordinates refused at the door, and the reference trip **scoped to
+  city subjects** — unscoped it reports one issue, which is **R63-8**.
+- **§F** A-39 Part 11's table re-derived from the file's own **text** (45 rows, every S×D pair
+  once, 36 S×C, 18 V×S, arms 23/22, `|S| = SUMMARY_VERSION + 1`) rather than from its assertions.
+- **§G** N6's substitute measured: the reference trip has 6 cities and **0** null centres, so the
+  stated oracle is unreachable, and the dedicated `centre: null` test is reddened by the same
+  fault.
+- **§H** the standing constraints and the negative controls, including
+  `packages/core/test/cityPick.test.ts` compared **assertion by assertion** across the commit —
+  all 50 non-version assertions byte-for-byte unchanged.
+- **§I** the aged-row fixtures — **R63-3**.
+- **§J** what R62-6's live guard costs — **R63-9**.
+
+`r63-i24.mjs` writes nothing: every fixture is built in memory, storage is `memoryStorage()`, and
+`fixtures/` is read only. It needs no browser and no network.
+
+**`qa/i7a-idb-rowkeys.mjs` gained two corrected strings this round (R63-5)** and no assertion
+change: `:117`'s docstring said *"Fourteen keys"* over a fifteen-entry `ROW_KEYS` list, and
+`:519`'s assertion message said the covering table is *"40 rows (8 x 5)"* where it is now **45
+(9 × 5)**. The builder disclosed the second and declined to touch it; the first was undisclosed.
+Re-run afterwards under Chromium: **`ALL OK [engine: chromium]`**.

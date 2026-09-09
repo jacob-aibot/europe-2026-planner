@@ -114,7 +114,11 @@ const ok = (cond, label, extra) => {
 const head = (s) => console.log(`\n== ${s} ==`);
 const note = (s) => console.log(`  note  ${s}`);
 
-/** A-33 Part 2 assertion 1, transcribed. Fourteen keys, no more, no fewer. */
+/**
+ * A-33 Part 2 assertion 1, transcribed. **Fifteen** keys, no more, no fewer — fourteen until
+ * §8.4 A-85 Part 3 (ROADMAP I-24) added `placeCount`, which is the first TOP-LEVEL widening of
+ * the row since A-33 and the reason A-36 Part 4 obliges this probe to be re-run in a browser.
+ */
 const ROW_KEYS = ['attribution', 'cities', 'cityCount', 'countryCodes', 'datePrecision', 'dayCount',
   'endDate', 'id', 'placeCount', 'poolCount', 'revision', 'startDate', 'stopCount', 'summaryVersion',
   'title'];
@@ -516,7 +520,7 @@ head('axis D: the document-generation assignment across the existing table');
     'axis D: this browser probe seeds three DISTINCT document generations — {floor, previous, ' +
       'CURRENT}. It is a SAMPLE of axis D, not a cover of it: §8.4 A-84 Part 8 ENDED the ' +
       'absorption, and a SCHEMA_VERSION bump now costs |S| rows in A-39 Part 11\'s covering ' +
-      'table, which is `test/stats-storage.test.ts`\'s 40 rows (8 x 5) and not this probe\'s ' +
+      'table, which is `test/stats-storage.test.ts`\'s 45 rows (9 x 5) and not this probe\'s ' +
       'three cells (QA R61-7, third stale comment: the old text said "covered at zero new rows ' +
       '(15 >= 3x5 and 15 >= 3x3)" — the table has not been 15 rows since I-12 and absorption is ' +
       'over)',
