@@ -1757,6 +1757,36 @@ the population the rule runs on, and a stop-and-report on such a rule is a named
 sequencing rule 12. **No version constant moves**; the corpus goes 149,101 → **149,085** and
 `$sourceSha256` does **not** change, because this is a filter change over unchanged bytes.
 
+**Revision 72, 2026-09-10.** **QA round 68 returned SHIP on `I-31`'s own subject — the sixteen refusals
+were re-derived independently, from A-93's words, over the pre-clause-4 corpus, and agree with the committed
+golden by GeoNames id in both directions — and then found a deletion two rulings had already made and
+neither had recorded.** One ruling, **A-94**, and **no version constant moves** (`SCHEMA_VERSION` **5**,
+`SUMMARY_VERSION` **8**, §2.10's export count **88**, no type change). **R68-1, MAJOR, and a user meets it:
+the Cocos (Keeling) Islands ship ZERO rows** — `west island`, the territory's capital, returns *no match* —
+because the modal-parent election counts an **abstention** as a vote. `CC → null (null:3 AU:2)`, every `CC`
+row ships `countryCode: null` with no region, and clause 1 refuses all five as bare names. Re-measured here
+against the pinned layer: the layer **does** carry the territory, as *Indian Ocean Territories*
+(`ISO_A2_EH = AU`), two rows fall inside the 0.05° tolerance, and two of the three abstentions miss it by
+**0.0001°**. **A-94 rules that an abstention is not a vote**, publishes the full per-code tally in
+`gazetteer-parents.json`, and brings the five `CC` rows back (corpus **149,085 → 149,090**). **Its price is
+declared rather than discovered, as A-89 Part 5 sentence 3 demanded: `TK → NZ`, so the shipped `null` arm
+goes to ZERO** — the rule and the type are unchanged, the arm keeps 13 refusing rows, and both ways back in
+are named. **R68-2 (MAJOR) / KD-125: A-93 Part 2's `P(c)` join is corrected in place** — the literal
+`ADM0_A3` sentence names a sovereign for **0** codes, the `SOV_A3` join for **41**, which is A-93's own
+figure; built literally the ruling shipped its own fault 4. **`I-31`'s builder built the measurement, not
+the sentence, and is upheld.** **R68-3 (MAJOR): the append-only source log** could be destroyed by an
+**ordinary** run, and the `previousSha256` chain is green for a tail truncation, green for a heads-only
+rewrite and vacuous at 5 entries; A-90 clause 3 is amended — the log is written **only** under `--repin`,
+never re-seeded, and its witness is a **prefix literal in a test file the generator cannot write**.
+**R68-4 and KD-127** get one rule: a number only a 625 MB run can produce is published into a committed
+golden the offline tests read, with a **corpus manifest golden** under it. Four sentences are corrected at
+their own sites: A-93 Part 7 fault 3's arithmetic (**16 → 102**, R68-5), A-93 Part 2's *"or is claimed by"*
+summary (R68-8), ROADMAP `I-31`'s *"any reason"* class-`P` criterion (R68-6, KD-126 — **the builder was
+right**) and ROADMAP revision 74's undisclosed-edit bullet (R68-7 — **the edit WAS disclosed; the fence was
+mine and it was unsatisfiable**). **§0 position 12 gains consequence (d).** `ROADMAP.md` revision 75 carries
+the ledger entry and **I-32**. **Nothing here gates `I-30`**, which is still fenced by the unresolved
+visual direction and by nothing else.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -1764,13 +1794,15 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~573k tokens** (re-measured at **revision 71** — **§8 grew 162k → 168k** with §8.4's
-**A-93** and its five amendment banners on **A-89**'s heading, **A-89 Parts 2 and 8** and **A-83 Parts 3
-and 9**; **§0 stays 2k** with **position 12**; §2, §4, §9 and §10 did not move. The revision-70 figures
-below are superseded by these).
+This document is **~582k tokens** (re-measured at **revision 72** — **§8 grew 168k → 176k** with §8.4's
+**A-94** and its amendment banners on **A-84 Part 5**, **A-89 Part 5**, **A-90 clause 3** and **Part 5
+residue 2**, and its four in-place corrections inside **A-93 Parts 2, 7 and 9**; **§0 grows 2k → 3k** with
+**position 12 (d)**; §2, §4, §9 and §10 did not move. The revision-70 and revision-71 figures below are
+superseded by these).
 
 | ruling | ~size | who reads it, and when |
 |---|---|---|
+| **A-94** | ~6k | **The parent election, the corrections A-93 and A-89 owed, and the source log's witness.** A builder or breaker of ROADMAP **`I-32`** reads **A-94 whole, then A-84 Part 5, then A-89 Parts 4 and 5, then A-90 whole, then A-83 Part 9 clause 1 — and nothing else.** **Not A-93** (its predicate does not move and its sixteen refusals are asserted unchanged, which is a golden read, not a ruling read), not A-91, not A-92, not §2 whole, not §4, not §10. |
 | **A-93** | ~5.5k | **The predicate that ships, and it is READ WITH A-89, never instead of it.** A builder or breaker of ROADMAP **`I-31`** reads **A-93 whole, then A-89 whole, then A-83 Parts 3 and 9, then A-84 Part 5, then BUILD-NOTES KD-122 and KD-124 — and nothing else.** Not A-90, not A-91, not A-92, not §2 whole, not §4, not §10. A-89 supplies Parts 1 and 3–7, which A-93 depends on and does not repeat; A-93 supplies the rule. |
 
 **The revision-70 table follows and the A-89 row in it is superseded by the row above. The four rulings of
@@ -2107,7 +2139,17 @@ crosses a section boundary. Otherwise this table is the contract.
    one script over bytes that are already in the repository, and an architect who rules without running it
    is guessing at the one thing they were asked to decide. **(c)** A stop-and-report condition on such a
    rule is a **named set**, not a threshold — a population threshold cannot see an 829-person capital, and
-   that is exactly what it failed to see. §8.4 **A-93**; ROADMAP sequencing rule 12.
+   that is exactly what it failed to see. **(d)** *Added at revision 72 (§8.4 **A-94**, QA **R68-1**).*
+   **A rule that aggregates evidence says what a SILENT witness contributes, and publishes the tally.**
+   The parent election counted *"the layer has no opinion about this row"* as a vote for *"this row has no
+   country"*, and three silences outvoted two answers: the **entire Cocos (Keeling) Islands** territory was
+   deleted from the picker, by 0.0001° of coastline generalisation, with the tally printed only in a
+   five-minute run nobody can re-run offline. A count is not a measurement of a refusal (a), and **a
+   summary is not a measurement of a vote**: where a rule elects, the per-candidate tally goes in a
+   committed golden. **And a ruling that names a column, a key or a join publishes the number that join
+   produces, measured, in the same sentence** — A-93 stated `41` one paragraph away from a join that
+   yields `0`, and nobody executed the sentence until a builder did (**R68-2**, KD-125).
+   §8.4 **A-93**, **A-94**; ROADMAP sequencing rule 12.
 
 ---
 
@@ -23014,7 +23056,13 @@ stated reason that it is *"the one Natural Earth fills in for the de-facto entit
 > without it Longyearbyen, Basse-Terre and Dzaoudzi ship `null`. *(b)* The parent is resolved **per stated
 > country code, modally**, not per row; its published justification (KD-119's Mayotte 39/11 split) is
 > **withdrawn** — with the tolerance in, `YT` is `FR × 51` — and what earns it is Saint-Georges, across 4
-> rows of 152. *(c)* *"the empty code included"* is **scoped**: the translation runs for a codeless row
+> rows of 152. **⚠ AMENDED AGAIN AT REVISION 72 (A-94 Part 2, QA R68-1): an abstention is not a vote.**
+> The plurality is taken over the **answers** the layer gives; a row the layer neither contains nor places
+> within the tolerance contributes **nothing**, a tie between answers is broken by the lowest ISO code, and
+> a code all of whose rows abstain has no modal parent and ships `null`. Counting abstentions as a vote
+> made `CC → null (null:3 AU:2)` and deleted **the whole Cocos (Keeling) Islands territory** from the
+> picker via clause 1, and made `TK → null (null:2 NZ:1)`. **The full tally per code, abstentions included,
+> is published in `gazetteer-parents.json`** so this election is readable from the repository. *(c)* *"the empty code included"* is **scoped**: the translation runs for a codeless row
 > **only where the layer contains its centre**, because in GeoNames the codeless rows are ocean features and
 > multi-country archipelagos rather than the Somaliland towns this ruling was written against (KD-120).
 >
@@ -24772,6 +24820,15 @@ nearest-feature test. KD-120 kept the bare-name refusal over the translation for
 >    `Nukunonu` and `Fale old settlement`, all Tokelau, each carrying a region so none renders bare (6
 >    emitted rows across shards). **Any future ruling that would take that count to zero is deleting the
 >    arm and must say so.**
+>
+>    **⚠ THAT RULING ARRIVED, AND THIS IS IT BEING SAID (revision 72, A-94 Parts 2 and 3, QA R68-1).**
+>    All three of those rows are `TK`, and `TK`'s parent is `null` **only because three of its five
+>    abstentions outvoted the layer's one answer** — the same artefact that deleted the entire Cocos
+>    (Keeling) Islands territory from the picker. Under A-94 an abstention is not a vote, `TK → NZ`, and
+>    **the shipped `null` population is 0.** The **rule** is unchanged and the type is unchanged
+>    (`CountryCode | null`); the arm keeps a **refusing** population of 13 codeless rows and a **shipping**
+>    population of none, and A-94 Part 3 names the two ways back in. **This sentence did its job**: the
+>    count could not go to zero quietly, and it did not.
 
 ---
 
@@ -24903,7 +24960,11 @@ swap.
 >    **`--repin`**, and it is the **only** way a checksum mismatch results in a write. A `--repin` run must
 >    produce, **in the same commit**:
 >    - `fixtures/golden/gazetteer-source-log.json` — **append-only**, one entry per source per re-pin:
->      `{fetched, source, bytes, sha256, previousSha256}`;
+>      `{fetched, source, bytes, sha256, previousSha256}`. **⚠ AMENDED AT REVISION 72 (A-94 Part 5, QA
+>      R68-3): the log is written ONLY under `--repin`, it is never re-seeded, and its append-only witness
+>      is a prefix literal in `packages/core/test/` — not the `previousSha256` chain**, which is provenance
+>      and cannot witness its own history. An ordinary run that finds the log missing, empty or unparseable
+>      **stops and reports**;
 >    - a **row-level corpus diff** against the previously committed corpus:
 >      `{rowsAdded, rowsRemoved, rowsChanged}`, with every added and removed row named by
 >      `{id, name, countryCode}` while the total is under a published cap, and the counts alone above it.
@@ -24952,6 +25013,14 @@ next agent must not re-litigate it from first principles at the next regeneratio
    **Fires** the first time somebody regenerates the source log and truncates the history. Append-only is a
    property a test asserts (the new file's entries are a prefix-preserving superset of the committed one),
    not a comment at the top of the file.
+   **⚠ THIS RESIDUE FIRED, WORSE THAN IT PREDICTED, AND IS RULED AT REVISION 72 (A-94 Part 5, QA R68-3).**
+   The destroying run is not a golden regeneration but an **ordinary** corpus build with no `--repin` and
+   every checksum matching: `writeSourceLog` sits on the ordinary write path and re-seeds whenever the file
+   is missing, empty or unparseable, reporting *"5 appended, 5 total"*. And the test that was supposed to
+   see it could not — the `previousSha256` chain is green for a tail truncation, green for a heads-only
+   rewrite, and **vacuous today at 5 entries and 0 links**. The prefix assertion this residue names is the
+   right instrument; A-94 Part 5 puts it in a **test file the generator cannot write** and takes the log
+   off the ordinary path entirely.
 3. **The next corpus source will ask this question again.** §8.10 Part 3's airport index is the named one.
    **Fires** when it is scheduled; this ruling is the precedent and is to be applied rather than
    re-derived. *(That dataset's publication cadence is not verified here and must be, before it is pinned.)*
@@ -25475,8 +25544,17 @@ A-84 Part 5's translation still do not move.**
 > the row would ship after A-84 Part 5's parent translation (possibly `null`), **`X`** the set of non-empty
 > codes in `cc2` (column 10), uppercased and trimmed, and **`P(c)`** the **sovereign** of a country code
 > `c` as `ne_10m_admin_0_countries.geojson` states it at the pinned sha256 — the `ISO_A2_EH` of the feature
-> whose `ADM0_A3` is that code's `SOV_A3` and whose `ADMIN` equals its own `SOVEREIGNT` — or `null` where
-> the layer names no distinct sovereign.
+> whose **`SOV_A3` equals that code's own `SOV_A3`** and whose `ADMIN` equals its own `SOVEREIGNT` — or
+> `null` where the layer names no distinct sovereign.
+>
+> **⚠ CORRECTED AT REVISION 72 (A-94 Part 4, QA R68-2, BUILD-NOTES KD-125). This sentence read
+> *"the feature whose `ADM0_A3` is that code's `SOV_A3`"*, which names a distinct sovereign for **0** codes
+> on the pinned layer** — a dependency's `SOV_A3` is the sovereign's *group* code (`GB1`, `DN1`, `FR1`,
+> `AU1`, `FI1`) and no feature carries `ADM0_A3 = 'GB1'`. **The join above is the one that produces this
+> ruling's own published 41 codes and its own six pairs**, re-derived independently at revision 72.
+> `I-31`'s builder built the measurement rather than the sentence, disclosed it, and was right; built
+> literally, clause 4 refuses **28** rows and ships **Part 7 fault 4** — the deletion of `Jersey`,
+> `Guernsey`, `Alderney`, the `Faroe Islands`, `Signilskär` and `Norfolk Island`.
 >
 > **A candidate row is REFUSED when BOTH hold:**
 >
@@ -25511,8 +25589,13 @@ A-84 Part 5's translation still do not move.**
 | `Iturup Island` | 2125177 | `T/ISL` | `RU` | `JP` | 0 |
 | `Diomede Islands` | 4031746 | `T/ISLS` | `RU` | `US,RU` | 0 |
 
-**Every one of the sixteen is a landmass that lies in, or is claimed by, more than one country. Not one is
-a settlement.** `Vatican City`, `Tórshavn`, `Saint Helier`, `Douglas`, `Mariehamn`, `Laayoune`, `Dakhla`,
+**Every one of the sixteen is a landmass whose own source row marks a second country in `cc2` — nine of
+them because two states claim it and seven because it genuinely spans a border. Not one is a settlement.**
+*(⚠ CORRECTED AT REVISION 72, A-94 Part 7 item 3, QA R68-8. This sentence read *"lies in, or is claimed by,
+more than one country"*, which reads as **two** tests where the predicate is **one**: `cc2` marks a second
+country. "Claimed by" describes what the sixteen turn out to be; it is not an independent criterion, and
+Part 9 residue 1 now names the four rows the unpriced reading would have caught.)* `Vatican City`,
+`Tórshavn`, `Saint Helier`, `Douglas`, `Mariehamn`, `Laayoune`, `Dakhla`,
 `Longyearbyen` and the other 133 class-`P` rows all continue to ship exactly as they do today.
 
 ---
@@ -25634,7 +25717,14 @@ three.**
    `Anse Marcel`) disappear and the Longyearbyen-ships-`NO` assertion reddens. *(A-89 fault 2, unchanged
    and still the control.)*
 3. **⭑ Drop the class restriction — run clause 4 over class `P` too.** **`Vatican City` disappears, the
-   `vatican` probe becomes `NO MATCH`, and the refusal count goes 16 → 169.** Three assertions redden:
+   `vatican` probe becomes `NO MATCH`, and the refusal count goes 16 → 102.** *(⚠ ARITHMETIC CORRECTED AT
+   REVISION 72, A-94 Part 7 item 2, QA R68-5, BUILD-NOTES KD-124's disclosed doubt: this read **169**, which
+   is A-89's **pre-class** count. Under this fault the sovereign subtraction is still in place, so
+   `Tórshavn`, the 16 Faroese and 15 Åland rows and every other class-`P` row whose `cc2` names only its own
+   sovereign survive. The generator, run with the fault injected, prints **102 rows refused** — 16 terrain +
+   86 class-`P`, largest groups `AR` 28 and `AQ` 25. **The fault's effect is unchanged and is the point:
+   `Vatican City` is among the 102 because `P(VA)` is `null` — the Holy See is its own sovereign — and
+   `Tórshavn` is not.*)* Three assertions redden:
    Vatican City ships `VA`; the probes golden's `vatican` entry; and *"no refused row has feature class
    `P`"*. **This fault stays in the suite permanently — it is the version A-89 ruled, it is four
    characters, and it is the one a future builder will re-derive.**
@@ -25685,6 +25775,14 @@ Vatican City (829 people)**. It is replaced:
    Clause 4 cannot see any of these and this ruling does not claim it does. **Fires** when a user reports
    `Timor` or `Saint Martin`, or when a corpus swap gives us an **extent** rather than a point — the honest
    test is *"does this feature's polygon cross a border in the index"*, and we ship a coordinate.
+   **⚠ EXTENDED AT REVISION 72 (A-94 Part 7 item 3, QA R68-8).** The enumeration above is complete under
+   Part 2's predicate — *`cc2` marks a second country* — and QA round 68 confirmed it four ways, including a
+   sweep of all 174,694 source `ISL`/`ISLS` rows and every shipped island over 1 M people. Under the
+   *"or is claimed by"* reading that the corrected summary sentence withdraws, **four more ship unmarked
+   under a single claimant**: `Falkland Islands (Islas Malvinas)` `FK`, `Isla Perejil` `ES`, `Isla de Aves`
+   `VE`, `Kinmen Island` `TW`. **No user is harmed by any of the four** — each ships under the code a
+   traveller who went there would name — so this is a claim-strength finding (§0 position 10 (c)), answered
+   by narrowing the sentence and naming the population, not by widening the rule.
 2. **The disputed and shared islands, refused rather than attributed.** Nine of the sixteen are disputes or
    shared islands rather than the archipelago case A-89 was written about: `Usedom`, `Kunashir`, `Shikotan`,
    `Iturup`, `Hawar`, `Abu Musa`, `Liancourt Rocks`, `Hans Island`, `Diomede`. Refusing them is consistent
@@ -25707,6 +25805,331 @@ Vatican City (829 people)**. It is replaced:
    the Macau parishes ship `CN`, the Antarctic stations ship `AQ` or `AR`. Each is A-84 Part 5 working as
    ruled — the row's own stated code — and none is touched here. **Fires** when a user reports one; the
    remedy is A-84 Part 5's `null` arm, not clause 4.
+
+---
+
+#### A-94 — an abstention is not a vote: a territory the layer answers for is not deleted by the rows it is silent about, and the corrections A-93 and A-89 owe are made at their own sites (revision 72, QA **R68-1** MAJOR, **R68-2** MAJOR, **R68-3** MAJOR; **R68-4**, **R68-5**, **R68-6**, **R68-8** and BUILD-NOTES **KD-125**, **KD-127** ride along; ROADMAP **I-32**)
+
+> **This ruling AMENDS A-84 Part 5 / A-89 Part 4's modal parent, CORRECTS A-93 Part 2's join and Part 7
+> fault 3 in place, CORRECTS A-89 Part 5 sentence 3 in place, and AMENDS A-90 clause 3's append-only
+> mechanism. It reopens nothing else.** A-93's predicate, its sixteen refusals and its named set stand
+> exactly as ruled; the corpus's supply chain is A-90's and does not move. **Read A-94 with A-84 Part 5 and
+> A-89 Parts 4 and 5.**
+
+**Part 1 — the deletion nobody recorded, re-measured here from the committed artefact and the pinned layer
+rather than from the report that routed it (§0 position 12 (b)).**
+
+`node cli.ts cities cocos` returns *Cocos, Bahia, Brazil*. `bantam` returns two American villages.
+**`west island` — the capital of the Cocos (Keeling) Islands — returns no match.** The territory ships
+**zero rows**: all five of its candidates sit in `fixtures/golden/gazetteer-refusals.json` under
+`reason: 'bare-name'` — `gn:x5yu Bantam Village` (`P/PPL`), `gn:x5xz West Island` (`P/PPLC`),
+`gn:x5y5 South Island`, `gn:x5yj Horsburgh Island`, `gn:x5xw Cocos Islands`. **That is the deletion A-93
+Part 3(a) argues against, already done, to an inhabited territory, and recorded in neither ruling.**
+
+**The chain, re-derived independently on 2026-09-10** — point-in-polygon and nearest-boundary over
+`ne_10m_admin_0_countries.geojson` at sha256 `239eec57…` (verified by hashing the pinned file), against the
+eight source rows lifted from the cached `allCountries.txt` A-90's log records:
+
+| stated code | row | layer's answer | distance to the nearest feature |
+|---|---|---|---|
+| `CC` | `West Island` (`P/PPLC`) | **`AU`** — *Indian Ocean Territories* | inside tolerance, **0.0023°** |
+| `CC` | `South Island` (`T/ISL`) | **`AU`** — *Indian Ocean Territories* | inside tolerance, **0.0059°** |
+| `CC` | `Bantam Village` (`P/PPL`) | abstains | *Indian Ocean Territories*, **0.0501°** |
+| `CC` | `Horsburgh Island` (`T/ISL`) | abstains | *Indian Ocean Territories*, **0.0510°** |
+| `CC` | `Cocos Islands` (`T/ISLS`) | abstains | *Indian Ocean Territories*, **0.1267°** |
+| `TK` | `Atafu Village` (`P/PPLA`) | **`NZ`** — *New Zealand* | inside tolerance, **0.0134°** |
+| `TK` | `Fale old settlement` (`P/PPLA`) | abstains | *New Zealand*, **0.0618°** |
+| `TK` | `Nukunonu` (`P/PPLA`) | abstains | *New Zealand*, **0.6554°** |
+
+`tools/gen-gazetteer.mjs:886` writes each abstention into the election as the key `''` and `:891-894` takes
+the plurality **over all keys including `''`**, so `CC → null (null:3 AU:2)` and `TK → null (null:2 NZ:1)` —
+the generator's own audit prints both. Every `CC` row then ships `countryCode: null` with no `admin1`, and
+A-83 Part 9 clause 1 refuses it as a bare name. **The tie-break makes it worse rather than better: `''`
+sorts first, so on a tie the silence also wins.**
+
+**Two facts the routed finding gets slightly wrong, and both strengthen the fix.** *(a)* The layer does not
+"carry no feature at all" for the Cocos (Keeling) Islands. It carries **`Indian Ocean Territories`** —
+`ISO_A2 = -99`, **`ISO_A2_EH = AU`**, `ADM0_A3 = IOA`, `SOV_A3 = AU1`, `SOVEREIGNT = Australia` — whose
+polygons **are** the Cocos atolls, and two of the five rows fall inside its 0.05° tolerance. What the layer
+carries no feature for is a code *spelled* `CC`; nothing in the layer carries `ISO_A2_EH = CC` or `= TK`.
+**`AU` is not a guess, it is the containing feature.** *(b)* Two of the three `CC` abstentions are
+**0.0501°** and **0.0510°** from that feature — a whole inhabited territory is deleted by **one
+ten-thousandth of a degree**, about eleven metres of coastline generalisation at 1:10m.
+
+**The scope of the defect is exactly two stated codes, and that is checkable from the repository without
+running anything.** `fixtures/golden/gazetteer-parents.json`'s `codeParent` has twelve entries and exactly
+two are `null`: `CC` and `TK`. Dropping abstentions cannot reorder the other ten — removing one key from a
+plurality does not change the ranking of the keys that remain — so the population this ruling moves is
+**five refused `CC` rows and three shipped `TK` rows, and nothing else in 149,085.**
+
+---
+
+**Part 2 — the ruling. A-84 Part 5 step 1 / A-89 Part 4's modal parent gains one sentence.**
+
+> **An abstention is not a vote.** The modal parent of a stated country code is the plurality over the
+> **answers** the layer gives for that code's candidate rows. A row whose centre the layer neither contains
+> nor places within A-89 Part 4's 0.05° tolerance contributes **nothing** to the election — it is a row the
+> layer has no opinion about, not a row the layer says has no country. A tie between two answers is broken
+> by the **lowest ISO code**, deterministically. A code **all** of whose candidate rows abstain has **no**
+> modal parent and its rows ship `countryCode: null`, exactly as today.
+>
+> **The election is published, not summarised.** `fixtures/golden/gazetteer-parents.json` carries, per
+> undrawable stated code, the **full tally** — every answer with its count **and the abstention count
+> beside them** — so `CC → AU (AU:2, abstain:3)` is a fact a reviewer can read out of the repository
+> offline, per A-90 clause 1, instead of a line that scrolled past in a five-minute run.
+
+**Measured consequence, stated as a named set (§0 position 12 (a)):** `codeParent['CC']` becomes **`AU`**
+and `codeParent['TK']` becomes **`NZ`**. The five `CC` rows above leave the refusals golden and ship — the
+bare-name group goes **18 → 13** and the corpus **149,085 → 149,090** — and the three `TK` rows keep their
+ids, names and regions and change `countryCode` from `null` to `NZ`. **No other row in the corpus changes
+in any field.** *A-93's sixteen `'multi-country'` refusals are untouched:* the three non-`P` `CC` rows carry
+an **empty** `cc2`, so clause 4 never sees them.
+
+**Why this is the rule and not a dial.** The three alternatives, each rejected on the measurement:
+
+- ***Widen the tolerance*** (0.05° → 0.06° recovers `Bantam Village`, `Horsburgh Island` and
+  `Fale old settlement` directly). **Rejected**: it is a dial, it re-decides every one of the 152 translated
+  rows rather than the two codes actually broken, and 0.0001° is evidence that the threshold is arbitrary,
+  not that it is wrong. The tolerance stays at 0.05° and keeps the justification A-89 Part 4 gave it.
+- ***Resolve the parent per row instead of modally.*** **Rejected, and it is already an injected fault** —
+  A-93 Part 7 fault 8 / A-89: per-row resolution ships `Saint-Georges` as `BR`, a French commune attributed
+  to Brazil. The modal rule is right; only its **electorate** was wrong.
+- ***Leave it and let clause 1 refuse them.*** **Rejected on A-93 Part 3(a)'s own sentence** — *"deleting
+  Vatican City, Tórshavn, Saint Helier, Douglas and Mariehamn from the picker is a worse answer than the
+  imperfect one their own rows already give."* Cocos (Keeling) is the same argument with a smaller
+  population and no advocate, which is precisely why it went unnoticed for two rulings.
+
+---
+
+**Part 3 — the `null` arm goes to ZERO, and A-89 Part 5 sentence 3 required that to be said out loud.**
+
+A-89 Part 5 sentence 3 measured the arm and demanded this: *"Any future ruling that would take that count to
+zero is deleting the arm and must say so."* **Saying so.**
+
+**The three rows that exercise the shipped `null` arm are exactly the three `TK` rows** — verified against
+the committed golden, where `shippedCode: null` selects `gn:4h85j Atafu Village`, `gn:2eefa Fale old
+settlement`, `gn:4h85h Nukunonu` and nothing else. Under Part 2 all three ship `NZ`. **After this ruling
+no shipped row carries `countryCode: null`, and A-89 Part 5 sentence 3's population is 0.**
+
+**What that does and does not mean.**
+
+1. **The rule is unchanged and the type is unchanged.** `GazetteerRow.countryCode` stays
+   `CountryCode | null`; `SCHEMA_VERSION` does not move; A-84 Part 5's *"Cairn does not adjudicate a
+   sovereignty its own map cannot draw"* stands word for word. What changes is that **this corpus no longer
+   contains a row for which that sentence has to fire.**
+2. **The arm is not unreachable — it is unoccupied**, and the two ways in are named: a stated code whose
+   **every** candidate row abstains (Part 2's own last sentence), and a codeless row the layer does not
+   contain, which keeps `null` and meets clause 1 (A-89 Part 5 sentence 1, unchanged — 13 such rows are in
+   the refusals golden today). **The arm has a refusing population of 13 and a shipping population of 0.**
+3. **A traveller to Tokelau now gets New Zealand on their lifetime map, and to Cocos (Keeling), Australia.**
+   That is the *same* trade A-84 Part 5 already ruled for Martinique → France, from the same column of the
+   same layer, and it is stated here rather than discovered: the label still reads *"Nukunonu, Nukunonu,
+   New Zealand"* and *"West Island, Australia"*, name and region first. **A row with no country at all is a
+   row a lifetime map cannot draw**; a row with its administering country is one it can.
+4. **A test may not assert that the shipped `null` count is zero.** It asserts the two arms by their
+   mechanism — the tally is published, and the 13 refusals keep their reason — because a count of zero is
+   satisfied by deleting the arm, which is the failure A-89 Part 5 sentence 3 was written against.
+
+---
+
+**Part 4 — R68-2 / KD-125: A-93 Part 2's join is CORRECTED IN PLACE, and the builder was right.**
+
+A-93 Part 2 defines `P(c)` as *"the `ISO_A2_EH` of the feature whose **`ADM0_A3`** is that code's
+`SOV_A3`"*. **Re-derived here over the pinned layer (258 features, sha256 verified):**
+
+| join | codes given a distinct sovereign |
+|---|---|
+| `feature.ADM0_A3 === c.SOV_A3` — the ruling's literal sentence | **0** |
+| `feature.SOV_A3 === c.SOV_A3` **and** `feature.ADMIN === feature.SOVEREIGNT` | **41** |
+
+**41 is A-93 Part 3(b)'s own published figure**, and the second join yields `JE→GB`, `GG→GB`, `FO→DK`,
+`AX→FI`, `NF→AU`, `TF→FR` — A-93's own six load-bearing pairs — together with the loaded ones it names as
+inert (`PS→IL`, `HK→CN`, `MO→CN`, `GI→GB`, `FK→GB`, `IO→GB`, `NC→FR`). The literal sentence is empty because
+a dependency's `SOV_A3` is the sovereign's **group** code (`GB1`, `DN1`, `FR1`, `AU1`, `FI1`) and no feature
+carries `ADM0_A3 = 'GB1'`; for an ordinary country `SOV_A3 === ADM0_A3`, so the join resolves each sovereign
+to itself and the *"distinct"* clause discards it.
+
+**A-93 Part 2's sentence is corrected in place to say `SOV_A3`.** Built literally it refuses **28** rows
+instead of sixteen and deletes `Jersey`, `Guernsey`, `Alderney`, the `Faroe Islands`, `Signilskär` and
+`Norfolk Island` — **A-93's own injected fault 4, shipped by accident**. `I-31`'s builder measured that,
+built the measurement, declined to edit the ruling and disclosed it as KD-125. **That is the conduct §0
+position 12 (b) asks for and it is upheld here without qualification.**
+
+**And it is the second time in three revisions that a ruling's prose named a join key that had never been
+run.** The standing consequence, which is cheap: **a ruling that names a column, a key or a join states the
+number that join produces, measured, in the same sentence.** A-93 did publish `41` — one paragraph away
+from a join that produces `0`, and the two were never reconciled because nobody executed the sentence. A
+figure and the mechanism that is supposed to yield it belong in the same breath.
+
+---
+
+**Part 5 — R68-3: the append-only log's witness moves to somewhere the generator cannot write.**
+
+A-90 clause 3 made `fixtures/golden/gazetteer-source-log.json` the mechanism by which a re-pin becomes a
+reviewed act, and A-90 Part 5 residue 2 already named the risk: *"a golden that must be append-only is
+still a golden, and `npm run golden` regenerates goldens."* **The residue has fired, in a way worse than it
+predicted** — the destroying run is not a regeneration of goldens but an **ordinary** corpus build with no
+`--repin` and every checksum matching, which re-seeds the log whenever the file is missing, empty or
+unparseable (a bare `catch {}` around the parse) and reports *"5 appended, 5 total"*. And the test that is
+supposed to see it cannot: the `previousSha256` chain is **green** for a tail truncation, **green** for a
+rewrite to heads-only — byte-for-byte what the re-seed produces — and **vacuous today**, five entries and
+zero links.
+
+> **Ruling, three clauses. The mechanism is the architect's; the generator change is the builder's.**
+>
+> 1. **The chain is not the witness, and it never could have been.** `previousSha256` is provenance — it
+>    says which bytes an entry replaced — and a self-describing file cannot witness its own history:
+>    every truncation and every rewrite produces a *consistent* file. **An append-only claim is a claim
+>    about the past, and the past must be pinned by something the writer cannot rewrite.** The chain stays
+>    in the file as provenance; the `$what` string claiming a test walks it is corrected to say what the
+>    test actually does.
+> 2. **The witness is a literal in a test file, because the generator writes goldens and does not write
+>    `packages/core/test/`.** The test carries the committed log's entries in order as
+>    `{source, sha256, fetched}` literals and asserts the file on disk **starts with exactly that list**,
+>    same order, same values, no gaps — a prefix assertion, not an equality, so a genuine `--repin` appends
+>    and stays green. Extending the literal is the reviewed act; a run that shortens or reorders the past
+>    reddens. **A monotonic entry count is not enough** — it survives a heads-only rewrite that keeps the
+>    count — and a count is exactly the shape §0 position 12 (a) rejects.
+> 3. **The ordinary path stops writing the log at all.** The log is written **only** under `--repin`.
+>    On any other run a log that is missing, empty or unparseable is a **stop-and-report** — the artefact
+>    of record is incomplete and that is a finding, not a condition to repair silently — and a log that
+>    parses is read and verified, never re-seeded. Seeding happens once, in the increment that creates the
+>    file, and never again.
+
+---
+
+**Part 6 — R68-4 and KD-127: a claim about a run nobody can rerun is published into a file the offline
+tests read.**
+
+Two findings, one rule. **(a)** The artefact of record has no digest over its own bytes: a
+length-preserving hand edit to a shipped row's population and coordinate passes all tests, the
+`CORPUS_BYTES` total and the row count (the same edit to the **country code** is caught, by the `indexSays`
+cross-check — the corpus is guarded off one field and not the others). **(b)** `I-31`'s four audit numbers
+— `S`-only 0, `P(C)`-only 0, sovereign pairs 6 of 41, class-`P` exempt 141 in 57 groups — are asserted
+against the generator's **source text**, so the test catches a deleted line and cannot catch a line printing
+a wrong number (KD-127, disclosed).
+
+> **Ruling.** **A number that only a 625 MB generator run can produce is written into a committed golden,
+> and the offline test asserts the golden.** Concretely, and both cheap:
+>
+> 1. `fixtures/golden/gazetteer-refusals.json`'s header carries the four audit numbers beside the
+>    per-reason counts R67-10 already put there, and Part 2's tallies go in the parents golden. The
+>    generator writes them; `npm test` reads them; the values are then in the diff of the commit that
+>    changed them, which is where A-90 clause 1 says every claim about the corpus belongs.
+> 2. **A new golden, `fixtures/golden/gazetteer-manifest.json`, carries one sha256 per shipped corpus
+>    file plus the row count and byte length of each**, and a test recomputes it over
+>    `packages/core/src/geo/gazetteer/` and compares. It is a **golden, not `meta.json`** — deliberately:
+>    967 hashes in `meta.json` would be ~70 KB added to a file every client fetches, which A-82's byte
+>    discipline forbids for a check no client performs.
+>
+> **What this does not claim.** The manifest lives in the same repository as the corpus, so it raises the
+> cost of a silent edit from *one file* to *two files that must agree*; it does not make one impossible and
+> nothing here pretends otherwise. **The guarantee is still A-90 clause 1's — 967 reviewable, diffable
+> documents in git, reviewed — and this is a tripwire under it, not a replacement for it.**
+
+---
+
+**Part 7 — the corrections made in place, at their own sites, because a false sentence that survives where
+it was written is how the last two defects reached a builder.**
+
+1. **A-93 Part 2's `P(c)` join** → `SOV_A3` (Part 4). Banner at the site.
+2. **A-93 Part 7 fault 3's arithmetic** (R68-5) → **16 → 102**, not 16 → 169. `169` is A-89's pre-class
+   count; under fault 3 the sovereign subtraction is still in place, so the Faroese and Åland rows survive
+   and the generator — run with the fault injected — prints **102 rows refused** (16 terrain + 86 class-`P`,
+   `AR` 28 and `AQ` 25 the largest groups). **The fault's stated effect is unchanged and is what matters:
+   `Vatican City` is among the 102, because `P(VA)` is `null` — the Holy See is its own sovereign — and
+   `Tórshavn` is not.** The builder's disclosed doubt was correct.
+3. **A-93 Part 2's summary sentence** (R68-8) → *"lies in, **or is claimed by**, more than one country"*
+   reads as two tests and only one is the predicate. The predicate is, and remains, **`cc2` marks a second
+   country**; *"claimed by"* describes what the sixteen turn out to be, not an independent criterion. The
+   sentence is corrected to say so, and Part 9 residue 1 gains the four rows the unpriced reading would
+   catch — `Falkland Islands (Islas Malvinas)` `FK`, `Isla Perejil` `ES`, `Isla de Aves` `VE`,
+   `Kinmen Island` `TW` — with the measurement that **no user is harmed by any of them**, each shipping
+   under the code a traveller would name.
+4. **A-89 Part 5 sentence 3** → Part 3's declaration, at its own site.
+5. **A-84 Part 5's amendment (b)** → Part 2's sentence, at its own site.
+6. **ROADMAP `I-31`'s verification bullet** (R68-6, KD-126) → *"no refused row of **any** reason has feature
+   class `P`"* is false and was false before `I-31`: `Bantam Village` is `P/PPL` refused as `'bare-name'`.
+   A-93 Part 8 condition 1's own scoping — **clause 4's** matches — is correct and is what shipped. The
+   ROADMAP sentence is corrected; the builder is upheld. *(Note the ordering: under Part 2 `Bantam Village`
+   stops being refused at all, but the criterion would still be wrong, and a criterion made true by a data
+   change is a criterion waiting to break again.)*
+7. **ROADMAP revision 74's undisclosed-edit bullet** (R68-7) → the record says `I-29`'s
+   `apps/web/src/ports/map.ts` edit was *"not disclosed in the builder's report"* and stands it beside
+   R62-7 and R64-7 as a third undisclosed edit. **It was disclosed**, twice, in `BUILD-NOTES.md` at
+   `59cad74`. The **out-of-fence** half is true and stays; the third-instance claim is withdrawn. And the
+   fence was mine: *"no `apps/web` file of any kind"* was **unsatisfiable** alongside A-92's own ruling and
+   an exit criterion of a clean `typecheck`. **A builder who cannot satisfy two of my sentences at once,
+   picks the ruling over the fence and says so, has done the right thing** — the defect is in how the
+   fence was written.
+
+---
+
+**Part 8 — version movement: nothing moves, and one number does.** `SCHEMA_VERSION` **5**,
+`SUMMARY_VERSION` **8**, §2.10's export count **88**, no `City`/`Trip`/`TripSummary`/`GazetteerRow` field,
+no type change. `$sourceSha256` does **not** change — this is a **parent-election change over unchanged
+source bytes**, so A-90's `--repin` path is not entered and **a source-log entry appearing in this
+increment's commit is a defect**. The corpus goes **149,085 → 149,090** and the row-level diff is published
+in the increment's own commit (§0 position 11, sequencing rule 11).
+
+---
+
+**Part 9 — the injected faults (§0 position 5).**
+
+1. **Restore the abstention to the ballot** (count `''` as a vote) → `codeParent['CC']` and
+   `codeParent['TK']` go back to `null`, the five `CC` rows return to the refusals golden as bare names,
+   and assertions naming **each of the five by GeoNames id** redden, together with `west island` as a hit.
+   **This fault is permanent** — it is the shipped behaviour of two revisions and it is one line.
+2. **Widen the tolerance to 0.06° instead** → `Bantam Village`, `Horsburgh Island` and
+   `Fale old settlement` are answered directly, `Cocos Islands` (0.1267°) still abstains, and **the
+   published tallies change for codes this ruling does not touch** — which is the fault's whole point: the
+   assertion that the tally for every other code is unchanged reddens, and a dial is visible as a dial.
+3. **Break the tie-break** — resolve a tie by highest code instead of lowest → no shipped row moves on this
+   corpus and **the assertion that the tally is published, per code, with its abstention count, is what
+   catches it**. A tie is a result to report; today there is none, and the tallies are how anybody knows.
+4. **Seed the source log on the ordinary path** (Part 5 clause 3) → the run stops and reports, writing
+   nothing; and with the stop removed, the prefix assertion in the test reddens naming the first entry that
+   moved.
+5. **Truncate the source log's tail** — drop the newest entry — → the prefix assertion is **green** (it is a
+   prefix) and the **entry for that source is missing**, so the test's second half — every source named in
+   `meta.json`'s `$sourceSha256` inputs has at least one entry whose `sha256` is the one in use — reddens.
+   *(This fault exists because the chain test was green for exactly this, and a prefix test alone would be
+   too.)*
+6. **Hand-edit one shipped row, length-preservingly** → the manifest test reddens naming the shard.
+7. **Print a wrong number in one audit line** → the golden's header carries a value the corpus does not
+   support, and the test that derives the same number from the committed rows reddens (KD-127's remedy is
+   only real if the number is re-derived from the artefact, not copied from the header into an equality
+   with itself).
+
+---
+
+**Part 10 — the named set and the stop-and-report (§0 position 12 (c), sequencing rule 12).**
+
+> **The set this increment moves is eight rows and it is committed by GeoNames id:** five that begin
+> shipping — `gn:x5yu`, `gn:x5xz`, `gn:x5y5`, `gn:x5yj`, `gn:x5xw` — and three whose `countryCode` changes
+> `null → NZ` — `gn:4h85j`, `gn:2eefa`, `gn:4h85h`. **The generator stops and reports, writing nothing, if
+> the corpus diff contains any added, removed or changed row outside those eight**, or if
+> A-93 Part 8's sixteen `'multi-country'` refusals differ in either direction.
+
+---
+
+**Part 11 — residues, each with what would fire it.**
+
+1. **The shipped `null` arm is unoccupied.** Part 3 states it. **Fires** when a corpus swap gives us a
+   stated code whose every candidate row abstains — at which point the arm is occupied again with no code
+   change, which is the property that makes it worth keeping rather than deleting.
+2. **`AU` for Cocos and `NZ` for Tokelau are administering powers, not the country a traveller would
+   name.** This is A-84 Part 5's standing trade — Martinique reports France — and A-94 does not widen it.
+   **Fires** when a user reports one; the remedy is the picker's *label*, which already reads name and
+   region before country, not the attribution.
+3. **The tolerance still decides two rows by eleven metres.** Nothing here changes the 0.05° threshold, and
+   a corpus swap that moves a coastline moves the answers. **Fires** on a published tally changing without
+   an intended change to the rule — which is exactly what Part 2's published tallies make visible.
+4. **The manifest is in the same repository as the corpus it guards** (Part 6). **Fires** the day the
+   corpus moves out of git, which A-90 Part 5 residue 4 already prices, and it is the same answer.
+5. **The prefix witness needs a human to extend it.** A re-pin that appends and does not extend the test's
+   literal is green and leaves the newest entries unpinned. **Fires** at the second re-pin; the remedy is
+   that extending the literal is part of the same reviewed commit, which is the act A-90 clause 3 defines.
 
 ---
 
