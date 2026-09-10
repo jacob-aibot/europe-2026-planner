@@ -126,6 +126,7 @@ import {
 } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { writeCorpusAtomically } from './corpus-write.mjs';
+import { electParent } from './elect-parent.mjs';
 import { createInflateRaw } from 'node:zlib';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -935,11 +936,18 @@ async function build(cacheDir, { countryOf, index, draws }) {
   for (const code of [...perCode.keys()].sort()) {
     const ballot = perCode.get(code);
     // The plurality is over the ANSWERS. **A tie is broken by the lowest ISO code**, which is a
-    // rule rather than an accident of `Map` order — and it is A-94 Part 9 fault 3: no shipped row
-    // moves on this corpus if it is inverted, and the published tally is how anybody would know.
-    const ranked = [...ballot.answers].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
-    const best = ranked.length > 0 ? ranked[0][0] : null;
-    codeParent[code] = best !== null && draws.has(best) ? best : null;
+    // rule rather than an accident of `Map` order — and it is A-94 Part 9 fault 3.
+    //
+    // **The rule lives in `./elect-parent.mjs` — QA R69-3.** It used to be inline here, and fault
+    // 3 could then be inverted with all 1,880 tests green: no shipped row moves on this corpus
+    // because **there is no tie in the twelve published tallies**, so *"the published tally is how
+    // anybody would know"* knows nothing. A tie does not need a corpus, only a ballot — and a
+    // ballot needs a function a test can call, which a file that streams 625 MB on import cannot
+    // offer. `packages/core/test/gazetteerElection.test.ts` calls the same function on synthetic
+    // ties; do not reintroduce a copy of the comparator here, because two copies is how the arm
+    // goes dead again.
+    const { parent, ranked } = electParent(ballot.answers, draws);
+    codeParent[code] = parent;
     codeTally[code] = {
       parent: codeParent[code],
       answers: Object.fromEntries(ranked),

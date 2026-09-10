@@ -54,6 +54,7 @@ import { decodeGazetteer, decodeGazetteerMeta, searchGazetteer } from '../src/ge
 import type { Gazetteer, GazetteerRow } from '../src/geo/gazetteer.ts';
 import { loadGazetteerFor } from '../src/geo/gazetteerShards.gen.ts';
 import { COUNTRY_INDEX } from '../src/index.ts';
+import { electParent } from '../../../tools/elect-parent.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CORPUS = resolve(HERE, '..', 'src', 'geo', 'gazetteer');
@@ -336,6 +337,126 @@ test('A-94 Part 2: every published tally sums to its own electorate', () => {
 });
 
 /**
+ * **The rule, re-implemented here on purpose** — this file's re-derivation of the twelve published
+ * elections is what catches a generator that publishes one election and performs another, and it
+ * can only do that if it is a *second* implementation. `tools/elect-parent.mjs` is the first one;
+ * this is the second, and they are asserted to agree below.
+ */
+const rankIndependently = (answers: ReadonlyArray<readonly [string, number]>): Array<[string, number]> =>
+  [...answers].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)) as Array<[string, number]>;
+
+/**
+ * **A-94 Part 9 fault 3, MADE LIVE — QA R69-3.**
+ *
+ * The ruling says the published tally is what catches an inverted tie-break. **It is not, and it
+ * could not be: there is no tie in the twelve tallies.** Inverting the comparator in the generator
+ * *and* in this file's re-derivation left all 1,880 tests green — executed by the breaker, and the
+ * fourth instance in this project of a fault that is claimed to be caught and cannot fire.
+ *
+ * **A tie does not need a corpus.** The rule now lives in `tools/elect-parent.mjs`, which the
+ * generator calls and a test can call, and here it is called on ballots that *are* tied:
+ *
+ *  - a plain tie between two drawable codes → the **lowest** wins, and inverting the comparator
+ *    elects the other one;
+ *  - a tie whose lowest code is **not drawable** → the parent is `null`, and inverting it elects a
+ *    code instead of `null` — so the tie-break and A-94 Part 3's `null` arm are pinned together;
+ *  - a three-way tie, so the rule is a total order rather than a swap of two.
+ *
+ * The **generator's** copy of the rule is the same object: it imports this function, and the
+ * assertion below that it does is what stops an inline sort creeping back in beside it.
+ */
+test('A-94 Part 2 / fault 3: the tie-break elects the LOWEST ISO code, on a ballot that has a tie', () => {
+  const draws = new Set(['AU', 'NZ', 'ZZ']);
+  assert.deepEqual(
+    electParent([['NZ', 2], ['AU', 2]], draws),
+    { parent: 'AU', ranked: [['AU', 2], ['NZ', 2]] },
+    'a tie between two drawable codes is not broken on the lowest ISO code (A-94 Part 2)',
+  );
+  assert.deepEqual(
+    electParent([['NZ', 3], ['AU', 2]], draws),
+    { parent: 'NZ', ranked: [['NZ', 3], ['AU', 2]] },
+    'the plurality is not the top answer — the tie-break has become the whole rule',
+  );
+  assert.deepEqual(
+    electParent([['ZZ', 2], ['NZ', 2], ['AU', 2]], draws).ranked.map(([c]) => c),
+    ['AU', 'NZ', 'ZZ'],
+    'a three-way tie is not ordered by ISO code',
+  );
+  // The tie-break and the `null` arm, pinned together: the lowest code wins the tie and then
+  // fails to be drawable, so the code's rows ship `countryCode: null` (A-94 Part 3). Inverting
+  // the comparator elects `ZZ` here — a shipped code where the rule says none.
+  assert.deepEqual(
+    electParent([['ZZ', 2], ['AA', 2]], new Set(['ZZ'])),
+    { parent: null, ranked: [['AA', 2], ['ZZ', 2]] },
+    'a tie won by an undrawable code must elect null, not the runner-up',
+  );
+  assert.deepEqual(electParent([], draws), { parent: null, ranked: [] }, 'an empty ballot elects null');
+});
+
+/**
+ * **The two implementations agree, on the twelve real elections and on the synthetic ties.** This
+ * is what lets the re-derivation below stay independent while the generator's own rule is the one
+ * under test above: if they ever disagree, one of them is not A-94 Part 2's rule.
+ */
+test('A-94 Part 2 / fault 3: the generator\'s rule and this file\'s re-derivation agree', () => {
+  const draws = new Set(COUNTRY_INDEX.countries.map((c) => c.code));
+  const disagreed: string[] = [];
+  const { codeTally, codeParent } = parents();
+  for (const [code, t] of Object.entries(codeTally)) {
+    const mine = rankIndependently(Object.entries(t.answers));
+    const theirs = electParent(Object.entries(t.answers), draws);
+    if (JSON.stringify(mine) !== JSON.stringify(theirs.ranked)) {
+      disagreed.push(`${code}: ${JSON.stringify(mine)} vs ${JSON.stringify(theirs.ranked)}`);
+    }
+    // And the extracted rule reproduces the election that actually SHIPPED, code for code — which
+    // is what makes lifting it out of the generator checkable offline instead of by a 625 MB run.
+    if (theirs.parent !== (codeParent[code] ?? null)) {
+      disagreed.push(`${code}: the shipped parent is ${String(codeParent[code])}, electParent says ${String(theirs.parent)}`);
+    }
+  }
+  for (const ballot of [
+    [['NZ', 2], ['AU', 2]],
+    [['ZZ', 2], ['AA', 2]],
+    [['ZZ', 2], ['NZ', 2], ['AU', 2]],
+  ] as ReadonlyArray<ReadonlyArray<readonly [string, number]>>) {
+    const mine = rankIndependently(ballot);
+    const theirs = electParent(ballot, draws).ranked;
+    if (JSON.stringify(mine) !== JSON.stringify(theirs)) {
+      disagreed.push(`synthetic ${JSON.stringify(ballot)}: ${JSON.stringify(mine)} vs ${JSON.stringify(theirs)}`);
+    }
+  }
+  assert.deepEqual(disagreed, [], `\n  ${disagreed.join('\n  ')}\n`);
+});
+
+/**
+ * **The generator elects through that module and does not keep a copy of the rule beside it.** A
+ * grep — KD-127's weaker instrument, and the only one available against a file that streams 625 MB
+ * on import — but it is what stops fault 3 going dead again by an inline sort reappearing in
+ * `gen-gazetteer.mjs`.
+ */
+test('A-94 Part 2 / fault 3: the generator elects through tools/elect-parent.mjs', () => {
+  const gen = readFileSync(resolve(HERE, '..', '..', '..', 'tools', 'gen-gazetteer.mjs'), 'utf8');
+  assert.match(
+    gen,
+    /import \{ electParent \} from '\.\/elect-parent\.mjs';/,
+    'the generator no longer imports the elected rule (QA R69-3)',
+  );
+  assert.match(gen, /electParent\(ballot\.answers, draws\)/, 'the generator does not call electParent');
+  // …and no second copy of the rule inside the election itself. Scoped to the election block, not
+  // to the file: `gen-gazetteer.mjs` sorts group counts with the same comparator shape in two
+  // audit blocks that decide nothing about a parent, and orders the codes themselves with a bare
+  // `.sort()`. What may not come back is a COMPARATOR inside the loop that elects.
+  const block = gen.slice(gen.indexOf('const codeParent = {};'), gen.indexOf('  const parents = ['));
+  assert.ok(block.length > 200 && block.length < 4000, 'the election block could not be located');
+  assert.equal(
+    /\.sort\(\s*\(/.test(block),
+    false,
+    'an inline sort is back inside the election beside the shared rule — fault 3 goes dead again ' +
+      'the moment there are two copies of the tie-break (QA R69-3)',
+  );
+});
+
+/**
  * **`codeParent` is RE-DERIVED from the published tally, by the ruled rule** — plurality over the
  * answers, ties broken on the lowest ISO code, `null` where the winner is not a code the index
  * draws or where nobody answered.
@@ -350,7 +471,7 @@ test('A-94 Part 2: codeParent is the plurality of the published answers, lowest 
   const draws = new Set(COUNTRY_INDEX.countries.map((c) => c.code));
   const wrong: string[] = [];
   for (const [code, t] of Object.entries(codeTally)) {
-    const ranked = Object.entries(t.answers).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
+    const ranked = rankIndependently(Object.entries(t.answers));
     const top = ranked[0];
     const expected = top !== undefined && draws.has(top[0]) ? top[0] : null;
     if ((codeParent[code] ?? null) !== expected) {
