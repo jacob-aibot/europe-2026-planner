@@ -114,21 +114,21 @@ check(diverged === DIVERGE.length, `all ${DIVERGE.length} accented names fold DI
 
 console.log('');
 console.log('## C — the match rule as a ceiling');
-const ork = searchGazetteer('ork', GAZETTEER, { limit: 100 });
+const { hits: ork } = searchGazetteer('ork', GAZETTEER, { limit: 100 });
 check(ork.every((h) => !/york/i.test(h.name)), `'ork' returns ${ork.length} rows, none of them a York (substring is refused)`);
-const york = searchGazetteer('york', GAZETTEER, { limit: 100 });
+const { hits: york } = searchGazetteer('york', GAZETTEER, { limit: 100 });
 check(york.some((h) => h.name === 'New York'), `'york' finds New York at rank ${york.findIndex((h) => h.name === 'New York') + 1} (token prefix)`);
-check(searchGazetteer('', GAZETTEER).length === 0, `'' returns 0`);
-check(searchGazetteer('   ', GAZETTEER).length === 0, `'   ' returns 0`);
-check(searchGazetteer('!!!', GAZETTEER).length === 0, `'!!!' folds to '' and returns 0`);
-check(searchGazetteer('東京', GAZETTEER).length === 0, `a CJK query returns 0 (deferred, not a crash)`);
+check(searchGazetteer('', GAZETTEER).hits.length === 0, `'' returns 0`);
+check(searchGazetteer('   ', GAZETTEER).hits.length === 0, `'   ' returns 0`);
+check(searchGazetteer('!!!', GAZETTEER).hits.length === 0, `'!!!' folds to '' and returns 0`);
+check(searchGazetteer('東京', GAZETTEER).hits.length === 0, `a CJK query returns 0 (deferred, not a crash)`);
 // fuzzy / edit distance must NOT be present
-check(searchGazetteer('zurick', GAZETTEER).length === 0, `'zurick' (one typo) returns 0 — no fuzzy matching`);
-check(searchGazetteer('londin', GAZETTEER).length === 0, `'londin' returns 0 — no edit distance`);
+check(searchGazetteer('zurick', GAZETTEER).hits.length === 0, `'zurick' (one typo) returns 0 — no fuzzy matching`);
+check(searchGazetteer('londin', GAZETTEER).hits.length === 0, `'londin' returns 0 — no edit distance`);
 // interior-token prefix only, never interior-character
-const angeles = searchGazetteer('angeles', GAZETTEER, { limit: 50 });
+const { hits: angeles } = searchGazetteer('angeles', GAZETTEER, { limit: 50 });
 check(angeles.some((h) => h.name === 'Los Angeles'), `'angeles' finds Los Angeles (A-82's own example)`);
-check(searchGazetteer('ngeles', GAZETTEER, { limit: 50 }).every((h) => h.name !== 'Los Angeles'), `'ngeles' does NOT find Los Angeles`);
+check(searchGazetteer('ngeles', GAZETTEER, { limit: 50 }).hits.every((h) => h.name !== 'Los Angeles'), `'ngeles' does NOT find Los Angeles`);
 
 console.log('');
 console.log('## D — the ranking is total');
@@ -150,17 +150,17 @@ const shuffle = (arr, seed) => {
 const key = (hits) => hits.map((h) => `${h.id}|${h.label}`).join('\n');
 let unstable = 0;
 for (const qy of QUERIES) {
-  const base = key(searchGazetteer(qy, GAZETTEER, { limit: 200 }));
+  const base = key(searchGazetteer(qy, GAZETTEER, { limit: 200 }).hits);
   for (const seed of [1, 7, 99, 12345, 987654321]) {
     const shuffled = { ...GAZETTEER, rows: shuffle(GAZETTEER.rows, seed) };
-    if (key(searchGazetteer(qy, shuffled, { limit: 200 })) !== base) {
+    if (key(searchGazetteer(qy, shuffled, { limit: 200 }).hits) !== base) {
       unstable += 1;
       console.log(`  FAIL  '${qy}' reorders under a shuffled rows array (seed ${seed})`);
     }
   }
   // reversed, too — the builder's own N7 strengthening
   const rev = { ...GAZETTEER, rows: GAZETTEER.rows.slice().reverse() };
-  if (key(searchGazetteer(qy, rev, { limit: 200 })) !== base) {
+  if (key(searchGazetteer(qy, rev, { limit: 200 }).hits) !== base) {
     unstable += 1;
     console.log(`  FAIL  '${qy}' reorders under a reversed rows array`);
   }
@@ -189,10 +189,10 @@ let bare = 0;
 const bareNames = [];
 const allHits = [];
 for (const qy of ['a', 'b', 'c', 'ha', 'be', 'ky', 'fa', 'ma', 'la']) {
-  allHits.push(...searchGazetteer(qy, GAZETTEER, { limit: 500 }));
+  allHits.push(...searchGazetteer(qy, GAZETTEER, { limit: 500 }).hits);
 }
 for (const r of GAZETTEER.rows) {
-  const hit = searchGazetteer(r.name, GAZETTEER, { limit: 500 }).find((h) => h.id === r.id);
+  const hit = searchGazetteer(r.name, GAZETTEER, { limit: 500 }).hits.find((h) => h.id === r.id);
   if (!hit) continue;
   if (typeof hit.label !== 'string' || hit.label === '') { bare += 1; bareNames.push(`${r.name} (EMPTY LABEL)`); continue; }
   if (hit.label === hit.name) { bare += 1; bareNames.push(r.name); }
@@ -208,7 +208,7 @@ check(
 let collidingQueries = 0;
 const collisions = [];
 for (const r of GAZETTEER.rows) {
-  const hits = searchGazetteer(r.fold, GAZETTEER, { limit: 20 });
+  const { hits } = searchGazetteer(r.fold, GAZETTEER, { limit: 20 });
   const labels = hits.map((h) => h.label);
   const dupes = labels.filter((l, i) => labels.indexOf(l) !== i);
   if (dupes.length) {
@@ -221,17 +221,17 @@ for (const c of collisions) console.log(`      ${c}`);
 
 console.log('');
 console.log('## F — degenerate options');
-check(searchGazetteer('london', GAZETTEER, { limit: 0 }).length === 0, 'limit 0 -> []');
-check(searchGazetteer('london', GAZETTEER, { limit: -5 }).length === 0, 'limit -5 -> []');
-const frac = searchGazetteer('san', GAZETTEER, { limit: 2.5 });
+check(searchGazetteer('london', GAZETTEER, { limit: 0 }).hits.length === 0, 'limit 0 -> []');
+check(searchGazetteer('london', GAZETTEER, { limit: -5 }).hits.length === 0, 'limit -5 -> []');
+const { hits: frac } = searchGazetteer('san', GAZETTEER, { limit: 2.5 });
 console.log(`  limit 2.5 -> ${frac.length} rows (Array.slice truncates; not validated by searchGazetteer)`);
-const nan = searchGazetteer('san', GAZETTEER, { limit: Number.NaN });
+const { hits: nan } = searchGazetteer('san', GAZETTEER, { limit: Number.NaN });
 console.log(`  limit NaN -> ${nan.length} rows`);
-const inf = searchGazetteer('san', GAZETTEER, { limit: Number.POSITIVE_INFINITY });
+const { hits: inf } = searchGazetteer('san', GAZETTEER, { limit: Number.POSITIVE_INFINITY });
 console.log(`  limit Infinity -> ${inf.length} rows`);
 check(Object.isFrozen(GAZETTEER) || true, 'note only');
 const before = GAZETTEER.rows.length;
-searchGazetteer('london', GAZETTEER).forEach((h) => { try { h.alts.push?.('x'); } catch { /* readonly */ } });
+searchGazetteer('london', GAZETTEER).hits.forEach((h) => { try { h.alts.push?.('x'); } catch { /* readonly */ } });
 check(GAZETTEER.rows.length === before, 'searchGazetteer did not mutate the injected gazetteer length');
 
 console.log('');
@@ -244,7 +244,7 @@ const mojibake = GAZETTEER.rows.filter((r) => /[?�]/.test(r.admin1));
 const distinct = [...new Set(mojibake.map((r) => r.admin1))].sort();
 console.log(`  shipped rows whose ADM1NAME is CORRUPTED in the source (contains ? or U+FFFD): ${mojibake.length} rows, ${distinct.length} distinct names`);
 for (const r of mojibake.slice(0, 6)) {
-  const hit = searchGazetteer(r.name, GAZETTEER, { limit: 50 }).find((h) => h.id === r.id);
+  const hit = searchGazetteer(r.name, GAZETTEER, { limit: 50 }).hits.find((h) => h.id === r.id);
   console.log(`      label as rendered: "${hit ? hit.label : '?'}"`);
 }
 console.log(`  A-82 Part 12 residue 4 covers "not localised"; it does not cover "not readable".`);
@@ -263,6 +263,6 @@ console.log('  a NAME would shift every field of that row and round-trip clean. 
 console.log('');
 console.log('## I — the coverage miss and the wrong-country hit, as a user meets them');
 for (const q of ['obidos', 'windsor', 'saint-georges', 'geneva', 'brazzaville', 'jerusalem']) {
-  const hits = searchGazetteer(q, GAZETTEER, { limit: 3 });
+  const { hits } = searchGazetteer(q, GAZETTEER, { limit: 3 });
   console.log(`  ${q.padEnd(15)} ${hits.length === 0 ? 'no match' : hits.map((h) => h.label).join('  ·  ')}`);
 }

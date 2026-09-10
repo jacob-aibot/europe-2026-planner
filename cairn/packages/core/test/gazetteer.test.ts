@@ -172,10 +172,10 @@ const FIXTURE: Gazetteer = {
   ],
 };
 
-const names = (q: string, opts?: { limit?: number }) => searchGazetteer(q, FIXTURE, opts).map((h) => h.id);
+const names = (q: string, opts?: { limit?: number }) => searchGazetteer(q, FIXTURE, opts).hits.map((h) => h.id);
 
 test('A-82 Part 3: prefix, never substring — `ork` returns nothing naming York', () => {
-  const hits = searchGazetteer('ork', FIXTURE);
+  const { hits } = searchGazetteer('ork', FIXTURE);
   assert.deepEqual(
     hits.filter((h) => /york/i.test(h.name)).map((h) => h.name),
     [],
@@ -192,9 +192,9 @@ test('A-82 Part 3: a token prefix matches — `york` finds New York, `angeles` f
 });
 
 test('A-82 Part 3: an empty query, and a query that folds to empty, return zero rows and do not throw', () => {
-  assert.deepEqual(searchGazetteer('', FIXTURE), []);
-  assert.deepEqual(searchGazetteer('   ', FIXTURE), []);
-  assert.deepEqual(searchGazetteer('--- ///', FIXTURE), []);
+  assert.deepEqual(searchGazetteer('', FIXTURE).hits, []);
+  assert.deepEqual(searchGazetteer('   ', FIXTURE).hits, []);
+  assert.deepEqual(searchGazetteer('--- ///', FIXTURE).hits, []);
 });
 
 test('A-82 Part 3: the query is folded, so `zurich` reaches `Zürich` and `ZÜRICH` does too', () => {
@@ -204,7 +204,7 @@ test('A-82 Part 3: the query is folded, so `zurich` reaches `Zürich` and `ZÜRI
 });
 
 test('A-82 Part 4: three Londons, three distinct countries, GB first by population', () => {
-  const hits = searchGazetteer('london', FIXTURE);
+  const { hits } = searchGazetteer('london', FIXTURE);
   const londons = hits.filter((h) => h.name === 'London');
   assert.equal(londons.length, 3);
   assert.deepEqual(londons.map((h) => h.countryCode), ['GB', 'CA', 'US']);
@@ -214,37 +214,37 @@ test('A-82 Part 4: three Londons, three distinct countries, GB first by populati
 });
 
 test('A-82 Part 4: every hit carries a label naming its country, including a city-state with no admin-1', () => {
-  for (const h of searchGazetteer('lo', FIXTURE)) {
+  for (const h of searchGazetteer('lo', FIXTURE).hits) {
     assert.ok(h.label.includes(','), `label "${h.label}" is a bare name`);
     assert.ok(h.countryCode !== null, `${h.name} carries no country in this fixture`);
     const country = FIXTURE.countryNames[h.countryCode] ?? h.countryCode;
     assert.ok(h.label.endsWith(country), `label "${h.label}" does not end in its country`);
   }
-  const [gb, ca, us] = searchGazetteer('london', FIXTURE);
+  const [gb, ca, us] = searchGazetteer('london', FIXTURE).hits;
   assert.equal(gb.label, 'London, Westminster, United Kingdom');
   assert.equal(ca.label, 'London, Ontario, Canada');
   assert.equal(us.label, 'London, Kentucky, United States');
   // No admin-1: the slot is OMITTED, not filled with the name and not left blank.
-  assert.equal(searchGazetteer('monaco', FIXTURE)[0].label, 'Monaco, Monaco');
+  assert.equal(searchGazetteer('monaco', FIXTURE).hits[0].label, 'Monaco, Monaco');
   // admin1 equal to the name is omitted too — 'Zürich, Zürich, ...' reads as a stutter.
-  assert.equal(searchGazetteer('zurich', FIXTURE)[0].label, 'Zürich, Switzerland');
+  assert.equal(searchGazetteer('zurich', FIXTURE).hits[0].label, 'Zürich, Switzerland');
 });
 
 test('A-82 Part 4: an unknown country code degrades to the code itself rather than to a bare name', () => {
   // `SO` is deliberately absent from the fixture's `countryNames` table. The label must still
   // name a country slot — a bare `Hargeysa` is exactly what A-82 Part 4 forbids.
-  assert.equal(searchGazetteer('hargeysa', FIXTURE)[0].label, 'Hargeysa, Woqooyi Galbeed, SO');
+  assert.equal(searchGazetteer('hargeysa', FIXTURE).hits[0].label, 'Hargeysa, Woqooyi Galbeed, SO');
 });
 
 test('A-82 Part 3: a folded ALTERNATE matches, and ranks below a name match', () => {
-  const hits = searchGazetteer('zurich city', FIXTURE);
+  const { hits } = searchGazetteer('zurich city', FIXTURE);
   assert.deepEqual(hits.map((h) => h.id), ['i']);
 });
 
 test('A-82 Part 3: opts.limit truncates, default 20', () => {
-  assert.equal(searchGazetteer('london', FIXTURE, { limit: 2 }).length, 2);
+  assert.equal(searchGazetteer('london', FIXTURE, { limit: 2 }).hits.length, 2);
   assert.deepEqual(names('london', { limit: 1 }), ['a']);
-  assert.equal(searchGazetteer('l', FIXTURE, { limit: 0 }).length, 0);
+  assert.equal(searchGazetteer('l', FIXTURE, { limit: 0 }).hits.length, 0);
 });
 
 /**
@@ -256,8 +256,8 @@ test('A-82 Part 4: the comparator is total — a shuffled copy of `rows` gives a
   const shuffled: Gazetteer = { ...FIXTURE, rows: [...FIXTURE.rows].reverse() };
   for (const q of ['london', 'l', 'york', 'new', 'o', 'springfield', 's']) {
     assert.deepEqual(
-      JSON.stringify(searchGazetteer(q, shuffled)),
-      JSON.stringify(searchGazetteer(q, FIXTURE)),
+      JSON.stringify(searchGazetteer(q, shuffled).hits),
+      JSON.stringify(searchGazetteer(q, FIXTURE).hits),
       `"${q}" answers differently over a reordered rows array — the comparator is not total`,
     );
   }
@@ -265,8 +265,8 @@ test('A-82 Part 4: the comparator is total — a shuffled copy of `rows` gives a
 
 test('A-82 Part 4: the same query twice is byte-identical', () => {
   assert.equal(
-    JSON.stringify(searchGazetteer('london', FIXTURE)),
-    JSON.stringify(searchGazetteer('london', FIXTURE)),
+    JSON.stringify(searchGazetteer('london', FIXTURE).hits),
+    JSON.stringify(searchGazetteer('london', FIXTURE).hits),
   );
 });
 
@@ -297,7 +297,7 @@ const COLLIDING: Gazetteer = {
 };
 
 test('A-83 Part 9: two hits that would render the same label are disambiguated by coordinate', () => {
-  const hits = searchGazetteer('bandar lampung', COLLIDING);
+  const { hits } = searchGazetteer('bandar lampung', COLLIDING);
   assert.equal(hits.length, 2);
   assert.deepEqual(hits.map((h) => h.label), [
     'Bandar Lampung, Lampung, Indonesia (-5.43, 105.26)',
@@ -307,7 +307,7 @@ test('A-83 Part 9: two hits that would render the same label are disambiguated b
 });
 
 test('A-83 Part 9: a label that collides with nothing in the window is left alone', () => {
-  const hits = searchGazetteer('band', COLLIDING, { limit: 20 });
+  const { hits } = searchGazetteer('band', COLLIDING, { limit: 20 });
   const bandung = hits.find((h) => h.name === 'Bandung');
   assert.equal(bandung?.label, 'Bandung, West Java, Indonesia');
 });
@@ -317,7 +317,7 @@ test('A-83 Part 9: a label that collides with nothing in the window is left alon
  * truncated away renders its plain label, because there is nothing on screen to confuse it with.
  */
 test('A-83 Part 9: the window decides — a truncated twin does not disambiguate the survivor', () => {
-  const hits = searchGazetteer('bandar lampung', COLLIDING, { limit: 1 });
+  const { hits } = searchGazetteer('bandar lampung', COLLIDING, { limit: 1 });
   assert.deepEqual(hits.map((h) => h.label), ['Bandar Lampung, Lampung, Indonesia']);
 });
 
@@ -331,8 +331,8 @@ test('A-83 Part 7 / R60-6: a non-integer `limit` is a programmer error, not a si
   assert.throws(() => searchGazetteer('london', FIXTURE, { limit: 1.5 }), /limit/);
   assert.throws(() => searchGazetteer('london', FIXTURE, { limit: Infinity }), /limit/);
   // `limit <= 0` keeps its existing meaning: an empty list, not a throw.
-  assert.deepEqual(searchGazetteer('london', FIXTURE, { limit: 0 }), []);
-  assert.deepEqual(searchGazetteer('london', FIXTURE, { limit: -3 }), []);
+  assert.deepEqual(searchGazetteer('london', FIXTURE, { limit: 0 }).hits, []);
+  assert.deepEqual(searchGazetteer('london', FIXTURE, { limit: -3 }).hits, []);
 });
 
 /**
@@ -346,7 +346,7 @@ test('A-83 Part 7: searching a shard the query does not belong to THROWS, and do
   const ha = shardOf('ha', []);
   assert.throws(() => searchGazetteer('york', ha), /shard/);
   // The same call over a whole corpus is fine — that is what `shard: null` means.
-  assert.deepEqual(searchGazetteer('york', { ...ha, shard: null }), []);
+  assert.deepEqual(searchGazetteer('york', { ...ha, shard: null }).hits, []);
 });
 
 test('A-83 Part 7: the check is on the query\'s FIRST folded token, and a prefix of the key passes', () => {
@@ -361,7 +361,7 @@ test('A-83 Part 7: a terminal `<prefix>$` shard accepts only the token that IS t
 });
 
 test('A-83 Part 7: a query that folds to empty answers [] over a shard rather than throwing', () => {
-  assert.deepEqual(searchGazetteer('---', shardOf('ha', [])), []);
+  assert.deepEqual(searchGazetteer('---', shardOf('ha', [])).hits, []);
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -465,7 +465,7 @@ test('A-83 Part 7: the loader resolves the query to one shard and returns it nam
   assert.equal(gaz.shard, 'ha');
   assert.equal(gaz.rows.length, 2);
   assert.equal(gaz.source, 'hand-built fixture');
-  assert.equal(searchGazetteer('hallstatt', gaz)[0].label, 'Hallstatt, Upper Austria, Austria');
+  assert.equal(searchGazetteer('hallstatt', gaz).hits[0].label, 'Hallstatt, Upper Austria, Austria');
 });
 
 test('A-83 Part 6: a folded query under two characters is `null` — "keep typing", not "no match"', async () => {
@@ -481,7 +481,7 @@ test('A-83 Part 6: a shard nobody wrote is an honest empty answer, not a throw',
   const gaz = await loadGazetteer('qqqq', io);
   assert.ok(gaz);
   assert.deepEqual(gaz.rows, []);
-  assert.deepEqual(searchGazetteer('qqqq', gaz), []);
+  assert.deepEqual(searchGazetteer('qqqq', gaz).hits, []);
 });
 
 test('A-83 Part 4: a shard whose $sourceSha256 disagrees with meta.json is REFUSED BY NAME', async () => {
@@ -501,6 +501,97 @@ test('A-83 Part 7: the meta document is fetched ONCE per loader, however many se
   await loadGazetteer('halle', io);
   await loadGazetteer('zurich', io);
   assert.equal(metaFetches, 1);
+});
+
+// ---------------------------------------------------------------------------------------------
+// 2b. `GazetteerResult` — §8.4 **A-91** item 1, ROADMAP **I-33**.
+//
+// GeoNames is CC BY 4.0 and this repository's first attribution obligation. `Gazetteer.source`
+// carries the credit on every loaded shard **including a miss**, and until this increment nothing
+// made a consumer see it: `GazetteerHit` does not carry it (149,101 copies of one constant is the
+// second source of truth this repository refuses everywhere else), so a screen had to reach for
+// `gazetteer.source` **deliberately** and nothing noticed when it did not.
+//
+// `searchGazetteer` returns `{ source, hits }`. **Hits stop being reachable without `source` being
+// in the same destructuring** — a screen that does not render it has to have *dropped* it, which
+// is a different act from never having seen it.
+// ---------------------------------------------------------------------------------------------
+
+test('A-91 item 1: a HIT comes back as {source, hits}, and `source` is the loaded shard\'s own', async () => {
+  const io = loaderFor(META_DOC, { ha: SHARD_DOC });
+  const gaz = await loadGazetteer('hallstatt', io);
+  assert.ok(gaz);
+  const { source, hits } = searchGazetteer('hallstatt', gaz);
+  assert.equal(source, gaz.source, 'the result carries a different string from the gazetteer it searched');
+  assert.equal(source, 'hand-built fixture');
+  assert.equal(hits.length, 1);
+  assert.equal(hits[0].label, 'Hallstatt, Upper Austria, Austria');
+});
+
+test('A-91 item 1: a MISS carries the attribution too — {source, hits: []}, not [] and not source: ""', async () => {
+  const io = loaderFor(META_DOC, { ha: SHARD_DOC });
+  // `qqqq` resolves to a shard nobody wrote: an honest empty answer, and the credit is still owed.
+  const empty = await loadGazetteer('qqqq', io);
+  assert.ok(empty);
+  const miss = searchGazetteer('qqqq', empty);
+  assert.deepEqual(miss.hits, []);
+  assert.equal(miss.source, 'hand-built fixture');
+  // And a miss *within* a shard that does have rows.
+  const gaz = await loadGazetteer('hazzzz', io);
+  assert.ok(gaz);
+  const inShard = searchGazetteer('hazzzz', gaz);
+  assert.deepEqual(inShard.hits, []);
+  assert.equal(inShard.source, 'hand-built fixture');
+});
+
+test('A-91 item 1: an empty / unfoldable query returns {source, hits: []} rather than a bare []', () => {
+  for (const q of ['', '   ', '--- ///']) {
+    const r = searchGazetteer(q, FIXTURE);
+    assert.deepEqual(r.hits, [], `${JSON.stringify(q)} matched something`);
+    assert.equal(r.source, FIXTURE.source, `${JSON.stringify(q)} dropped the attribution`);
+  }
+  // `{limit: 0}` and a negative limit are the other two early returns, and they owe it as well.
+  assert.equal(searchGazetteer('london', FIXTURE, { limit: 0 }).source, FIXTURE.source);
+  assert.equal(searchGazetteer('london', FIXTURE, { limit: -3 }).source, FIXTURE.source);
+});
+
+/**
+ * **The fault that matters** (I-33's **N2**, A-91 item 3's third injected fault one layer down):
+ * a hard-coded attribution passes every other assertion in this file forever and goes stale at the
+ * next re-pin (A-90 clause 3). So the string is varied in the *fixture* and the result must follow.
+ */
+test('A-91 item 1 / N2: `source` follows the shard\'s $source, never a module constant', async () => {
+  const REPINNED = { ...META_DOC, $source: 'GeoNames 2027 re-pin, CC BY 4.0 (fixture)' };
+  const io = loaderFor(REPINNED, { ha: SHARD_DOC });
+  const gaz = await loadGazetteer('hallstatt', io);
+  assert.ok(gaz);
+  const hit = searchGazetteer('hallstatt', gaz);
+  assert.equal(hit.source, 'GeoNames 2027 re-pin, CC BY 4.0 (fixture)');
+  // …and on a miss, which is the case the obligation is easiest to lose in.
+  const missGaz = await loadGazetteer('hazzzz', io);
+  assert.ok(missGaz);
+  const miss = searchGazetteer('hazzzz', missGaz);
+  assert.deepEqual(miss.hits, []);
+  assert.equal(miss.source, 'GeoNames 2027 re-pin, CC BY 4.0 (fixture)');
+  // A hand-built whole-corpus fixture answers with its OWN string, so the two cannot both be a
+  // constant: one assertion here disagrees with the other unless `source` is read from the value.
+  assert.equal(searchGazetteer('london', FIXTURE).source, 'hand-built fixture');
+});
+
+test('A-91 item 1: over the REAL loadGazetteerFor, `source` is byte-identical to the corpus\'s', async () => {
+  const gaz = await load('vienna');
+  assert.ok(gaz);
+  const { source, hits } = searchGazetteer('vienna', gaz, { limit: 5 });
+  assert.ok(hits.length > 0, 'vienna is not in the shipped corpus');
+  assert.equal(source, gaz.source);
+  assert.equal(source, metaDoc().$source, 'the shipped attribution is not what meta.json states');
+  assert.match(source, /creativecommons\.org\/licenses\/by\/4\.0/);
+  // The shipped miss: a query that resolves to a real shard and matches nothing in it.
+  const missGaz = await load('zzzzqqqx');
+  assert.ok(missGaz);
+  const miss = searchGazetteer('zzzzqqqx', missGaz);
+  assert.deepEqual(miss.hits, []);
+  assert.equal(miss.source, metaDoc().$source);
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -607,7 +698,7 @@ test('A-83 Part 8: Geneva, Jerusalem and Brazzaville ship, each marked as a disa
   for (const [query, code] of [['geneva', 'CH'], ['jerusalem', 'IL'], ['brazzaville', 'CG']] as const) {
     const gaz = await load(query);
     assert.ok(gaz, `${query} does not resolve to a shard`);
-    const hit = search(query, gaz).find((h) => h.countryCode === code);
+    const hit = search(query, gaz).hits.find((h) => h.countryCode === code);
     assert.ok(hit, `${query} is not in the corpus as ${code}`);
     assert.equal(hit.indexSays, 'differs', `${hit.name} ships without its disagreement recorded`);
   }
@@ -708,7 +799,7 @@ test('A-84 Part 5: a picked Martinique, Svalbard or Guyane row reports its paren
   const attribute = async (query: string, pick: (h: GazetteerHit) => boolean) => {
     const gaz = await load(query);
     assert.ok(gaz, `${query} does not resolve to a shard`);
-    const hit = core.searchGazetteer(query, gaz).find(pick);
+    const hit = core.searchGazetteer(query, gaz).hits.find(pick);
     assert.ok(hit, `${query} is not in the corpus`);
     const trip = core.createTrip(
       { title: 'T', startDate: '2026-03-01', endDate: '2026-03-05', ownerId: 'u1',
@@ -791,7 +882,7 @@ test('A-83 Part 6 / R67-1: a one-character FIRST TOKEN resolves to the terminal 
     const g = await load(query);
     assert.ok(g, `"${query}" is ${query.length} characters and the loader answered "keep typing"`);
     assert.equal(g.shard, key, `"${query}" resolved to shard "${g.shard}"`);
-    const hits = searchGazetteer(query, g, { limit: 20 });
+    const { hits } = searchGazetteer(query, g, { limit: 20 });
     assert.ok(
       hits.some((h) => foldPlaceName(h.name) === foldPlaceName(query)),
       `"${query}" returns ${hits.length} hits and none of them is that place`,
@@ -855,7 +946,7 @@ test('A-82 Part 3 / R67-2: the pinned pair reaches the SHIPPED row it stands for
   assert.ok(rows.length > 0, 'no Nuku\u2018alofa row ships — the pinned pair stands for nothing');
   const g = await load('nukualofa');
   assert.ok(g, '`nukualofa` is "keep typing" — the pinned pair produces a query the loader refuses');
-  const hits = searchGazetteer('nukualofa', g, { limit: 20 });
+  const { hits } = searchGazetteer('nukualofa', g, { limit: 20 });
   for (const r of rows) {
     assert.ok(
       hits.some((h) => h.id === r.id),
@@ -872,7 +963,7 @@ test('A-82 Part 3 / R67-2: the okina family is one mark, and omitting it still f
   ] as const) {
     const g = await load(query);
     assert.ok(g, `"${query}" is "keep typing"`);
-    const hits = searchGazetteer(query, g, { limit: 20 });
+    const { hits } = searchGazetteer(query, g, { limit: 20 });
     assert.ok(
       hits.some((h) => h.name === name),
       `"${query}" returns ${JSON.stringify(hits.slice(0, 3).map((h) => h.label))} and none of them is ${JSON.stringify(name)}`,
@@ -892,7 +983,7 @@ test('A-82 Part 3 / R67-2: every row spelled with an okina is reachable without 
   for (const r of rows) {
     const q = foldPlaceName(r.name.replace(new RegExp(MARK, 'gu'), ''));
     const g = await load(q);
-    const hits = g === null ? [] : searchGazetteer(q, g, { limit: 500 });
+    const hits = g === null ? [] : searchGazetteer(q, g, { limit: 500 }).hits;
     if (!hits.some((h) => h.id === r.id)) lost.push(`${r.name} → typing "${q}" does not reach it`);
   }
   assert.deepEqual(lost.slice(0, 10), [], `${lost.length} of ${rows.length} okina rows are unreachable without the mark`);
@@ -979,8 +1070,8 @@ test('A-83 Parts 6 and 7: one search, one shard, and the answer is the whole cor
     const one = await load(query);
     assert.ok(one, `"${query}" does not resolve to a shard`);
     assert.deepEqual(
-      search(query, one, { limit: 20 }),
-      search(query, whole(), { limit: 20 }),
+      search(query, one, { limit: 20 }).hits,
+      search(query, whole(), { limit: 20 }).hits,
       `"${query}" answers differently from its shard than from the whole corpus`,
     );
   }
@@ -990,13 +1081,13 @@ test('A-83 Parts 6 and 7: one search, one shard, and the answer is the whole cor
   // which is a fact about the corpus, not about the sharding.
   const yorkShard = await load('york');
   assert.ok(yorkShard);
-  const deep = search('york', yorkShard, { limit: 500 });
+  const deep = search('york', yorkShard, { limit: 500 }).hits;
   const interior = deep.filter((h) => h.fold.split(' ').indexOf('york') > 0);
   assert.ok(
     interior.some((h) => /^New York/.test(h.name)),
     '`york` does not find New York from its own shard — the row was sharded by its first token only',
   );
-  assert.deepEqual(deep, search('york', whole(), { limit: 500 }), '`york` is short by a row from its shard');
+  assert.deepEqual(deep, search('york', whole(), { limit: 500 }).hits, '`york` is short by a row from its shard');
 });
 
 test('A-83 Part 6: a bare split prefix is "keep typing", and a second word resolves it', async () => {
@@ -1009,7 +1100,7 @@ test('A-83 Part 6: a bare split prefix is "keep typing", and a second word resol
   assert.equal(sanMarino.shard, 'san$');
   const { searchGazetteer: search } = await import('../src/index.ts');
   assert.ok(
-    search('san marino', sanMarino).some((h) => h.countryCode === 'SM'),
+    search('san marino', sanMarino).hits.some((h) => h.countryCode === 'SM'),
     'the republic of San Marino is not reachable by its own name',
   );
 });
@@ -1027,7 +1118,7 @@ test('A-82 Part 4: three Londons in three countries, GB first, over the shipped 
   const { searchGazetteer: search } = await import('../src/index.ts');
   const gaz = await load('london');
   assert.ok(gaz);
-  const londons = search('london', gaz, { limit: 20 }).filter((h) => h.name === 'London');
+  const londons = search('london', gaz, { limit: 20 }).hits.filter((h) => h.name === 'London');
   assert.ok(londons.length >= 3, `only ${londons.length} Londons`);
   assert.equal(londons[0].countryCode, 'GB', 'the nine-million London is not first');
   assert.ok(new Set(londons.map((h) => h.countryCode)).size >= 3, 'the Londons are not in three countries');
@@ -1042,7 +1133,7 @@ test('A-83 Part 9: every label in a returned window is distinct, over the shippe
   for (const query of ['bandar lampung', 'springfield', 'san jose', 'santa cruz', 'london', 'obidos']) {
     const gaz = await load(query);
     assert.ok(gaz, `"${query}" does not resolve`);
-    const labels = search(query, gaz, { limit: 20 }).map((h) => h.label);
+    const labels = search(query, gaz, { limit: 20 }).hits.map((h) => h.label);
     assert.equal(new Set(labels).size, labels.length, `"${query}" returns two identical labels`);
     for (const l of labels) assert.ok(l.includes(','), `"${l}" is a bare name`);
   }
@@ -1057,7 +1148,7 @@ test('A-82 Part 1 measurement 2: the micro-states resolve to themselves, not to 
     const gaz = await load(query);
     assert.ok(gaz, `"${query}" does not resolve`);
     assert.ok(
-      search(query, gaz, { limit: 20 }).some((h) => h.countryCode === code),
+      search(query, gaz, { limit: 20 }).hits.some((h) => h.countryCode === code),
       `"${query}" does not reach a row in ${code}`,
     );
   }
@@ -1073,13 +1164,13 @@ test('A-82 Part 3: the shipped corpus obeys the ceilings — `ork` finds no York
   const ork = await load('ork');
   assert.ok(ork);
   assert.deepEqual(
-    search('ork', ork, { limit: 20 }).filter((h) => /^York/.test(h.name)).map((h) => h.name),
+    search('ork', ork, { limit: 20 }).hits.filter((h) => /^York/.test(h.name)).map((h) => h.name),
     [],
     'an interior match reached the results: the matcher is doing `includes`, not a prefix',
   );
   const nowhere = await load('qzzzxwv');
   assert.ok(nowhere, 'a long query that matches nothing must still be SEARCHED, not refused');
-  assert.deepEqual(search('qzzzxwv', nowhere), [], 'a miss is a miss and the product says so');
+  assert.deepEqual(search('qzzzxwv', nowhere).hits, [], 'a miss is a miss and the product says so');
 });
 
 test('A-82 Part 10: the probes golden reproduces exactly, query for query', async () => {
@@ -1095,7 +1186,7 @@ test('A-82 Part 10: the probes golden reproduces exactly, query for query', asyn
     const gaz = await load(probe.query);
     assert.ok(gaz, `"${probe.query}" no longer resolves to a shard`);
     assert.equal(gaz.shard, probe.shard, `"${probe.query}" now resolves to a different shard`);
-    const hits = search(probe.query, gaz, { limit: golden.probeDepth }).map((h) => ({
+    const hits = search(probe.query, gaz, { limit: golden.probeDepth }).hits.map((h) => ({
       id: h.id, name: h.name, label: h.label, countryCode: h.countryCode,
       admin1: h.admin1, centre: h.centre, indexSays: h.indexSays,
     }));
@@ -1142,8 +1233,8 @@ test('A-82 Part 4: the comparator is total over the SHIPPED rows — a reordered
     assert.ok(gaz);
     const reversed: Gazetteer = { ...gaz, rows: [...gaz.rows].reverse() };
     assert.equal(
-      JSON.stringify(search(query, reversed, { limit: 20 })),
-      JSON.stringify(search(query, gaz, { limit: 20 })),
+      JSON.stringify(search(query, reversed, { limit: 20 }).hits),
+      JSON.stringify(search(query, gaz, { limit: 20 }).hits),
       `"${query}" answers differently over a reordered rows array — the comparator is not total`,
     );
   }

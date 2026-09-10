@@ -531,7 +531,11 @@ async function cmdCities() {
     out(`source: ${(await loadGazetteerFor(ATTRIBUTION_PROBE))?.source ?? ''}`);
     return;
   }
-  const hits = core.searchGazetteer(query, gazetteer, { limit });
+  // **§8.4 A-91 item 1.** `hits` is not reachable without `source` on the same line — the
+  // attribution is in the value, so dropping it is an act rather than an omission. `source` is the
+  // loaded shard's own string and **never** a constant here: a hard-coded credit passes every
+  // other assertion forever and goes stale at the next re-pin (A-90 clause 3).
+  const { source, hits } = core.searchGazetteer(query, gazetteer, { limit });
   if (hits.length === 0) {
     out(`no match: ${query}`);
   }
@@ -547,8 +551,9 @@ async function cmdCities() {
         : '';
     out(`${h.label} · ${h.centre.lat},${h.centre.lng} · ${h.countryCode ?? '—'}${mark}`);
   }
-  // **The CC BY 4.0 attribution, on every run, hits or not.** A-83 Part 2 clause 1.
-  out(`source: ${gazetteer.source}`);
+  // **The CC BY 4.0 attribution, on every run, hits or not.** A-83 Part 2 clause 1, and after
+  // A-91 item 1 it is read off the search's own result rather than reached for on the gazetteer.
+  out(`source: ${source}`);
 }
 
 const commands: Record<string, () => void | Promise<void>> = {

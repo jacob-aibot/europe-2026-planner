@@ -242,7 +242,7 @@ const corpus = CORPUS.filter(([qq, cc]) => {
 const LIMIT = 20;
 const rows = [];
 for (const [query, cc, display, bucket] of corpus) {
-  const hits = searchGazetteer(query, GAZETTEER, { limit: LIMIT });
+  const { hits } = searchGazetteer(query, GAZETTEER, { limit: LIMIT });
   const nameMatches = hits.filter((h) => h.fold === query || h.alts.includes(query));
   const right = nameMatches.find((h) => h.countryCode === cc);
   const wrongCountryOnly = nameMatches.length > 0 && right === undefined;
@@ -312,7 +312,7 @@ if (wrong.length) {
 const realRows = [];
 for (const [query, cc, display, bucket] of corpus) {
   const g = await loadGazetteerFor(query);
-  const hits = g === null ? [] : searchGazetteer(query, g, { limit: LIMIT });
+  const hits = g === null ? [] : searchGazetteer(query, g, { limit: LIMIT }).hits;
   const nameMatches = hits.filter((h) => h.fold === query || h.alts.includes(query));
   const right = nameMatches.find((h) => h.countryCode === cc);
   realRows.push({

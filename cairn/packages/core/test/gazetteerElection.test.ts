@@ -142,7 +142,7 @@ test('A-94 Part 1: "west island" and "bantam" resolve, labelled Australia', asyn
   ] as const) {
     const gazetteer = await loadGazetteerFor(query);
     assert.ok(gazetteer, `"${query}" does not resolve to a shard`);
-    const hits = searchGazetteer(query, gazetteer, { limit: 20 });
+    const { hits } = searchGazetteer(query, gazetteer, { limit: 20 });
     const hit = hits.find((h) => h.id === id);
     assert.ok(
       hit !== undefined,

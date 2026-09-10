@@ -137,7 +137,7 @@ console.log('## G — the codeless / derived-only rows and the refusals golden')
 const codeless = GAZETTEER.rows.filter((r) => r.countryCode === '');
 console.log(`  countryCode '' : ${codeless.length}`);
 for (const r of codeless) {
-  const hit = searchGazetteer(r.name, GAZETTEER, { limit: 20 }).find((h) => h.id === r.id);
+  const hit = searchGazetteer(r.name, GAZETTEER, { limit: 20 }).hits.find((h) => h.id === r.id);
   console.log(`    ${r.name} -> label "${hit ? hit.label : '(not reachable by its own name)'}"`);
 }
 const refusals = JSON.parse(readFileSync(new (globalThis.URL)('../fixtures/golden/gazetteer-disagreements.json', import.meta.url), 'utf8'));

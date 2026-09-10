@@ -303,7 +303,7 @@ head('F  `I-24`\'s exit re-derived under the two CORRECTED criteria (R63-7, R63-
   // through the REAL product path — `loadGazetteerFor('geneva')` — which is a strictly better
   // fixture than the module it replaces: it is the row a user's pick would actually carry. No
   // assertion below changed; F1-F10 are round 63's and round 64's, unedited.
-  const hit = core.searchGazetteer('geneva', await loadGazetteerFor('geneva'))[0];
+  const hit = core.searchGazetteer('geneva', await loadGazetteerFor('geneva')).hits[0];
   const pick = core.cityPickFromRow(hit);
   const mk = (cityInit) => {
     const t = core.createTrip({ title: 'T', startDate: '2026-03-01', endDate: '2026-03-05', ownerId: 'u1', cities: [cityInit] }, { ids: core.sequentialIds('f'), now: '2026-01-01' });
@@ -395,7 +395,7 @@ head('G  standing constraints over the two commits\' surface');
 head('H  the door reads `c.centre` more than once — R63-2\'s class, one field over');
 {
   // RE-CUT AT ROUND 67 (I-23) — see §F. Same row, through the shipped loader.
-  const pick = core.cityPickFromRow(core.searchGazetteer('geneva', await loadGazetteerFor('geneva'))[0]);
+  const pick = core.cityPickFromRow(core.searchGazetteer('geneva', await loadGazetteerFor('geneva')).hits[0]);
   const build = (cities) => core.createTrip(
     { title: 'T', startDate: '2026-03-01', endDate: '2026-03-05', ownerId: 'u1', cities },
     { ids: core.sequentialIds('h'), now: '2026-01-01' },

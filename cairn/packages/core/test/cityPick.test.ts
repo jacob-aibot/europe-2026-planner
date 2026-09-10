@@ -45,7 +45,7 @@ const ctx = (p: string): BuildCtx => ({ ids: sequentialIds(`${p}-`), now: '2026-
 async function row(query: string): Promise<GazetteerRow> {
   const gazetteer = await loadGazetteerFor(query);
   assert.ok(gazetteer, `"${query}" is too short to resolve to one shard`);
-  const hits = searchGazetteer(query, gazetteer, { limit: 5 });
+  const { hits } = searchGazetteer(query, gazetteer, { limit: 5 });
   assert.ok(hits.length > 0, `the shipped gazetteer has no row for "${query}"`);
   return hits[0];
 }

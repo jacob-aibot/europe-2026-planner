@@ -166,6 +166,30 @@ export type GazetteerMeta = {
  */
 export type GazetteerHit = GazetteerRow & { readonly label: string };
 
+/**
+ * What `searchGazetteer` answers with — **§8.4 A-91 item 1**, the mechanism for this repository's
+ * first attribution obligation.
+ *
+ * GeoNames is CC BY 4.0. `Gazetteer.source` carries the credit on every loaded shard **including a
+ * miss**, and while `searchGazetteer` returned a bare array nothing in code made a consumer see it:
+ * a screen had to reach for `gazetteer.source` **deliberately**, and nothing noticed when it did
+ * not. Wrapping the answer means **`hits` is not reachable without `source` being in the same
+ * destructuring** — a screen that does not render it has had to *drop* it, which is a different act
+ * from never having seen it.
+ *
+ * **`GazetteerHit` deliberately does NOT carry `source`.** 149,101 copies of one constant is the
+ * second source of truth this repository refuses everywhere else, and a **miss** has no hit to
+ * carry it — which is exactly the case `cli.ts cities` already gets right.
+ *
+ * `source` is always read off the `Gazetteer` that was searched, never a module constant: a
+ * hard-coded attribution passes every other assertion forever and goes stale at the next re-pin
+ * (§8.4 **A-90** clause 3).
+ */
+export type GazetteerResult = {
+  readonly source: string;
+  readonly hits: readonly GazetteerHit[];
+};
+
 /** Options for `searchGazetteer`. `limit` defaults to 20 (A-82 Part 3). */
 export type GazetteerSearchOptions = { readonly limit?: number };
 
@@ -388,10 +412,14 @@ export function shardKeyFor(token: string, splits: readonly string[]): string {
 }
 
 /**
- * Searches the gazetteer for a place name the user is typing, and returns ranked hits each
- * carrying a `label` that names its country.
+ * Searches the gazetteer for a place name the user is typing, and returns a `GazetteerResult` —
+ * the corpus's CC BY 4.0 `source` **and** ranked hits each carrying a `label` that names its
+ * country. §8.4 **A-91** item 1: the attribution is in the value rather than beside it, so `hits`
+ * cannot be destructured without `source` being on the same line.
  *
- * The query is folded with `foldPlaceName`; a query that folds to `''` returns `[]`. A row matches
+ * The query is folded with `foldPlaceName`; a query that folds to `''` returns `{source, hits: []}`
+ * — **never a bare `[]`, never `{source: ''}` and never `null`**: a miss is the case the licence
+ * obligation is easiest to lose in, and `cli.ts cities` has always printed the credit on it. A row matches
  * when the folded query is a prefix of the whole folded name, of any folded alternate, or of any
  * space-delimited token within either. **Never a substring, no fuzzy matching, no edit distance,
  * no phonetics, and no non-Latin scripts in v1** — A-82 Part 3 refuses each by name and A-83 keeps
@@ -426,7 +454,10 @@ export function searchGazetteer(
   query: string,
   gazetteer: Gazetteer,
   opts?: GazetteerSearchOptions,
-): GazetteerHit[] {
+): GazetteerResult {
+  // **A-91 item 1.** Every return below carries this, including the three early ones and the miss:
+  // the attribution is a property of the corpus that was searched, not of whether it answered.
+  const source = gazetteer.source;
   const limit = opts?.limit ?? 20;
   if (!Number.isInteger(limit)) {
     throw new Error(
@@ -435,7 +466,7 @@ export function searchGazetteer(
     );
   }
   const q = foldPlaceName(query);
-  if (q === '') return [];
+  if (q === '') return { source, hits: [] };
 
   // **A-83 Part 7's pairing check**, before any row is read: a short answer from the wrong shard
   // is the same failure class as a wrong country on a map — quiet and wrong.
@@ -451,7 +482,7 @@ export function searchGazetteer(
       );
     }
   }
-  if (limit <= 0) return [];
+  if (limit <= 0) return { source, hits: [] };
 
   const matched: Array<{ row: GazetteerRow; key: MatchKey }> = [];
   for (const row of gazetteer.rows) {
@@ -475,9 +506,12 @@ export function searchGazetteer(
     return a.row.id < b.row.id ? -1 : a.row.id > b.row.id ? 1 : 0;
   });
 
-  return distinguish(
-    matched.slice(0, limit).map(({ row }) => ({ ...row, label: labelFor(row, gazetteer.countryNames) })),
-  );
+  return {
+    source,
+    hits: distinguish(
+      matched.slice(0, limit).map(({ row }) => ({ ...row, label: labelFor(row, gazetteer.countryNames) })),
+    ),
+  };
 }
 
 /** A record read out of a JSON document: unknown until every field has been read. */

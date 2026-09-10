@@ -350,9 +350,9 @@ if (run('G')) {
   const QUERIES = ['york', 'london', 'san', 'sa pa', 'de aar', 'springfield', 'paris', 'nara', 'hvar', 'vienna', 'geneva', 'z', 'angeles', 'santa cruz', 'saint'];
   for (const q of QUERIES) {
     const g = await C.loadGazetteerFor(q);
-    const whole = core.searchGazetteer(q, WHOLE, { limit: 20 });
+    const whole = core.searchGazetteer(q, WHOLE, { limit: 20 }).hits;
     if (g === null) { note(`  ${JSON.stringify(q)} → null; the whole corpus would have returned ${whole.length} rows (top: ${whole[0]?.label ?? '—'})`); continue; }
-    const one = core.searchGazetteer(q, g, { limit: 20 });
+    const one = core.searchGazetteer(q, g, { limit: 20 }).hits;
     const same = one.length === whole.length && one.every((h, i) => h.id === whole[i].id && h.label === whole[i].label);
     ok(same, `G1  ${JSON.stringify(q)}: one shard (${g.shard}) === the whole corpus, row for row`,
       `${one.map((h) => h.id).join(',')} vs ${whole.map((h) => h.id).join(',')}`);
@@ -360,16 +360,16 @@ if (run('G')) {
   // Totality: shuffle a shard and re-search. A comparator with a tie decides differently.
   const shard = (await C.loadGazetteerFor('santa'));
   const shuffled = { ...shard, rows: [...shard.rows].sort(() => 0.5 - ((Math.sin(shard.rows.length) + 1) % 1)) };
-  const a = core.searchGazetteer('santa', shard, { limit: 50 }).map((h) => h.id).join(',');
+  const a = core.searchGazetteer('santa', shard, { limit: 50 }).hits.map((h) => h.id).join(',');
   const rev = { ...shard, rows: [...shard.rows].reverse() };
-  const b = core.searchGazetteer('santa', rev, { limit: 50 }).map((h) => h.id).join(',');
-  const c2 = core.searchGazetteer('santa', shuffled, { limit: 50 }).map((h) => h.id).join(',');
+  const b = core.searchGazetteer('santa', rev, { limit: 50 }).hits.map((h) => h.id).join(',');
+  const c2 = core.searchGazetteer('santa', shuffled, { limit: 50 }).hits.map((h) => h.id).join(',');
   ok(a === b && a === c2, 'G2  the ranking is TOTAL: reversing and shuffling a shard changes no answer');
   // Labels distinct in the returned window.
   for (const q of ['santa cruz', 'san jose', 'springfield', 'london', 'victoria']) {
     const g = await C.loadGazetteerFor(q);
     if (g === null) continue;
-    const hits = core.searchGazetteer(q, g, { limit: 20 });
+    const { hits } = core.searchGazetteer(q, g, { limit: 20 });
     const labels = new Set(hits.map((h) => h.label));
     ok(labels.size === hits.length, `G3  ${JSON.stringify(q)}: every label in the window is distinct`, `${hits.length} hits, ${labels.size} labels`);
   }
@@ -397,8 +397,8 @@ if (run('G')) {
   for (const q of sweep) {
     const g = await C.loadGazetteerFor(q);
     if (g === null) { nulled += 1; continue; }
-    const one = core.searchGazetteer(q, g, { limit: 20 });
-    const all = core.searchGazetteer(q, WHOLE, { limit: 20 });
+    const one = core.searchGazetteer(q, g, { limit: 20 }).hits;
+    const all = core.searchGazetteer(q, WHOLE, { limit: 20 }).hits;
     compared += 1;
     const same = one.length === all.length && one.every((h, i2) => h.id === all[i2].id && h.label === all[i2].label);
     if (!same) drift.push({ q, shard: g.shard, one: one.map((h) => h.id).slice(0, 3), all: all.map((h) => h.id).slice(0, 3) });
@@ -446,7 +446,7 @@ if (run('I')) {
   ok(miss === null || miss.source === meta.source, 'I3  a MISS still carries the attribution', JSON.stringify(miss && miss.source));
   const nul = await C.loadGazetteerFor('de');
   ok(nul === null, 'I4  a "keep typing" answer carries NO attribution — it is null (stated, not a defect)');
-  const hits = core.searchGazetteer('hallstatt', g, { limit: 3 });
+  const { hits } = core.searchGazetteer('hallstatt', g, { limit: 3 });
   ok(hits.every((h) => !('source' in h)), 'I5  a HIT does not carry the attribution — the consumer must reach for gazetteer.source', JSON.stringify(Object.keys(hits[0])));
   const cli = readFileSync(join(CAIRN, 'cli.ts'), 'utf8');
   ok(/source/.test(cli), 'I6  cli.ts reaches for the source string');
@@ -600,7 +600,7 @@ if (run('M')) {
     const r = WHOLE.rows.find((x) => x.name === n);
     if (r === undefined) { note(`   ${n} does not ship`); continue; }
     const g2 = await C.loadGazetteerFor(r.fold);
-    const hits = g2 === null ? [] : core.searchGazetteer(r.fold, g2, { limit: 3 });
+    const hits = g2 === null ? [] : core.searchGazetteer(r.fold, g2, { limit: 3 }).hits;
     ok(false, `M1  "${n}" is a MULTI-COUNTRY landmass and ships attributed to one country — a user typing it is offered ${JSON.stringify(hits[0]?.label ?? '')} at rank ${hits.findIndex((h) => h.id === r.id) + 1}`,
       `${r.id} ${r.countryCode} ${r.centre.lat},${r.centre.lng}`);
     const pick = core.cityPickFromRow(r);
@@ -634,7 +634,7 @@ if (run('N')) {
   for (const r of split) {
     const q = natural(r.name);
     const g2 = await C.loadGazetteerFor(q);
-    const hits = g2 === null ? [] : core.searchGazetteer(q, g2, { limit: 20 });
+    const hits = g2 === null ? [] : core.searchGazetteer(q, g2, { limit: 20 }).hits;
     if (!hits.some((h) => h.id === r.id)) lost.push(r);
   }
   ok(lost.length === 0,
@@ -648,7 +648,7 @@ if (run('N')) {
   const nuku = WHOLE.rows.filter((r) => /Nuku/.test(r.name) && /alofa/.test(r.name));
   for (const r of nuku) note(`   the SHIPPED row is ${JSON.stringify(r.name)} → fold ${JSON.stringify(r.fold)} (U+${r.name.split('').find((c) => OK.test(c))?.codePointAt(0).toString(16).toUpperCase() ?? '—'})`);
   const g3 = await C.loadGazetteerFor('nukualofa');
-  ok(g3 !== null && core.searchGazetteer('nukualofa', g3, { limit: 20 }).length > 0,
+  ok(g3 !== null && core.searchGazetteer('nukualofa', g3, { limit: 20 }).hits.length > 0,
     'N3  …and the query the pinned pair produces reaches the row it stands for', 'it returns no rows at all');
 }
 
@@ -682,7 +682,7 @@ if (run('P')) {
   let threw = false;
   try { core.searchGazetteer('hallstatt', ha, { limit: NaN }); } catch { threw = true; }
   ok(threw, 'P4  {limit: NaN} is a programmer error, not a silent []');
-  ok(core.searchGazetteer('hallstatt', ha, { limit: 0 }).length === 0, 'P5  {limit: 0} returns []');
+  ok(core.searchGazetteer('hallstatt', ha, { limit: 0 }).hits.length === 0, 'P5  {limit: 0} returns []');
 }
 
 function rawMetaSafe() { return raw; }

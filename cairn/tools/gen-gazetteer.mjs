@@ -2561,8 +2561,11 @@ async function audit(corpus, { writeProbes }) {
   for (const query of [...PROBES, 'york', 'angeles', 'new york', 'saint', 'san', 'de']) {
     const one = shardFor(query);
     if (one === null) { keepTyping.push(query); continue; }
-    const a = JSON.stringify(searchGazetteer(query, whole, { limit: 20 }));
-    const b = JSON.stringify(searchGazetteer(query, one, { limit: 20 }));
+    // **A-91 item 1**: `searchGazetteer` answers `{source, hits}`. The comparison is over `hits`
+    // exactly as before — both sides carry the same `source`, so including it would compare a
+    // constant with itself and quietly weaken the cross-shard check.
+    const a = JSON.stringify(searchGazetteer(query, whole, { limit: 20 }).hits);
+    const b = JSON.stringify(searchGazetteer(query, one, { limit: 20 }).hits);
     if (a !== b) {
       mismatched += 1;
       console.log(`    CROSS-SHARD ${query}: the shard answers differently from the whole corpus`);
@@ -2621,7 +2624,7 @@ async function audit(corpus, { writeProbes }) {
   const probes = PROBES.filter((query) => shardFor(query) !== null).map((query) => ({
     query,
     shard: shardFor(query).shard,
-    hits: searchGazetteer(query, shardFor(query), { limit: PROBE_DEPTH }).map((h) => ({
+    hits: searchGazetteer(query, shardFor(query), { limit: PROBE_DEPTH }).hits.map((h) => ({
       id: h.id, name: h.name, label: h.label, countryCode: h.countryCode,
       admin1: h.admin1, centre: h.centre, indexSays: h.indexSays,
     })),

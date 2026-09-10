@@ -141,7 +141,16 @@ export type { CountryIndex, CountryEntry, CountryEntryInit, CountryRing, Country
 // `searchGazetteer` on the main surface rather than behind the subpath: the subpath is the
 // ~380 kB corpus, and this function is nine lines. The subpath stays at exactly one symbol.
 export { searchGazetteer, cityPickFromRow } from './geo/gazetteer.ts';
-export type { Gazetteer, GazetteerRow, GazetteerHit, GazetteerSearchOptions } from './geo/gazetteer.ts';
+// `GazetteerResult` joins at ROADMAP I-33 (§8.4 **A-91** item 1) — the CC BY 4.0 attribution
+// carried inside `searchGazetteer`'s return value rather than beside it. **It is a TYPE**, so
+// §2.10's runtime export count does not move and stays at 88.
+export type {
+  Gazetteer,
+  GazetteerRow,
+  GazetteerHit,
+  GazetteerResult,
+  GazetteerSearchOptions,
+} from './geo/gazetteer.ts';
 // `lifecycle` joins in revision 10 under P2: §8.1 names it, and §8.9 is the documentation
 // change §2.10's own rule requires before a symbol may reach this file.
 export { lifecycle } from './derive/lifecycle.ts';
