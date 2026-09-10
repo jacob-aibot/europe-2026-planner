@@ -14,14 +14,15 @@
  *     applies them — §4.4, "the client never computes bounds".
  */
 import L from 'leaflet';
-import type { MapBoundsLike, MapHandle, MapPoint, MapPort } from '@cairn/client';
+import type { MapBounds } from '@cairn/core';
+import type { MapHandle, MapPoint, MapPort } from '@cairn/client';
 import { COLORS } from '@cairn/tokens';
 
 type Entry = {
   map: L.Map;
   layer: L.LayerGroup;
   el: HTMLElement;
-  bounds: MapBoundsLike;
+  bounds: MapBounds;
   observer: ResizeObserver;
   /** A fit was asked for while the container had no size; apply it when one appears. */
   pendingFit: boolean;
@@ -32,7 +33,7 @@ let seq = 0;
 
 const hasSize = (el: HTMLElement) => el.offsetWidth > 0 && el.offsetHeight > 0;
 
-function toLatLngBounds(b: MapBoundsLike): L.LatLngBounds {
+function toLatLngBounds(b: MapBounds): L.LatLngBounds {
   return L.latLngBounds([b.south, b.west], [b.north, b.east]);
 }
 
@@ -83,7 +84,7 @@ function draw(entry: Entry, points: MapPoint[]): void {
 /** Impure: owns Leaflet map instances keyed by handle id. */
 export function leafletMap(): MapPort {
   return {
-    mount(el: unknown, points: MapPoint[], bounds: MapBoundsLike): MapHandle {
+    mount(el: unknown, points: MapPoint[], bounds: MapBounds): MapHandle {
       const node = el as HTMLElement;
       const id = `map-${++seq}`;
       const map = L.map(node, {
@@ -110,7 +111,7 @@ export function leafletMap(): MapPort {
       return { id };
     },
 
-    update(handle: MapHandle, points: MapPoint[], bounds: MapBoundsLike): void {
+    update(handle: MapHandle, points: MapPoint[], bounds: MapBounds): void {
       const entry = entries.get(handle.id);
       if (!entry) return;
       entry.bounds = bounds;
@@ -118,7 +119,7 @@ export function leafletMap(): MapPort {
       fit(entry);
     },
 
-    refit(handle: MapHandle, bounds: MapBoundsLike): void {
+    refit(handle: MapHandle, bounds: MapBounds): void {
       const entry = entries.get(handle.id);
       if (!entry) return;
       entry.bounds = bounds;

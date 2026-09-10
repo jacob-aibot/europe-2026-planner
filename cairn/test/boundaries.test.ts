@@ -179,3 +179,59 @@ test('every rollUpCost call outside core passes { target: homeCurrency } — F-1
   }
   assert.deepEqual(offenders, [], `\n  ${offenders.join('\n  ')}\n`);
 });
+
+/**
+ * **§8.4 A-92 clause 3 — a port may not RE-DECLARE a type `packages/core` exports.**
+ *
+ * `packages/client/src/ports/types.ts` declared `MapBoundsLike`, a hand-maintained structural
+ * restatement of `core.MapBounds`, with nothing tying the two together. When A-84 Part 7 item 2
+ * changed `MapBounds.centre` to `LatLng | null` it censused the *readers* of the type — the import
+ * graph — and concluded *"`apps/web/src/ports/map.ts:48` is the only reader"*. It was one file
+ * short, because **the import graph answers *who uses this name*; it does not answer *who has
+ * promised this shape*.** The compiler only spoke at build time, after the census had concluded.
+ *
+ * This check is stated at exactly the width it reaches (§0 position 10c): it is a `grep` over the
+ * one file, total over that file's declarations, and it catches the naming convention a structural
+ * restatement almost always arrives under — **including the one that was actually written**. It
+ * does **not** catch a restatement under an unrelated name and this test does not claim it does;
+ * A-92 clause 2 is the part a reviewer applies. Ports declare **port-shaped** types (`MapPoint`,
+ * `MapHandle`, `TripDoc`, `StorageVersion`) and **import** domain types from `../deps.ts`, which
+ * this file already does for `IsoDate`, `PhotoId`, `TripId` and `TripSummaryRow`.
+ */
+test('no type in packages/client/src/ports/types.ts restates a core export — A-92', () => {
+  const portsTypes = resolve(CAIRN, 'packages/client/src/ports/types.ts');
+  const coreIndex = resolve(CAIRN, 'packages/core/src/index.ts');
+
+  // Every name `packages/core/src/index.ts` exports, value or type, from its own export lines.
+  const coreExports = new Set<string>();
+  for (const m of readFileSync(coreIndex, 'utf8').matchAll(/^export\s+(?:type\s+)?\{([^}]*)\}/gm)) {
+    for (const part of m[1].split(',')) {
+      const name = part.trim().split(/\s+as\s+/).pop()?.trim();
+      if (name) coreExports.add(name);
+    }
+  }
+  assert.ok(coreExports.has('MapBounds'), 'sanity: core exports MapBounds');
+
+  const SUFFIXES = ['Like', 'Shape', 'Ish', 'Alike'];
+  const declared: string[] = [];
+  for (const m of stripComments(readFileSync(portsTypes, 'utf8'))
+    .matchAll(/^export\s+(?:type|interface)\s+([A-Za-z0-9_$]+)/gm)) {
+    declared.push(m[1]);
+  }
+  assert.ok(declared.length > 0, 'sanity: ports/types.ts declares types');
+
+  const offenders: string[] = [];
+  for (const name of declared) {
+    for (const suffix of SUFFIXES) {
+      if (!name.endsWith(suffix)) continue;
+      const stem = name.slice(0, -suffix.length);
+      if (coreExports.has(stem)) {
+        offenders.push(
+          `packages/client/src/ports/types.ts declares ${name}, a restatement of core's ${stem}. ` +
+            'A-92 clause 1: import it from ../deps.ts instead.',
+        );
+      }
+    }
+  }
+  assert.deepEqual(offenders, [], `\n  ${offenders.join('\n  ')}\n`);
+});

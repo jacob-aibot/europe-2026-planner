@@ -9,7 +9,7 @@
  * `packages/client` may not import the DOM, React or the network. Everything platform-shaped
  * goes through this file.
  */
-import type { IsoDate, PhotoId, TripId, TripSummaryRow } from '../deps.ts';
+import type { IsoDate, MapBounds, PhotoId, TripId, TripSummaryRow } from '../deps.ts';
 
 export type TripDoc = string;
 
@@ -212,33 +212,27 @@ export interface PhotoPort {
 
 export type MapPoint = { id: string; lat: number; lng: number; label: string; category: string };
 
-export type MapBoundsLike = {
-  /**
-   * **`null` exactly when `empty` is true** — this field tracks `core.MapBounds.centre` and moved
-   * with it at §8.4 **A-84** Part 7 item 2 (QA **R61-10**). A centre of no points is not a
-   * measurement, and a port that fits one opens the map on the Gulf of Guinea at street zoom.
-   *
-   * **This type is a hand-maintained structural restatement of `core.MapBounds`**, which is what
-   * lets `MapPort` be declared without `packages/client` depending on the derivation. Nothing ties
-   * the two together, so a shape change to either is a change to both — A-84's own census of
-   * *readers* could not see this declaration, and it is the second file the one-line ruling needed.
-   */
-  centre: { lat: number; lng: number } | null;
-  north: number;
-  south: number;
-  east: number;
-  west: number;
-  spanKm: number;
-  clamped: boolean;
-  empty: boolean;
-};
+/**
+ * **A structural restatement of `core.MapBounds` stood here and was DELETED at §8.4 A-92.**
+ * `MapPort` takes `MapBounds` itself, imported from `../deps.ts` above.
+ *
+ * It was a hand-maintained structural restatement of `core.MapBounds` whose own docstring said it
+ * existed so that `MapPort` *"could be declared without `packages/client` depending on the
+ * derivation."* **That dependency is one this file already had, on its first line** — `IsoDate`,
+ * `PhotoId`, `TripId` and `TripSummaryRow` all come from `deps.ts`, which is the one place the
+ * client reaches into core. So the restatement bought nothing and cost a census: A-84 Part 7 item
+ * 2 measured the readers of `MapBounds.centre` through the import graph, concluded *"one file"*,
+ * and was one short — **the import graph answers *who uses this name*, not *who has promised this
+ * shape***. A-92's rule, and the one a reviewer applies: **ports declare port-shaped types and
+ * import domain types.** `test/boundaries.test.ts` enforces the naming half of it.
+ */
 
 export type MapHandle = { id: string };
 
 export interface MapPort {
-  mount(el: unknown, points: MapPoint[], bounds: MapBoundsLike): MapHandle;
-  update(handle: MapHandle, points: MapPoint[], bounds: MapBoundsLike): void;
-  refit(handle: MapHandle, bounds: MapBoundsLike): void;
+  mount(el: unknown, points: MapPoint[], bounds: MapBounds): MapHandle;
+  update(handle: MapHandle, points: MapPoint[], bounds: MapBounds): void;
+  refit(handle: MapHandle, bounds: MapBounds): void;
   /**
    * MUST no-op while the container has zero size and MUST re-fit when it gains one.
    * Leaflet cannot compute a zoom against a `display:none` container — §4.4.

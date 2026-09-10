@@ -14,7 +14,7 @@ export { computeDerived, derivedFor } from './store/derived.ts';
 export type { DerivedCache, DayDerived } from './store/derived.ts';
 export * from './selectors/index.ts';
 export type {
-  StoragePort, FilePort, MapPort, MapHandle, MapPoint, MapBoundsLike, ClockPort, IdPort,
+  StoragePort, FilePort, MapPort, MapHandle, MapPoint, ClockPort, IdPort,
   SchedulerPort, Ports, TripDoc, SaveOutcome, StorageVersion, StoredDoc,
   PhotoPort, PickedImage, DerivedImage,
 } from './ports/types.ts';
