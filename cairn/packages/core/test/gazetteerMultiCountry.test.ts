@@ -702,7 +702,7 @@ test('A-93 Part 9 residue 1: Timor and Saint Martin still ship mis-attributed, a
  * output.** The generator reads 625 MB of pinned dumps and cannot run inside `node --test` offline
  * (A-90 clause 1). What this catches is a line deleted or renamed; what it cannot catch is a line
  * that prints the wrong number. The numbers themselves are in BUILD-NOTES beside the run that
- * produced them, and the run is reproducible from the cache.
+ * produced them, and the run is reproducible from the cache. Disclosed as **KD-127**.
  */
 test('A-93 Part 3: the generator publishes all four inert/exempt audit lines', () => {
   const gen = readFileSync(resolve(HERE, '..', '..', '..', 'tools', 'gen-gazetteer.mjs'), 'utf8');

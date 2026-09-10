@@ -1,5 +1,34 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — ROADMAP `I-31`, at `master` = `e94f8a1` → this commit.** **A-83 Part 9 clause 4 is
+> ENABLED under §8.4 A-93's predicate. `Antilles` and `Hispaniola` stop shipping; `Vatican City`,
+> `Tórshavn`, `Saint Helier`, `Douglas` and `Mariehamn` still do. QA R67-3 is CLOSED.** The three
+> tests skipped at `59cad74` UNSKIP with their bodies unchanged. `CLAUSE_4_ENABLED` is deleted with
+> the ruling that needed it. **Zero `.tsx`, zero `apps/web/`, zero `packages/client/`, zero `qa/`
+> (run, never edited), zero `docs/design/`, zero new dependency, zero lockfile.** No version
+> constant moves: `SCHEMA_VERSION` 5, `SUMMARY_VERSION` 8, §2.10 88. **`$sourceSha256` is
+> byte-identical to `59cad74`'s** — a filter change over unchanged source bytes, so A-90's re-pin
+> path is not entered and `gazetteer-source-log.json` gains no entry and does not appear in the
+> diff. **Files touched outside `tools/`, `packages/` and `fixtures/`: none but this document.**
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact command** | From `cairn/`: `npm run test:tap` → **1,859 tests, 1,859 pass / 0 fail / 0 skipped** (baseline `e94f8a1`: 1,852 tests, 1,849 / 0 / 3 skipped — the 3 skips flip and 7 assertions are new). `npm run typecheck` → **exit 0 on both projects**. `npm run web:build` → main chunk **1,037.03 kB**, **1 JS asset**, `grep -l 'Hallstatt\|Positano\|Zermatt' apps/web/dist/assets/*.js` returns **nothing** — zero corpus leak, unchanged. Regenerate: `CAIRN_GAZETTEER_CACHE=/tmp/cairn-gazetteer-src node tools/gen-gazetteer.mjs`. |
+> | **PART 1 — the first gate, run BEFORE anything downstream was written** | `--dry-run` against the cached pinned sources: **clause 4 refuses exactly 16 rows and they are A-93 Part 2's sixteen, matched by GeoNames id** — the set-difference gate reported neither an addition nor a removal. Only then was the corpus written. The architect's figure was its own join to the cached dump, not a harness run; **this harness reproduces it exactly.** |
+> | **The sixteen, by name and id** | `Antilles` 3491552, `Borneo` 1648148, `Hispaniola` 3504558, `New Guinea` 2082514, `Usedom Island` 2818108, `Kunashir Island` 2124018, `Hawar Islands` 7284881, `Abu Musa Island` 292983, `Shikotan Island` 2121299, `Isla Grande de Tierra del Fuego` 3834449, `Tierra del Fuego` 3834451, `Sunda Islands` 1626052, `Hans Island` 5970356, `Liancourt Rocks` 8062537, `Iturup Island` 2125177, `Diomede Islands` 4031746. Committed by name **and by id** in `fixtures/golden/gazetteer-refusals.json` and asserted by id in the test; **cap zero in either direction**, and the generator throws and writes nothing if the set moves. |
+> | **PART 2 — the audit's four lines, and every one is the ruling's own number** | Printed unconditionally on every run: rows kept **only** by `S` → **0** (predicted 0); rows kept **only** by `P(C)` beyond `P(S)` → **0** (predicted 0); **sovereign pairs used → 6 of the 41 the layer names**, `AX→FI, FO→DK, GG→GB, JE→GB, NF→AU, TF→FR` (predicted 6, exactly those); **class-`P` rows the class restriction exempts → 141 in 57 groups**, largest `FO+DK 16, AX+FI 15, AR+AQ 11, EH+MA 8` (predicted 141 with those four groups). Not one prediction missed. |
+> | **PART 3 — the goldens and the corpus moved in ONE commit** (`c202a89`) | Corpus **149,101 → 149,085** across 25 shard documents, `+0 rows, ~0 changed`; the row-level diff naming all sixteen is in that commit's generator output. `gazetteer-refusals.json` **18 → 34 rows** (18 `bare-name`, 0 `unreadable`, 0 `delimiter`, **16 `multi-country`**) and the header's per-reason counts follow it. `gazetteer-parents.json` **152 → 151** (only `Antilles` leaving). `gazetteer-disagreements.json` **2,495 → 2,494** (only `Isla Grande de Tierra del Fuego` leaving). **`gazetteer-probes.json` is BYTE-IDENTICAL** — none of the sixteen was in any probe's top-5 — and **`gazetteer-source-log.json` is untouched**. |
+> | **`vatican` is still a hit, and the four dependency capitals are named individually** | `vatican → Vatican City, Vatican · VA` (1 hit, with its `differs` marker); `torshavn → Tórshavn, Streymoy, Faroe Islands · FO`; `jersey → Jersey, Jersey · JE`; `guernsey → Guernsey, Guernsey · GG`. `Saint Helier` `JE`, `Douglas` `IM` and `Mariehamn` `AX` are asserted from the corpus by name. `antilles` and `hispaniola` both return **`no match`**. |
+> | **The twelve the sovereign subtraction keeps, verified** | `Jersey`, `Guernsey`, `Alderney`, `Faroe Islands`, `Signilskär`, `Norfolk Island`, `Île Tromelin`, `Île Europa`, `Île Juan de Nova`, `Îles Glorieuses`, `Île Saint-Paul`, `Île Amsterdam` — each asserted by name, each shipping its own stated code, and the test asserts that code is one `COUNTRY_INDEX` **draws** (which is *why* `C` never arrives and `P(S)` is the only source of the parent). |
+> | **The mitigation for the nine disputed islands, MEASURED not assumed** | `Świnoujście, West Pomerania, Poland · PL` (on Usedom) and `Yuzhno-Kurilsk, Sakhalin Oblast, Russia · RU` (on Kunashir) both ship under their own names, through the real loader, and a test says so. |
+> | **Coverage, RE-MEASURED off the rebuilt corpus** | `qa/r60-coverage.mjs` unmodified: **travel 109/121 = 90.1 %, control 50/50 = 100.0 %**, overall 159/171 = 93.0 %, 1 wrong-country (Monteverde), and identical through the real `loadGazetteerFor` path (`differs: 0`, `answered null: 0`). **Unchanged from the baseline** — none of the sixteen is in the 171-destination set. |
+> | **The named queries, unregressed** | `vienna → Vienna, Austria · AT`; `geneva → Geneva, Switzerland · CH`; `hallstatt → Hallstatt, Upper Austria, Austria`; `positano → Positano, Campania, Italy`; `zermatt → Zermatt, Valais, Switzerland`; `interlaken → Interlaken, Bern, Switzerland`; `A Coruña → A Coruña, Galicia, Spain`; `xian → Xi'an, Shaanxi, China`; `taif → Ta'if, Mecca Region, Saudi Arabia`; `oahu → O'ahu, Hawaii, United States`; `nukualofa → Nuku'alofa, Tongatapu, Tonga`. All rank 1. |
+> | **`qa/` probes, before → after — RUN, never edited.** Baseline measured in a `git worktree` at `e94f8a1` | **`r67-corpus.mjs` 6 FAIL → 3 FAIL.** Closed: **`M1` ×2** — *"Antilles/Hispaniola is a MULTI-COUNTRY landmass and ships attributed to one country"*, which **is R67-3, and the probe now prints `note Antilles does not ship` / `note Hispaniola does not ship`** — and **`G5`**, *"3,431 swept queries answer identically from one shard and from the whole corpus"*, which was red at the baseline on 10 queries (`ant`, `tierr`, `bor`, …) and is green now that the sixteen are gone. Still red, all three pre-existing and each already routed: **`B1`** (stale inline refusal model), **`L3`** (R67-8), **`J3`** (superseded checksum formula). **`r64-census.mjs` 0 FAIL → 0 FAIL, and §F's four `I-24` cases are `ok` by name** — F1 `{CH, picked}`, F2 the one spelling, F3 the erase case, F4 the inherited `null`; F5–F10 green too. **`r67-parents.mjs` 0 FAIL → 0 FAIL.** **`r60-fold-search.mjs` 1 FAIL → 1 FAIL** (the U+2019 note). **`r67-guard.sh` 8 ok / 1 FAIL → 8 ok / 1 FAIL**, the same `M6`, which is the drifted probe routed to the breaker and which I left alone. |
+> | **Corpus bytes** | 8,749,730 → **8,748,083**, and every one of the 1,647 bytes is sixteen rows leaving. 962 shards and the largest shard (`br`, 94,630 B) unchanged. `CORPUS_BYTES` in `0-gazetteerBudget.test.ts` re-measured from the generator's own reported total, with the reason written beside it. |
+> | **KD-125 — A-93 Part 2's join for `P(c)` is EMPTY as written** | The ruling says *"the feature whose **`ADM0_A3`** is that code's `SOV_A3`"*. **On the pinned layer that join names a distinct sovereign for 0 codes**; the join on `SOV_A3` names one for **41**, which is A-93 Part 3(b)'s own figure, and yields its own six load-bearing pairs. A dependency's `SOV_A3` is a group code (`GB1`, `DN1`, `FR1`) and **no feature carries `ADM0_A3 = 'GB1'`**. Built to the measurement; **the sentence needs correcting in the document and that is not mine.** Full detail in **KD-125**. |
+> | **KD-126 — `I-31`'s class-`P` criterion is one notch wider than the ruling, and the wider form is false** | A-93 Part 8 condition 1 is about **clause 4's** matches. `I-31` restates it as *"no refused row of **any** reason has feature class `P`"* — and **`Bantam Village`** (`gn:x5yu`, Cocos (Keeling) Islands, `P/PPL`) is refused under `'bare-name'` and was before this increment. The wider guard was written first, fired on the first run and wrote nothing; it is now scoped to `'multi-country'`, as the ruling says. Full detail in **KD-126**. |
+> | **What I could not verify** | **Faults N1–N5 as end-to-end regenerations.** Each is a source mutation plus a ~4-minute rebuild; the assertions that redden are all present and all read the committed artefact, and **N1's guard fired for real** (see KD-126) which is one of the five demonstrated by accident. I did not spend five rebuilds watching the other four go red. **N6 is asserted against the generator's SOURCE, not its output** — the generator reads 625 MB of pinned dumps and cannot run inside `node --test` offline (A-90 clause 1), so the test catches a deleted or renamed audit line and **cannot catch a line printing a wrong number**; the numbers are in this table beside the run that produced them. **A-93 Part 7 fault 3's stated count *"16 → 169"* was NOT reproduced and I believe it is wrong**: dropping the class restriction with the sovereign subtraction still in place saves `Tórshavn`, the 16 Faroese and 15 Åland rows and every other class-`P` row whose `cc2` names only its own sovereign, so the number would be well under 169 (169 is A-89's count, before `P`). **`Vatican City` still disappears under that fault** — `P(VA)` is `null`, the Holy See being its own sovereign — so the fault's *effect* stands and only its arithmetic does not. **That a browser fetches one shard** — unchanged from `I-23`; no web consumer exists and adding one is fenced. |
+
 > **Addendum — ROADMAP `I-29`, at `master` = `04c76f4` → this commit.** Five parts routed;
 > **Parts 2, 3, 4 and 5 are BUILT and verified. Part 1 STOPS AND REPORTS — `Antilles` and
 > `Hispaniola` still ship and R67-3 is NOT fixed.** A-91's item 1 is also not built, and the reason
@@ -6171,6 +6200,84 @@ the nine rows the ordering fix would delete leaves `cc2` **empty**, confirmed fr
 none of them**, which is the half of A-89 that is exactly right and is now guarded by a permanent
 test naming all nine (**N1**: restoring KD-122's ordering takes `bare-name` from 18 to 28 and the
 shipped rows from 149,101 to 149,091, measured).
+
+
+### KD-125 — A-93 Part 2's join for `P(c)` is empty as written, and the join that produces the ruling's own 41 codes is on `SOV_A3`
+
+`tools/gen-gazetteer.mjs`, `readAdmin0`. **Implemented to match the ruling's MEASUREMENTS, not its
+sentence, and disclosed here rather than silently.**
+
+A-93 Part 2 defines the sovereign of a country code `c` as *"the `ISO_A2_EH` of the feature whose
+**`ADM0_A3`** is that code's `SOV_A3` and whose `ADMIN` equals its own `SOVEREIGNT`"*. Measured
+against the pinned `ne_10m_admin_0_countries.geojson` (sha256 `239eec57…`, 258 features):
+
+| join, over the pinned layer | codes with a distinct sovereign |
+|---|---|
+| `feature.ADM0_A3 === c.SOV_A3` — **the ruling's literal sentence** | **0** |
+| `feature.SOV_A3 === c.SOV_A3` — the group's self-governing member | **41** |
+
+**41 is A-93 Part 3(b)'s own number** (*"the layer names a distinct sovereign for 41 codes"*), and
+the second join is the one that yields `P(JE) = GB`, `P(GG) = GB`, `P(FO) = DK`, `P(AX) = FI`,
+`P(NF) = AU`, `P(TF) = FR` — A-93's six load-bearing pairs, named in the ruling.
+
+**Why the literal sentence is empty.** At v5.1.2 a dependency's `SOV_A3` is the sovereign's *group*
+code with a numeric suffix — Jersey and Guernsey carry `GB1`, the Faroes `DN1`, the French Southern
+Territories `FR1` — and **no feature carries `ADM0_A3 = 'GB1'`**: the United Kingdom's `ADM0_A3` is
+`GBR`. For an ordinary country `SOV_A3 === ADM0_A3` (`DEU`/`DEU`), so the literal join resolves each
+sovereign to *itself* and every result is discarded by the *"distinct"* clause. It returns zero for
+every code, in both directions.
+
+**Building the sentence rather than the measurement would have deleted the twelve rows A-93 exists
+to keep** — `Jersey`, `Guernsey`, `Alderney`, the `Faroe Islands`, `Signilskär`, `Norfolk Island`
+and the six French Southern islands — because every `P(S)` would be `null`. That is the ruling's own
+injected fault 4, shipped by accident. **The measurements are the ruling; the join key is a typo in
+its prose.** ARCHITECTURE §8.4 A-93 Part 2's sentence wants `SOV_A3` where it says `ADM0_A3`; the
+generator's comment says so at the site, and this is the manager's to correct in the document.
+
+### KD-126 — ROADMAP `I-31`'s *"no refused row of ANY reason has feature class `P`"* is false on this corpus, and was false before this increment
+
+`tools/gen-gazetteer.mjs`, the A-93 Part 8 condition-1 guard.
+
+The ruling's own wording is narrower and correct: A-93 Part 8 condition 1 stops the run if **clause
+4** matches a row of feature class `P`. ROADMAP `I-31`'s verification bullet restates it one notch
+wider — *"no refused row **of any reason** has feature class `P`"* — and the wider sentence does not
+hold: **`Bantam Village`** (GeoNames 1547382 = `gn:x5yu`, Cocos (Keeling) Islands, class/code `P/PPL`) is refused
+under `'bare-name'`, because `CC` translates to `null` (the layer answers `null:3 AU:2`, so the modal
+parent is `null`) and the row carries no `admin1`. It is one of the **18 pre-existing `bare-name`
+refusals**, unchanged by this increment, and it was in the committed golden at `59cad74`.
+
+**Built to the ruling.** The guard and the test are scoped to `reason === 'multi-country'`. The wider
+form was implemented first, fired on the first run, and is what surfaced `Bantam Village` — the run
+stopped and wrote nothing, which is the guard working. Widening it to every reason would make the
+generator refuse to run on a true corpus.
+
+
+
+### KD-127 — `I-31`'s N6 assertion reads the generator's SOURCE, not its output, and that is a weaker instrument than the criterion implies
+
+`packages/core/test/gazetteerMultiCountry.test.ts`, *"the generator publishes all four inert/exempt
+audit lines"*.
+
+ROADMAP `I-31` asks for *"the audit's four inert/exempt lines are present and are the ruling's own
+numbers"*, with **N6** injected: delete any one of the four and the assertion reddens naming it.
+
+**The first half is testable offline; the second is not.** Every other claim in that file is a claim
+about the committed bytes under `packages/core/src/geo/gazetteer/`, checked against those bytes with
+no network and no generator run (A-90 clause 1). The audit lines are not in those bytes — they are
+`console.log` output from a program that streams **625 MB** of pinned GeoNames dumps, which cannot
+run inside `node --test` and would not be reproducible from a clean clone if it could.
+
+**What shipped, at exactly the width of its mechanism.** The test greps `tools/gen-gazetteer.mjs`
+for the four template literals by their distinguishing text and the accumulator each interpolates,
+and separately asserts `CLAUSE_4_ENABLED` is no longer declared. **It catches a deleted or renamed
+line — which is N6 — and it does NOT catch a line that prints a wrong number.** The four numbers
+(`S`-only 0, `P(C)`-only 0, sovereign pairs 6 of 41, class-`P` exempt 141 in 57 groups) are recorded
+in the `I-31` addendum beside the run that produced them, and the run is reproducible from the
+cached sources with one command.
+
+**Fires** when the generator's audit becomes runnable against a fixture-sized corpus, at which point
+this test should assert the output instead of the source and this note goes with it.
+
 
 
 ## 2. How to run it
