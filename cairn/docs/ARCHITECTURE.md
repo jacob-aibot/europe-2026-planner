@@ -22205,9 +22205,12 @@ downstream sees `Gazetteer` and a `GazetteerRow`; nothing downstream knows the w
 > 3. **feature class `P` and `population ≥ 20,000`** — the floor that guarantees the control set can never
 >    be lost to a dial. It is not the selection rule; it is the guard rail under it.
 
-> **⚠ READ WITH A-89 (revision 70).** *"A `City` record is a settlement or an island you can say you went
-> to"* is the principle A-89 extends: **an island you can say you went to without saying which country you
-> were in is not one.** The selection gates below are unchanged; the refusal is A-83 Part 9 clause 4.
+> **⚠ READ WITH A-89 AND A-93 (revisions 70, 71).** *"A `City` record is a settlement or an island you can
+> say you went to"* is the principle A-89 extends: **an island you can say you went to without saying which
+> country you were in is not one.** The selection gates below are unchanged; the refusal is A-83 Part 9
+> clause 4. **A-93 adds that the refusal applies to this rule's SECOND arm only** — `ISL`/`ISLS`, the names
+> that denote an *extent*. A class-`P` row denotes a point, a point lies in one place, and a second
+> jurisdictional claim on it is a dispute Cairn declines to adjudicate rather than a place it deletes.
 
 **Why the feature-class restriction and not "everything notable".** Measured over the corpus: of the rows
 that answer a corpus query, **only islands (`T/ISL`) and a single ancient site contribute outside class
@@ -22541,7 +22544,11 @@ new scalar with a total default, so A-72's "no bump" arm does not apply. `SUMMAR
 > Island`, `Bouvetøya`), because **both are a row with no region and no drawable code of its own** — and
 > KD-122 measured that refusing before the translation deletes **nine correct rows to remove one sea**.
 > Clause 4 is a separate, orthogonal refusal on the source's own `cc2` column, and the ordering of clause 1
-> against the translation is deliberately unchanged. **Read Part 9 with A-89.**
+> against the translation is deliberately unchanged. **Read Part 9 with A-89 — and take clause 4's
+> predicate from A-93 Part 2, which supersedes A-89 Part 2's** (revision 71): clause 4 applies **only to
+> the `ISL`/`ISLS` arm of Part 3's candidacy rule**, and it subtracts the row's **sovereign** as well as
+> its stated and shipped codes. A-89's form refuses 169 rows including `Vatican City`; A-93's refuses 16,
+> every one a landmass.
 
 Three defects, one rule each, and two of them are shipping conditions rather than runtime fallbacks —
 because a fallback that fires is a row that should not have been emitted.
@@ -24514,6 +24521,13 @@ re-queued **behind** `I-23`, reported rather than silently omitted.
 
 #### A-89 — a landmass the source itself says lies in more than one country is not a city in any of them: the corpus gains a fourth shipping refusal, keyed on a column it never shipped (revision 70, QA **R67-3** MAJOR; **R67-4**, **R67-10**, **R67-11** ride along)
 
+> **⚠ AMENDED AT REVISION 71 — READ WITH A-93. Part 2's PREDICATE IS SUPERSEDED and Parts 2 and 8 carry
+> corrections in place.** `I-29`'s builder built clause 4 exactly as Part 2 rules it and **stopped without
+> enabling it** (BUILD-NOTES **KD-124**): measured over all 149,101 committed rows rather than over the 14
+> country files this ruling sampled, the predicate matches **169** rows, **167** of them false positives —
+> including **`Vatican City`**, a committed `PROBES` query. **A-93 is the predicate that ships.** Parts 1,
+> 3, 4, 5, 6 and 7 of this ruling stand unchanged and A-93 depends on them.
+
 **Part 1 — what the round measured, and why the obvious fix is the wrong one.**
 
 `Antilles` ships as *"Antilles, Dominican Republic"* at rank 1 for its own name; `Hispaniola` ships as
@@ -24581,6 +24595,12 @@ names by name as a shipped outcome.
 > **Ruling — A-83 Part 9 gains clause 4. Clauses 1–3 are unchanged and their position relative to A-84
 > Part 5's translation does not move, which is what keeps the nine.**
 >
+> **⚠ SUPERSEDED AT REVISION 71 BY A-93 PART 2.** The predicate below is correct about *what* it reads and
+> wrong about *how much*: it refuses every row whose `cc2` names a foreign country, and on the corpus that
+> is 141 settlements as well as 28 landmasses. **A-93 keeps `X \ {S, C}` and adds two things this ruling
+> did not have — the candidacy arm (`ISL`/`ISLS` only) and the sovereign subtraction `P(S)`, `P(C)`.**
+> Read the paragraphs below for the reasoning, which stands; take the rule from A-93.
+>
 > Let **`S`** be the row's stated country code (`allCountries` column 9, possibly empty), **`C`** the code
 > the row would ship after the parent translation (possibly `null`), and **`X`** the set of non-empty codes
 > in `cc2`, uppercased and trimmed.
@@ -24618,11 +24638,15 @@ built corpus, that is published in the generator's audit, not quietly removed.**
   refuses every multi-country landmass GeoNames marks as one, and makes no claim about the ones it does
   not mark.** It is not *"no landmass is attributed to one of its countries"*, and it may not be written up
   as though it were.
-- **False positives.** `Trachóni` (`cc=CY cc2=[CY,GB]`, 4,113 people — a village inside the UK Sovereign
-  Base Area) is refused. That is the rule working: it is genuinely in two jurisdictions and Cairn does not
-  adjudicate which. Seven zero-population Oyapock islets (`cc=GF cc2=[BR,GF]`) and five zero-population
-  NL/DE/BE border hamlets are also refused and **none of them clears A-83 Part 3's selection gates in the
-  first place**, so the measured cost of the false-positive arm on the shipped corpus is one village.
+- **False positives. ⚠ THIS BULLET IS WITHDRAWN AT REVISION 71 (A-93 Part 5 item 1).** It read that
+  `Trachóni` is refused and that *"the measured cost of the false-positive arm on the shipped corpus is one
+  village"*. **`Trachóni` does not clear A-83 Part 3's selection gates and has never shipped**, so the one
+  row this ruling priced could not be charged for; the sweep behind the sentence was over 14 country files,
+  not over the corpus. **Measured over all 149,101 committed rows: 167 false positives**, among them
+  `Vatican City` (829), `Tórshavn`, `Saint Helier`, `Douglas`, `Mariehamn`, `Laayoune` (196,331), `Dakhla`
+  (106,277), two Macau parishes over 100,000, every Antarctic station and every Western Saharan town.
+  **Under A-93 the false-positive arm's cost on the shipped corpus is zero settlements**; what it costs
+  instead is nine disputed or shared islands, priced in A-93 Part 9 residue 2.
 
 ---
 
@@ -24738,10 +24762,13 @@ comment.**
 
 **Part 8 — residues, each with what would fire it.**
 
-1. **`Ireland`, `Borneo`, `New Guinea`, `Tierra del Fuego` — multi-country landmasses GeoNames does not
-   mark in `cc2`.** Clause 4 does not see them and this ruling does not claim it does. **Fires** when a user
-   reports one, or when a corpus swap gives us an **extent** rather than a point — the honest test is
-   *"does this feature's polygon cross a border in the index"*, and we ship a coordinate, not a polygon.
+1. **~~`Ireland`, `Borneo`, `New Guinea`, `Tierra del Fuego` — multi-country landmasses GeoNames does not
+   mark in `cc2`.~~ ⚠ CORRECTED AT REVISION 71 (A-93 Part 5 item 2): every named row is wrong.** Measured
+   from the dump: `Borneo` is `[BN,ID,MY]`, `New Guinea` is `[ID,PG]` and `Tierra del Fuego` is `[AR,CL]` —
+   **all three ARE marked and all three are refused** — and **`Ireland` the island (2963597) is not in the
+   corpus at all**, so it is neither a residue nor a cost. This residue was filed over a population it was
+   never measured against. **The real unmarked rows are `Timor` and `Saint Martin`** — see A-93 Part 9
+   residue 1, which carries the trigger this one meant to carry.
 2. **`Trachóni`, and the dual-jurisdiction settlement.** Clause 4 refuses a real village of 4,113 people.
    **Fires** if a second such row clears the selection gates; the remedy is that a human can read
    `reason: 'multi-country'` in the refusals golden and rule on it, which is the whole of why Part 3 exists.
