@@ -1,5 +1,162 @@
 # Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index), 23 (I-5b — A-27's forgiveness entry), 24 (I-5c — A-28's second arm for filter 2), 25 (the I-5 closure round), 26 (I-6 — the widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan), 27 (I-6a — A-29's stated-country gate and A-30's `refreshSummary`) 28 (I-7 — `travelStats` and the row's record census), 29 (I-7a — A-32's civil calendar, A-33's exit criterion 6, A-34's `provisional`) 30 (I-7b — A-35's span cap, A-36's executed port gate, A-37's row read gates) 31 (A-38 — the seeded double and `ensureReady`'s upcast) 32 (A-39 — the finite covering set and the boundary that closes the arc), 33 (I-8a — the tab shell, the world map, the token layer and the signal-collision fix), 34 (I-8c — A-45's calendar gate, A-44's lifecycle read gate, BLD-3's way out) 35 (I-8e — A-46's unreadable row, its rescue export, and R34-1's ordering fix) 36 (I-8d — A-41's atlas frame and A-42's withdrawn min-span claim; I-8d's first adversarial round) 37 (I-8g — A-48's `countryKeyPoint`, the connected-components partition, C9's paint order and the pane's `aspect`) 38 (I-8h — A-49's `countryParts`, C8′'s extent, C8″'s detached pane and A-50's symmetric pane box) 39 (I-8i — A-51's one-pane-per-cluster frame, A-52's ring filter and A-53's home/extent panes + I18) 40 (I-8f + I-8j together — A-47's `openFailures`/`rowUnopenable`, and A-54's G7′/G7″ layout, D/I19 ring guard and G5′ tie-break) 41 (I-8b — the Profile, the mobile-first shell, and `DESIGN.md` §5/§6's first rendered acceptance standard) 42 (I-8b's repair pass — the mandatory re-breaker over round 41's 3 MAJOR / 14 MINOR, `DESIGN.md` revision 2 §6.2's refusal-equivalence criterion, and the vacuous fault harness) and **43 (I-12 — A-56's `cities[].centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` 4 → 5, and `TravelStatsCity`'s city dates) 44 (I-12a — A-59's counted city-date fallback and nameable row, A-60's clamp-artefact fix) 45 (I-13 — the photo foundation: §10's record class, EXIF reader, byte stores and loading-state selectors, A-57/A-58/A-61) and **46 (I-13b — the confirmation round over the whole photo repair arc: A-62's `[tripId, photoId]` byte key, A-63's fourth `PhotoListing` phase, A-64's withdrawn provenance claim) 47 (I-13c — the confirmation round over the round-46 repair pass and revisions 45/46: A-62 Part 8 residue 4, A-65's refused deferred delete, A-66's five-armed failure union) 48 (I-13d — the confirmation round over §4.2 **A-67**, the store's generation guard, and revision 48's **Part 7a**) 49 (I-13e — the confirmation round over §4.2 **A-68**, the wiring at A-67's own call sites, and the required re-cut of `qa/r47-i13c.mjs`) 50 (I-13g + I-13h — the confirmation round over §4.2 **A-69**'s settling boundary and **A-70**'s sequence-stamped predicate, the required re-cut of `qa/r49-i13e.mjs`, and the close of the A-67…A-70 arc) 51 (I-13i — the confirmation round over §4.2 **A-71**'s subscriber-exception brand and one classifier, §10 **A-66 Part 11**'s `setBatch`, and the required re-cut of six assertions across three `qa/` probes)**** **52 (I-9 — participants in core: `Trip.participants`, the three build functions, the two validation codes, and the *participation grants nothing* invariant)** **53 (the confirmation-breaker pass over the participants arc)** **54 (I-11 — the PHASE 2 PHASE GATE: every exit criterion re-derived, the phase attack list run end to end, one cross-cutting scenario over everything the phase built, and the whole `qa/` board re-run)** and **55 (I-15 — the mandatory adversarial pass over §2.1 **A-76**, *a build door asks the parser what a record may hold*: KD-100, the TOCTOU window, the two standing censuses, and the hunt for the eleventh unguarded door)** and **56 (I-16 — the mandatory adversarial pass over §2.1 **A-77**, *a door does not say what it wrote; the document says what changed*: the identity diff itself, the eighth record class, the replaced door census, and the third attempt at one class of bug)** and **57 (I-17 — the mandatory adversarial pass over §2.1 **A-78**, *the census reads the tree, not a list of files*: the fourth round on one class after an explicit claim of structural closure, and the fifth face, which went inward)** and **58 (I-18 — the mandatory adversarial pass over §2.1 **A-79**, *the census asks whether a door is reachable, not how it is declared*: the fifth round on one class, run against A-79 Part 11's three named exceptions, and the sixth face — the type constructors the walk cannot descend through)** and **59 (I-19 — the mandatory adversarial pass over §2.1 **A-80**, *the predicate descends every type constructor, and the closure claim becomes coverage rather than a list of exceptions*: the sixth round on one class, run against A-80 Part 10's own statement of what a seventh finding must look like, and the seventh face — the door that IS the union member)** and **60 (I-21 — the mandatory adversarial pass over §8.4 **A-82**, *a bundled gazetteer gives a typed city a real coordinate and no shipped row may contradict the country index*: the invariant re-derived from the pinned source, the quantisation question answered, and the first measured coverage hit rate for the capability Jacob asked for)** and **61 (I-22 — the mandatory adversarial pass over §8.4 **A-83** Part 8, *`City.centre` may be `null` and a picked city carries the row it came from*: the `SCHEMA_VERSION` 3 → 4 migration attacked byte for byte, the near-Null-Island case constructed, the corpus regeneration diffed row by row against `dd19958`, and the browser read-back gate finally run)** and **62 (I-22a — the mandatory adversarial pass over §8.4 **A-84**, *a pick is a record, the country is read off it, and a stale pick is inert*: the exact-float staleness rule attacked over all 7,342 shipped rows, the parser past its own ceiling, the door census run rather than reasoned about, and the `SCHEMA_VERSION` 4 → 5 rung walked on the committed fixtures)** and **63 (I-24 — the mandatory adversarial pass over §8.4 **A-85**, *a pick lands on the point it names and the place census gains its denominator*: the door-level rule attacked at every door that can reach a `City`, the `SUMMARY_VERSION` 7 → 8 rescan driven end to end through the store, the covering table re-derived from the file's own text, and the five builder disclosures adjudicated one at a time)** and **64 (the round `2b54c67` owed, run over TWO commits as one subject — the four builder-routed fixes of QA round 63 **and** **I-25** / §8.4 **A-86**, *the door and the census after round 63*: `I-24`'s exit re-derived under both corrected criteria, the absorbed-row count attacked over sixteen non-array values and both lifecycles, KD-117's blast radius established, and the two test-shaped claims — the CLI source-lift and the `issuesForRef` tripwire — put under mutation)** and **65 (the round `e1e1973` owed, run over TWO commits as one subject — round 64's builder-routed fixes (`e1e1973`) **and** **I-26** (`ede933f`) / §8.4 **A-87**, *the read gate and the census after round 64*: the closure claim attacked at its own denominators rather than with a sixth shape, the reachability premise behind its stated scope limit tested rather than accepted, the reader's own read-once discipline measured with counting accessors, the five builder disclosures adjudicated one at a time, and eleven mutants run against the new assertions)** and **66 (the round **I-28** owes — §8.4 **A-88**, *a predicate widened in place names its callers, a coverage claim names its denominators, and the read-gate arc closes here*: the covering claim injected at all FOUR of its denominators, A-88 Part 2's *"throws exactly two ways"* premise searched over 405 plain-data row shapes, the residue's own trigger measured at the commit before A-45, and every mutation literal in every harness still in use audited for the one failure mode a mutant can have — reporting success for doing nothing)** and **67 (I-23 — the mandatory adversarial pass over §8.4 **A-83** Parts 1–7 and 10–11 with **A-84** Parts 5 and 6, *the gazetteer's filter becomes notability, the corpus is sharded, and a search fetches one shard*: the two broken probes re-cut off the committed shards with no loader hook and the coverage headline re-derived from them, KD-118 verified over 1,377,944 query prefixes rather than three examples, KD-119 adjudicated against the pinned 1:10m layer at its own sha256, and the fold's substitution table re-derived against the punctuation the new corpus actually spells its names with)**
 
+
+> **Status (as of `master` @ `7fb7901`, independently verified 2026-09-10 — round 68, the mandatory
+> adversarial pass over TWO commits as one subject: `I-29` (`59cad74`, whose round was never run —
+> it stopped and reported) and `I-31` (`c202a89` + `7fb7901`), §8.4 **A-93** with **A-89** Parts 1
+> and 3–7, **A-90**, **A-91**, **A-92**).** Three new scripts, run from `cairn/`:
+> `qa/r68-source.mjs` (caches the pinned source rows clause 4 can read — one 55 s pass over
+> `allCountries.txt`, 13,464,110 lines), `qa/r68-clause4.mjs` (**8 sections, 50 assertions: 48 ok,
+> 2 FAIL**, ~2 min offline) and `qa/r68-repin.sh` (**6 sections; 13 ok, 4 FAIL** with
+> `CAIRN_R68_GEN=1`, which runs the generator three times over 625 MB of pinned dumps). Plus the
+> **three required re-cuts** the manager routed: `qa/r67-corpus.mjs` **J3** and **B1**, and
+> `qa/r67-guard.sh` **M6**. **Zero product-code edits, zero `src`, zero `.tsx`, zero `apps/web`,
+> zero `packages/client`, zero `docs/design/`, zero corpus file, zero golden, zero `tools/`, zero
+> new dependency, zero lockfile.**
+>
+> **ASSESSMENT — SHIP, with three document corrections owed. 0 BLOCKERS, 3 MAJOR, 7 MINOR.**
+> **`I-31`'s own subject is verified and it is verified the hard way.** The sixteen refusals were
+> re-derived **independently**, from A-93 Part 2's words, over the **pre-clause-4** corpus
+> (`e94f8a1`, 149,101 rows) joined to the cached pinned `allCountries.txt` — a different
+> implementation over a different population from the builder's — and they agree with the committed
+> golden **by GeoNames id, in both directions, with no additions and no removals**. So the set is
+> right *because the predicate is right*, not because both were read off one sample. Everything the
+> ruling predicted and nobody had checked also holds: the twelve rows the sovereign subtraction
+> keeps are exactly twelve and exactly the named twelve; `S`-only and `P(C)`-only are both 0; the
+> sovereign pairs used are 6 of the 41 the layer names, and they are A-93's six; the exempt
+> class-`P` population is 141 in 57 groups with `FO+DK` 16 and `AX+FI` 15 at the top; A-93 Part 9
+> residue 4's trigger does **not** fire (no refusal's `cc2` names a code `countryInfo.txt` omits);
+> `--dry-run` writes nothing; a regeneration from the same fetched bytes is byte-identical.
+>
+> **All three MAJORs are rulings or provenance, not the increment.** The one a user meets is
+> **R68-1**, and it predates this arc.
+>
+> **R68-1 (MAJOR, architect) — the Cocos (Keeling) Islands ship zero rows, because an abstention
+> wins the modal-parent election.** A-93 Part 3(a) argues, correctly, that *"deleting Vatican City,
+> Tórshavn, Saint Helier, Douglas and Mariehamn from the picker is a worse answer than the
+> imperfect one their own rows already give."* That exact deletion has already happened to an
+> entire territory and nothing in either ruling records it. `node cli.ts cities cocos` returns
+> *Cocos, Bahia, Brazil*; `bantam` returns two American villages; `west island` returns **no
+> match**. The chain, each step measured: (1) all five candidate `CC` rows state a code
+> `COUNTRY_INDEX` cannot draw, so A-84 Part 5's translation runs; (2) the pinned 1:10m layer carries
+> **no feature at all** for the Cocos (Keeling) Islands, so `admin0.locate` answers for two rows —
+> via the 0.05° coastal tolerance — and abstains for three; (3) `tools/gen-gazetteer.mjs:886` writes
+> the abstention into the vote as `''` and `:891-894` takes the plurality **over all keys including
+> `''`**, so three abstentions outvote two `AU` answers and `codeParent['CC']` is `null` — the
+> generator's own audit prints it, `CC -> null   null:3 AU:2`; (4) every `CC` row therefore ships
+> `countryCode: null` and none carries an `admin1`, so A-83 Part 9 clause 1 refuses all five as
+> bare names; (5) `fixtures/golden/gazetteer-refusals.json` holds them — `Bantam Village`,
+> `West Island`, `South Island`, `Horsburgh Island`, `Cocos Islands` — and the corpus holds nothing
+> for `CC`. **A-89 Part 8 residue 4 said the refusals golden is "a hole nobody has read". I read it,
+> and this is what is in it.** The tie-break makes it worse rather than better: `''` sorts first, so
+> on a tie the abstention also wins. **And the same artefact is the sole support for A-89 Part 5
+> sentence 3's claim that the `null` arm is not vacuous** — the other code with an abstention
+> plurality is `TK -> null   null:2 NZ:1`, and the three Tokelau rows A-89 names as *"what exercises
+> that arm"* are exactly the rows it produces. A-84 Part 5's own sentence is *"the modal **containing
+> feature**"*; a row the layer does not contain has no containing feature to contribute. If the
+> architect rules that abstentions do not vote, `CC → AU` and `TK → NZ`, the Cocos Islands come
+> back, and the `null` arm goes to **zero** — which A-89 Part 5 sentence 3 says must be stated out
+> loud rather than discovered. That is a ruling, which is why this is the architect's and not a
+> one-line builder fix. Neither ruling's residue set carries it.
+>
+> **R68-2 (MAJOR, architect) — A-93 Part 2's join for `P(c)` is empty as written, and built to the
+> sentence the ruling ships its own injected fault 4.** KD-125 is **confirmed independently**, from
+> the pinned layer at its own sha256: the literal join — *"the feature whose `ADM0_A3` is that
+> code's `SOV_A3`"* — names a distinct sovereign for **0** codes, because a dependency's `SOV_A3`
+> is a group code (`GB1`, `DN1`, `FR1`) and no feature carries `ADM0_A3 = 'GB1'` (the UK's is
+> `GBR`, and Jersey's `SOV_A3` is `GB1`); the join on `SOV_A3` names one for **41**, which is A-93
+> Part 3(b)'s own figure, and yields `JE→GB GG→GB FO→DK AX→FI NF→AU TF→FR`, which are A-93's own
+> six. **Run**: implementing the sentence refuses **28** terrain rows instead of 16 and deletes
+> `Jersey`, `Guernsey`, `Alderney`, `Faroe Islands`, `Signilskär` and `Norfolk Island` — A-93 Part 7
+> fault 4, item for item. The builder built the measurement, disclosed it, and correctly declined to
+> edit the ruling. **The sentence in ARCHITECTURE §8.4 A-93 Part 2 wants `SOV_A3` where it says
+> `ADM0_A3`, and until it is corrected the document instructs the next builder to delete twelve
+> correct rows.**
+>
+> **R68-3 (MAJOR, architect + builder) — the append-only source log can be destroyed by a run that
+> is not a re-pin, and the test A-90 Part 5 residue 2 names cannot see it.** Three legs, all run:
+> (a) **`writeSourceLog` is on the ordinary write path, not the `--repin` path**
+> (`tools/gen-gazetteer.mjs`, `main()`), and its seed branch is `if (log.entries.length === 0)`
+> (`:1951`), reached whenever the file is absent, empty, or unparseable — the `JSON.parse` is inside
+> a bare `catch {}` at `:1922-1924`. **Demonstrated with a real 5-minute regeneration**: delete
+> `fixtures/golden/gazetteer-source-log.json`, run `node tools/gen-gazetteer.mjs` with **no
+> `--repin`** and every checksum matching, and it reports *"5 appended, 5 total"* — a whole history
+> replaced by a fresh set of heads, silently. (b) The chain test
+> (`packages/core/test/gazetteerMultiCountry.test.ts:409`) reddens for a **head or middle** deletion
+> and is **green** for a **tail** deletion — dropping the newest entry for a source, which is what a
+> truncation actually looks like — and green for a **full rewrite to heads-only**, which is what
+> regenerating the golden produces and is byte-for-byte what leg (a) writes. (c) **It is vacuous
+> today**: the committed log holds 5 entries and **0 links**, so there is not one `previousSha256`
+> to walk, and the file's own `$what` string — *"a test walks the `previousSha256` chain and reddens
+> if a link is missing"* — is a claim nothing currently checks. Architect for the mechanism (the
+> chain is a poor witness for append-only; a monotonic entry count or an in-repo prefix check is
+> not); builder for the narrower half, which is that `writeSourceLog` should refuse to seed a log it
+> did not create unless `--repin` is present.
+>
+> **What I could not break, with the attack list.** Whether the sixteen are the *whole* population —
+> attacked four ways and it holds under the ruling's *lies-in* reading: a complete enumeration of
+> every shipped island of ≥ 1,000,000 people (51 rows, 47 with an empty `cc2`) turns up only `Timor`
+> and `Cyprus`, both of which the residue names; a systematic sweep for the same island listed twice
+> under two country codes (all 174,694 source `ISL`/`ISLS` rows, paired by name and by distance)
+> finds no unmarked pair that is the same feature; `Sebatik`, `Bolshoy Ussuriysky`, `Märket`,
+> `Kataja` and `Ireland` are not in the corpus at all. `--repin` as the only mismatch-to-write path
+> — the fence is in `ensureSource` before any build output and `report()`'s stop-and-report throws
+> before `shard()` and `write()`. The named-set guard — **fired for real**, in a full regeneration
+> with A-93 Part 7 fault 3 injected, naming every added row and writing nothing. A hand-edited
+> **country code** in a shard — caught, over all 149,085 rows, by `gazetteer.test.ts`'s
+> `indexSays`/`countryOf` cross-check. The standing constraints — no ambient clock or randomness, no
+> runtime dependency, and no DOM or React in `packages/client/src` (five files match a naive grep and
+> every hit is prose). The sensitive paths — this increment touches no mailbox and no location code,
+> `packages/core/src` and `packages/client/src` contain no `fetch`, `navigator`, `localStorage` or
+> `sendBeacon`, and the generator's 92 `console.log` lines print only public gazetteer data.
+>
+> **What I could not test.** A browser: no web consumer of the corpus exists and adding one is
+> fenced. A-91 item 1 (`GazetteerResult`): not built, and `I-29` disclosed why. Faults **N2** and
+> **N5** as end-to-end regenerations — N1's class and fault 3 were both run and both fired, and N4's
+> effect was derived offline in `qa/r68-clause4.mjs` §D, but I did not spend two more rebuilds. A
+> re-pin with genuinely moved upstream bytes: the live dumps roll over daily and A-90 exists because
+> that already drifted the corpus once, so I used the cached pin throughout.
+
+### Round 68 — the findings
+
+| id | sev | file:line | defect | repro | routing |
+|---|---|---|---|---|---|
+| **R68-1** | **MAJOR** | `tools/gen-gazetteer.mjs:886,891-894`; §8.4 **A-84** Part 5 / **A-89** Part 4 | A row the pinned layer does not contain is written into the modal-parent vote as `''` and can **win** it, so `CC -> null (null:3 AU:2)` and the **whole Cocos (Keeling) Islands territory is refused as bare names and ships zero rows**; the same artefact (`TK -> null (null:2 NZ:1)`) is the only thing making A-89 Part 5 sentence 3's `null` arm non-vacuous. | `node qa/r68-clause4.mjs H`; `node cli.ts cities cocos`, `… bantam`, `… "west island"` | **architect** |
+| **R68-2** | **MAJOR** | `docs/ARCHITECTURE.md` §8.4 **A-93** Part 2 | `P(c)`'s join is stated as `feature.ADM0_A3 === c.SOV_A3`, which names a distinct sovereign for **0** codes on the pinned layer; built literally clause 4 refuses **28** rows and deletes Jersey, Guernsey, Alderney, the Faroes, Signilskär and Norfolk Island — the ruling's own fault 4. The join that yields its stated 41 codes and its six named pairs is on `SOV_A3`. KD-125, confirmed independently. | `node qa/r68-clause4.mjs A D --prev <pre-clause-4 corpus>` | **architect** |
+| **R68-3** | **MAJOR** | `tools/gen-gazetteer.mjs:1920-1957` (esp. `:1922-1924`, `:1951`); `packages/core/test/gazetteerMultiCountry.test.ts:409`; §8.4 **A-90** clause 3 / Part 5 residue 2 | An **ordinary** regeneration (no `--repin`) re-seeds the append-only source log whenever the file is missing, empty or unparseable, and the chain test is green for a tail truncation, green for a heads-only rewrite, and **vacuous today** (5 entries, 0 links) — so the history A-90 clause 3 exists to publish can be destroyed without the reviewed act that is supposed to be its only author. | `CAIRN_R68_GEN=1 bash qa/r68-repin.sh` (§B, §D) | **architect** (mechanism) + **builder** (`writeSourceLog` must not seed without `--repin`) |
+| **R68-4** | MINOR | `packages/core/src/geo/gazetteer/*.json`; §8.4 **A-90** clause 1 | The artefact of record has no checksum over its own bytes: a **length-preserving** hand edit to a shipped row's population and coordinate (Salzburg to `{2^35, 47.7972}`) passes all **1,859** tests, the `CORPUS_BYTES` total and the `rows` count. The control — the same edit to the **country code** — is caught by the `indexSays` cross-check, so the corpus is not unguarded, only unguarded off that one field. The real mitigation is A-90 clause 1's own *"967 reviewable, diffable JSON documents in git"*, which is a review property rather than a test. | `bash qa/r68-repin.sh` (§C) | **architect** |
+| **R68-5** | MINOR | `docs/ARCHITECTURE.md` §8.4 **A-93** Part 7 fault 3 | *"The refusal count goes 16 → 169"* is wrong; **169 is A-89's pre-class count** and the sovereign subtraction is still in place under this fault. **The generator itself, with the fault injected, prints `102 rows refused`** — 16 terrain + 86 class-`P`, dominated by `AR` 28 and `AQ` 25. The fault's stated **effect** stands: Vatican City is among the 102 (`P(VA)` is `null`) and Tórshavn is not. The builder's disclosed doubt is correct and the number is 16 → 102. | `CAIRN_R68_GEN=1 bash qa/r68-repin.sh` (§F); offline: `node qa/r68-clause4.mjs B --prev <…>` | **architect** |
+| **R68-6** | MINOR | `docs/ROADMAP.md` `I-31` verification bullet | *"No refused row of **any** reason has feature class `P`"* is false and was false before this increment: `Bantam Village` (`gn:x5yu`, `P/PPL`) is refused under `'bare-name'`. A-93 Part 8 condition 1's own wording — *clause 4's* matches — is the correct one, and it is what the builder shipped and what the guard enforces. **KD-126 adjudicated: the builder is right and the ROADMAP sentence is what needs correcting.** | `node qa/r68-clause4.mjs E` | **architect** |
+| **R68-7** | MINOR | `docs/ROADMAP.md` revision 74, *"An undisclosed out-of-fence edit…"* | The record says `I-29`'s `apps/web/src/ports/map.ts` change was *"**not** disclosed in the builder's report"*, and it names it as the third such in the arc. **It was disclosed**, at `59cad74`, twice — the addendum header (*"zero `apps/web/` except A-92's one type-name change"*) and its PART 5 row, which names the file and the change. The **out-of-fence** half is right, and `I-29`'s fence (*"no `apps/web` file of any kind"*) was unsatisfiable alongside A-92's own ruling plus the exit criterion `npm run typecheck` exit 0 — the builder broke the fence, said so, and said why. | `git show 59cad74:cairn/docs/BUILD-NOTES.md \| sed -n '1,30p' \| grep -n 'map.ts\|apps/web'` | **architect** |
+| **R68-8** | MINOR | `docs/ARCHITECTURE.md` §8.4 **A-93** Part 9 residue 1 | The residue enumerates the unmarked population under Part 2's *lies-in* reading only, and that enumeration is **complete** (see the status note). Under Part 2's **own summary sentence** — *"a landmass that lies in, **or is claimed by**, more than one country"*, the reading that licenses nine of the sixteen — four more ship unmarked under a single claimant: `Falkland Islands (Islas Malvinas)` `FK`, `Isla Perejil` `ES`, `Isla de Aves` `VE`, `Kinmen Island` `TW`. **No user is harmed by any of the four** (each ships under the code a traveller would name), so this is a claim-strength finding: the ruling states two tests and prices only one. | `node qa/r68-clause4.mjs F` | **architect** |
+| **R68-9** | MINOR | `tools/gen-gazetteer.mjs:1664-1672` | `write()` `rmSync`es every `.json` in the corpus directory and *then* writes 963 documents, with no temp directory and no rename, so an interrupted or failing run leaves a partial or empty artefact of record. Recoverable only from git — which A-90 clause 1 relies on anyway, so it is recorded rather than dressed up. | `bash qa/r68-repin.sh` (§E) | **builder** |
+| **R68-10** | MINOR | `qa/r67-corpus.mjs` §B, §J; `qa/r67-guard.sh` M6 — **CLOSED IN THIS ROUND** | The three routed re-cuts, done. **J3** re-derived R67-7's superseded five-source formula; it now asserts the **six-input** hash (five checksums + `countryIndex:<sha256 of COUNTRY_INDEX by value>`), plus `J3a` on `$countryIndexSha256` and `J3b` that the old formula is *not* the committed value. **B1** scored every row against an inline reimplementation of the loader's refusals; it now drives `loadGazetteerFor` for every shipped row and every one of its own names (~140 s, 149,085 rows) — and the number moves **120 → 10**, because the inline model asked only the **first** token, which is exactly the behaviour R67-1's fix removed at `08c3d8b`. `A Coruña` was among the 110 the stale model called unreachable, in the same round whose own CLI transcript records it as a rank-1 hit. The differential is kept as `B1a`, deliberately red, so the drift stays countable. **M6** expected GREEN on the reasoning *"the guard walks what EXISTS"*; `08c3d8b` gave `storable.test.ts` the opposite walk too, so it is now **RED** and expected RED — a strengthening, and the same commit is why **M8** is RED. `r67-guard.sh` is now **9 ok / 0 FAIL**; `r67-corpus.mjs` is **3 FAIL** (B1's 10 genuine rows — KD-118's disclosed split-prefix arm, `Ål Ba Bo Pa Pô San Vi` — plus B1a by design, plus L3/R67-8, still open). | `node qa/r67-corpus.mjs B J`; `bash qa/r67-guard.sh` | **breaker (done)** |
+
+**KD-127 — adjudicated: adequate for this increment, inadequate as a standing mechanism.** The
+builder is right that a source grep catches a deleted or renamed audit line and cannot catch one
+printing a wrong number, and right that the generator cannot run inside `node --test` offline
+(A-90 clause 1). What closes the gap *for `7fb7901`* is that all four numbers have now been produced
+twice by two parties: the builder's run, and this round's `--dry-run` — **`S`-only 0, `P(C)`-only 0,
+sovereign pairs 6 of 41 (`AX->FI, FO->DK, GG->GB, JE->GB, NF->AU, TF->FR`), class-`P` exempt 141 in
+57 groups** — and independently a third time, offline and from a different implementation, in
+`qa/r68-clause4.mjs` §B (141/57) and §C (the twelve, the six pairs). What is *not* closed is the
+standing case: the next change to any of those four numbers has no instrument. The cheap remedy is
+not a fixture-sized corpus, it is to write the four numbers into the **refusals golden**'s header the
+way R67-10 already made the per-reason counts read from the file — at which point the assertion is
+about committed bytes and N6 becomes an output test. **Recorded as a residue on A-93 rather than
+filed as a finding**, because nothing is wrong today.
+
+**A-93 Part 7 fault 3, run end to end, and what else it shows.** Under the fault the audit's
+*"sovereign pairs used"* line goes from 6 to **13 of 41** and includes **`PS->IL`** — which is A-93
+Part 9 residue 3's own stated trigger (*"fires when the audit's used-pairs line grows a politically
+contested pair"*) firing under a fault rather than under a corpus swap. The mechanism the residue
+promises works, and this is the first time it has been seen to.
+
+
+---
+
+**Round 67's status block and findings follow, unchanged.**
+
 > **Status (as of `master` @ `ff0ecdd`, independently verified 2026-09-10 — round 67, the mandatory
 > adversarial pass over ROADMAP **I-23** / `ARCHITECTURE.md` revision 64's §8.4 **A-83** Parts 1–7
 > and 10–11 with revision 65's **A-84** Parts 5 and 6: *the gazetteer's filter becomes notability,
