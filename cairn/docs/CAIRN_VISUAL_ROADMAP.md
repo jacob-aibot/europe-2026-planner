@@ -19,6 +19,78 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟩 THE CITY LIST NOW FINDS FOUR IN FIVE OF THE PLACES YOU HAVE ACTUALLY BEEN — up from one in
+> five. As of 2026-09-10 this block is the newest and it supersedes every block below it.** Nothing on
+> your phone changes. This block covers the map fix, the new city list, the round that attacked it, and
+> two decisions taken today that are not about a screen at all.
+>
+> **The map stops opening in the middle of the ocean.** A trip with no located stop opened its day map on
+> the Gulf of Guinea at street zoom — because "the centre of no points" was being written down as
+> 0°N 0°E and then fitted, which is a made-up answer wearing the shape of a real one. An empty box now
+> says it is empty and the map simply does not move.
+>
+> **The city list is twenty times bigger, and it now picks places by whether the world writes about
+> them rather than by how many people live there.** 7,342 entries became **149,101**. Measured against
+> **121 real travel destinations**, the list used to find **21.5 %** of them; it now finds **90.1 %** —
+> and against 50 large cities it still finds all 50. **Hallstatt, Positano and Amalfi are in it.** The
+> list is also split into 962 small files, so searching downloads one small file instead of the whole
+> thing.
+>
+> **Then a tester attacked it and found three real problems. Two are fixed and re-checked against the
+> shipped build.**
+>
+> - **Typing a place's full name could return nothing at all.** *A Coruña* — a city of 245,000 — answered
+>   *"keep typing: too short to search"* for an eight-letter query. **152 places** did that when you typed
+>   their own name in full. Fixed; they all answer now.
+> - **Apostrophes ate eight million people.** `xian` did not find **Xi'an** — the Terracotta Army — because
+>   the list spells it with a typographic apostrophe the search did not know about. Nor `taif` → Ta'if, nor
+>   `oahu` → O'ahu. **700 of the 763 affected places were unreachable by the obvious query.** Fixed, and
+>   the ordinary queries — vienna, geneva, hallstatt, positano — are unchanged. **1,834 automated checks
+>   pass, none fail.**
+> - **Typing *Hispaniola* put the Dominican Republic on your lifetime map — even if you had only been to
+>   Haiti.** Same for *Antilles*. **This one is deliberately not fixed yet**, and that is the good news in
+>   it: the builder wrote the obvious fix, measured it, and found it **deleted nine correct places**
+>   (Guadeloupe, Bouvet Island, Devils Island, two Svalbard entries and four more) **to remove one sea** —
+>   so instead of shipping it, he stopped and reported. **Ruled today.** The answer is a column the source
+>   data already publishes that names the *other* countries a place sits in: Hispaniola's own record names
+>   Haiti, and every one of those nine leaves it blank. Checked against the source data today rather than
+>   assumed.
+>
+> **Something worth knowing that is not a bug, in plain terms.** The city list is built from a free public
+> dataset that **rebuilds itself every day and keeps no history at all**. Halfway through this work the
+> exact files we had built from stopped existing. Nothing broke — the tooling noticed and refused to write
+> — but it means **nobody, including us, can rebuild that list from scratch and get the same list back.**
+> Ruled today: **the list as committed to the repository is the thing of record.** Every check runs against
+> those exact files, offline, with no network. And any future refresh has to publish exactly what changed,
+> place by place, in the same change — this refresh quietly added 15 places, and that fact lived only in a
+> build note.
+>
+> **A credit we owe somebody.** The dataset is free on the condition that we credit it. That credit is
+> already printed everywhere the code can print it. But the moment there is a **screen**, it has to be on
+> the screen, and until today nothing anywhere would have noticed it missing. **Ruled today with a
+> mechanism rather than a reminder: the picker screen cannot ship without it.**
+>
+> **Where this honestly stands — built, verified and shippable are three different things.**
+>
+> | | Built (the code exists) | Verified (a tester attacked it) | Shippable to you |
+> |---|---|---|---|
+> | The bigger city list — Hallstatt, Positano, Amalfi | ✅ | ✅ | not yet |
+> | Full names and apostrophes answering | ✅ | **not yet** — fixed and re-checked, not yet attacked | not yet |
+> | The map no longer opening on the ocean | ✅ | **not yet** | not yet |
+> | *Hispaniola* attributed to one country | **not yet** — ruled today | — | — |
+> | The refresh rule (publish what changed) | **not yet** — ruled today | — | — |
+> | The credit on screen | **not yet** — ruled today, and it gates the picker | — | — |
+> | The picker screen itself | **not yet, and deliberately fenced** | — | — |
+>
+> **Nothing in this arc has a sign-off.** The ✅ column is not a substitute for the other two.
+>
+> **What blocks the picker screen — the thing you are actually waiting for.** **Nothing technical.** The
+> door behind it is safe to use, the list is good enough, and today's three rulings add no dependency to
+> it: two are about the list's contents and how it is refreshed, and the third adds a requirement *to* the
+> picker rather than a step *before* it. **The picker is fenced by one thing and it is the unresolved
+> visual direction**, which is Codex's call, not this document's. If the list fix lands first the picker
+> gets it for free; if it does not, the picker ships with a published two-place hole and says so.
+
 > **🟩 GENEVA NOW LANDS ON GENEVA — AND NOTHING IN THIS ARC HAS BEEN SIGNED OFF YET. As of
 > 2026-09-09 this block is the newest and it supersedes every block below it, including the two
 > directly under it.** Nothing on your phone changes. This block covers three rounds at once
