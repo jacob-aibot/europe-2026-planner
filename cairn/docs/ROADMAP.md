@@ -1806,6 +1806,53 @@ rule what came back, and **`I-29` builds A-89 and A-90**.
   it, not a dependency. If `I-29` lands first the picker inherits the fix for free; if it does not, `I-30`
   ships with a known, published, two-row hole.
 
+**Revision 74, 2026-09-10.** **`I-29` is BUILT and one of its five parts STOPPED AND REPORTED — correctly.**
+`59cad74` is on `master`: Parts 2, 3, 4 and 5 landed (the refusals golden, A-84 Part 5's three amendments,
+A-90's `--repin`/source-log/corpus-diff, `MapBoundsLike` deleted), the corpus was **re-pinned to the
+2026-09-10 dumps** at **+15 rows (149,086 → 149,101, drift not repair)**, suite **1,849 pass / 0 fail /
+3 skipped**, typecheck clean, coverage **90.1 % / 100 %**. **Part 1 is built and gated**: clause 4 exists
+exactly as A-89 ruled it, positioned last, its match set printed on every run, and `CLAUSE_4_ENABLED =
+false`. **`Antilles` and `Hispaniola` still ship — R67-3 is NOT fixed** — and that is the accepted cost of
+not deleting a country's capital. `ARCHITECTURE.md` revision 71's §8.4 **A-93** rules the re-cut predicate
+and **`I-31` builds it**.
+
+- **The stop was right, and the ruling it stopped was mine.** A-89 Part 2's predicate matches **169 of the
+  149,101 committed rows**; **167 are false positives**, including **`Vatican City`** — a committed `PROBES`
+  query, so `vatican` would have become `NO MATCH` — the capitals of the Faroes, Jersey, the Isle of Man
+  and Åland, `Laayoune`, `Dakhla`, two Macau parishes, every Antarctic station and every Western Saharan
+  town. **A-89's stated cost, `Trachóni`, has never been in the corpus.** Re-measured independently against
+  the pinned dump before ruling; the figures agree with **KD-124** exactly.
+- **A-93 is the predicate that ships, and it adds two measured things to A-89's.** **(a)** The refusal
+  applies to A-83 Part 3's **`ISL`/`ISLS` arm only** — a landmass name denotes an *extent* and an extent can
+  lie in two countries; a settlement name denotes a *point*, and a second jurisdictional claim on a point is
+  a **dispute Cairn declines to adjudicate rather than a place it deletes** (A-84 Part 5's rule, applied).
+  **(b)** It subtracts the row's **sovereign** `P(S)`, `P(C)` as `ne_10m_admin_0_countries.geojson` already
+  states it — the layer A-84 Part 5 already loads, no new source and no new pin — without which `Jersey`,
+  `Guernsey`, `Faroe Islands`, `Norfolk Island` and eight more are deleted. **Sixteen rows refused, every
+  one a landmass in or claimed by more than one country, zero settlements.**
+- **The obvious softer answer was measured and rejected.** *"Null the country code and let clause 1
+  decide"* produces **`New Guinea`, `Papua`** — the second-largest island on Earth labelled with one
+  Indonesian province — because that row happens to carry an `admin1` and `Borneo` does not. A rule whose
+  answer depends on whether a source filled in a column is not a rule.
+- **`I-29`'s stop-and-report condition 1 is REPLACED, not re-tuned** (§0 position 12). *"Over 100,000
+  people and not `Antilles`/`Hispaniola`"* was the right instinct and **cannot see an 829-person capital**.
+  It becomes a **named set**: the sixteen rows, committed by name and id in the refusals golden, and **any**
+  difference in either direction is a stop-and-report. **Sequencing rule 12** carries the general form.
+- **An undisclosed out-of-fence edit is recorded rather than reverted, and it is the third in this arc.**
+  `I-29` changed **`apps/web/src/ports/map.ts`** — `MapBoundsLike` → `MapBounds` at five sites plus the
+  import. It is mechanical, correct and the unavoidable consequence of A-92's deletion; the manager would
+  have authorised it and **it stands**. What is on the record is that it was **not disclosed in the
+  builder's report**, after **R62-7** and **R64-7** said the same thing. **A builder's report names every
+  file it changed, including the ones the ruling made inevitable** — the fence is not the problem, the
+  silence is, and the breaker covering `I-31` reads this line before diffing.
+- **Ordering is unchanged: `I-31`, then `I-30`, and `I-31` does not gate `I-30`.** `I-31` is `tools/`,
+  `packages/core/test` and two goldens; it touches no `.tsx` and no door the picker calls. If it lands
+  first the picker inherits the fix for free; if it does not, `I-30` ships with a published two-row hole.
+  **The picker is still fenced by one thing and it is the unresolved visual direction.**
+- **The three skipped tests FLIP** — see `I-31`. They were skipped with the stop-and-report as their reason,
+  which is exactly the right way to leave a gated rule, and they turn green on the ruling rather than on a
+  rewrite.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -7653,6 +7700,17 @@ record: it is generated data, never persisted in a document, and parts 3a and 3b
 
 #### I-29 — an island stops being a city in a country it merely sits near, the corpus becomes the artefact of record, and a duplicated type is deleted (revision 73, `ARCHITECTURE.md` revision 70's §8.4 **A-89**, **A-90** and **A-92**, QA **R67-3** MAJOR; **R67-4**, **R67-10**, **R67-11** ride along)
 
+> **⚠ BUILT AND PARTLY STOPPED at `59cad74` (revision 74). Parts 2–5 shipped. Part 1 is built and GATED**
+> — `CLAUSE_4_ENABLED = false` in `tools/gen-gazetteer.mjs`, its match set printed on every run, three
+> tests skipped carrying the stop-and-report as their reason. **Stop-and-report condition 1 fired and the
+> builder was right**: A-89's predicate matches 169 rows and deletes **`Vatican City`** (BUILD-NOTES
+> **KD-124**). **`Antilles` and `Hispaniola` still ship; R67-3 is NOT fixed by this increment.**
+> **`I-31` finishes Part 1 under §8.4 A-93 and nothing else here is re-opened.** Condition 1 below is
+> **superseded** — see the banner on it. **Undisclosed out-of-fence edit, recorded and NOT reverted:**
+> `apps/web/src/ports/map.ts` (`MapBoundsLike` → `MapBounds`, five sites plus the import) — the
+> unavoidable consequence of A-92 and correct, but absent from the builder's report, after R62-7 and
+> R64-7.
+
 **Read §8.4 A-89 whole. Then A-83 Parts 3 and 9, then A-84 Part 5 — and for Part 4 of this increment, A-90
 whole with §0 position 11 and A-83 Part 2. For Part 5, A-92 whole with A-84 Part 7 item 2. Nothing else** —
 not A-85, not A-86, not A-87, not A-88, not §2 whole, not §4, not §10. **Read BUILD-NOTES KD-122 and
@@ -7735,9 +7793,11 @@ in this increment.
     travel and control both, through the real `loadGazetteerFor` — the total order still total, the fold
     unchanged, `indexSays` still exact and summing, the 4 dp floor and the `{0,0}` ceiling held, the byte
     ceiling held, the shard/meta pairing check still throwing.
-- **Two stop-and-report conditions.** (1) **If clause 4 removes a row that is not in A-89's measured
-  population** — anything with a population over 100,000 that is not `Antilles` or `Hispaniola` — **stop
-  and report**; the ruling's false-positive claim is measured over 14 country files, not over the corpus.
+- **Two stop-and-report conditions.** (1) ⚠ **FIRED at `59cad74`, and SUPERSEDED by `I-31` (revision 74,
+  §0 position 12).** It read: *"if clause 4 removes a row with a population over 100,000 that is not
+  `Antilles` or `Hispaniola`, stop and report"*. It fired on six rows and it was the right instinct — but
+  **a population threshold cannot see `Vatican City` at 829 people**, which was also in the match set.
+  **`I-31` replaces it with a named set of sixteen rows and a cap of zero.**
   (2) **If the corpus must be regenerated and the pins have rolled again, use `--repin` and publish the
   diff**; if the diff exceeds the cap, **stop and report** rather than committing a data change nobody
   reviewed. That is A-90 working, not A-90 failing.
@@ -7748,11 +7808,112 @@ in this increment.
   stale inline refusal model, and guard `M6`, whose GREEN → RED flip is a **strengthening**.
 
 
+#### I-31 — clause 4, re-cut against the corpus and ENABLED: `Antilles` and `Hispaniola` stop shipping and `Vatican City` does not (revision 74, `ARCHITECTURE.md` revision 71's §8.4 **A-93**; QA **R67-3** MAJOR, still open; BUILD-NOTES **KD-124**)
+
+**Read §8.4 A-93 whole. Then A-89 whole — A-93 supersedes its Part 2 predicate and depends on everything
+else in it. Then A-83 Parts 3 and 9, then A-84 Part 5. Then BUILD-NOTES KD-122 and KD-124. Nothing else** —
+not A-90, not A-91, not A-92, not A-85…A-88, not §2 whole, not §4, not §10. **KD-124 is not optional
+reading**: it is the measurement that says why the shipped flag is `false`, and the flag's own docstring
+carries it.
+
+**Why it exists.** `I-29` built A-89's clause 4 exactly as ruled and **stopped rather than enabling it**,
+because as ruled it deletes **`Vatican City`** and 166 other correct rows. **R67-3 is still open**: a
+traveller to Haiti who types *Hispaniola* still gets the Dominican Republic on their lifetime map. A-93
+re-cuts the predicate against the whole committed corpus and this increment flips the flag.
+
+**What it is NOT.** **No `.tsx`, no `apps/web` file of any kind. No new source, no new pin, no fetch, no
+`--repin`** — `$sourceSha256` does **not** change, because this is a filter change over unchanged bytes,
+and a run that enters A-90's re-pin path is a defect in this increment. **It changes no record shape** and
+**`SCHEMA_VERSION` (5) and `SUMMARY_VERSION` (8) do not move**. **It does not re-open `I-29`'s Parts 2–5.**
+It is the generator's clause-4 site, its audit, the goldens that change as a consequence, and the tests.
+
+- **Built, in three parts, in this order. Part 1 is the generator and nothing downstream is written until
+  it reports the sixteen.**
+  1. **A-93 Part 2, at the existing clause-4 site in `tools/gen-gazetteer.mjs`.** Two changes to the
+     predicate already there, and `CLAUSE_4_ENABLED` is **deleted rather than flipped** — a gate that has
+     served its purpose is a gate that goes, and the flag's stop-and-report docstring is replaced by a
+     pointer to A-93. **(a)** The refusal applies **only when the row's feature class is not `P`**.
+     **(b)** `P(c)` — the sovereign of `c` from `ne_10m_admin_0_countries.geojson` at the pinned sha256,
+     the `ISO_A2_EH` of the feature whose `ADM0_A3` is `c`'s `SOV_A3` and whose `ADMIN` equals its own
+     `SOVEREIGNT`, or `null` — is subtracted alongside `S` and `C`: **refuse when `X \ {S, C, P(S), P(C)}`
+     is non-empty.** **The layer is already loaded for A-84 Part 5; loading it a second time is a defect.**
+     Clauses 1–3 and their position relative to the translation **do not move**.
+  2. **The audit publishes what the ruling measured, because A-93 exists only because a previous audit
+     published a count instead of a population.** On every run, unconditionally: the **whole match set**
+     with each row's `cc2`, class and population (already built — keep it); the count of rows kept **only**
+     by `S` (**0** predicted); the count kept **only** by `P(C)` beyond `P(S)` (**0** predicted); the
+     **sovereign pairs actually used** (**6** predicted — `JE→GB`, `GG→GB`, `FO→DK`, `AX→FI`, `NF→AU`,
+     `TF→FR`); and the **class-`P` rows the class restriction exempts**, grouped by `cc + foreign codes`
+     (**141** predicted, largest groups `FO+DK` 16, `AX+FI` 15, `AR+AQ` 11, `EH+MA` 8). **A non-zero
+     inert-count is a result to report; a missing line is the failure.**
+  3. **The goldens and the corpus move together, in one commit, with the row-level diff** (§0 position 11,
+     sequencing rule 11). `gazetteer-refusals.json` gains its **sixteen** `'multi-country'` rows and the
+     header's per-reason counts follow it; the corpus goes **149,101 → 149,085**; `gazetteer-probes.json`
+     is regenerated and **`vatican` must still be a hit**. `gazetteer-parents.json`,
+     `gazetteer-disagreements.json` and `gazetteer-source-log.json` change **only** by the removal of the
+     sixteen — a source-log entry appearing in this commit is a defect.
+- **Verification.** Tagged per **How a criterion is written**, and **the ceilings are ceilings** (rule 4).
+  - **The two defects are gone** `[stated]`: `Antilles` (3491552) and `Hispaniola` (3504558) are absent
+    from every shard and from the id index, and `cityPickFromRow` has no `Hispaniola` row to be given.
+    **The three tests skipped at `59cad74` in `packages/core/test/gazetteerMultiCountry.test.ts` UNSKIP
+    unchanged** — their skip reasons are deleted, their bodies are not rewritten. A test that needed a
+    different assertion to pass was asserting the wrong thing.
+  - **The refusal set is the sixteen, by name and by id** `[stated]`: the golden's `'multi-country'` group
+    is exactly A-93 Part 2's table — sixteen rows, each asserted by GeoNames id — and **no refused row of
+    any reason has feature class `P`**. **N1, injected: drop the class restriction** → `Vatican City`
+    disappears, the `vatican` probe becomes `NO MATCH`, the group goes 16 → 169, and **three separate
+    assertions redden**. This fault stays in the suite permanently: it is the version A-89 ruled and it is
+    four characters.
+  - **`Vatican City` and the four dependency capitals ship, named individually** `[stated]`:
+    `Vatican City` `VA`, `Tórshavn` `FO`, `Saint Helier` `JE`, `Douglas` (Isle of Man, 26,218) `IM`,
+    `Mariehamn` `AX` — and `vatican` is a hit in the probes golden at the depth `PROBE_DEPTH` gives it.
+  - **The twelve the sovereign subtraction keeps, named individually** `[stated]`: `Jersey`, `Guernsey`,
+    `Alderney`, `Faroe Islands`, `Signilskär`, `Norfolk Island`, `Île Tromelin`, `Île Europa`,
+    `Île Juan de Nova`, `Îles Glorieuses`, `Île Saint-Paul`, `Île Amsterdam`. **N2, injected: drop the
+    `P(S)` subtraction** → all twelve assertions redden, naming all twelve. **N3, injected: invert the
+    relation** — subtract `c` when `P(c) == S` instead of when `c == P(S)` — → the same twelve redden,
+    because a sovereign has no sovereign. **A clause-4 implementation that does not redden N2 and N3 has
+    no sovereign subtraction.**
+  - **A-89's own control still holds** `[stated]`: **N4, injected: implement clause 4 as *"`cc2` is
+    non-empty"*** → `Longyearbyen`, `Jan Mayen`, `Lars Island`, `Sveagruva`, `Barentsburg`, `Ny-Ålesund`,
+    `Olonkinbyen`, `Grand-Case`, `Oyster Pond` and `Anse Marcel` disappear and **Longyearbyen ships `NO`**
+    reddens. **N5, injected: restore KD-122's ordering fix** → the nine rows disappear. Both faults are
+    already in the suite at `59cad74` and **both stay**.
+  - **The audit's four inert/exempt lines are present and are the ruling's own numbers** `[stated]`:
+    `S`-only **0**, `P(C)`-only **0**, sovereign pairs used **6** and named, class-`P` exempt **141**.
+    **N6, injected:** delete any one of the four lines → the assertion that the audit prints all four
+    reddens naming the missing one. *(This is §0 position 12 (a) with a test behind it.)*
+  - **The mitigation for the disputed islands is measured, not asserted** `[stated]`, A-93 Part 9 residue
+    2: `Świnoujście` (on Usedom) and `Yuzhno-Kurilsk` (on Kunashir) ship under their own names. Refusing a
+    shared island is only affordable while its settlements are reachable, and this is the assertion that
+    says so.
+  - **Nothing else moved** `[stated]`: the parent translation's named outcomes unchanged
+    (Fort-de-France/Basse-Terre/Dzaoudzi/St.-Benoît `FR`, Longyearbyen `NO`, Saint-Georges `FR`); exactly
+    the three Tokelau rows ship `countryCode: null`; every shipped row's code is `null` or one
+    `COUNTRY_INDEX` draws, zero exceptions; the total order still total; the fold unchanged; `indexSays`
+    still exact and summing; the byte and shard ceilings held; **coverage re-measured off the rebuilt
+    corpus through the real `loadGazetteerFor` and reported, travel and control both**; and
+    **`$sourceSha256` is byte-identical to `59cad74`'s.**
+- **One stop-and-report condition, and it is a NAMED SET rather than a threshold** (§0 position 12 (c),
+  sequencing rule 12). **If the match set differs from A-93 Part 2's sixteen rows in either direction — an
+  added row or a missing one — stop and report, writing nothing.** A threshold is what let `Vatican City`
+  through; sixteen rows is small enough to review by reading. A corpus swap that changes the set is a
+  reviewed golden update **with the rows named in the commit message**, never an automatic regeneration.
+- **Dependencies / blockers.** `I-29` (built, `59cad74`). **`I-31` is NOT a blocker for `I-30`** — it
+  touches no `.tsx` and no door the picker calls; see `I-30`'s own entry, whose reasoning is unchanged
+  except that the *"two-row hole"* it names is now closable in one increment.
+- **Route: builder + breaker, mandatory.** The generator, four goldens and the corpus. **The round it owes
+  is the one `59cad74` still owes** — including the three drifted `qa/` probes named in revision 73
+  (`J3`, `B1`, guard `M6`) — not a second one. **The breaker reads revision 74's undisclosed-edit bullet
+  before diffing.**
+
+
 #### I-30 — the city picker: the first screen that reads the corpus, and the first attribution this repository owes a user (revision 73, `ARCHITECTURE.md` revision 70's §8.4 **A-91**, QA **R67-9** standing; **`DESIGN.md` owns everything this entry does not**)
 
 **Read A-91 whole, then A-82 Parts 4 and 9 (the disambiguation rule and the bundle boundary), then A-83
 Parts 6 and 7 (sharding and the loading contract). Then `DESIGN.md` §5 and §6. Nothing else in §8.4** —
-not A-83 Part 3, not A-84, not A-85, not A-86, not A-87, not A-88, not A-89, not §2 whole, not §10.
+not A-83 Part 3, not A-84, not A-85, not A-86, not A-87, not A-88, not A-89, **not A-93**, not §2 whole,
+not §10.
 
 **Why it exists.** It is what Jacob has been waiting for since the gazetteer was scoped: **type where you
 have been and get a real city, with a real coordinate and a real country, out of it.** Every increment from
@@ -10333,3 +10494,17 @@ built.
    diff over the published cap is a **stop-and-report**, not a golden update. `I-23`'s **+15 shipped rows**
    arrived as a sentence in a build note; that is the failure this rule exists to prevent, and it is a
    supply-chain property of the product's core data rather than a documentation nicety.
+12. **A rule over committed data is scoped by a named set, and an increment that builds one stops on a
+   difference rather than on a size** (revision 74, §0 position 12, ARCHITECTURE §8.4 **A-93**, BUILD-NOTES
+   **KD-124**). `I-29` is the worked example and it worked: the builder built the ruled predicate, measured
+   it against the corpus, found it deleted **`Vatican City`**, and **stopped without enabling it**. What
+   nearly failed is the condition he stopped on — *"over 100,000 people"* — which fired on six rows and
+   would have missed an 829-person capital entirely. Three consequences for routing. **(a)** An increment
+   that filters, refuses or selects over committed data ships its match set as a **committed golden, by
+   name and by id**, and its stop-and-report is *"the set differs at all"*, never *"the set is bigger than
+   N"*. **(b)** **A builder who measures a ruling false is doing the architect's job for them, and the
+   report goes back as a routed finding rather than as a build note** — `I-29`'s builder was right twice,
+   on KD-122 and again on KD-124, and both times the ruling changed. **(c)** The architect who wrote the
+   rule **re-measures before re-ruling, over the committed artefact and not over a sample of it** — the
+   sample is how the defect reached the builder in the first place, and the artefact is already in the
+   repository.
