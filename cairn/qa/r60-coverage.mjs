@@ -21,9 +21,28 @@
  *
  * Run:  node qa/r60-coverage.mjs        (from cairn/)
  *       node qa/r60-coverage.mjs --misses    prints only the misses
+ *
+ * ---------------------------------------------------------------------------------------------
+ * **RE-CUT AT ROUND 67 (I-23), and the corpus rows below are UNCHANGED.** `I-23` deleted
+ * `gazetteer.gen.ts` and renamed the subpath's one symbol `GAZETTEER` → `loadGazetteerFor(query)`,
+ * so the single `import` line this file opened with stopped resolving. The builder ran the file
+ * byte-for-byte unmodified under a scratchpad `module.register` hook that synthesised a
+ * whole-corpus `GAZETTEER`; that was right at build time and wrong to leave committed. Two lines
+ * changed here and nothing else:
+ *
+ *  1. the corpus now comes from `qa/corpus.mjs`, which assembles it from the committed shards with
+ *     the product's own `decodeGazetteer` — no hook, no scratchpad, no product edit;
+ *  2. **a second scoring pass was ADDED, through the real product path** (`loadGazetteerFor` then
+ *     `searchGazetteer`), because the whole-corpus pass cannot see the shard boundary. A query the
+ *     loader answers with `null` — A-83 Part 6 / KD-118's *"keep typing"* — reaches no row at all,
+ *     and the assembled corpus scores it a hit. **The two numbers are both printed and the
+ *     per-query difference is named.** No assertion was weakened: the scoring rule, the 171 rows
+ *     and the strict HIT definition are the ones round 60 wrote.
+ * ---------------------------------------------------------------------------------------------
  */
-const { GAZETTEER } = await import('@cairn/core/gazetteer');
+const { wholeCorpus, loadGazetteerFor } = await import('./corpus.mjs');
 const { searchGazetteer } = await import('../packages/core/src/index.ts');
+const GAZETTEER = wholeCorpus().gazetteer;
 
 /** [query (pre-folded ASCII), expected ISO_A2, display name, bucket] */
 const CORPUS = [
@@ -280,3 +299,48 @@ if (wrong.length) {
   console.log('WRONG-COUNTRY, named:');
   for (const r of wrong) console.log(`  ${r.display} expected ${r.cc} -> ${r.label}`);
 }
+
+// ================================================================================================
+// ROUND 67 — the same 171 queries, through the REAL product path.
+//
+// Everything above searches a corpus assembled from every shard. That is the number A-83 Part 1's
+// curve is written in and it is not what a user gets: a user gets `loadGazetteerFor(query)`, which
+// returns exactly one shard — or `null`, which is *"keep typing"* and reaches nothing. This pass
+// is the same scorer over that path, so the gap between the two is a measured number rather than
+// an argument.
+// ================================================================================================
+const realRows = [];
+for (const [query, cc, display, bucket] of corpus) {
+  const g = await loadGazetteerFor(query);
+  const hits = g === null ? [] : searchGazetteer(query, g, { limit: LIMIT });
+  const nameMatches = hits.filter((h) => h.fold === query || h.alts.includes(query));
+  const right = nameMatches.find((h) => h.countryCode === cc);
+  realRows.push({
+    query, cc, display, bucket,
+    verdict: right ? 'HIT' : g === null ? 'KEEP-TYPING(null)' : nameMatches.length ? 'WRONG-COUNTRY' : 'MISS',
+    shard: g === null ? null : g.shard,
+    rows: g === null ? 0 : g.rows.length,
+  });
+}
+const realTravel = realRows.filter((r) => r.bucket !== 'control');
+const realCtrl = realRows.filter((r) => r.bucket === 'control');
+const pct = (a, b) => `${a}/${b} = ${((a / b) * 100).toFixed(1)}%`;
+console.log('');
+console.log('============ ROUND 67: THE SAME SCORER, THROUGH loadGazetteerFor ============');
+console.log(`overall           ${pct(realRows.filter((r) => r.verdict === 'HIT').length, realRows.length)}`);
+console.log(`travel corpus     ${pct(realTravel.filter((r) => r.verdict === 'HIT').length, realTravel.length)}`);
+console.log(`control (cities)  ${pct(realCtrl.filter((r) => r.verdict === 'HIT').length, realCtrl.length)}`);
+const nulls = realRows.filter((r) => r.shard === null);
+console.log(`answered null     ${nulls.length}${nulls.length ? ` — ${nulls.map((r) => r.query).join(', ')}` : ''}`);
+const byQuery = new Map(rows.map((r) => [`${r.query}|${r.cc}`, r]));
+const drift = realRows.filter((r) => {
+  const w = byQuery.get(`${r.query}|${r.cc}`);
+  return (w.verdict === 'HIT') !== (r.verdict === 'HIT');
+});
+console.log(`differs from the whole-corpus pass: ${drift.length}`);
+for (const d of drift) {
+  console.log(`  !! ${d.display}: whole corpus ${byQuery.get(`${d.query}|${d.cc}`).verdict}, real path ${d.verdict} (shard ${d.shard})`);
+}
+const mean = realRows.reduce((n, r) => n + r.rows, 0) / realRows.length;
+console.log(`rows in the one shard fetched: mean ${mean.toFixed(0)}, max ${Math.max(...realRows.map((r) => r.rows))}`);
+

@@ -31,6 +31,8 @@ const CAIRN = dirname(dirname(fileURLToPath(import.meta.url)));
 const core = await import(pathToFileURL(join(CAIRN, 'packages/core/src/index.ts')).href);
 const client = await import(pathToFileURL(join(CAIRN, 'packages/client/src/index.ts')).href);
 const { loadEurope2026 } = await import(pathToFileURL(join(CAIRN, 'fixtures/loadEurope2026.mjs')).href);
+// RE-CUT AT ROUND 67 (I-23): the sharded corpus, read from disk with no loader hook — qa/corpus.mjs.
+const { loadGazetteerFor } = await import(pathToFileURL(join(CAIRN, 'qa/corpus.mjs')).href);
 
 let fails = 0;
 const ok = (c, m, x) => { if (c) console.log(`  ok   ${m}`); else { fails++; console.log(`  FAIL ${m}${x === undefined ? '' : `  — ${x}`}`); } };
@@ -296,8 +298,12 @@ head('E  `SOURCE_ALLOW` / `countShaped` — is the negative control real?');
 head('F  `I-24`\'s exit re-derived under the two CORRECTED criteria (R63-7, R63-8)');
 {
   // R63-7: the presence test is `c.centre !== undefined`, ONE spelling. Four inputs.
-  const gz = await import(pathToFileURL(join(CAIRN, 'packages/core/src/geo/gazetteer.gen.ts')).href);
-  const hit = core.searchGazetteer('geneva', gz.GAZETTEER)[0];
+  // RE-CUT AT ROUND 67 (I-23): `geo/gazetteer.gen.ts` is deleted and the corpus is sharded, so
+  // the whole-corpus `GAZETTEER` this line used to import does not exist. The Geneva row now comes
+  // through the REAL product path — `loadGazetteerFor('geneva')` — which is a strictly better
+  // fixture than the module it replaces: it is the row a user's pick would actually carry. No
+  // assertion below changed; F1-F10 are round 63's and round 64's, unedited.
+  const hit = core.searchGazetteer('geneva', await loadGazetteerFor('geneva'))[0];
   const pick = core.cityPickFromRow(hit);
   const mk = (cityInit) => {
     const t = core.createTrip({ title: 'T', startDate: '2026-03-01', endDate: '2026-03-05', ownerId: 'u1', cities: [cityInit] }, { ids: core.sequentialIds('f'), now: '2026-01-01' });
@@ -388,8 +394,8 @@ head('G  standing constraints over the two commits\' surface');
 // ---------------------------------------------------------------------------
 head('H  the door reads `c.centre` more than once — R63-2\'s class, one field over');
 {
-  const gz = await import(pathToFileURL(join(CAIRN, 'packages/core/src/geo/gazetteer.gen.ts')).href);
-  const pick = core.cityPickFromRow(core.searchGazetteer('geneva', gz.GAZETTEER)[0]);
+  // RE-CUT AT ROUND 67 (I-23) — see §F. Same row, through the shipped loader.
+  const pick = core.cityPickFromRow(core.searchGazetteer('geneva', await loadGazetteerFor('geneva'))[0]);
   const build = (cities) => core.createTrip(
     { title: 'T', startDate: '2026-03-01', endDate: '2026-03-05', ownerId: 'u1', cities },
     { ids: core.sequentialIds('h'), now: '2026-01-01' },

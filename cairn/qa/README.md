@@ -4556,3 +4556,64 @@ cannot be re-derived out of that state and the population is permanent for whoev
 None of the four writes to the repo: `r66-gate.mjs` builds every fixture in memory and reads
 `fixtures/` and the repo's own source only; the other three work exclusively inside a
 `git worktree` they create and remove.
+
+---
+
+**Round 67** is the mandatory adversarial pass over **`I-23`** (`ff0ecdd`) — the GeoNames corpus
+swap, §8.4 **A-83** Parts 1–7 and 10–11 with **A-84** Parts 5 and 6. Three scripts, run from
+`cairn/`, plus **two re-cuts you should reach for before writing anything new against the corpus**:
+
+```bash
+node qa/r67-corpus.mjs            # 14 sections, ~100 s; 7 FAIL at ff0ecdd
+node qa/r67-corpus.mjs A N        # only those sections
+bash qa/r67-guard.sh              # KD-121: 8 plants in a throwaway worktree; M8 is GREEN = the finding
+node qa/r67-parents.mjs           # KD-119 adjudicated against the pinned 1:10m layer (13 MB fetch)
+```
+
+**`qa/corpus.mjs` is the re-cut, and it is the thing to import.** `I-23` deleted
+`geo/gazetteer.gen.ts` and renamed the subpath's one symbol `GAZETTEER` → `loadGazetteerFor(query)`,
+which left `r60-coverage.mjs` and `r64-census.mjs` §F unrunnable; the builder ran them under a
+scratchpad `module.register` hook rather than editing the breaker's surface, which was right at
+build time and wrong to leave committed. `corpus.mjs` reads the committed shards straight off disk
+with the product's own `decodeGazetteer` — **no hook, no scratchpad, no product edit** — and
+exports two deliberately different shapes: `wholeCorpus()` (every shard, deduplicated, `shard:
+null`, which is the number A-83 Part 1's curve is written in and **cannot see the shard boundary**)
+and `loadGazetteerFor(query)` (the real product path, which answers the strictly smaller question
+*can a user reach this row by typing that?*).
+
+- **`qa/r60-coverage.mjs`** keeps its 171 destinations and its strict HIT rule unchanged. Two lines
+  moved: the corpus now comes from `corpus.mjs`, and a **second scoring pass was added** through
+  `loadGazetteerFor`. Re-derived at `ff0ecdd`, with no hook: **travel 109/121 = 90.1 %, control
+  50/50 = 100 %, overall 159/171 = 93.0 %**, identical on both passes, 0 queries answered `null`.
+  The builder's headline reproduces.
+- **`qa/r64-census.mjs`** §F and §H take their Geneva row through `loadGazetteerFor('geneva')`
+  instead of importing the deleted module — a strictly better fixture, since it is the row a real
+  pick would carry. **0 FAIL**, all of §F's I-24 cases holding.
+
+`r67-corpus.mjs`'s sections, and what each attacks: **A** KD-118 over the whole query space —
+every prefix of every token of every shipped row, **1,377,944** resolutions, plus the multi-word
+arm (**0 holes**); **B** what the shard rule costs a user who types a name *in full* (**R67-1**);
+**C** KD-119's six named outcomes off the goldens; **D** KD-120's codeless population;
+**E** `indexSays` re-derived row by row against the shipped `COUNTRY_INDEX` (**0 exceptions** —
+R61's defect class is closed); **F** the `{0,0}` ceiling and the 4 dp floor; **G** ranking totality
+and one-shard-equals-whole-corpus over a **3,430-query sweep**, not a probe list; **H** the fold,
+distinct from `normalizeCityName` and cross-checked over all 149,086 rows; **I** the CC BY 4.0
+attribution on every path that can carry it; **J** reproducibility (**R67-7**); **K** the bytes;
+**L** the decoder under a hostile document (**R67-8**); **M** what class of row ships (**R67-3**);
+**N** the okina family (**R67-2**); **P** the sensitive-path check and the shard key as an
+attacker-controlled string.
+
+`r67-parents.mjs` fetches `ne_10m_admin_0_countries.geojson` at the tag `gen-countries.mjs` pins,
+**checks its sha256 against the generator's own pin before adjudicating anything**, re-implements
+`readAdmin0().locate()` and re-derives every one of the 152 published parents from its own
+coordinate. Point it at an existing copy with `CAIRN_ADMIN0=/path/to.geojson`. It writes nothing to
+the repo; the download goes to `$TMPDIR`.
+
+`r67-guard.sh` is the KD-121 attack. Eight plants, each asserting that it applied, each run in a
+`git worktree` it creates and removes. **M8 is the finding**: the exemption's positive assertion is
+`shardMap.includes("'./gazetteer/<name>'")` — a substring test over the generated file's *text* —
+so a `.mjs` parked in the corpus directory whose name appears in a **doc comment** passes both
+halves of the load-bearing A-78 guard. M1/M3 (`.d.ts`) are RED for a different reason and do not
+test the exemption: the neighbouring `.ts` census catches them, and it cannot see a `.mjs`.
+
+None of the three writes to the repo.
