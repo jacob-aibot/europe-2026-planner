@@ -25350,6 +25350,293 @@ their own phase — sitting **beside** physical distance on a profile, never sum
 
 ---
 
+#### A-93 — clause 4 is scoped to the candidacy arm that has an *extent*, and the sovereign is subtracted from the source that already states sovereigns (revision 71, the manager's re-ruling of **A-89** against BUILD-NOTES **KD-124**; ROADMAP **I-31**)
+
+> **This ruling REPLACES A-89 Part 2's predicate and CORRECTS A-89 Parts 2 and 8 in place. Everything else
+> in A-89 stands** — Part 1's rejection of the ordering fix, Part 3's refusals golden, Part 4's coastal
+> tolerance and modal parent, Part 5's scoping of the `''` clause, Part 6's *nothing moves*. **Read A-93
+> with A-89; it is four pages of A-89 that were measured over the wrong population, not a new subject.**
+
+**Part 1 — what the corpus says, measured over the corpus rather than over a sample of it.**
+
+`I-29`'s builder implemented A-89's clause 4 exactly as ruled, positioned it last, printed its match set,
+and **did not enable it** — stop-and-report condition 1 fired (KD-124). Re-measured here on 2026-09-10,
+independently, by joining **all 149,101 committed corpus rows** to the cached pinned `allCountries.txt`
+(`/tmp/cairn-gazetteer-src`, the bytes A-90's source log records) and reproducing the predicate:
+
+| | |
+|---|---|
+| rows `X \ {S, C} ≠ ∅` matches | **169** |
+| of them feature class `P` (settlements) | **141** |
+| of them feature code `ISL`/`ISLS` (landmasses) | **28** |
+| terrain rows in the whole corpus | **2,948**, of which **28** carry any `cc2` at all |
+
+**A-89's predicate deletes Vatican City.** `Vatican City` is `P/PPLC`, `cc=VA`, `cc2=[IT]`; `VA` is a code
+the index draws, so no translation runs, `C = S = VA`, and `IT` survives both subtractions. `vatican` is a
+committed `PROBES` query, so the probes golden would record **`NO MATCH`** for a query A-82 Part 2 measured
+by name. Beside it: `Tórshavn` (`FO`, `[DK]`), `Saint Helier` (`JE`, `[GB]`), `Douglas` (`IM`, `[GB]`),
+`Mariehamn` (`AX`, `[FI]`) — four capitals of dependencies — plus `Laayoune` (196,331) and `Dakhla`
+(106,277) in Western Sahara, two Macau parishes over 100,000, every Antarctic station, the Israel/Palestine
+and Russia/Japan settlements, 16 Faroese and 15 Åland localities.
+
+**A-89 Part 2's stated cost is `Trachóni`, "one village". `Trachóni` is not in the corpus** — it does not
+clear A-83 Part 3's selection gates and has never shipped. **The one row the ruling priced is the one row
+the ruling could not have been charged for.** The false-positive population is **167 rows**, not one.
+
+**The diagnosis, which the builder reached first and which this measurement confirms: `cc2` names *any*
+second jurisdictional claim, in four distinct populations** — a **sovereign parent** (`VA→IT`, `FO→DK`,
+`JE`/`GG→GB`, `IM→GB`, `AX→FI`, `TF→FR`, `NF→AU`), a **territorial dispute** (`EH`/`MA`, `PS`/`IL`,
+`RU`/`JP`, `CN`/`MO`, `SY`/`IL`), an **Antarctic claim** (`AQ`/`RU`, `AQ`/`CL`, `AQ`/`NO`, …), and the one
+A-89 is about, a **genuine multi-country landmass**. Subtracting `C` closes the first population **only
+where the translation supplied the parent** — which is the whole of why `Longyearbyen` survives — and it
+**cannot** close the case where the row already states a drawable code and `cc2` names its sovereign anyway.
+That is the gap, and it is a ruling rather than a threshold.
+
+---
+
+**Part 2 — the ruling. A-83 Part 9 clause 4 is restated in full; clauses 1–3 and their position relative to
+A-84 Part 5's translation still do not move.**
+
+> Let **`S`** be the row's stated country code (`allCountries` column 9, possibly empty), **`C`** the code
+> the row would ship after A-84 Part 5's parent translation (possibly `null`), **`X`** the set of non-empty
+> codes in `cc2` (column 10), uppercased and trimmed, and **`P(c)`** the **sovereign** of a country code
+> `c` as `ne_10m_admin_0_countries.geojson` states it at the pinned sha256 — the `ISO_A2_EH` of the feature
+> whose `ADM0_A3` is that code's `SOV_A3` and whose `ADMIN` equals its own `SOVEREIGNT` — or `null` where
+> the layer names no distinct sovereign.
+>
+> **A candidate row is REFUSED when BOTH hold:**
+>
+> 1. **its feature class is not `P`** — that is, it entered candidacy through A-83 Part 3's *second* arm,
+>    feature code `ISL` or `ISLS`; **and**
+> 2. **`X \ {S, C, P(S), P(C)}` is non-empty** — the source's own row names a country that is neither the
+>    country the row states, nor the country we attribute it to, nor the sovereign of either.
+>
+> The refusal is published, per A-89 Part 3, as `{id, name, statedCode, admin1, cc2, reason:
+> 'multi-country'}`. **`P` is read from the layer the generator already loads for A-84 Part 5** — no new
+> source, no new fetch, no new pin, and A-90 Part 1's *"the three stable pins are still worth having"* is
+> what makes it safe to key a refusal on it.
+
+**Measured over the committed corpus, this refuses exactly sixteen rows and no others:**
+
+| row | id | class/code | `cc` | `cc2` | population |
+|---|---|---|---|---|---|
+| `Antilles` | 3491552 | `T/ISLS` | `AN` | `AG,AW,BQ,CU,CW,DM,DO,GD,HT,JM,KN,KY,LC,MQ,MS,PR,VC,VE,VG,VI` | 42,000,000 |
+| `Borneo` | 1648148 | `T/ISL` | `ID` | `BN,ID,MY` | 21,258,000 |
+| `Hispaniola` | 3504558 | `T/ISL` | `DO` | `HT,DO` | 21,107,000 |
+| `New Guinea` | 2082514 | `T/ISL` | `ID` | `ID,PG` | 11,818,000 |
+| `Usedom Island` | 2818108 | `T/ISL` | `DE` | `PL` | 76,500 |
+| `Kunashir Island` | 2124018 | `T/ISL` | `RU` | `JP` | 7,000 |
+| `Hawar Islands` | 7284881 | `T/ISLS` | `BH` | `QA` | 3,875 |
+| `Abu Musa Island` | 292983 | `T/ISL` | `IR` | `AE` | 2,131 |
+| `Shikotan Island` | 2121299 | `T/ISL` | `RU` | `JP` | 2,100 |
+| `Isla Grande de Tierra del Fuego` | 3834449 | `T/ISL` | `AR` | `AR,CL` | 0 |
+| `Tierra del Fuego` | 3834451 | `T/ISLS` | `CL` | `AR,CL` | 0 |
+| `Sunda Islands` | 1626052 | `T/ISLS` | `ID` | `MY,BN,TL` | 0 |
+| `Hans Island` | 5970356 | `T/ISL` | `CA` | `GL` | 0 |
+| `Liancourt Rocks` | 8062537 | `T/ISLS` | `KR` | `JP` | 0 |
+| `Iturup Island` | 2125177 | `T/ISL` | `RU` | `JP` | 0 |
+| `Diomede Islands` | 4031746 | `T/ISLS` | `RU` | `US,RU` | 0 |
+
+**Every one of the sixteen is a landmass that lies in, or is claimed by, more than one country. Not one is
+a settlement.** `Vatican City`, `Tórshavn`, `Saint Helier`, `Douglas`, `Mariehamn`, `Laayoune`, `Dakhla`,
+`Longyearbyen` and the other 133 class-`P` rows all continue to ship exactly as they do today.
+
+---
+
+**Part 3 — the two halves, each with what it keeps, what it costs, and why it is a rule rather than a dial.**
+
+**(a) The class restriction is A-83 Part 3's own axis, read rather than added.** Candidacy is already
+*"feature class `P`, **or** feature code `ISL`/`ISLS`"* — two arms, and clause 4 applies to the second one.
+**Why that is the right line, and not a proxy for one:** the defect A-89 exists to fix is that **a name
+fails to say which country you were in**. That failure is a property of a name that denotes an **extent**.
+An extent can lie in two countries at once; a settlement's name denotes a **point**, and a point lies in one
+place on the ground. A second jurisdictional claim on a point is a **dispute about who governs it**, not an
+ambiguity about where the traveller stood — and A-84 Part 5 already rules what Cairn does with a
+sovereignty it cannot adjudicate: it declines to name one, **it does not delete the place**. Deleting
+Vatican City, Tórshavn, Saint Helier, Douglas and Mariehamn from the picker is a worse answer than the
+imperfect one their own rows already give.
+
+Its cost is stated at exactly the width of its mechanism (§0 position 10c): **141 class-`P` rows whose
+`cc2` names a foreign country keep shipping under their stated code.** That is not a claim that their
+attribution is right; it is a claim that this ruling does not touch it. The generator **publishes the
+group, by `cc + foreign codes`, in the audit** — the four largest are `FO+DK` (16), `AX+FI` (15),
+`AR+AQ` (11) and `EH+MA` (8) — so the population the class restriction exempts is countable and nameable
+rather than invisible.
+
+**(b) The sovereign subtraction closes the gap `C` cannot reach, from a source that states sovereigns.**
+Without it the class restriction alone deletes **twelve** correct terrain rows, measured:
+
+| row | id | `cc` → `P(cc)` | `cc2` | population |
+|---|---|---|---|---|
+| `Jersey` | 3042143 | `JE` → `GB` | `GB` | 100,000 |
+| `Guernsey` | 3042363 | `GG` → `GB` | `GB` | 63,000 |
+| `Faroe Islands` | 2622009 | `FO` → `DK` | `DK` | 50,000 |
+| `Alderney` | 3042422 | `GG` → `GB` | `GB` | 0 |
+| `Signilskär` | 3041695 | `AX` → `FI` | `FI` | 0 |
+| `Norfolk Island` | 2155116 | `NF` → `AU` | `AU` | 0 |
+| `Île Tromelin`, `Île Europa`, `Île Juan de Nova`, `Îles Glorieuses`, `Île Saint-Paul`, `Île Amsterdam` | 933907, 933909, 1024028, 1024033, 1545990, 1547220 | `TF` → `FR` | `FR` | 0 |
+
+**A traveller who typed *Jersey* or *Faroe Islands* and got `NO MATCH` would be meeting a worse defect than
+the one this fixes.** `P` is what keeps them, and it is the same fact `C` supplies for `Longyearbyen`, read
+from the same layer, one step earlier: for a translated row the parent arrives as `C`; for a row that
+states a drawable code of its own the parent never arrives at all, and `P` is where it comes from.
+
+**`P` is Natural Earth's opinion, and only six codes' worth of it is load-bearing.** Measured: the layer
+names a distinct sovereign for **41** codes, and on this corpus exactly **six** of those pairs are ever
+used by clause 4 — `JE→GB`, `GG→GB`, `FO→DK`, `AX→FI`, `NF→AU`, `TF→FR`. The politically loaded pairs the
+layer also carries — **`PS→IL`**, `HK→CN`, `MO→CN`, `GI→GB`, `FK→GB`, `IO→GB`, `NC→FR` — are **measured
+inert**, because no `ISL`/`ISLS` candidate carries one of those codes with a non-empty `cc2`. **The
+generator publishes the pairs it actually used**, so a loaded pair becoming load-bearing arrives as a new
+line in the audit and a golden diff, not silently. *(This is the same discipline A-89 applied to the `S`
+subtraction and it is applied here for the same reason.)*
+
+**`S` and `P(C)` are both measured inert on this corpus, and both stay.** Rows kept **only** by the `S`
+subtraction: **0**, as A-89 Part 2 predicted — every terrain match has `S == C`. Rows kept **only** by
+`P(C)` beyond `P(S)`: **0**. They stay because the rule's sentence is *"neither the country it states, nor
+the country we attribute it to, nor the sovereign of either"*, and a rule that does not say what it means
+is the next round's finding. **Both counts are printed in the audit on every run**, per A-89 Part 2's own
+standing instruction: a non-zero count is a result to report; a missing line is the failure.
+
+---
+
+**Part 4 — the alternative that reads better than it measures, rejected with its measurement.**
+
+*"Do not refuse the row — withdraw its country code, ship `countryCode: null`, and let clause 1's bare-name
+refusal decide."* It is attractive: it reuses A-84 Part 5's existing `null` arm, adds no fourth refusal
+reason, and says *"Cairn declines to name a country"* instead of *"Cairn deletes the place"*.
+
+**It is rejected on the corpus.** The outcome depends on whether the row happens to carry an `admin1`, and
+across the very population the rule is about, it does not agree with itself:
+
+- `Borneo`, `Hispaniola`, `Antilles`, `Sunda Islands`, `Tierra del Fuego`, `Hawar Islands` carry **no**
+  `admin1` → clause 1 refuses them → same outcome as A-93, one mechanism longer.
+- **`New Guinea` carries one** → it would ship as *"New Guinea, Papua"*: the whole island of New Guinea
+  labelled with **one Indonesian province**. That is R67-3's defect one administrative rung down, on the
+  second-largest island on Earth.
+- `Usedom Island` → *"Usedom Island, Mecklenburg-Vorpommern"*, the German half labelling the whole;
+  `Kunashir Island` → *"Kunashir Island, Sakhalin Oblast"*, which adjudicates the Kuril dispute by region.
+
+**A rule whose answer depends on whether a source row happened to fill in a column is not a rule.** Clause 4
+refuses, as A-89 ruled.
+
+---
+
+**Part 5 — A-89 Parts 2 and 8 are CORRECTED IN PLACE, because both carry claims the corpus falsifies.**
+
+1. **A-89 Part 2's *"the measured cost of the false-positive arm on the shipped corpus is one village"* is
+   WITHDRAWN.** `Trachóni` has never shipped. The measured cost of A-89's predicate was **167 rows**
+   including Vatican City. Under A-93 the false-positive arm's measured cost on the shipped corpus is
+   **zero settlements and nine disputed-or-shared landmasses** (Part 8 residue 2).
+2. **A-89 Part 8 residue 1 is CORRECTED.** It claims `Ireland`, `Borneo`, `New Guinea` and
+   `Tierra del Fuego` are *"multi-country landmasses GeoNames does not mark in `cc2`"* and therefore
+   survive. Measured: `Borneo` is `[BN,ID,MY]`, `New Guinea` is `[ID,PG]`, `Tierra del Fuego` is `[AR,CL]`
+   — **all three are marked and all three are refused** — and **`Ireland` the island (2963597) is not in
+   the corpus at all**, so it can be neither a residue nor a cost. **The residue was filed over a
+   population it was never measured against.** The real residue is in Part 8 below and it is two different
+   rows.
+
+**Both corrections are made in A-89's own text, with a banner, not only here.** A ruling whose false
+sentences survive at their original site is a ruling the next builder reads wrong — which is exactly how
+this defect reached a builder.
+
+---
+
+**Part 6 — version movement: nothing moves.** As A-89 Part 6. `SCHEMA_VERSION` **5**, `SUMMARY_VERSION`
+**8**, §2.10's export count **88**, no `City`/`Trip`/`TripSummary` field. `$sourceSha256` does **not**
+change — **this is a filter change over unchanged source bytes**, so A-90's `--repin` path is not entered
+and the source log gains no entry. The corpus loses **16 rows of 149,101** (→ **149,085**) and the
+row-level diff is published in the increment's own commit per §0 position 11.
+
+---
+
+**Part 7 — the injected faults (§0 position 5). A-89 Part 7's six stand; these replace its fault 2 and add
+three.**
+
+1. **Disable clause 4** → `Antilles` and `Hispaniola` reappear, the refusals golden loses its
+   `'multi-country'` group, and the assertion that `cityPickFromRow` has no `Hispaniola` row to be given
+   reddens naming it. *(A-89 fault 1, unchanged.)*
+2. **Implement clause 4 as *"`cc2` is non-empty"*** → the ten rows A-89 names (`Longyearbyen`, `Jan Mayen`,
+   `Lars Island`, `Sveagruva`, `Barentsburg`, `Ny-Ålesund`, `Olonkinbyen`, `Grand-Case`, `Oyster Pond`,
+   `Anse Marcel`) disappear and the Longyearbyen-ships-`NO` assertion reddens. *(A-89 fault 2, unchanged
+   and still the control.)*
+3. **⭑ Drop the class restriction — run clause 4 over class `P` too.** **`Vatican City` disappears, the
+   `vatican` probe becomes `NO MATCH`, and the refusal count goes 16 → 169.** Three assertions redden:
+   Vatican City ships `VA`; the probes golden's `vatican` entry; and *"no refused row has feature class
+   `P`"*. **This fault stays in the suite permanently — it is the version A-89 ruled, it is four
+   characters, and it is the one a future builder will re-derive.**
+4. **⭑ Drop the `P(S)` subtraction.** `Jersey`, `Guernsey`, `Alderney`, `Faroe Islands`, `Signilskär`,
+   `Norfolk Island` and the six French Southern islands disappear; assertions naming **each of the twelve**
+   redden. A clause-4 implementation that does not redden this has no sovereign subtraction.
+5. **⭑ Invert the sovereign relation** — subtract `c` when `P(c) == S` (*"`cc2` names one of my
+   dependencies"*) instead of when `c == P(S)` (*"`cc2` names my sovereign"*). **All twelve are refused
+   again**, because `P(GB)`, `P(DK)`, `P(FI)`, `P(AU)` and `P(FR)` are all `null` — a sovereign has no
+   sovereign. The direction of the relation is load-bearing, it is the half a reader will get backwards,
+   and this fault names it.
+6. **Restore KD-122's ordering fix** → the nine rows disappear. *(A-89 fault 3, permanent.)*
+7. **Delete the coastal tolerance** → Longyearbyen, Basse-Terre, Dzaoudzi ship `null`. *(A-89 fault 4.)*
+8. **Make the parent per-row** → Saint-Georges ships `BR` and the ceiling stays green. *(A-89 fault 5.)*
+9. **Compute the header's refusal counts beside the golden** → *(A-89 fault 6.)*
+
+---
+
+**Part 8 — the stop-and-report is replaced by a NAMED SET and a CAP, because a population threshold is what
+let this through.**
+
+`I-29`'s stop-and-report condition 1 was *"anything over 100,000 people that is not `Antilles` or
+`Hispaniola`"*. It fired correctly and it was the right instinct, but **a population threshold cannot see
+Vatican City (829 people)**. It is replaced:
+
+> **The clause-4 match set is the sixteen rows of Part 2, committed by name and by GeoNames id in
+> `fixtures/golden/gazetteer-refusals.json`.** The generator **stops and reports**, writing nothing, if:
+>
+> 1. clause 4 matches **any row of feature class `P`** — structurally impossible under Part 2, which is the
+>    point: it is the guard against the predicate being re-widened; or
+> 2. the match set differs from the committed set **at all** — added or removed row, either direction. A
+>    corpus swap that changes it is a **reviewed golden update with the rows named in the commit message**,
+>    per §0 position 11 and sequencing rule 11, not an automatic regeneration.
+>
+> A-89 Part 8 residue 4's *"a swap that changes the refusal count by more than a published cap"* is
+> **narrowed to a cap of zero for this group**, because sixteen named rows is small enough to review by
+> reading and a cap above zero is a dial.
+
+---
+
+**Part 9 — residues, each with what would fire it.**
+
+1. **The multi-country landmasses `cc2` does NOT mark — and this time they are measured.** Two ship today:
+   **`Timor`** (1623843, `T/ISL`, `cc=ID`, `cc2` empty, 3,182,693) ships as *"Timor, Indonesia"* although
+   half of it is Timor-Leste, and **`Saint Martin`** (3578422, `T/ISL`, `cc=MF`, `cc2` empty) ships as `MF`
+   although half of it is `SX`. `Cyprus` (146670, `cc2` empty, 1,140,000) also ships and is consistent
+   rather than wrong (KD-120: the index draws `CY` anyway). **`Ireland` the island does not ship at all.**
+   Clause 4 cannot see any of these and this ruling does not claim it does. **Fires** when a user reports
+   `Timor` or `Saint Martin`, or when a corpus swap gives us an **extent** rather than a point — the honest
+   test is *"does this feature's polygon cross a border in the index"*, and we ship a coordinate.
+2. **The disputed and shared islands, refused rather than attributed.** Nine of the sixteen are disputes or
+   shared islands rather than the archipelago case A-89 was written about: `Usedom`, `Kunashir`, `Shikotan`,
+   `Iturup`, `Hawar`, `Abu Musa`, `Liancourt Rocks`, `Hans Island`, `Diomede`. Refusing them is consistent
+   with the ruling's sentence — none of them says which country you were in — and **the mitigation is
+   measured, not assumed: the settlements on them ship.** `Świnoujście` (40,919, on Usedom) and
+   `Yuzhno-Kurilsk` (7,777, on Kunashir) are both in the corpus under their own names. **Fires** if a user
+   reports a refused island whose only settlements are below the selection gates; the remedy is that a
+   human can read `reason: 'multi-country'` in the refusals golden and rule on it, which is why A-89
+   Part 3 exists.
+3. **`P` is one layer's opinion of who is sovereign.** Six pairs are load-bearing today and `PS→IL` is not
+   one of them. **Fires** when the audit's used-pairs line grows a politically contested pair — at which
+   point the question is whether Cairn should be reading a sovereignty claim out of a map at all, and the
+   answer may be to hard-code the six.
+4. **`cc2` is not validated against `countryInfo.txt`.** Unchanged from A-89 Part 8 residue 3. `AN` —
+   `Antilles`' own stated code — is a retired code still on line 302 of `countryInfo.txt`, which is why
+   `P(AN)` is `null` and why `Antilles` is refused rather than kept; that is the right outcome by accident
+   and it is recorded as such. **Fires** when the golden grows a `'multi-country'` row whose `cc2` carries
+   a code `countryInfo.txt` does not list.
+5. **The class restriction leaves 141 attributions this ruling does not defend.** `Laayoune` ships `EH`,
+   the Macau parishes ship `CN`, the Antarctic stations ship `AQ` or `AR`. Each is A-84 Part 5 working as
+   ruled — the row's own stated code — and none is touched here. **Fires** when a user reports one; the
+   remedy is A-84 Part 5's `null` arm, not clause 4.
+
+---
+
+
 ## 9. The design contract and the frontend tooling stack
 
 **Revision 38, 2026-09-01.** Added because this document had **no** section on what the product looks like.
