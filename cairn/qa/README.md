@@ -4617,3 +4617,94 @@ halves of the load-bearing A-78 guard. M1/M3 (`.d.ts`) are RED for a different r
 test the exemption: the neighbouring `.ts` census catches them, and it cannot see a `.mjs`.
 
 None of the three writes to the repo.
+
+---
+
+**Round 68** is the mandatory adversarial pass over **two commits as one subject** — **`I-29`**
+(`59cad74`, whose round was never run: it stopped and reported) and **`I-31`** (`c202a89`,
+`7fb7901`) — §8.4 **A-93** with **A-89** Parts 1 and 3–7, plus **A-90**, **A-91** and **A-92**.
+Three scripts, run from `cairn/`, and **`qa/r68-source.mjs` is the one to import** whenever a
+question is about the gazetteer's *source* rather than its corpus:
+
+```bash
+node qa/r68-source.mjs --rebuild                       # once, ~55 s: caches the source rows
+node qa/r68-clause4.mjs --prev <pre-clause-4 corpus>   # 8 sections; 48 ok, 2 FAIL
+node qa/r68-clause4.mjs A C --prev <dir>               # only those sections
+bash qa/r68-repin.sh                                   # cheap: B, C, E (~9 min — C runs the suite twice)
+CAIRN_R68_GEN=1 bash qa/r68-repin.sh                   # + A, D, F: 13 ok, 4 FAIL (~25 min, 3 generator runs)
+```
+
+**`qa/r68-source.mjs` exists because every gazetteer round before this one measured the corpus, and
+the sixteen clause-4 refusals cannot be checked that way** — the refused rows are precisely the ones
+the corpus no longer contains. It streams the pinned `allCountries.zip` **once** (13,464,110 lines,
+~55 s) and caches every row clause 4 could read — every `ISL`/`ISLS` row, and every class-`P` row
+with a non-empty `cc2`, 175,113 in all — to `$CAIRN_R68_CACHE` (default `$TMPDIR/cairn-r68`), so
+every later question is offline and instant. It also exports the zip reader (`eachLine`), which is
+the generator's own technique and the cheapest way to ask the dump anything. It writes **only** to
+its cache, never to the repo.
+
+`r68-clause4.mjs`'s `--prev` wants a **pre-clause-4** corpus directory. Make one and keep it:
+
+```bash
+git worktree add /tmp/r68-base e94f8a1
+node qa/r68-clause4.mjs --prev /tmp/r68-base/cairn/packages/core/src/geo/gazetteer
+```
+
+Without it, sections B, C, D and G measure over 149,085 rows instead of 149,101 and the sections
+that need the refused rows **SKIP** rather than quietly reporting a smaller number.
+
+Its sections: **A** KD-125 — both readings of A-93 Part 2's `P(c)` join over the pinned layer
+(literal `ADM0_A3` → **0** codes, `SOV_A3` → **41**, and the six load-bearing pairs by name);
+**B** A-93 Part 7 fault 3's *"16 → 169"* re-derived offline (169 is A-89's pre-class count; the
+answer is **102**), with the 141-in-57 exempt groups; **C** **the sixteen re-derived from the
+ruling's words** over the pre-clause-4 corpus and compared to the committed golden by GeoNames id in
+both directions, plus the twelve the sovereign subtraction keeps and fault 5's premise;
+**D** what the ruling's **literal** sentence would have shipped (28 rows, Jersey and the Faroes
+deleted — its own fault 4); **E** KD-126 and `Bantam Village`; **F** whether residue 1's unmarked
+population is really two rows, attacked three ways; **G** the populations nobody had looked at —
+residue 4's trigger, `ISLS` rows with an empty `cc2`, `cc2` codes the index cannot draw, rows where
+`S` and `C` differ, and the 141 class-`P` rows the class restriction exempts; **H** the root cause
+behind **R68-1**. Its **two** FAILs are the findings: **F3** (R68-8) and **H5** (R68-1). It writes
+nothing.
+
+`r68-repin.sh` is **the A-90 attack, and the one to reach for whenever the question is whether the
+corpus or its provenance can move outside `--repin`.** Every mutation happens in a throwaway
+`git worktree` with a **copied** `node_modules` — it aborts unless `@cairn/core` resolves *inside*
+the worktree, because a symlinked one silently audits the live tree (round 61 paid for that once).
+**A** `--dry-run` is dry (`git status` clean afterwards) and prints the four A-93 audit lines;
+**B** the append-only chain attacked in the two directions the test does not cover — a **tail**
+truncation and a **heads-only rewrite** are both GREEN (**R68-3**), a middle-link deletion is RED,
+and the committed log has **0 links** to walk; **C** a **length-preserving** hand edit to a shipped
+row passes all 1,859 tests (**R68-4**), with the country-code control caught by the `indexSays`
+cross-check; **D** an **ordinary** regeneration with the log deleted re-seeds it — *"5 appended, 5
+total"* — while the corpus comes back byte-identical (A-90 clause 4, re-run); **E** the
+non-atomic `rm`-then-write; **F** **A-93 Part 7 fault 3, run end to end** — the generator itself
+prints **102 rows refused**, Vatican City among them and Tórshavn not, the named-set guard fires and
+writes nothing, and `PS->IL` becomes load-bearing, which is A-93 Part 9 residue 3's own trigger
+firing for the first time. Its four FAILs are R68-3 (×3) and R68-4.
+
+**Three probes were re-cut this round and their counts moved; do not re-derive them.**
+
+- **`qa/r67-corpus.mjs` §J** — **J3** asserted R67-7's *superseded* five-source checksum formula and
+  could only ever be red. It now re-derives the **six-input** hash (the five source checksums plus
+  `countryIndex:<sha256 of COUNTRY_INDEX by value>`), with **J3a** on `$countryIndexSha256` and
+  **J3b** asserting the old five-source value is *not* the committed one, so a silent reversion
+  reddens instead of passing.
+- **`qa/r67-corpus.mjs` §B** — **B1** reimplemented the loader's two refusals inline and scored every
+  row against that model. It now **drives `loadGazetteerFor`** for every shipped row and every one of
+  its own names (~140 s over 149,085 rows), and the number moves **120 → 10**: the inline model asked
+  only the **first** token, which is exactly what R67-1's fix removed at `08c3d8b`. The ten that
+  remain are KD-118's disclosed split-prefix arm (`Ål Ba Bo Pa Pô San Vi`…) and match the
+  generator's own audit. The old model is kept beside it as **B1a**, deliberately red at 110 rows —
+  `A Coruña` among them — so the drift stays countable rather than being quietly deleted.
+- **`qa/r67-guard.sh` M6** — expected **GREEN** on round 67's own reasoning (*"the guard walks what
+  EXISTS"*). **R67-6's fix commit (`08c3d8b`) closed that in the same round**, giving
+  `storable.test.ts` the opposite walk too (*"the generated shard map imports a document that is not
+  on disk"*). M6 now expects **RED**, and that is a **strengthening**, not a regression — the same
+  commit is why **M8** is RED. The script's own header still says *"M8 GREEN is the finding"*; that
+  sentence is history. `r67-guard.sh` now runs **9 ok / 0 FAIL** and `r67-corpus.mjs` **3 FAIL**
+  (B1's ten real rows, B1a by design, and L3 = R67-8, still open).
+
+None of the three round-68 scripts writes to the repo: `r68-source.mjs` writes only to its own
+cache, `r68-clause4.mjs` reads the committed corpus, the cached pinned sources and `fixtures/` only,
+and `r68-repin.sh` works exclusively inside a `git worktree` it creates and removes.

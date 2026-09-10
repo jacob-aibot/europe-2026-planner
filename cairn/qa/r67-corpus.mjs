@@ -132,32 +132,55 @@ if (run('A')) {
 if (run('B')) {
   head('B  what the shard rule costs a user who types a name IN FULL');
 
+  // **RE-CUT AT ROUND 68 (R68-6).** This section used to reimplement the loader's two refusals
+  // inline — `token.length < 2` and `bare split prefix` — and score every row against that model.
+  // A probe that reimplements the thing it is measuring reports on the model, not the product:
+  // when the loader's refusals move, the number stays right about a loader that no longer exists.
+  // It now DRIVES `loadGazetteerFor` for every shipped row and every one of its own names, and
+  // asks the only question that matters — does the shard the loader picks contain this row?
+  // ~140 s for 149,085 rows. The inline model is kept beside it, as a differential, so that a
+  // future divergence between the two is itself a finding rather than a silent re-cut.
   const splits = new Set(meta.splits);
+  const modelSaysReachable = (row) => [row.fold, ...row.alts].some((c) => {
+    const t = c.split(' ')[0];
+    if (t.length < 2) return false;
+    if (c === t && splits.has(t)) return false;
+    return true;
+  });
+
   const unreachableInFull = [];
   const shortFirst = [];
+  const modelDisagrees = [];
   for (const row of WHOLE.rows) {
-    const cands = [row.fold, ...row.alts];
-    // Could a user reach this row by typing one of its own names, complete?
-    const reachable = cands.some((c) => {
-      const t = c.split(' ')[0];
-      if (t.length < 2) return false;               // loader: token under two characters → null
-      if (c === t && splits.has(t)) return false;   // loader: bare split prefix → null
-      return true;
-    });
+    const cands = [row.name, row.fold, ...row.alts];
+    let reachable = false;
+    for (const cand of cands) {
+      const g = await C.loadGazetteerFor(cand);
+      if (g !== null && g.rows.some((r) => r.id === row.id)) { reachable = true; break; }
+    }
     if (!reachable) unreachableInFull.push(row);
-    if (cands.every((c) => c.split(' ')[0].length < 2)) shortFirst.push(row);
+    if (reachable !== modelSaysReachable(row)) modelDisagrees.push(row);
+    if ([row.fold, ...row.alts].every((c) => c.split(' ')[0].length < 2)) shortFirst.push(row);
   }
   note(`${unreachableInFull.length} shipped rows answer NOTHING when their own full name is typed`);
-  note(`  of those, ${shortFirst.length} because the first token is a single character`);
+  note(`  (${shortFirst.length} rows have a single-character FIRST token — since R67-1's fix the loader`);
+  note(`   tries every token, so all but ${unreachableInFull.length} of them are reached by a later one)`);
   const named = unreachableInFull.filter((r) => r.population >= 4096).slice(0, 25);
   for (const r of named.slice(0, 15)) {
     note(`  ${r.name} (${r.countryCode}, fold ${JSON.stringify(r.fold)}) — typing it returns "keep typing"`);
   }
   ok(unreachableInFull.length === 0,
-    'B1  every shipped row is reachable by typing one of its own names in full',
+    'B1  every shipped row is reachable by typing one of its own names in full — MEASURED THROUGH loadGazetteerFor',
     `${unreachableInFull.length} are not`);
+  // B1a is the record of WHY this section was re-cut, and it is expected RED at every commit from
+  // `08c3d8b` on: the inline model asks only the FIRST token, which is exactly what R67-1 fixed.
+  // It is kept rather than deleted so the drift is countable — 110 rows, `A Coruña` among them,
+  // a row the same round's own CLI transcript records as a rank-1 hit.
+  ok(modelDisagrees.length === 0,
+    'B1a the old inline model of the loader\'s refusals still agrees with the loader, row for row',
+    `${modelDisagrees.length} rows the model calls unreachable and the loader reaches: ${modelDisagrees.slice(0, 5).map((r) => r.name).join(', ')}`);
 
-  // Is it really "keep typing" through the shipped path, or does something rescue it?
+  // What the loader actually answers for the first few, so the failure is diagnosable.
   for (const r of unreachableInFull.slice(0, 3)) {
     const g = await C.loadGazetteerFor(r.name);
     note(`  shipped path: loadGazetteerFor(${JSON.stringify(r.name)}) → ${g === null ? 'null' : `shard ${g.shard}`}`);
@@ -497,14 +520,34 @@ if (run('J')) {
 
   // The declared inputs are the five pinned checksums, and the corpus sha is a function of exactly
   // those five. Re-derive it — the formula, not the value.
+  //
+  // **RE-CUT AT ROUND 68 (R68-6).** The formula below was the FIVE-source one, and R67-7's own fix
+  // superseded it in the same round that wrote it: `corpusSha` is now taken over the five source
+  // checksums **and** `countryIndex:<sha256 of COUNTRY_INDEX by value>`, because the corpus is a
+  // function of the shipped index too. J6 already asserts that the sixth input is covered; J3
+  // asserted the old five-input value and could only ever be red. It now re-derives the SIX-input
+  // formula, and asserts the five-input one is NOT the committed value — so a silent reversion to
+  // the pre-R67-7 hash reddens here rather than passing.
   const shas = [...gen.matchAll(/sha256: '([0-9a-f]{64})'/g)].map((m) => m[1]);
   const keys = [...gen.matchAll(/^  (allCountries|alternateNames|admin1|countryInfo|admin0): \{/gm)].map((m) => m[1]);
   const pairs = keys.map((k, i) => [k, shas[i]]);
   const { createHash } = await import('node:crypto');
-  const recomputed = createHash('sha256')
-    .update(pairs.map(([k, v]) => [k, v]).sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([k, v]) => `${k}:${v}`).join('\n'))
+  const sourceLines = pairs.sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([k, v]) => `${k}:${v}`);
+  const fiveOnly = createHash('sha256').update(sourceLines.join('\n')).digest('hex');
+  const { COUNTRY_INDEX } = await import('../packages/core/src/index.ts');
+  const indexSha = createHash('sha256').update(JSON.stringify(COUNTRY_INDEX)).digest('hex');
+  const sixInput = createHash('sha256')
+    .update([...sourceLines, `countryIndex:${indexSha}`].join('\n'))
     .digest('hex');
-  ok(recomputed === meta.sourceSha256, 'J3  the committed `$sourceSha256` is sha256 over exactly the five source checksums', `${recomputed} vs ${meta.sourceSha256}`);
+  ok(indexSha === meta.countryIndexSha256 || indexSha === raw.$countryIndexSha256,
+    'J3a `$countryIndexSha256` is sha256 over COUNTRY_INDEX by value',
+    `${indexSha} vs ${raw.$countryIndexSha256}`);
+  ok(sixInput === meta.sourceSha256,
+    'J3  the committed `$sourceSha256` is sha256 over the five source checksums AND the country index',
+    `${sixInput} vs ${meta.sourceSha256}`);
+  ok(fiveOnly !== meta.sourceSha256,
+    'J3b the superseded five-source formula is NOT the committed value (R67-7 stays fixed)',
+    `${fiveOnly}`);
 
   // …and the corpus is a function of a SIXTH input that the sha does not cover.
   ok(/import\('\.\.\/packages\/core\/src\/index\.ts'\)/.test(gen), 'J4  the generator reads the committed COUNTRY_INDEX');

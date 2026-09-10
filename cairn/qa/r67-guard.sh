@@ -103,9 +103,18 @@ grep -q "backdoor.mjs" "$W/packages/core/src/geo/gazetteerShards.gen.ts" || { ec
 check "M8  the same .mjs, its name in the shard map's DOC COMMENT — THE FINDING if GREEN" RED
 
 # M6 — a shard the map imports, DELETED. Does anything notice?
+#
+# **RE-CUT AT ROUND 68 (R68-6).** Round 67 expected GREEN and wrote the reason down: *"the guard
+# walks what EXISTS"*, so a file that stopped existing was outside its population. **R67-6's own
+# fix commit (`08c3d8b`) closed that**, in the same round that measured it — `storable.test.ts`
+# gained a second, opposite walk, *"the generated shard map imports a document that is not on
+# disk"*, and it is that assertion that fires here. The expectation is now RED. This is a
+# **strengthening**: the guard reads both directions of the map/disk pairing, and M8 (the doc-comment
+# escape) went RED in the same commit for the same reason. Nothing regressed; the probe was stale.
 rm "$W/packages/core/src/geo/gazetteer/zz.json"
-check "M6  a shard the map imports, deleted (storable.test.ts alone)" GREEN
-echo "     ^ M6 is expected GREEN here — the guard walks what EXISTS. The load-side check is:"
+check "M6  a shard the map imports, deleted — RED since 08c3d8b, from BOTH sides" RED
+echo "     ^ the assertion that fires is storable.test.ts's map-imports-a-missing-document walk."
+echo "       The load side is asserted independently:"
 ( cd "$W" && rm -f packages/core/src/geo/gazetteer/zz.json && node --test packages/core/test/gazetteer.test.ts 2>&1 | grep -E '^# (pass|fail)' | sed 's/^/     /' )
 reset_tree
 
