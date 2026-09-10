@@ -1739,7 +1739,7 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~566k tokens** (re-measured at **revision 70** — **§8 grew 152k → 162k** with §8.4's
+This document is **~567k tokens** (re-measured at **revision 70** — **§8 grew 152k → 162k** with §8.4's
 four new rulings and their five amendment banners; **§0 stays 2k** with **position 11**; §2, §4, §9 and §10
 did not move). **The four are separable and only one of them is about the corpus's contents:**
 
