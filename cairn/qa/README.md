@@ -4708,3 +4708,55 @@ firing for the first time. Its four FAILs are R68-3 (×3) and R68-4.
 None of the three round-68 scripts writes to the repo: `r68-source.mjs` writes only to its own
 cache, `r68-clause4.mjs` reads the committed corpus, the cached pinned sources and `fixtures/` only,
 and `r68-repin.sh` works exclusively inside a `git worktree` it creates and removes.
+
+---
+
+**Round 69** is the mandatory adversarial pass over **`I-32`** (`08176e4` … `0d757f4`) — §8.4
+**A-94**, *an abstention is not a vote*. Three scripts, run from `cairn/`, and
+**`qa/r69-corrections.mjs` is the one to reach for whenever a question is about a NUMBER the
+generator prints** — every section in it answers a generator-run question **offline**, by joining
+the committed corpus to `qa/r68-source.mjs`'s cache and to the pinned admin-0 layer:
+
+```bash
+node qa/r69-corrections.mjs             # A B D E — fast, offline
+node qa/r69-corrections.mjs A B C D E   # + C, one 55 s pass over allCountries.txt, then cached
+bash qa/r69-gate.sh                     # cheap: B C D E F G (~4 min — E runs the suite)
+CAIRN_R69_GEN=1 bash qa/r69-gate.sh     # + A, one real generator run (~8 min)
+node qa/r69-repin-noop.mjs              # instant
+```
+
+`r69-corrections.mjs`'s sections: **A** the class-`P` exempt population, re-derived from the corpus
+× the source rows (**139 in 56**, and **141 in 57** under the pre-A-94 counterfactual, the one group
+lost being `TK+NZ`); **B** **A-93 Part 7 fault 3 without a generator run** — rebuild A-93 Part 2's
+sovereign join from the pinned geojson (41 codes, sha256 checked) and apply the fault's predicate to
+every shipped class-`P` row: **84 + 16 = 100** now, **86 + 16 = 102** before A-94, `Vatican City` in
+and `Tórshavn` out; **C** the eight rows of A-94 Part 1's table straight out of `allCountries.txt`
+(KD-129: `West Island` is `T/ISL` pop 120, all five `CC` rows carry an empty `cc2`); **D** whether a
+tie exists anywhere in the twelve published tallies (**none does** — `D2` and `D3` are deliberate
+FAILs registering **R69-3**, that nothing can therefore catch an inverted tie-break, and that the
+re-derivation's own `null` arm is unexercised); **E** the manifest recomputed off disk and A-94 Part
+6's *"~70 KB on every client fetch"* measured (`meta.json` is **75,601** bytes today; the digests
+would add **69,932**).
+
+**`qa/r69-gate.sh` is the one to reach for whenever the question is whether a GUARD sees what it
+claims to see.** Same worktree discipline as `r68-repin.sh` — a throwaway `git worktree` with a
+copied `node_modules`, aborting unless `@cairn/core` resolves inside it. **§A is R69-1 and it is the
+round's finding**: one edited field in one shard makes `corpusDiff` return `null`, which makes
+`gateNamedSet` a no-op, and the generator writes the corpus and the manifest anyway. §B the
+manifest's `.json` filter (**R69-5**), with a planted `.json` as the control; §C the prefix witness's
+three-of-five fields (**R69-6**) and the appended-entry case (residue 5, recorded); §D/§E the
+tie-break inverted in the generator *and* the test with the whole suite green (**R69-3**); §F the
+`writeSourceLog` grep defeated by `else writeSourceLog(…)` on the same line (**R69-2**); §G whether a
+`--repin` that appends nothing is a byte-identical no-op (it is).
+
+**`qa/r67-parents.mjs` §D is RE-CUT and its two FAILs are gone.** D1 took the mode over
+`String(x.own)`, which counted an abstention as a vote — the rule A-94 supersedes — so it printed
+`[["null",3],["AU",2]]` for `CC` and scored the fix as a failure. It now takes the plurality of the
+**answers** with the silences counted beside them, and **D2 is new**: it re-derives every one of
+A-94 Part 2's published `codeTally.answers` from the shipped rows' own coordinates against the layer
+at the generator's pinned sha256. **0 FAIL**, eleven codes agreeing. Point it at an existing copy
+with `CAIRN_ADMIN0=/tmp/cairn-gazetteer-src/ne_10m_admin_0_countries.geojson`.
+
+None of the three round-69 scripts writes to the repo: `r69-corrections.mjs` reads the corpus, the
+goldens and the caches and writes only to `$CAIRN_R68_CACHE`; `r69-gate.sh` works exclusively inside
+a `git worktree` it creates and removes; `r69-repin-noop.mjs` reads two files.

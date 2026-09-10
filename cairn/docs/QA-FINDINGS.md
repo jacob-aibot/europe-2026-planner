@@ -1,5 +1,173 @@
 # Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index), 23 (I-5b — A-27's forgiveness entry), 24 (I-5c — A-28's second arm for filter 2), 25 (the I-5 closure round), 26 (I-6 — the widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan), 27 (I-6a — A-29's stated-country gate and A-30's `refreshSummary`) 28 (I-7 — `travelStats` and the row's record census), 29 (I-7a — A-32's civil calendar, A-33's exit criterion 6, A-34's `provisional`) 30 (I-7b — A-35's span cap, A-36's executed port gate, A-37's row read gates) 31 (A-38 — the seeded double and `ensureReady`'s upcast) 32 (A-39 — the finite covering set and the boundary that closes the arc), 33 (I-8a — the tab shell, the world map, the token layer and the signal-collision fix), 34 (I-8c — A-45's calendar gate, A-44's lifecycle read gate, BLD-3's way out) 35 (I-8e — A-46's unreadable row, its rescue export, and R34-1's ordering fix) 36 (I-8d — A-41's atlas frame and A-42's withdrawn min-span claim; I-8d's first adversarial round) 37 (I-8g — A-48's `countryKeyPoint`, the connected-components partition, C9's paint order and the pane's `aspect`) 38 (I-8h — A-49's `countryParts`, C8′'s extent, C8″'s detached pane and A-50's symmetric pane box) 39 (I-8i — A-51's one-pane-per-cluster frame, A-52's ring filter and A-53's home/extent panes + I18) 40 (I-8f + I-8j together — A-47's `openFailures`/`rowUnopenable`, and A-54's G7′/G7″ layout, D/I19 ring guard and G5′ tie-break) 41 (I-8b — the Profile, the mobile-first shell, and `DESIGN.md` §5/§6's first rendered acceptance standard) 42 (I-8b's repair pass — the mandatory re-breaker over round 41's 3 MAJOR / 14 MINOR, `DESIGN.md` revision 2 §6.2's refusal-equivalence criterion, and the vacuous fault harness) and **43 (I-12 — A-56's `cities[].centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` 4 → 5, and `TravelStatsCity`'s city dates) 44 (I-12a — A-59's counted city-date fallback and nameable row, A-60's clamp-artefact fix) 45 (I-13 — the photo foundation: §10's record class, EXIF reader, byte stores and loading-state selectors, A-57/A-58/A-61) and **46 (I-13b — the confirmation round over the whole photo repair arc: A-62's `[tripId, photoId]` byte key, A-63's fourth `PhotoListing` phase, A-64's withdrawn provenance claim) 47 (I-13c — the confirmation round over the round-46 repair pass and revisions 45/46: A-62 Part 8 residue 4, A-65's refused deferred delete, A-66's five-armed failure union) 48 (I-13d — the confirmation round over §4.2 **A-67**, the store's generation guard, and revision 48's **Part 7a**) 49 (I-13e — the confirmation round over §4.2 **A-68**, the wiring at A-67's own call sites, and the required re-cut of `qa/r47-i13c.mjs`) 50 (I-13g + I-13h — the confirmation round over §4.2 **A-69**'s settling boundary and **A-70**'s sequence-stamped predicate, the required re-cut of `qa/r49-i13e.mjs`, and the close of the A-67…A-70 arc) 51 (I-13i — the confirmation round over §4.2 **A-71**'s subscriber-exception brand and one classifier, §10 **A-66 Part 11**'s `setBatch`, and the required re-cut of six assertions across three `qa/` probes)**** **52 (I-9 — participants in core: `Trip.participants`, the three build functions, the two validation codes, and the *participation grants nothing* invariant)** **53 (the confirmation-breaker pass over the participants arc)** **54 (I-11 — the PHASE 2 PHASE GATE: every exit criterion re-derived, the phase attack list run end to end, one cross-cutting scenario over everything the phase built, and the whole `qa/` board re-run)** and **55 (I-15 — the mandatory adversarial pass over §2.1 **A-76**, *a build door asks the parser what a record may hold*: KD-100, the TOCTOU window, the two standing censuses, and the hunt for the eleventh unguarded door)** and **56 (I-16 — the mandatory adversarial pass over §2.1 **A-77**, *a door does not say what it wrote; the document says what changed*: the identity diff itself, the eighth record class, the replaced door census, and the third attempt at one class of bug)** and **57 (I-17 — the mandatory adversarial pass over §2.1 **A-78**, *the census reads the tree, not a list of files*: the fourth round on one class after an explicit claim of structural closure, and the fifth face, which went inward)** and **58 (I-18 — the mandatory adversarial pass over §2.1 **A-79**, *the census asks whether a door is reachable, not how it is declared*: the fifth round on one class, run against A-79 Part 11's three named exceptions, and the sixth face — the type constructors the walk cannot descend through)** and **59 (I-19 — the mandatory adversarial pass over §2.1 **A-80**, *the predicate descends every type constructor, and the closure claim becomes coverage rather than a list of exceptions*: the sixth round on one class, run against A-80 Part 10's own statement of what a seventh finding must look like, and the seventh face — the door that IS the union member)** and **60 (I-21 — the mandatory adversarial pass over §8.4 **A-82**, *a bundled gazetteer gives a typed city a real coordinate and no shipped row may contradict the country index*: the invariant re-derived from the pinned source, the quantisation question answered, and the first measured coverage hit rate for the capability Jacob asked for)** and **61 (I-22 — the mandatory adversarial pass over §8.4 **A-83** Part 8, *`City.centre` may be `null` and a picked city carries the row it came from*: the `SCHEMA_VERSION` 3 → 4 migration attacked byte for byte, the near-Null-Island case constructed, the corpus regeneration diffed row by row against `dd19958`, and the browser read-back gate finally run)** and **62 (I-22a — the mandatory adversarial pass over §8.4 **A-84**, *a pick is a record, the country is read off it, and a stale pick is inert*: the exact-float staleness rule attacked over all 7,342 shipped rows, the parser past its own ceiling, the door census run rather than reasoned about, and the `SCHEMA_VERSION` 4 → 5 rung walked on the committed fixtures)** and **63 (I-24 — the mandatory adversarial pass over §8.4 **A-85**, *a pick lands on the point it names and the place census gains its denominator*: the door-level rule attacked at every door that can reach a `City`, the `SUMMARY_VERSION` 7 → 8 rescan driven end to end through the store, the covering table re-derived from the file's own text, and the five builder disclosures adjudicated one at a time)** and **64 (the round `2b54c67` owed, run over TWO commits as one subject — the four builder-routed fixes of QA round 63 **and** **I-25** / §8.4 **A-86**, *the door and the census after round 63*: `I-24`'s exit re-derived under both corrected criteria, the absorbed-row count attacked over sixteen non-array values and both lifecycles, KD-117's blast radius established, and the two test-shaped claims — the CLI source-lift and the `issuesForRef` tripwire — put under mutation)** and **65 (the round `e1e1973` owed, run over TWO commits as one subject — round 64's builder-routed fixes (`e1e1973`) **and** **I-26** (`ede933f`) / §8.4 **A-87**, *the read gate and the census after round 64*: the closure claim attacked at its own denominators rather than with a sixth shape, the reachability premise behind its stated scope limit tested rather than accepted, the reader's own read-once discipline measured with counting accessors, the five builder disclosures adjudicated one at a time, and eleven mutants run against the new assertions)** and **66 (the round **I-28** owes — §8.4 **A-88**, *a predicate widened in place names its callers, a coverage claim names its denominators, and the read-gate arc closes here*: the covering claim injected at all FOUR of its denominators, A-88 Part 2's *"throws exactly two ways"* premise searched over 405 plain-data row shapes, the residue's own trigger measured at the commit before A-45, and every mutation literal in every harness still in use audited for the one failure mode a mutant can have — reporting success for doing nothing)** and **67 (I-23 — the mandatory adversarial pass over §8.4 **A-83** Parts 1–7 and 10–11 with **A-84** Parts 5 and 6, *the gazetteer's filter becomes notability, the corpus is sharded, and a search fetches one shard*: the two broken probes re-cut off the committed shards with no loader hook and the coverage headline re-derived from them, KD-118 verified over 1,377,944 query prefixes rather than three examples, KD-119 adjudicated against the pinned 1:10m layer at its own sha256, and the fold's substitution table re-derived against the punctuation the new corpus actually spells its names with)**
 
+> **Status (as of `master` @ `0d757f4`, independently verified 2026-09-10 — round 69, the mandatory
+> adversarial pass over **`I-32`** / §8.4 **A-94**, *an abstention is not a vote*).** Three new
+> scripts, run from `cairn/`: `qa/r69-corrections.mjs` (**5 sections, 26 assertions — 24 ok, 2 FAIL**,
+> offline; §C adds one 55 s pass over `allCountries.txt`, then caches), `qa/r69-gate.sh` (**7 sections; 2 ok,
+> 9 FAIL**, of which §A needs one real generator run under `CAIRN_R69_GEN=1`) and
+> `qa/r69-repin-noop.mjs`. Plus the **one routed re-cut**: `qa/r67-parents.mjs` §D, **2 FAIL → 0
+> FAIL**, with eleven new assertions. **Zero product-code edits, zero `src`, zero `.tsx`, zero
+> `apps/web`, zero `packages/client`, zero `docs/design/`, zero corpus file, zero golden, zero
+> `tools/`, zero new dependency, zero lockfile.**
+>
+> **ASSESSMENT — SHIP. 0 BLOCKERS, 1 MAJOR, 7 MINOR.** **`I-32`'s own subject is verified, and the
+> three routed numbers the builder corrected are all three confirmed independently, offline, from a
+> different implementation over a different join.** The MAJOR is not the shipped data — it is the
+> failure mode of the gate that is supposed to protect the *next* corpus change, and **no user can
+> meet it**: it needs a generator run in a tree whose committed corpus does not read. Nothing in
+> this round gates the picker, which is still fenced by the unresolved visual direction and by
+> nothing else.
+>
+> **The three corrections, each re-derived rather than accepted.** All three hold.
+> **(1) KD-128 — the class-`P` exempt population is 139 in 56 groups, not `I-32`'s routed 141 in 57.**
+> Re-derived by joining the committed corpus to the cached pinned `allCountries.txt` by GeoNames id
+> and applying the generator's own grouping predicate: **139 in 56**, four largest `FO+DK` 16,
+> `AX+FI` 15, `AR+AQ` 11, `EH+MA` 8, unmoved. Run again with `codeParent['TK']` forced back to
+> `null` it is **141 in 57**, and **the single group that disappears is `TK+NZ`** — so the routed
+> figure is not wrong, it is *pre-A-94*, and A-94 moved it itself. `Atafu Village` (`gn:4h85j`) and
+> `Nukunonu` (`gn:4h85h`) are the two rows, `P/PPLA` with `cc2 = NZ`, confirmed against the dump.
+> **(2) A-93 Part 7 fault 3 refuses 100 rows on this corpus, not 102.** Derived **offline** —
+> without a 625 MB run — by rebuilding A-93 Part 2's sovereign join from the pinned
+> `ne_10m_admin_0_countries.geojson` (sha256 `239eec57…`, verified; **41** distinct sovereigns) and
+> applying the fault's predicate to every class-`P` row that ships: **84 class-`P` + 16 terrain =
+> 100** now, **86 + 16 = 102** before A-94. **Round 68's own 102 is re-derived rather than defended,
+> and it was right for the corpus it was measured on.** The fault's stated effect is confirmed from
+> the same derivation: `Vatican City` **is** among the refused (`P(VA)` is `null`) and `Tórshavn` is
+> **not** (`FO → DK` subtracts). The two rows that leave are the same two.
+> **(3) KD-129 — `West Island` is `T`/`ISL`, population 120.** Read out of `allCountries.txt` by id:
+> `1547351 West Island T/ISL pop 120`, so **four** of the five `CC` rows are non-`P`; and **all five
+> carry an empty `cc2`**, which is the load-bearing half and is stronger than A-94 Part 2's sentence.
+> Nothing downstream moves: verified.
+>
+> **`qa/r67-parents.mjs` is re-cut and the re-cut is worth more than the repair.** Its D1 took the
+> mode over `String(x.own)` — counting a row the layer has **no opinion about** as a vote for *"this
+> row has no country"*, which is the exact rule A-94 supersedes — so it printed
+> `[["null",3],["AU",2]]` and called the fix a failure. D1 now asks the plurality of the **answers**
+> with the silences counted beside them, and a new **D2 re-derives every one of A-94 Part 2's
+> published tallies from the shipped rows' own coordinates**, point-in-polygon against the layer at
+> the generator's own pinned sha256. Eleven codes, eleven agreements, `CC → AU (AU×2, abstain×3)` and
+> `TK → NZ (NZ×1, abstain×2)` among them. **The published election is not merely readable; it is
+> now checkable from outside the generator that wrote it.**
+>
+> **KD-130 — adjudicated: adequate, and the disclosure is the right one.** The builder is right that
+> fault N4 cannot redden on a five-entry history, right about why (a re-seed of *that* history is
+> byte-identical to it), and right that the property is held meanwhile by the stop-and-report, which
+> was executed in all three of its conditions. **A different history would not make N4 meaningful
+> either** — it would make it meaningful *later*, which is what the residue already says. The
+> instrument that bites today is the second half of the same test, and it does: `qa/r69-gate.sh` §C2
+> confirms the `$sourceSha256` re-derivation is what a truncation runs into. **What the disclosure
+> does not cover is fault N3, which is in the same condition and is claimed to be caught** — R69-3.
+>
+> **R69-1 (MAJOR, builder) — the corpus's two ship gates fail OPEN, and the trigger is the state an
+> interrupted run of this same tool leaves behind.** `I-32` added a stop-and-report to
+> `readSourceLog` (`tools/gen-gazetteer.mjs:2046`) precisely because *"a missing, empty or
+> unparseable log is a FINDING, not a condition to repair silently."* **The corpus's own guards were
+> left with the opposite failure mode in the same commit.** `corpusDiff` wraps the read of the
+> previously committed corpus in `catch { return null }` (`:2144-2149`) and `gateNamedSet` opens with
+> `if (diff === null) return;` (`:2205`), so **anything** that stops the previous corpus being read
+> silently disables both A-90 clause 3's row-level diff and A-94 Part 10's named-set gate, and the
+> run **writes**. Reachable three ways, all of them plausible rather than adversarial: the corpus
+> directory is absent (which is exactly what `tools/corpus-write.mjs:55-56` leaves for the window
+> between its two renames — the one interruption point the executed fault N8 does **not** cover,
+> because `beforeSwap` fires before the first rename); one shard is truncated or unparseable; or one
+> shard's `s` disagrees with `meta.json`'s `$sourceSha256`, which makes `decodeAll` throw at
+> `:1911-1913`. **Executed** (`CAIRN_R69_GEN=1 bash qa/r69-gate.sh` §A): one edited field in
+> `zw.json` in a throwaway worktree, then a real generator run — it printed *"corpus diff: no
+> previously committed corpus to diff against (first build)"* over a 963-document corpus, **never
+> printed a named-set line at all**, wrote the corpus, wrote the manifest and exited **0**.
+>
+> Why this is a MAJOR and not a note. A-90 clause 1's whole premise is that **nobody, including us,
+> can rebuild this corpus** — the committed bytes are the artefact of record — and A-90 exists
+> because the pinned bytes already drifted once under nobody's review (KD-123). The named-set gate is
+> the only thing in the increment that can stop an unreviewed corpus change, and the condition that
+> disables it is *a corpus that does not read*, which is the condition under which an unreviewed
+> change is **most** likely and least visible. The `+5/-0/~3` line and *"8 of 8 named rows moved, 0
+> outside"* that this increment's report leans on are precisely the output that goes silent. The fix
+> is narrow and is the builder's: distinguish *"the corpus directory does not exist"* (a genuine first
+> build) from *"it exists and does not read"* (stop and report), and say so at the one `catch`.
+> **The architect owes one sentence beside it**: A-94 Part 10 and A-90 clause 3 both state what the
+> gate does when the diff is computable and neither states what it does when the diff cannot be
+> computed, and *"proceed"* is the answer the code currently gives on behalf of both.
+>
+> **What I attacked and could not break.** The election itself: `codeParent` is the plurality over
+> answers with abstentions excluded, ties on the lowest ISO code, at `tools/gen-gazetteer.mjs:929`
+> and `:938-942`, and all twelve published tallies re-derive from the layer's polygons (`r67-parents`
+> §D2). The named set: the eight ids are the only rows that moved, and `$sourceSha256` is
+> byte-identical to `41a3590`'s (`509364760a…`), so A-90's re-pin path was correctly not entered —
+> the log's `entries` array does not appear in `08176e4`'s diff at all, only its `$what` string,
+> which is A-94 Part 5 clause 1 as ruled and A-94 Part 8's own stated defect not occurring. The
+> manifest: **all 963 digests recompute off disk**, its totals are its own sums, a planted `.json`
+> reddens it, and A-94 Part 6's reason for keeping it out of `meta.json` **measures true** —
+> `meta.json` is already **75,601 bytes** on every client fetch and inlining the digests would add
+> **69,932** (§E). The declared price: the `null` arm is **live and reachable**, and the pin that
+> holds it is not one of the three A-94 Part 3 item 4 names — it is
+> `packages/core/test/gazetteer.test.ts:423`, which decodes a synthetic shard row with no ISO code
+> and asserts `countryCode === null`; **deleting the arm reddens it**, which is the property the
+> ruling asked for. The 13 codeless refusals are named individually
+> (`gazetteerMultiCountry.test.ts:369`), so that half cannot be satisfied by deletion either. A
+> `--repin` that appends nothing rewrites the log **byte-identically** (`qa/r69-repin-noop.mjs`) —
+> a true no-op, not a silent golden edit. The standing constraints: `packages/core` and
+> `packages/client` have **zero runtime dependencies** and no `Date.now`/`Math.random`/
+> `crypto.randomUUID` outside comments, and `packages/client/src` touches no DOM and no React. The
+> fence: `git diff 41a3590..0d757f4` opens no `.tsx`, no `apps/web/`, no `packages/client/`, no
+> `docs/design/`, no lockfile, and nothing outside `cairn/`.
+>
+> **The sensitive paths.** `I-32` touches neither mailbox ingestion nor location traces, and I
+> checked rather than assumed: the new golden is filenames, byte lengths, row counts and sha256s —
+> no coordinate, no name, no user data; the corpus rows it digests are public gazetteer places; the
+> generator's new log lines print ISO codes and counts. Nothing under `packages/` gained a `fetch`,
+> a `navigator` or a persist path.
+>
+> **What I could not test.** A second full generator run for A-90 clause 4's byte-identity gate — the
+> builder ran it by hand and the manager re-derived the goldens; my one generator run was spent on
+> §A instead, and I reset the worktree before capturing its `git status`, so that determination is
+> the builder's and the manager's, not mine. A re-pin with genuinely moved upstream bytes: the live
+> dumps roll daily and A-90 exists because that already drifted the corpus once, so I used the
+> cached pin throughout. Faults **N2** (widen the tolerance) as an end-to-end regeneration. A browser:
+> no web consumer of the corpus exists and adding one is fenced. The mid-swap interruption window in
+> `corpus-write.mjs:55-56` as an actual kill — I read it and reached its consequence by a cheaper
+> trigger instead, which is why R69-1's repro is the corrupt shard and not the kill.
+
+### Round 69 — the findings
+
+Every row says whether a **user** can meet it, because sequencing rule 10 turns on that and because
+five of the eight are about the strength of a claim rather than about behaviour a person sees.
+
+| id | sev | file:line | defect | user? | repro | routing |
+|---|---|---|---|---|---|---|
+| **R69-1** | **MAJOR** | `tools/gen-gazetteer.mjs:2144-2149`, `:2205`, `:1911-1913`; `tools/corpus-write.mjs:55-56` | `corpusDiff`'s `catch { return null }` plus `gateNamedSet`'s `if (diff === null) return;` make **A-94 Part 10's named-set gate and A-90 clause 3's row-level diff no-ops** whenever the previously committed corpus does not read — a missing directory (what an interruption between `corpus-write.mjs`'s two renames leaves), a truncated shard, or one shard whose `s` disagrees with `meta.json` — and the run **writes the corpus and the manifest anyway, exit 0**. The source log's stop-and-report, added in the same commit, fails closed; the corpus's gates fail open. | no — needs a generator run in a broken tree | `CAIRN_R69_GEN=1 bash qa/r69-gate.sh` (§A) | **builder** (distinguish *absent* from *unreadable* at the one `catch`) + **architect** (one sentence: what the gate does when the diff cannot be computed) |
+| **R69-2** | MINOR | `packages/core/test/gazetteerArtefact.test.ts:174-176` | A-94 Part 5 clause 3's *"the log is written ONLY under `--repin`"* is pinned by a grep — `/^\s*(?:if \(repin\) )?writeSourceLog\(/gm` counted to 1 — and a second call that does not **start a line** is invisible to both halves of it. `if (repin) writeSourceLog(…); else writeSourceLog(…, []);` restores the ordinary-path write **with the test green**. Executed. This is KD-127's own weakness — a source grep catches a deleted line and not a wrong one — reappearing on the clause the increment is proudest of. | no | `bash qa/r69-gate.sh` (§F) | **builder** |
+| **R69-3** | MINOR | `docs/ARCHITECTURE.md` §8.4 **A-94** Part 9 fault 3; `packages/core/test/gazetteerElection.test.ts:353-360`; `tools/gen-gazetteer.mjs:938` | **Fault 3 cannot redden anything, and it is claimed to be caught.** A-94 Part 9 says *"the assertion that the tally is published, per code, with its abstention count, is what catches it"*; a published tally with **no tie in it** catches nothing. All twelve tallies have a single top answer (`qa/r69-corrections.mjs` §D1), so inverting the tie-break in **both** the generator and the test's own re-derivation leaves **all 1,880 tests green**. Executed. Same condition as N4/KD-130, but N4 is disclosed and this is not. The remedy is a synthetic-tie assertion, which is cheap; the arm can be made live without a corpus. | no | `bash qa/r69-gate.sh` (§D, §E); `node qa/r69-corrections.mjs D` | **builder** (a tie fixture) + **architect** (fault 3's sentence) |
+| **R69-4** | MINOR | `docs/BUILD-NOTES.md` KD-128; `packages/core/test/gazetteerArtefact.test.ts:311-331` | Both describe the exempt set as *"the class-`P` rows for which **A-93 Part 2's `X \ {S, C, P(S), P(C)}`** is non-empty"*. The generator groups on **A-89's `X \ {S, C}`** and says so in place (`gen-gazetteer.mjs:1143-1150`), deliberately — the sovereign subtraction is the *other* half of the rule and is priced separately. **139 is right; the sentence describing how to get it is not**: measured, the predicate as written yields **84**, because `FO+DK` (16) and `AX+FI` (15) are kept by the sovereign subtraction rather than by the class restriction. A future re-derivation from KD-128's words gets a different number. | no | `node qa/r69-corrections.mjs A B` | **builder** (KD-128 and the test's docstring are both his) |
+| **R69-5** | MINOR | `packages/core/test/gazetteerArtefact.test.ts:206`; `tools/gen-gazetteer.mjs:1959` | The manifest audits `readdirSync(CORPUS).filter(n => n.endsWith('.json'))`, so it is a digest over the corpus's **JSON documents**, not over the corpus **directory** — and the test's own claim, *"this covers every byte of every file"*, is one qualifier short. A `.mjs` parked inside `packages/core/src/geo/gazetteer/` is invisible to it, which matters because **round 67's M8 is still open**: the load-bearing A-78 shard-map guard passes a `.mjs` in that directory whose name appears in a doc comment. The new tripwire does not close the old hole and reads as though it might. | no | `bash qa/r69-gate.sh` (§B; B2 is the `.json` control) | **builder** (drop the filter) |
+| **R69-6** | MINOR | `packages/core/test/gazetteerArtefact.test.ts:71-95`; §8.4 **A-94** Part 5 clause 2 | The prefix witness pins `{fetched, source, sha256}` — **three of the entry's five fields**. `bytes` and `previousSha256` can be rewritten anywhere in the committed history with every test green (executed). A-94 Part 5 clause 1 keeps the chain *"in the file as provenance"*, and nothing pins the provenance, so the one thing the chain still claims to do can be silently falsified. Cost of the fix is two more columns in one literal. | no | `bash qa/r69-gate.sh` (§C1) | **architect** (clause 2 names the three-tuple) |
+| **R69-7** | MINOR | `tools/gen-gazetteer.mjs:453-462` vs `:463-464` | `--dry-run` returns **before** `corpusDiff` and `gateNamedSet`, so the only run that can show you the row-level diff and the named-set verdict is the run that has already written them. A-90 clause 3 makes a re-pin *"an explicit, reviewed act"* and A-94 Part 10 makes the named set a stop-and-report; neither is available to the reviewer before the write. Confirmed against the builder's own dry-run log, which carries no diff line and no named-set line. | no | `grep -nE 'corpus diff\|named set' /tmp/cairn-r68/dryrun.log`; `sed -n '453,466p' tools/gen-gazetteer.mjs` | **architect** |
+| **R69-8** | MINOR | `tools/gen-gazetteer.mjs:2193-2202`, `:463-464` | `A94_NAMED_SET` is unconditional and has **no expiry**: the gate throws on *any* added, removed or changed row outside the eight, forever. The next legitimate corpus change — **a `--repin`, which is the reviewed act A-90 clause 3 exists to define** — therefore cannot write until a human deletes an increment-scoped constant, and nothing in the code or in A-94 Part 10 says who does that or when. It is a stop-and-report where a stop-and-report is correct, so it is recorded rather than argued; the missing sentence is the one that retires it. | no | `sed -n '2173,2231p' tools/gen-gazetteer.mjs`; A-94 Part 10 | **architect** |
+
+**Two more that are recorded rather than filed.** *(a)* A fabricated entry appended **after** the
+pinned prefix is green — the witness pins the past and nothing pins the present (`qa/r69-gate.sh`
+§C2). That is A-94 Part 11 residue 5 seen from the offensive side rather than the accounting side,
+and the residue already names the remedy (extending the literal is part of the re-pin commit), so it
+is the disclosure working, not a finding. *(b)* Of A-94 Part 6's four audit numbers, three are
+re-derived from a **list of rows** in the golden and one — `classPExempt` — is re-derived from a
+list of **group counts** in the same golden plus a literal `139` in the test. The literal is what
+actually pins it, and §A of `qa/r69-corrections.mjs` re-derives that literal from the source, so
+nothing is wrong; *"derived from the list beside it"* is just doing less work for that one number
+than for the other three.
+
+**The election, verified from outside the generator.** `qa/r67-parents.mjs` §D2 is the assertion this
+arc had been missing: for every stated code that ships a translated row, it re-implements
+`readAdmin0().locate()`, re-derives each shipped row's own containing feature from its coordinate
+against the layer at the generator's pinned sha256, and compares the resulting answer histogram to
+`gazetteer-parents.json`'s published `codeTally.answers`. Eleven codes, **eleven exact agreements**,
+including `CC → {AU: 2}` with three silences beside it and `TK → {NZ: 1}` with two. A twelfth code,
+`AN`, publishes a tally and ships no row — its one candidate is `Antilles`, which A-93 refuses —
+which is correct and worth knowing: **a code's electorate includes candidates a later clause deletes.**
+
+---
+
+**Round 68's status block and findings follow, unchanged.**
+
 
 > **Status (as of `master` @ `7fb7901`, independently verified 2026-09-10 — round 68, the mandatory
 > adversarial pass over TWO commits as one subject: `I-29` (`59cad74`, whose round was never run —
