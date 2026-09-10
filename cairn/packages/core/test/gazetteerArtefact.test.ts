@@ -40,6 +40,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { COUNTRY_INDEX } from '../src/index.ts';
 import { writeCorpusAtomically } from '../../../tools/corpus-write.mjs';
+import { readPreviousCorpus } from '../../../tools/corpus-read.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CORPUS = resolve(HERE, '..', 'src', 'geo', 'gazetteer');
@@ -395,6 +396,132 @@ test('A-94 Part 6: the manifest\'s totals are its own file list\'s sums', () => 
     meta.rows,
     JSON.parse(readFileSync(resolve(CORPUS, 'meta.json'), 'utf8')).rows,
     'the manifest\'s meta.json row count is not the corpus row total meta.json declares',
+  );
+});
+
+// ---------------------------------------------------------------------------------------------
+// R69-1 — A-90 clause 3's diff and A-94 Part 10's named set FAIL CLOSED.
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * **The corpus's two ship gates used to fail OPEN, and the source log's — added in the same
+ * commit — fails closed.** `corpusDiff` wrapped the read of the previously committed corpus in
+ * `catch { return null }`, and `gateNamedSet` opened with `if (diff === null) return;`. A bare
+ * `catch` reinterprets **any** read failure as *"a first build, and there is nothing to diff"*, so
+ * a corpus that does not read silently turned **both** A-90 clause 3's row-level diff and A-94
+ * Part 10's named-set gate into no-ops **and the run wrote anyway, exit 0** — executed by the
+ * breaker over a 963-document corpus with one edited field in one shard.
+ *
+ * Three ways in, none of them adversarial: the corpus directory is absent — which is exactly what
+ * an interruption between `corpus-write.mjs`'s two renames leaves, the one interruption point
+ * fault **N8** does not cover; a shard is truncated or unparseable; or a shard's `s` disagrees
+ * with `meta.json`'s `$sourceSha256`, which makes the generator's decoder throw. **The condition
+ * that disabled the gates is the condition under which an unreviewed corpus change is most likely
+ * and least visible**, and A-90 clause 1's whole premise is that nobody, including us, can rebuild
+ * these bytes.
+ *
+ * **A genuine first build is a distinguishable state, not "any exception while reading."** It is
+ * an absent or empty corpus directory **with no manifest golden beside it** — the manifest is
+ * written by the same run that writes the corpus, so a repository that ships one and cannot read
+ * the other is broken, not new. Everything else stops and reports, writing nothing.
+ *
+ * It lives in `tools/corpus-read.mjs` for the reason `corpus-write.mjs` does: an injected fault
+ * has to be executable, and `gen-gazetteer.mjs` cannot be imported by a test.
+ */
+test('R69-1: a genuine first build is an ABSENT corpus with no manifest beside it', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'cairn-prev-'));
+  const corpus = join(dir, 'gazetteer');
+  const witness = join(dir, 'gazetteer-manifest.json');
+  let reads = 0;
+  const read = () => { reads += 1; return ['a row']; };
+
+  // 1. No corpus directory at all and no manifest: the only genuine first build there is.
+  assert.equal(readPreviousCorpus({ corpusDir: corpus, witnessPath: witness, read }), null);
+  assert.equal(reads, 0, 'a first build read a corpus that is not there');
+
+  // 2. The directory exists and is empty, still with no manifest — the same state, one mkdir on.
+  mkdirSync(corpus);
+  assert.equal(readPreviousCorpus({ corpusDir: corpus, witnessPath: witness, read }), null);
+
+  // 3. A corpus that reads is returned, read exactly once, and is NOT a first build.
+  writeFileSync(join(corpus, 'meta.json'), '{"rows":1}\n');
+  writeFileSync(witness, '{"files":[]}\n');
+  assert.deepEqual(readPreviousCorpus({ corpusDir: corpus, witnessPath: witness, read }), ['a row']);
+  assert.equal(reads, 1, 'the previous corpus was read more or less than once');
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('R69-1: a corpus that does not read STOPS AND REPORTS — it is not a first build', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'cairn-prev-'));
+  const corpus = join(dir, 'gazetteer');
+  const witness = join(dir, 'gazetteer-manifest.json');
+  writeFileSync(witness, '{"files":[]}\n');
+  const never = () => { throw new Error('read() must not be reached'); };
+
+  // (a) The missing directory — what an interruption between corpus-write.mjs's two renames
+  //     leaves, and what fault N8 does not cover.
+  assert.throws(
+    () => readPreviousCorpus({ corpusDir: corpus, witnessPath: witness, read: never }),
+    (err: Error) => /STOPS AND REPORTS/.test(err.message) && /manifest/.test(err.message),
+    'a missing corpus directory beside a committed manifest was treated as a first build (R69-1)',
+  );
+
+  // (b) The directory is there and empty — a swap that got half way.
+  mkdirSync(corpus);
+  assert.throws(
+    () => readPreviousCorpus({ corpusDir: corpus, witnessPath: witness, read: never }),
+    /STOPS AND REPORTS/,
+    'an empty corpus directory beside a committed manifest was treated as a first build (R69-1)',
+  );
+
+  // (c) The corpus is there and does not decode: a truncated shard, or one whose `s` disagrees
+  //     with meta.json's $sourceSha256 — the breaker's own repro.
+  writeFileSync(join(corpus, 'meta.json'), '{"rows":1}\n');
+  assert.throws(
+    () => readPreviousCorpus({
+      corpusDir: corpus,
+      witnessPath: witness,
+      read: () => { throw new Error('shard zw carries $sourceSha256 000…, meta.json carries 5093…'); },
+    }),
+    (err: Error) => /STOPS AND REPORTS/.test(err.message) && /shard zw carries/.test(err.message),
+    'an unreadable corpus was treated as a first build (R69-1)',
+  );
+
+  // (d) …and it stops even with no manifest: a corpus that exists must read, witness or not.
+  rmSync(witness);
+  assert.throws(
+    () => readPreviousCorpus({
+      corpusDir: corpus,
+      witnessPath: witness,
+      read: () => { throw new Error('unexpected end of JSON input'); },
+    }),
+    /STOPS AND REPORTS/,
+  );
+  rmSync(dir, { recursive: true, force: true });
+});
+
+/**
+ * **And the generator uses it, at the one `catch` the finding names.** A grep — KD-127's weaker
+ * instrument — but the arms themselves are executed above, which is the half a grep cannot do.
+ * The `--dry-run` half is R69-7: the diff and the named-set verdict are taken **before** the
+ * dry-run returns, so the only run that can show a reviewer both is no longer the run that has
+ * already written them.
+ */
+test('R69-1/R69-7: the generator takes both gates before it writes, and before --dry-run returns', () => {
+  const gen = readFileSync(resolve(HERE, '..', '..', '..', 'tools', 'gen-gazetteer.mjs'), 'utf8');
+  assert.match(gen, /import \{ readPreviousCorpus \} from '\.\/corpus-read\.mjs';/, 'the generator does not use the guarded read');
+  assert.equal(
+    /catch \{\s*\n?\s*return null; \/\/ no previous corpus/.test(gen),
+    false,
+    'the bare catch that reinterpreted an unreadable corpus as a first build is back (QA R69-1)',
+  );
+  const dryRun = gen.indexOf("if (flag('dry-run'))");
+  const gate = gen.indexOf('gateNamedSet(');
+  assert.ok(dryRun > 0 && gate > 0, 'the dry-run branch or the named-set gate could not be located');
+  assert.ok(
+    gate < dryRun,
+    '--dry-run still returns BEFORE the corpus diff and the named-set gate, so the only run that ' +
+      'can show a reviewer either is the run that has already written them (QA R69-7)',
   );
 });
 

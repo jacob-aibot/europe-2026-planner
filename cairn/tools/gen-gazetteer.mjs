@@ -127,6 +127,7 @@ import {
 import { createHash } from 'node:crypto';
 import { writeCorpusAtomically } from './corpus-write.mjs';
 import { electParent } from './elect-parent.mjs';
+import { readPreviousCorpus } from './corpus-read.mjs';
 import { createInflateRaw } from 'node:zlib';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -409,6 +410,22 @@ async function main() {
   const sourceLog = readSourceLog();
   console.log(`source log: ${sourceLog.entries.length} entries, verified` +
     `${repin ? ' — --repin, so this run may append to it' : ' — NOT written (no --repin)'}`);
+  // **And the corpus is read and verified HERE, for the same reason and with the same failure
+  // mode — QA R69-1.** A-90 clause 3's row-level diff and A-94 Part 10's named-set gate both need
+  // the previously committed corpus; a run that cannot read it cannot check what it is about to
+  // change, and **that is a stop-and-report, not a first build**. It used to be a bare
+  // `catch { return null }` taken after the build, which turned both gates into no-ops on exactly
+  // the condition under which an unreviewed corpus change is least visible. Reading it here rather
+  // than at the write means the run stops in seconds, before 625 MB of streaming, and the corpus
+  // on disk is untouched — the same discipline the source log gets one line above.
+  const previousRows = readPreviousCorpus({
+    corpusDir: CORPUS_DIR,
+    witnessPath: MANIFEST_OUT,
+    read: () => readCommittedCorpus().rows,
+  });
+  console.log(previousRows === null
+    ? 'previous corpus: NONE — no corpus and no manifest golden, so this is a genuine FIRST BUILD'
+    : `previous corpus: ${previousRows.length} rows, read and decoded — the diff and the named-set gate can run`);
   const { countryOf, COUNTRY_INDEX } = await import('../packages/core/src/index.ts');
   const draws = new Set(COUNTRY_INDEX.countries.map((c) => c.code));
   console.log(`the shipped index draws ${draws.size} country codes at scale ${COUNTRY_INDEX.scale}`);
@@ -451,6 +468,18 @@ async function main() {
   roundTrip(docs, built);
   console.log(`  round-trip: every emitted row re-parses, field by field, to the row that built it`);
 
+  // **A-90 clause 3's row-level diff and A-94 Part 10's named-set gate, taken BEFORE the write —
+  // and BEFORE `--dry-run` returns (QA R69-7).** A diff needs the previous corpus to diff against,
+  // and after `write()` there is no previous corpus on disk; a fresh clone at a re-pin commit has
+  // one only because git does. The dry run used to return above this, so **the only run that could
+  // show a reviewer the row diff and the named-set verdict was the run that had already written
+  // them** — which defeats the purpose of a dry run in a design whose whole point is that a corpus
+  // change is reviewable. Both are now taken on the same terms on both paths: a dry run stops
+  // exactly where a real run would, and writes nothing either way.
+  const diff = corpusDiff(built, previousRows);
+  reportCorpusDiff(diff, moved.length > 0);
+  gateNamedSet(diff);
+
   if (flag('dry-run')) {
     const total = docs.shards.reduce((n, s) => n + s.bytes, 0) + docs.metaBytes;
     console.log(`\ncorpus bytes: ${total}   (dry run — nothing written)`);
@@ -458,16 +487,9 @@ async function main() {
     return;
   }
 
-  // **A-90 clause 3's row-level diff, taken BEFORE the write** — a diff needs the previous corpus
-  // to diff against, and after `write()` there is no previous corpus on disk. A fresh clone at a
-  // re-pin commit has one only because git does.
-  const diff = corpusDiff(built);
-  gateNamedSet(diff);
-
   write(docs, built);
   writeManifest(corpusSha);
   if (repin) writeSourceLog(sourceLog, fetched, moved);
-  reportCorpusDiff(diff, moved.length > 0);
   writeDisagreements(built, corpusSha);
   writeParents(built, corpusSha);
   writeRefusals(built, corpusSha);
@@ -2161,13 +2183,15 @@ function writeSourceLog(log, fetched, moved) {
  */
 const DIFF_CAP = 200;
 
-function corpusDiff(built) {
-  let previous;
-  try {
-    previous = readCommittedCorpus().rows;
-  } catch {
-    return null; // no previous corpus — a first build, and there is nothing to diff.
-  }
+function corpusDiff(built, previous) {
+  // **`previous === null` means a GENUINE first build and nothing else — QA R69-1.** This function
+  // used to read the corpus itself, inside `try { … } catch { return null }`, and a bare `catch`
+  // reinterprets any read failure as *"a first build, and there is nothing to diff"*: a missing
+  // directory, a truncated shard or one shard whose `s` disagrees with `meta.json` silently
+  // disabled this diff AND A-94 Part 10's named-set gate, and the run wrote anyway. The read now
+  // happens in `corpus-read.mjs`, at the top of `main`, and it fails CLOSED — the way the source
+  // log's own stop-and-report, added in the same commit, always did.
+  if (previous === null) return null;
   const before = new Map(previous.map((r) => [r.id, r]));
   const after = new Map(built.rows.map((r) => [`${ID_PREFIX}:${r.id}`, r]));
 
@@ -2222,7 +2246,19 @@ const A94_NAMED_SET = new Map([
 ]);
 
 function gateNamedSet(diff) {
-  if (diff === null) return;
+  if (diff === null) {
+    // **A first build has nothing to compare, and it says so OUT LOUD — QA R69-1.** This used to
+    // be a bare `return`, so the one condition that disabled the gate was also the one condition
+    // in which it printed nothing at all: the breaker's run over a 963-document corpus never
+    // printed a named-set line and exited 0. `diff === null` now means a genuine first build and
+    // nothing else — `corpus-read.mjs` stops the run on every other way of not having a previous
+    // corpus — and this line is what makes the difference legible in the log.
+    console.log('');
+    console.log('  A-94 Part 10 — the named set: a genuine FIRST BUILD (no previous corpus and no ' +
+      'manifest golden), so there is nothing to compare and the gate is NOT satisfied, merely ' +
+      'inapplicable. Every other way of not having a previous corpus has already stopped this run.');
+    return;
+  }
   const outside = [
     ...diff.added.filter((r) => !A94_NAMED_SET.has(r.id)).map((r) => `+ ${r.id} ${r.name}`),
     ...diff.removed.filter((r) => !A94_NAMED_SET.has(r.id)).map((r) => `- ${r.id} ${r.name}`),
@@ -2241,11 +2277,20 @@ function gateNamedSet(diff) {
     console.log('  !! ROADMAP I-32 / A-94 Part 10 STOP-AND-REPORT — the corpus diff reaches outside the');
     console.log('     eight rows A-94 commits by GeoNames id. Writing nothing.');
     for (const line of outside.slice(0, 40)) console.log(`       ${line}`);
+    console.log('');
+    console.log('     THIS GATE HAS NO EXPIRY, AND IT IS INCREMENT-SCOPED (QA R69-8). It throws on any');
+    console.log('     row outside the eight, forever — including the next LEGITIMATE corpus change, which');
+    console.log('     is a --repin, the reviewed act A-90 clause 3 exists to define. Retiring it is part of');
+    console.log('     that reviewed commit: delete A94_NAMED_SET and this gate in the same commit as the');
+    console.log('     re-pin, with the row-level diff published beside it. Neither the code nor A-94 Part 10');
+    console.log('     says who does that or when; the sentence that retires it is the architect\'s.');
     throw new Error(
       `${outside.length} row(s) moved outside A-94 Part 10's named set of eight. STOP AND REPORT, ` +
         'writing nothing. A-94 Part 1 measures the scope of this change as exactly two stated ' +
         'codes (CC, TK); a third code moving means the election change reached further than the ' +
-        'ruling measured, and that is a finding for the architect, not a golden update.',
+        'ruling measured, and that is a finding for the architect, not a golden update. If this is ' +
+        'a --repin rather than a re-run of I-32, this gate is the increment-scoped one it was cut ' +
+        'as and retiring it belongs in the re-pin\'s own reviewed commit (QA R69-8).',
     );
   }
 }
@@ -2253,7 +2298,9 @@ function gateNamedSet(diff) {
 function reportCorpusDiff(diff, isRepin) {
   console.log('');
   if (diff === null) {
-    console.log('corpus diff: no previously committed corpus to diff against (first build).');
+    console.log('corpus diff: no previously committed corpus to diff against — a GENUINE first build');
+    console.log('  (no corpus AND no manifest golden). Any other way of not having one has already');
+    console.log('  stopped this run: QA R69-1, tools/corpus-read.mjs.');
     return;
   }
   const total = diff.added.length + diff.removed.length;
