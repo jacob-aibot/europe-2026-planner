@@ -140,15 +140,39 @@ ok(sg.p.via === 'contained' && sgLoc.code !== 'FR',
   'C3  the golden records `via: "contained"` beside `shippedCode: "FR"` for a row contained in BRAZIL — the artefact cannot be read as it reads',
   `via=${sg.p.via} shipped=${sg.p.shippedCode} containing=${sgLoc.code}`);
 
-head('D  the modal collapse, per stated code');
+head('D  the modal collapse, per stated code — RE-CUT at round 69 for §8.4 A-94');
+// **An abstention is not a vote** (A-94 Part 2, QA R68-1). Until round 69 this section took the
+// mode over `String(x.own)`, so a row the layer has **no opinion about** was counted as a vote for
+// *"this row has no country"* — which is exactly the defect A-94 supersedes, and which made D1
+// print `[["null",3],["AU",2]]` for `CC` and `[["null",2],["NZ",1]]` for `TK` and call the fix a
+// failure. The plurality is over the layer's **answers**; the silences are counted **beside** them,
+// which is what A-94 Part 2's published tally is for.
+const TALLY = G.codeTally ?? {};
 for (const [code, g] of [...perCode].sort()) {
-  const tally = new Map();
-  for (const x of g) tally.set(String(x.own), (tally.get(String(x.own)) ?? 0) + 1);
-  const sorted = [...tally].sort((a, b) => b[1] - a[1]);
-  note(`  ${code} ×${g.length} ships ${g[0].ships} — per-row: ${sorted.map(([k, n]) => `${k}×${n}`).join(' ')}`);
-  const minority = sorted.slice(1).reduce((n, [, c]) => n + c, 0);
-  ok(minority === 0 || sorted[0][0] === String(g[0].ships),
-    `D1  ${code}: the shipped code IS the modal per-row answer`, JSON.stringify(sorted));
+  const answers = new Map();
+  let abstain = 0;
+  for (const x of g) {
+    if (x.own === null) { abstain += 1; continue; }
+    answers.set(x.own, (answers.get(x.own) ?? 0) + 1);
+  }
+  const sorted = [...answers].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
+  note(`  ${code} ×${g.length} ships ${g[0].ships} — answers: ${sorted.map(([k, n]) => `${k}×${n}`).join(' ') || '(none)'} abstain×${abstain}`);
+  ok(sorted.length === 0 || sorted[0][0] === String(g[0].ships),
+    `D1  ${code}: the shipped code is the plurality of the layer's ANSWERS, silences not voting`,
+    JSON.stringify(sorted));
+  // **D2 is new at round 69**: A-94 Part 2 publishes the election, so the golden's own tally is now
+  // re-derivable from the coordinates rather than merely readable. Off-by-one against `candidates`
+  // is expected and reported, not asserted: `gazetteer-parents.json` names the rows that SHIP, and
+  // a code's electorate also holds any candidate row a later clause refused.
+  const pub = TALLY[code];
+  if (pub === undefined) { ok(false, `D2  ${code}: the parents golden publishes no tally`, 'A-94 Part 2 requires one per undrawable code'); continue; }
+  const mine = Object.fromEntries(sorted);
+  ok(JSON.stringify(mine) === JSON.stringify(pub.answers),
+    `D2  ${code}: the published tally's ANSWERS re-derive from the shipped rows' own coordinates`,
+    `golden ${JSON.stringify(pub.answers)} vs re-derived ${JSON.stringify(mine)}`);
+  if (pub.abstain !== abstain) {
+    note(`   ${code}: golden abstain ${pub.abstain} of ${pub.candidates} candidates; ${abstain} of the ${g.length} SHIPPED rows abstain (a refused candidate still votes)`);
+  }
 }
 const straddles = [...perCode].filter(([, g]) => {
   const real = new Set(g.filter((x) => x.own !== null).map((x) => x.own));
