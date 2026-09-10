@@ -1740,6 +1740,72 @@ deterministic, and no healthy trip can produce a false-positive absorption. What
 - **The picker UI remains fenced** (sequencing rule 9); `.tsx` stays out of scope in every queued increment
   and the visual direction is Codex's.
 
+**Revision 73, 2026-09-10.** **QA round 67 ran over `I-23` and sent it back with three MAJORs; the builder
+fixed two and stopped on the third, correctly.** `08c3d8b` is on `master`: `A Coruña`, `L'Aquila`,
+`O‘ahu`, `Xi’an`, `Ta’if`, `O‘ahu` and `Nuku‘alofa` all resolve, `vienna`/`geneva`/`hallstatt`/`positano`
+unregressed, suite green, coverage re-measured after regeneration at **travel 109/121 = 90.1 %, control
+50/50 = 100 %** — unchanged. `ARCHITECTURE.md` revision 70's §8.4 **A-89**, **A-90**, **A-91** and **A-92**
+rule what came back, and **`I-29` builds A-89 and A-90**.
+
+- **`I-23`'s subject is delivered and this revision does not re-open it.** The number the increment exists
+  for is real and reproduces exactly, through the real loader and off the committed shards. **The
+  read-gate arc and the pick arc are closed** and neither gets another mandatory round.
+- **One finding in round 67 is a defect a user meets, and it is the only one that gates anything
+  (sequencing rule 10).** **R67-3**: `Antilles` and `Hispaniola` ship at **rank 1 for their own names**
+  attributed to the **Dominican Republic**, so a traveller to Haiti who types *Hispaniola* gets the wrong
+  country on their lifetime map. The routed fix was *"move the refusal ahead of the translation"*; the
+  builder **built it, measured it and reverted it** (**KD-122**) because it deletes **nine correct rows** —
+  Guadeloupe, Grande-Terre, La Désirade, Devils Island, Flying Fish Cove, Bouvetøya, Hornsund, Klovningen,
+  Chissioua Mtsamboro — **to remove one sea**, and it never reaches `Hispaniola` at all. **Stopping was
+  right**, and it is what made A-89 possible: the ruling is a **fourth refusal on GeoNames' own `cc2`
+  column**, verified against the source dumps rather than reasoned about, refused when `cc2` names a
+  country that is neither the row's stated code nor the code we attribute it to. **The two subtractions are
+  what keep Longyearbyen**, which a naive *"`cc2` non-empty"* deletes.
+- **The rest of round 67 is claim-strength and documentation, and rule 10 says none of it gates a product
+  increment.** **R67-4** — this document's *"the Somaliland and Northern Cyprus rows ship `null`"* is false
+  in the shipped build and is **corrected in place below**, in `I-23`'s parent-translation criterion; the
+  `null` arm is exercised by three Tokelau rows, not by Hargeisa. **R67-10** — the 18 refused rows are
+  published nowhere and get their golden back. **R67-11** — KD-119's Mayotte justification does not
+  reproduce once its own sibling change is in (`YT` is `FR × 51`); the modal rule is **adopted** and its
+  reason is **rewritten** around Saint-Georges, 4 rows of 152. All three ride `I-29`.
+- **One thing in round 67 is not a finding about this arc at all, and it is the largest.** **The pinned
+  GeoNames bytes stopped being served mid-increment** (**KD-123**): both large dumps rolled over between
+  2026-09-09 and 2026-09-10, the generator refused to write, and the builder re-pinned. Cost: **+15 shipped
+  rows (149,086 → 149,101), drift rather than repair.** The scoping answer — *checksums over the fetched
+  bytes* — is now **measured insufficient**: a checksum proves what you built from and does not let anyone
+  rebuild it. **A-90** rules it: the committed corpus is the **artefact of record**, `$sourceSha256` is a
+  provenance stamp, determinism narrows to *same fetched bytes ⇒ same output*, and a re-pin becomes an
+  explicit `--repin` that publishes a source log **and a row-level corpus diff in the same commit**.
+  Vendoring the filtered subset is rejected on arithmetic. **§0 gains position 11.**
+- **The attribution obligation gets a mechanism instead of a note (R67-9, A-91)**, and it lands as an
+  **exit criterion of `I-30`**, the picker screen — `source` inside the returned value, a
+  `GAZETTEER_CONSUMERS` allowlist the first `.tsx` must edit, and a rendered assertion with three injected
+  faults. **The first `.tsx` that calls `loadGazetteerFor` may not land without it.**
+- **The census failed over the wrong population for the fifth time (A-92).** A-84 Part 7 item 2's
+  *"the only reader of `MapBounds.centre`"* was one file short: `packages/client/src/ports/types.ts`
+  **re-declares** the shape as `MapBoundsLike`. The duplicate is **deleted**, not tied down with the
+  assignability assertion the builder proposed and correctly did not build. **`I-29` carries it** — one
+  type, two files, no behaviour change.
+- **Three probe corrections, named here and routed to the breaker, not ruled.** They are the QA board's
+  own drift after `08c3d8b`, and the next round re-cuts them rather than reading them as findings.
+  **`qa/r67-corpus.mjs` §J3 is RED because it re-derives R67-7's *old* five-checksum formula** — the fix
+  added `$countryIndexSha256` and the probe still computes the superseded value. **`qa/…` B1 reports 120**
+  from a stale model that reimplements the loader's refusal inline instead of calling `loadGazetteerFor`;
+  the number is the model's, not the corpus's. **Guard `M6` flipped GREEN → RED, and that is a
+  strengthening**, not a regression: R67-6's third assertion is what closed the hole M6 was measuring.
+  **A probe that re-derives a formula the product has since changed is a probe to re-cut**, and re-cutting
+  it is breaker work in the round that covers `I-29`.
+- **Ordering: `I-29` first, then `I-30`.** `I-29` is `tools/`, `packages/core` and two goldens; `I-30` is
+  the first `.tsx` and it is fenced by the **visual direction**, which is Codex's and is not resolved.
+  **`I-29` does not touch a `.tsx` and `I-30` does not touch the generator**, so they share no file and the
+  round `I-29` owes does not gate `I-30`'s design work.
+- **What blocks the picker, said plainly, because it is what Jacob is waiting on.** **Nothing in round 67
+  blocks it.** `I-29` is not a prerequisite: a picker built on today's corpus is correct for every query
+  except the two landmass names, and A-89 changes no type, no door and no call the picker makes. **The
+  picker is fenced by one thing and it is the unresolved visual direction.** A-91 adds an exit criterion to
+  it, not a dependency. If `I-29` lands first the picker inherits the fix for free; if it does not, `I-30`
+  ships with a known, published, two-row hole.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -7493,8 +7559,16 @@ record: it is generated data, never persisted in a document, and parts 3a and 3b
     stated code was not drawable appears in `gazetteer-parents.json` with both codes. Named outcomes,
     from A-84 Part 5's measurement and re-derived by the builder: **Fort-de-France, Basse-Terre, Dzaoudzi
     and St.-Benoît ship `FR`; Longyearbyen ships `NO`; Saint-Georges ships `FR`** — where `countryOf`
-    says `BR` — **and the Somaliland and Northern Cyprus rows ship `null`, not `''` and not a guess.**
-    `cityPickFromRow` over each of those rows, through `createTrip` and `tripSummary`, reports
+    says `BR` — ~~**and the Somaliland and Northern Cyprus rows ship `null`, not `''` and not a guess.**~~
+    **CORRECTED IN PLACE AT REVISION 73 (QA R67-4, `ARCHITECTURE.md` §8.4 A-89 Part 5): that sentence is
+    FALSE in the shipped build and was false about the wrong population.** GeoNames states a drawable code
+    for those places — **Hargeysa ships `SO`, Famagusta and Kyrenia ship `CY`**, all three
+    `indexSays: 'silent'` — so the translation never fires for them and there is nothing to be `null`. **The
+    `null` arm is real and this is what exercises it: three Tokelau rows** — `Atafu Village`, `Nukunonu`,
+    `Fale old settlement` — **each carrying a region, so none renders bare.** The criterion is therefore:
+    **the three Tokelau rows ship `countryCode: null`, not `''` and not a guess, and a build in which
+    the count of `null`-code rows is zero is a build that has deleted the arm.**
+    `cityPickFromRow` over each of the named rows, through `createTrip` and `tripSummary`, reports
     `{FR, picked}`, `{NO, picked}` and `{null, null}` respectively. **N6a, injected:** disable the
     translation → the zero-exception assertion fails naming Fort-de-France, and the Martinique pick reports
     `{null, null}`. **N6b, injected:** translate an *undrawable* containing feature's code through anyway
@@ -7576,6 +7650,159 @@ record: it is generated data, never persisted in a document, and parts 3a and 3b
   new licence obligation. **Four stop-and-report conditions:** the control set below 100 %, a refusal
   count of zero on any of the three refusals, a **parent** count of zero, and the `york` cross-shard
   equality failing for any reason other than an injected fault.
+
+#### I-29 — an island stops being a city in a country it merely sits near, the corpus becomes the artefact of record, and a duplicated type is deleted (revision 73, `ARCHITECTURE.md` revision 70's §8.4 **A-89**, **A-90** and **A-92**, QA **R67-3** MAJOR; **R67-4**, **R67-10**, **R67-11** ride along)
+
+**Read §8.4 A-89 whole. Then A-83 Parts 3 and 9, then A-84 Part 5 — and for Part 4 of this increment, A-90
+whole with §0 position 11 and A-83 Part 2. For Part 5, A-92 whole with A-84 Part 7 item 2. Nothing else** —
+not A-85, not A-86, not A-87, not A-88, not §2 whole, not §4, not §10. **Read BUILD-NOTES KD-122 and
+KD-123 before writing a line of Part 1**: KD-122 is the measurement that says why the obvious fix is wrong,
+and there is a comment at the refusal site pointing at it.
+
+**Why it exists.** `Antilles` and `Hispaniola` ship at **rank 1 for their own names** attributed to the
+**Dominican Republic**. Driven through `cityPickFromRow` → `createTrip` → `tripSummary` both report
+`{DO, picked}`, so **a traveller to Haiti who types *Hispaniola* gets the Dominican Republic on their
+lifetime map**. That is a user-meetable defect and it is the only one round 67 found.
+
+**What it is NOT.** **No `.tsx`, no `apps/web` file of any kind**, including `boundaries.test.ts`'s
+`allowBare` entry — except the one line Part 5 needs, which changes a type name and no behaviour. **It is
+not the ordering fix**: refusing before A-84 Part 5's translation deletes nine correct rows and is a
+permanent injected fault in this increment's own suite, not a candidate implementation. **It changes no
+record shape** and **`SCHEMA_VERSION` (5) and `SUMMARY_VERSION` (8) do not move**; a moved one is a defect
+in this increment.
+
+- **Built, in five parts, in this order. Part 1 is the generator and nothing downstream is written until
+  it reports.**
+  1. **A-83 Part 9 clause 4, in `tools/gen-gazetteer.mjs`.** With `S` the row's stated code, `C` the code
+     it would ship after the parent translation and `X` the uppercased, trimmed set of non-empty codes in
+     `allCountries` column 10 (`cc2`): **refuse the row when `X \ {S, C}` is non-empty.** Clauses 1–3 and
+     their position relative to the translation **do not move**.
+  2. **The refusals golden comes back (R67-10).** `fixtures/golden/gazetteer-refusals.json`, every row
+     A-83 Part 9 refuses, as `{id, name, statedCode, admin1, cc2, reason}` with `reason` in
+     `'bare-name' | 'unreadable' | 'delimiter' | 'multi-country'`. **The generated header's per-reason
+     counts are read from this file**, not computed beside it.
+  3. **A-84 Part 5's three amendments, written into the generator's own comments so the deviation stops
+     being a build note** (R67-11, R67-4): the 0.05° coastal tolerance and the modal per-code parent are
+     **adopted** — KD-119's Mayotte justification is **withdrawn** and replaced with Saint-Georges over 4
+     rows of 152 — and *"the empty code included"* is **scoped** to a row the layer contains.
+  4. **A-90: `--repin`, the source log and the corpus diff.** A checksum mismatch may result in a write
+     **only** under `--repin`; `fixtures/golden/gazetteer-source-log.json` is append-only
+     (`{fetched, source, bytes, sha256, previousSha256}`); and a `--repin` run emits a row-level diff
+     against the previously committed corpus, naming every added and removed row under a published cap and
+     printing counts above it. `$sourceSha256`'s docstring and `$what` say **records**, not **pins**.
+  5. **A-92: `MapBoundsLike` is deleted.** `MapPort.mount`, `.update` and `.refit` take `MapBounds` from
+     `../deps.ts`. `boundaries.test.ts` gains the name check of A-92 clause 3.
+- **Verification.** Tagged per **How a criterion is written**, and **the ceilings are ceilings** (rule 4).
+  - **The two defects are gone, and the nine are not** `[stated]`: `Antilles` and `Hispaniola` are absent
+    from every shard, and **each of `Guadeloupe`, `Grande-Terre`, `La Désirade`, `Devils Island`,
+    `Flying Fish Cove`, `Bouvetøya`, `Hornsund`, `Klovningen`, `Chissioua Mtsamboro` ships, named
+    individually**, with the code A-89 Part 1's table gives it. **N1, injected: restore KD-122's ordering
+    fix → all nine assertions redden, naming all nine.** This fault stays in the suite permanently.
+  - **Longyearbyen is the control on clause 4** `[stated]`: **N2, injected: implement clause 4 as
+    *"`cc2` is non-empty"*** → `Longyearbyen`, `Jan Mayen`, `Lars Island`, `Sveagruva`, `Barentsburg`,
+    `Ny-Ålesund`, `Olonkinbyen`, `Grand-Case`, `Oyster Pond` and `Anse Marcel` disappear and the assertion
+    that **Longyearbyen ships `NO`** reddens. **A clause-4 implementation that does not redden N2 is not
+    clause 4.**
+  - **The `S` subtraction's own reach is published, not assumed** `[stated]`: the generator's audit prints
+    the count of rows kept **only** by the `S` subtraction. A-89 Part 2 predicts **zero** on this corpus.
+    **A non-zero count is a result to report, not a failure**; a *missing* line is the failure.
+  - **The refusals are nameable again** `[stated]`: every row in the refusals golden carries a `reason` in
+    the closed set, the header's four counts equal the golden's four group sizes, and **KD-120's claim is
+    now checkable from the repo** — each of A-83 Part 9's seven named archipelagos appears in the golden
+    with `reason: 'bare-name'`. **N3, injected:** compute the header counts beside the golden instead of
+    from it → delete one golden row and the counts still agree; the equality assertion reddens.
+  - **The parent translation, unchanged as a ceiling** `[stated]`: **every** shipped row's `countryCode` is
+    `null` or a code `COUNTRY_INDEX` draws, zero exceptions — and the named outcomes hold:
+    Fort-de-France/Basse-Terre/Dzaoudzi/St.-Benoît `FR`, Longyearbyen `NO`, Saint-Georges `FR`.
+    **N4, injected:** delete the coastal tolerance → Longyearbyen, Basse-Terre and Dzaoudzi ship `null`.
+    **N5, injected:** resolve the parent per row → Saint-Georges ships `BR` **and the zero-exception
+    ceiling stays green**, which is why the named outcome is asserted separately and is not decoration.
+  - **The `null` arm is non-vacuous** `[stated]`, R67-4: exactly the three Tokelau rows —
+    `Atafu Village`, `Nukunonu`, `Fale old settlement` — ship `countryCode: null`, each with a region.
+    **N6, injected:** translate a codeless row the layer does not contain → *"Lesser Antilles, France"*
+    ships and the bare-name group of the refusals golden shrinks.
+  - **A-90's mechanism fires** `[stated]`: a hand-edited source checksum **without** `--repin` reports and
+    **writes nothing**; **with** `--repin` it writes, appends one entry per source to the source log and
+    emits a diff. **N7, injected:** truncate the source log and regenerate → the append-only assertion
+    reddens. **N8, injected:** make `--repin` write without emitting a diff → the same-commit assertion
+    reddens. **Determinism, re-run and unchanged in meaning:** two generator runs over one fetch produce
+    byte-identical output across all corpus files.
+  - **The re-declarer is gone** `[stated]`: `grep MapBoundsLike` returns nothing, `typecheck` is clean.
+    **N9, injected:** re-add a `MapBoundsLike` alias → the A-92 clause 3 name check reddens naming it.
+    **N10, injected:** make `MapBounds.centre` non-nullable → **`apps/web/src/ports/map.ts` is the only
+    site the compiler names**, which is what A-84 Part 7 item 2 claimed and could not deliver.
+  - **Nothing else moved** `[stated]`: coverage re-measured off the rebuilt corpus and reported —
+    travel and control both, through the real `loadGazetteerFor` — the total order still total, the fold
+    unchanged, `indexSays` still exact and summing, the 4 dp floor and the `{0,0}` ceiling held, the byte
+    ceiling held, the shard/meta pairing check still throwing.
+- **Two stop-and-report conditions.** (1) **If clause 4 removes a row that is not in A-89's measured
+  population** — anything with a population over 100,000 that is not `Antilles` or `Hispaniola` — **stop
+  and report**; the ruling's false-positive claim is measured over 14 country files, not over the corpus.
+  (2) **If the corpus must be regenerated and the pins have rolled again, use `--repin` and publish the
+  diff**; if the diff exceeds the cap, **stop and report** rather than committing a data change nobody
+  reviewed. That is A-90 working, not A-90 failing.
+- **Dependencies / blockers.** `I-23` (built, `08c3d8b`). **`I-29` is NOT a blocker for `I-30`** — see
+  `I-30`'s own entry.
+- **Route: builder + breaker, mandatory.** The generator, two goldens and the corpus. **The round it owes
+  also re-cuts the three drifted probes named in revision 73** — `J3`'s five-checksum formula, `B1`'s
+  stale inline refusal model, and guard `M6`, whose GREEN → RED flip is a **strengthening**.
+
+
+#### I-30 — the city picker: the first screen that reads the corpus, and the first attribution this repository owes a user (revision 73, `ARCHITECTURE.md` revision 70's §8.4 **A-91**, QA **R67-9** standing; **`DESIGN.md` owns everything this entry does not**)
+
+**Read A-91 whole, then A-82 Parts 4 and 9 (the disambiguation rule and the bundle boundary), then A-83
+Parts 6 and 7 (sharding and the loading contract). Then `DESIGN.md` §5 and §6. Nothing else in §8.4** —
+not A-83 Part 3, not A-84, not A-85, not A-86, not A-87, not A-88, not A-89, not §2 whole, not §10.
+
+**Why it exists.** It is what Jacob has been waiting for since the gazetteer was scoped: **type where you
+have been and get a real city, with a real coordinate and a real country, out of it.** Every increment from
+`I-21` to `I-29` has been the door behind this screen (sequencing rule 9), and the door is now exercised
+through its own shortest correct-looking call.
+
+**What it is NOT.** Not the trip form, not the lifetime map, not `Library.tsx`. **One picker**, wherever
+`DESIGN.md` puts it.
+
+**⚠ THIS INCREMENT IS FENCED, AND BY EXACTLY ONE THING.** The **visual direction is unresolved** and it is
+Codex's, not this document's. **Nothing in QA round 67 blocks this increment** and neither does `I-29`:
+A-89 changes no type, no door and no call a picker makes, and a picker built on today's corpus is correct
+for every query except two landmass names. **If `I-29` lands first the picker inherits the fix for free; if
+it does not, `I-30` ships with a known, published, two-row hole and says so.** The criteria below are
+**fixed now** so that the moment the visual direction resolves, this is a build and not a design.
+
+- **Built, in three parts.**
+  1. **The query surface**, driving `searchGazetteer` through the real `loadGazetteerFor` — a shard fetch
+     per query, never a whole-corpus load — with the three states the loader can be in: **hits**, **a
+     miss**, and **"keep typing"**. A-83 Part 7's pairing check is not bypassed and no shard is inlined.
+  2. **The pick is written whole** — `cityPickFromRow`, through the door `I-24` made safe — and the country
+     on the lifetime map is read off the pick. Nothing on this screen types a country.
+  3. **A-91, all three mechanisms.** `searchGazetteer` returns
+     `{ source, hits }`; `GAZETTEER_CONSUMERS` in `boundaries.test.ts` gains this screen's module and
+     **nothing else may import the loader**; and the attribution renders.
+- **Verification** `[rendered]` for item 3, `[stated]` for the rest.
+  - **The attribution is on screen in all three states** `[rendered]`: with at least one hit, with a miss,
+    and in *"keep typing"*, the rendered output contains the exact `Gazetteer.source` string and a link to
+    `https://creativecommons.org/licenses/by/4.0/` **that was actually loaded and confirmed to resolve**.
+    **N1, injected:** delete the attribution node → all three redden. **N2, injected:** render the text and
+    drop the link → the link assertion reddens alone. **N3, injected:** hard-code the string rather than
+    reading `source` → a fixture whose `$source` differs is rendered and the text does not follow it; the
+    assertion reddens. **N3 is the one that matters**: a hard-coded attribution passes N1 and N2 forever
+    and goes stale at the next re-pin (A-90 clause 3).
+  - **The allowlist is the denominator** `[stated]`: a second module importing `loadGazetteerFor` without
+    a `GAZETTEER_CONSUMERS` entry **fails the boundaries test**. **N4, injected:** add such an import →
+    the test reddens naming the module.
+  - **A pick round-trips** `[stated]`: picking Geneva, saving and reloading gives Geneva's coordinate and
+    `{CH, picked}` on the lifetime map — the `I-22`/`I-22a`/`I-24` chain, driven from the screen for the
+    first time rather than from a test.
+  - **The two inherited map bugs do not reappear** `[rendered]`, if this screen shows a map at all: a map
+    is not fitted while its container is `display:none`, and a two-city day clusters before it fits
+    (`cairn-constraints` §8, root `docs/PLANNER.md`).
+- **A gate, stated where it will be read.** **This increment may not land without the `[rendered]`
+  attribution criterion above** (A-91). It is not a follow-up and it is not a note.
+- **Dependencies / blockers.** **The visual direction, and nothing else.** `I-27` sits behind this
+  increment because it opens `Library.tsx`.
+- **Route: builder + breaker, mandatory** — the first `.tsx` on the corpus path, and the repository's
+  first attribution obligation.
+
 
 #### I-10 — The participants editor, the profile grouping, and the access double-run — **DEFERRED at revision 55; 2c ships without it**
 
@@ -10096,3 +10323,13 @@ built.
    real user and gates `I-23`; **R65-2** and **R65-5** describe storage no shipped write path can produce
    and gate nothing. *"A further round could still find something"* is never a reason to schedule one —
    scope in what a user meets, and say plainly what you are choosing not to close and why.
+11. **A change to committed generated data publishes its diff in the same commit** (revision 73, §0
+   position 11, ARCHITECTURE §8.4 **A-90**, BUILD-NOTES **KD-123**). The gazetteer corpus's upstream
+   rebuilds daily and archives nothing, so **the committed corpus is the artefact of record and nobody —
+   including us — can rebuild it from source.** Two consequences run through every increment that touches
+   it. **(a)** No test, probe, golden or audit may require the generator to run or the network to answer;
+   every claim about the corpus is checked against the committed bytes. **(b)** A re-pin is an explicit
+   `--repin` run that lands its source-log entry and a **row-level corpus diff** in the same commit, and a
+   diff over the published cap is a **stop-and-report**, not a golden update. `I-23`'s **+15 shipped rows**
+   arrived as a sentence in a build note; that is the failure this rule exists to prevent, and it is a
+   supply-chain property of the product's core data rather than a documentation nicety.
