@@ -598,6 +598,59 @@ test('I-23: every `cli cities` run prints the CC BY 4.0 attribution, hit or miss
 });
 
 /**
+ * **§8.4 A-91 item 3's THIRD injected fault, at the one rendered surface that exists today.**
+ *
+ * The test above matches the attribution with a regex, and **a hard-coded string satisfies it
+ * forever**. That is the fault A-91 names as the one that matters: it passes every shape-level
+ * assertion, and it goes stale silently at the next re-pin (**A-90** clause 3), at which point the
+ * product is publishing an attribution for a dataset it no longer ships.
+ *
+ * So this asserts the two halves that a hard-coded string cannot satisfy together:
+ *
+ *  1. **the rendered text IS the corpus's own `$source`, byte for byte** — not a superset, not a
+ *     paraphrase, not a regex match — in all three states the picker will have (a hit, a miss and
+ *     *"keep typing"*), which is A-91 item 3's state list applied to the CLI; and
+ *  2. **`cli.ts` contains no attribution literal at all**, so the string it prints can only have
+ *     come from the data it loaded.
+ *
+ * `packages/core/test/gazetteer.test.ts` covers the other end of the same wire — `loadGazetteer`
+ * propagates whatever `$source` its meta document carries, asserted against a fixture that says
+ * `'hand-built fixture'`. Between them, a hard-coded attribution reddens wherever it is written.
+ *
+ * **The `[rendered]` half of A-91 item 3 — a `.tsx` picker in three states, with a licence link
+ * that was actually loaded — is `I-30`'s exit criterion and is NOT discharged here.** This is the
+ * mechanism reaching as far as it can with no rendered consumer in the repository.
+ */
+test('A-91 item 3: the printed attribution is the CORPUS\'s $source, and cli.ts hard-codes none of it', () => {
+  const meta = JSON.parse(
+    readFileSync(resolve(CAIRN, 'packages/core/src/geo/gazetteer/meta.json'), 'utf8'),
+  ) as { $source: string };
+  assert.ok(meta.$source.length > 80, 'sanity: the corpus carries an attribution string');
+
+  for (const args of [['cities', 'zurich'], ['cities', 'qzzzxwv'], ['cities', 'de']] as const) {
+    const line = cli(...args).out.split('\n').find((l) => l.startsWith('source: '));
+    assert.ok(line !== undefined, `no source line from \`cli ${args.join(' ')}\``);
+    assert.equal(
+      line.slice('source: '.length),
+      meta.$source,
+      `\`cli ${args.join(' ')}\` renders an attribution that is not the corpus's own $source — ` +
+        'which is what a hard-coded string looks like the moment the corpus is re-pinned.',
+    );
+  }
+
+  // The fault, closed from the other side: the string cannot be in the renderer.
+  const src = readFileSync(resolve(CAIRN, 'cli.ts'), 'utf8');
+  for (const fragment of ['GeoNames geographical database', 'licensed CC BY 4.0']) {
+    assert.equal(
+      src.includes(fragment),
+      false,
+      `cli.ts hard-codes ${JSON.stringify(fragment)}. A-91 item 1: the attribution is IN THE ` +
+        'VALUE — read it off the loaded gazetteer, never from a literal.',
+    );
+  }
+});
+
+/**
  * **I-23, §8.4 A-83 Part 6: "keep typing" is not "no match", and the difference is the product's
  * honesty about its own coverage.** A query whose first token cannot resolve to one shard has not
  * been searched at all; printing `no match` for it would be a lie about the corpus.

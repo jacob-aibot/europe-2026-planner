@@ -235,3 +235,99 @@ test('no type in packages/client/src/ports/types.ts restates a core export — A
   }
   assert.deepEqual(offenders, [], `\n  ${offenders.join('\n  ')}\n`);
 });
+
+/**
+ * **§8.4 A-91 item 2 — the set of modules allowed to reach the gazetteer corpus is an ALLOWLIST,
+ * and the allowlist is the attribution census's denominator.**
+ *
+ * GeoNames is CC BY 4.0 and it is this repository's first attribution obligation. The
+ * **source-level** half is complete and was verified in QA round 67: `meta.json`'s `$source`
+ * carries the text and the licence URL, `Gazetteer.source` is that string on every loaded shard
+ * **including a miss**, and `cli.ts cities` prints it on hit, on miss and on *"keep typing"*. The
+ * **user-visible** half is owed by whichever increment adds the first rendered consumer, and
+ * **nothing in code fired when that consumer landed**: no test, no type, no boundary.
+ *
+ * A note will be lost. So the obligation is written into a list the compiler makes you open:
+ * **adding a consumer requires editing `GAZETTEER_CONSUMERS` in the same increment**, and the
+ * entry beside the new name is where the obligation is stated. This is §0 position 10(a)'s shape
+ * — a denominator a test maintains — rather than a census over a population that changes
+ * underneath it, which is the failure this project has hit five times (rounds 61–65, and A-92).
+ *
+ * **A consumer is a module that NAMES one of the three doors** — `loadGazetteerFor`,
+ * `searchGazetteer`, or the `@cairn/core/gazetteer` subpath / `geo/gazetteerShards.gen.ts` —
+ * **or one that imports such a module by relative path.** It is deliberately not *"imports
+ * `@cairn/core`"*: the barrel exports `searchGazetteer`, so that reading would make every file in
+ * the repository a consumer and the census would mean nothing.
+ */
+const GAZETTEER_CONSUMERS: ReadonlyArray<{ file: string; why: string }> = [
+  {
+    file: 'cli.ts',
+    why:
+      'The `cities` command — the only surface that renders a gazetteer hit today. It prints the ' +
+      'attribution on a hit, on a miss and on "keep typing", reading it from the loaded ' +
+      "gazetteer's own `source` rather than from a constant (A-91 item 3's third injected fault: " +
+      'a hard-coded string passes the other two forever and goes stale at the next re-pin).',
+  },
+];
+
+test('exactly the modules in GAZETTEER_CONSUMERS reach the gazetteer corpus — A-91 item 2', () => {
+  const DOORS = ['loadGazetteerFor', 'searchGazetteer'];
+  const SUBPATHS = ['@cairn/core/gazetteer', 'gazetteerShards.gen.ts'];
+
+  const roots = ['packages/client/src', 'apps/web/src'].map((d) => resolve(CAIRN, d));
+  const files = [...roots.flatMap(walk), resolve(CAIRN, 'cli.ts')];
+
+  /** A module names a door if it imports one of the two symbols, or names a corpus subpath. */
+  const namesADoor = (src: string): boolean => {
+    if (SUBPATHS.some((s) => src.includes(s))) return true;
+    for (const m of src.matchAll(/\bimport\b[^;]*?\bfrom\b|\bawait\s+import\s*\([^)]*\)/g)) void m;
+    // Any import statement or dynamic-import expression whose bindings mention a door.
+    for (const m of src.matchAll(/import\s*(?:type\s*)?\{([^}]*)\}\s*from|import\s*\(([^)]*)\)/g)) {
+      const text = `${m[1] ?? ''}${m[2] ?? ''}`;
+      if (DOORS.some((d) => text.includes(d))) return true;
+    }
+    // `const { searchGazetteer } = await import(...)` / `core.searchGazetteer(` — the two other
+    // ways a module reaches a door without an import binding that carries its name.
+    return /(?:\.|\{\s*|,\s*)(?:loadGazetteerFor|searchGazetteer)\b/.test(src);
+  };
+
+  const consumers = new Set<string>();
+  const sources = new Map<string, string>();
+  for (const file of files) {
+    const src = stripComments(readFileSync(file, 'utf8'));
+    sources.set(file, src);
+    if (namesADoor(src)) consumers.add(file);
+  }
+
+  // Close over relative imports: a module that imports a consumer by relative path is one too.
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (const [file, src] of sources) {
+      if (consumers.has(file)) continue;
+      for (const spec of specsOf(file)) {
+        if (!isRelative(spec)) continue;
+        const base = resolve(dirname(file), spec);
+        const target = [base, `${base}.ts`, `${base}.tsx`, resolve(base, 'index.ts')]
+          .find((c) => consumers.has(c));
+        if (target !== undefined) { consumers.add(file); changed = true; break; }
+      }
+    }
+  }
+
+  const found = [...consumers].map((f) => relative(CAIRN, f).split(sep).join('/')).sort();
+  const allowed = GAZETTEER_CONSUMERS.map((c) => c.file).sort();
+  assert.deepEqual(
+    found,
+    allowed,
+    '\n  The set of modules that reach the gazetteer corpus is not the set GAZETTEER_CONSUMERS\n' +
+      '  names. GeoNames is CC BY 4.0 and this list is where that obligation is written down:\n' +
+      `    reaches the corpus : ${JSON.stringify(found)}\n` +
+      `    GAZETTEER_CONSUMERS: ${JSON.stringify(allowed)}\n` +
+      '  Adding a consumer means adding it HERE, with its reason, in the same increment — and if\n' +
+      '  it renders a hit it owes A-91 item 3: the exact Gazetteer.source string and a resolving\n' +
+      '  link to https://creativecommons.org/licenses/by/4.0/, in all three picker states.\n',
+  );
+  for (const c of GAZETTEER_CONSUMERS) {
+    assert.ok(c.why.length > 40, `GAZETTEER_CONSUMERS: ${c.file} has no stated reason`);
+  }
+});
