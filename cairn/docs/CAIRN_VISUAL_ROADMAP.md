@@ -19,6 +19,59 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟩 THE *HISPANIOLA* FIX IS IN AND SIGNED OFF — AND THE SAME ROUND FOUND A WHOLE ISLAND TERRITORY
+> MISSING FROM THE CITY LIST. As of 2026-09-10 (later the same day) this block is the newest and it
+> supersedes every block below it.** Nothing on your phone changes. Two things happened: the fix the block
+> below promised landed and survived a tester; and while checking it, the tester found something older and
+> worse, which is now ruled and queued.
+>
+> **Typing *Hispaniola* no longer puts the Dominican Republic on your lifetime map.** Sixteen entries that
+> are islands lying in — or claimed by — more than one country have stopped being treated as cities:
+> `Hispaniola`, `Antilles`, `Borneo`, `New Guinea`, the two Tierra del Fuego entries, and ten smaller
+> disputed islands. **Nothing else was removed.** The first attempt at this rule would have deleted
+> **Vatican City** along with the capitals of the Faroes, Jersey, the Isle of Man and Åland; the builder
+> measured that, refused to switch it on, and said so — and the rule was re-cut rather than the objection
+> overruled. This is the first thing in the whole city-list arc with a **tester's sign-off**: the sixteen
+> were re-derived from scratch, independently, and came out identical.
+>
+> **The new finding: the Cocos (Keeling) Islands are not in the city list at all — all five entries, gone,
+> including the territory's capital.** Type `west island` and you get **no match**; type `cocos` and you
+> get a town in Brazil. The cause is small and silly. When the list can't tell which country an entry
+> belongs to, it takes a vote across all that territory's entries — and *"no opinion"* was being counted as
+> a **vote for "no country"**. Three silences outvoted two real answers, so every Cocos entry ended up with
+> no country, and an entry with no country is dropped for being unlabellable. Two of those three silences
+> miss the map's coastline by **one ten-thousandth of a degree** — about eleven metres. **The ruling: a
+> silence is not a vote.** With that fixed the five entries come back as Australia, and Tokelau's three
+> entries — which currently have no country at all — become New Zealand.
+>
+> **The honest cost, stated up front rather than found later.** Those three Tokelau entries were the only
+> ones in the whole list that carried *"no country"*. After this fix, **nothing does**. That is the right
+> answer for a lifetime map — an entry with no country cannot be drawn on one — but it means the
+> "we honestly don't know" case is now empty, and the documents say so out loud instead of quietly.
+>
+> **One more piece of housekeeping that matters more than it sounds.** The city list is built from a
+> dataset that rebuilds daily and keeps no history, so **the copy in the repository is the real artefact**
+> — and the log that records where it came from could be wiped by an ordinary rebuild, silently. That log
+> now gets a witness the rebuild can't overwrite, plus a checksum over the city list's own files so a
+> hand-edited entry can't slip through unnoticed.
+>
+> **Where this stands.**
+>
+> | | Built (the code exists) | Verified (a tester attacked it) | Shippable to you |
+> |---|---|---|---|
+> | *Hispaniola* / *Antilles* attributed to one country | ✅ | ✅ | not yet |
+> | The bigger city list — Hallstatt, Positano, Amalfi | ✅ | ✅ | not yet |
+> | Full names and apostrophes answering | ✅ | ✅ | not yet |
+> | The Cocos (Keeling) Islands coming back | **not yet** — ruled today, queued | — | — |
+> | The city list's own tamper check + the source log's witness | **not yet** — ruled today, queued | — | — |
+> | The credit on screen | **not yet** — ruled, and it gates the picker | — | — |
+> | The picker screen itself | **not yet, and deliberately fenced** | — | — |
+>
+> **What blocks the picker screen — unchanged, and still not technical.** Neither of today's rulings adds
+> a step before it. **The picker is fenced by one thing and it is the unresolved visual direction.** If the
+> Cocos fix lands first the picker gets those five places for free; if it does not, the picker ships with a
+> published five-place hole and says so.
+
 > **🟩 THE CITY LIST NOW FINDS FOUR IN FIVE OF THE PLACES YOU HAVE ACTUALLY BEEN — up from one in
 > five. As of 2026-09-10 this block is the newest and it supersedes every block below it.** Nothing on
 > your phone changes. This block covers the map fix, the new city list, the round that attacked it, and
