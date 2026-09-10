@@ -680,10 +680,21 @@ test('A-84 Part 5: the parents golden names every translated row, with both code
   assert.equal(golden.codeParent.GF, 'FR');
   assert.equal(golden.codeParent.SJ, 'NO');
   assert.equal(golden.codeParent.BQ, 'NL');
-  // **Cairn does not adjudicate a sovereignty its own map cannot draw**: Tokelau is drawn by
-  // nothing the index carries, so its rows say nothing rather than guessing.
-  assert.equal(golden.codeParent.TK, null);
-  assert.ok(golden.shippedNull > 0, 'no row ships countryCode: null — the honest arm never fires');
+  // **`TK → NZ` and `CC → AU` at I-32** (§8.4 A-94, QA R68-1). Both used to be `null`, and both
+  // were `null` only because the parent election counted an **abstention** as a vote: `TK` is
+  // `NZ:1 abstain:2` and `CC` is `AU:2 abstain:3`. Counting the silences deleted the entire Cocos
+  // (Keeling) Islands territory from the picker. **A-84 Part 5's rule is unchanged** — Cairn does
+  // not adjudicate a sovereignty its own map cannot draw — and what changed is that a row the
+  // layer *does* answer for is no longer outvoted by the rows it is silent about.
+  assert.equal(golden.codeParent.TK, 'NZ');
+  assert.equal(golden.codeParent.CC, 'AU');
+  // **`shippedNull` is the size of its own group and nothing else is asserted about it here.**
+  // A-94 Part 3 item 4: a test may not assert that this count is zero, because a count of zero is
+  // satisfied by DELETING the arm — which is the failure A-89 Part 5 sentence 3 was written
+  // against. The arm is asserted by its mechanism in `gazetteerElection.test.ts` (the published
+  // election) and `gazetteerMultiCountry.test.ts` (the 13 codeless refusals).
+  assert.equal(golden.shippedNull, golden.parents.filter((p) => p.shippedCode === null).length);
+  assert.equal(golden.translated, golden.parents.filter((p) => p.shippedCode !== null).length);
 });
 
 /**
@@ -721,9 +732,16 @@ test('A-84 Part 5: a picked Martinique, Svalbard or Guyane row reports its paren
   assert.equal(sg.hit.indexSays, 'differs', 'Saint-Georges no longer disagrees with the index');
   assert.equal(core.countryOf(sg.hit.centre, core.COUNTRY_INDEX), 'BR');
 
-  // And the honest arm: a row the map cannot place says nothing, from any source.
+  // **The two territories I-32 gave back, through the same chain** (§8.4 A-94, QA R68-1).
+  // `Nukunonu` reported `{null, null}` until revision 72 — not because the layer had no answer for
+  // Tokelau, but because two rows it was silent about outvoted the one it answered. `West Island`
+  // did not report anything at all: the whole Cocos (Keeling) Islands territory shipped zero rows,
+  // refused as bare names, and its capital returned NO MATCH.
   const tk = await attribute('nukunonu', (h) => h.name === 'Nukunonu');
-  assert.deepEqual({ code: tk.code, source: tk.source }, { code: null, source: null });
+  assert.deepEqual({ code: tk.code, source: tk.source }, { code: 'NZ', source: 'picked' });
+
+  const cc = await attribute('west island', (h) => h.id === 'gn:x5xz');
+  assert.deepEqual({ code: cc.code, source: cc.source }, { code: 'AU', source: 'picked' });
 });
 
 test('A-83 Part 8: every shipped row id carries its source prefix', () => {

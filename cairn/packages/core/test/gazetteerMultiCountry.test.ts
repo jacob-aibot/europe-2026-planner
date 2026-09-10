@@ -345,28 +345,48 @@ test('A-84 Part 5: the parent translation\'s named outcomes, each asserted indiv
 });
 
 /**
- * **R67-4: the `null` arm is not vacuous, and this is what exercises it.**
+ * **R67-4: the `null` arm's SHIPPING population left, and A-94 Part 3 says so out loud.**
  *
- * A-84 Part 5's rule — *Cairn does not adjudicate a sovereignty its own map cannot draw* — stands.
- * Its **example** was withdrawn at revision 70: Hargeysa ships `SO` from its own GeoNames row,
- * Famagusta and Kyrenia ship `CY`, all three with `indexSays: 'silent'`. What actually reaches the
- * `null` arm in this corpus is Tokelau: no country from any source, honestly, and each row carries
- * a region so none of them renders bare.
+ * A-84 Part 5's rule — *Cairn does not adjudicate a sovereignty its own map cannot draw* — stands
+ * word for word, and its **example** was withdrawn at revision 70: Hargeysa ships `SO` from its
+ * own GeoNames row, Famagusta and Kyrenia ship `CY`, all three with `indexSays: 'silent'`. What
+ * reached the `null` arm at revision 70 was Tokelau — **and it was there only because two
+ * abstentions outvoted the layer's one answer of `NZ`**, the same artefact that deleted the whole
+ * Cocos (Keeling) Islands territory. A-89 Part 5 sentence 3 demanded that any ruling taking that
+ * count to zero SAY so; **A-94 Part 3 is that ruling saying it**, and `gazetteerElection.test.ts`
+ * carries the three rows now shipping `NZ`.
  *
- * **Any future ruling that takes this count to zero is deleting the arm and must say so.**
+ * **What this test asserts instead is the arm's MECHANISM, because a count of zero is satisfied by
+ * deleting the arm** (A-94 Part 3 item 4) — which is the exact failure A-89 Part 5 sentence 3 was
+ * written against. The arm is **unoccupied, not unreachable**: `countryCode` is still
+ * `CountryCode | null`, and its **refusing** population is the 13 codeless rows below, each of
+ * which the layer does not contain and GeoNames gives no code — they keep `null`, meet clause 1
+ * and are published by name.
  *
- * **N6, injected: translate a codeless row the layer does not contain** → *"Lesser Antilles,
- * France"* ships and the golden's `bare-name` group shrinks.
+ * **N3, injected: make a codeless row's abstention elect a parent anyway** → *"Lesser Antilles,
+ * France"* ships and this group drops below 13.
  */
-test('R67-4: exactly the three Tokelau rows ship countryCode: null, each with a region', () => {
-  const nulls = whole().rows.filter((r) => r.countryCode === null);
+test('A-94 Part 3: the null arm\'s REFUSING population is the 13 codeless rows, by name', () => {
+  const doc = JSON.parse(readFileSync(resolve(GOLDEN, 'gazetteer-refusals.json'), 'utf8')) as {
+    refusals: Array<{ id: string; name: string; statedCode: string | null; reason: string }>;
+  };
+  const codeless = doc.refusals.filter((r) => r.statedCode === null);
   assert.deepEqual(
-    [...new Set(nulls.map((r) => r.name))].sort(),
-    ['Atafu Village', 'Fale old settlement', 'Nukunonu'],
-    'the population of the null arm moved',
+    codeless.map((r) => r.name).sort(),
+    [
+      'Channel Islands', 'French West Indies', 'Greater Antilles', 'Greater Sunda Islands',
+      'Lesser Antilles', 'Loaita Island', 'Lucayan Archipelago', 'Robert Island',
+      'Sin Cowe Island', 'Southwest Cay', 'Virgin Islands', 'Windward Islands', 'Woody Island',
+    ],
+    'the codeless refusal population moved. A-89 Part 5 sentence 1: a row the layer does not ' +
+      'contain keeps countryCode null and meets A-83 Part 9 clause 1 — ocean features and ' +
+      'multi-country archipelagos, not the Somaliland towns A-84 Part 5 was written against.',
   );
-  const bare = nulls.filter((r) => r.admin1 === '').map((r) => r.name);
-  assert.deepEqual(bare, [], 'a null-country row carries no region and would render as a bare name');
+  assert.deepEqual(
+    codeless.filter((r) => r.reason !== 'bare-name').map((r) => `${r.id} ${r.name} ${r.reason}`),
+    [],
+    'a codeless refusal stopped carrying reason bare-name',
+  );
 });
 
 /** A-89 Part 5 sentence 2, as a positive: the three rows the withdrawn example named do ship. */

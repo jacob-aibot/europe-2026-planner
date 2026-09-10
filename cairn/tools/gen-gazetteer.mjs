@@ -121,11 +121,11 @@ import {
   readdirSync,
   readFileSync,
   readSync,
-  rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { writeCorpusAtomically } from './corpus-write.mjs';
 import { createInflateRaw } from 'node:zlib';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -141,6 +141,7 @@ const PARENTS_OUT = resolve(CAIRN, 'fixtures/golden/gazetteer-parents.json');
 const PROBES_OUT = resolve(CAIRN, 'fixtures/golden/gazetteer-probes.json');
 const REFUSALS_OUT = resolve(CAIRN, 'fixtures/golden/gazetteer-refusals.json');
 const SOURCE_LOG_OUT = resolve(CAIRN, 'fixtures/golden/gazetteer-source-log.json');
+const MANIFEST_OUT = resolve(CAIRN, 'fixtures/golden/gazetteer-manifest.json');
 
 // ---------------------------------------------------------------- the pins
 
@@ -397,9 +398,16 @@ async function main() {
     fetched[name] = got;
   }
   const moved = Object.entries(fetched).filter(([, g]) => g.moved).map(([name]) => name);
-  if (flag('repin') && moved.length === 0) {
+  const repin = flag('repin');
+  if (repin && moved.length === 0) {
     console.log('--repin: no source moved — this run is an ordinary regeneration.');
   }
+  // **The source log is READ AND VERIFIED HERE — before the build, before any write** (§8.4 A-94
+  // Part 5 clause 3, QA R68-3). A run that cannot read it stops and reports, and stopping here
+  // rather than at the write means it stops in seconds and the corpus on disk is untouched.
+  const sourceLog = readSourceLog();
+  console.log(`source log: ${sourceLog.entries.length} entries, verified` +
+    `${repin ? ' — --repin, so this run may append to it' : ' — NOT written (no --repin)'}`);
   const { countryOf, COUNTRY_INDEX } = await import('../packages/core/src/index.ts');
   const draws = new Set(COUNTRY_INDEX.countries.map((c) => c.code));
   console.log(`the shipped index draws ${draws.size} country codes at scale ${COUNTRY_INDEX.scale}`);
@@ -453,9 +461,11 @@ async function main() {
   // to diff against, and after `write()` there is no previous corpus on disk. A fresh clone at a
   // re-pin commit has one only because git does.
   const diff = corpusDiff(built);
+  gateNamedSet(diff);
 
   write(docs, built);
-  writeSourceLog(fetched, moved);
+  writeManifest(corpusSha);
+  if (repin) writeSourceLog(sourceLog, fetched, moved);
   reportCorpusDiff(diff, moved.length > 0);
   writeDisagreements(built, corpusSha);
   writeParents(built, corpusSha);
@@ -882,21 +892,68 @@ async function build(cacheDir, { countryOf, index, draws }) {
     const hit = admin0.locate(r.lng, r.lat);
     located.set(r.gid, hit);
     if (hit.via === 'nearest' && hit.degrees > maxNearest) maxNearest = hit.degrees;
-    let counts = perCode.get(r.stated);
-    if (counts === undefined) { counts = new Map(); perCode.set(r.stated, counts); }
-    const key = hit.code ?? '';
-    counts.set(key, (counts.get(key) ?? 0) + 1);
+    let ballot = perCode.get(r.stated);
+    if (ballot === undefined) {
+      ballot = { answers: new Map(), noIsoCode: 0, abstain: 0, candidates: 0 };
+      perCode.set(r.stated, ballot);
+    }
+    ballot.candidates += 1;
+    // **AN ABSTENTION IS NOT A VOTE** — §8.4 **A-94** Part 2 (QA R68-1), amending A-84 Part 5
+    // step 1 / A-89 Part 4.
+    //
+    // This line used to read `const key = hit.code ?? ''` and the plurality below was taken over
+    // every key including `''`. That counted *"the layer has no opinion about this row"* as a vote
+    // for *"this row has no country"* — and **it deleted an entire inhabited territory**. The
+    // layer carries no feature spelled `CC`; it carries `Indian Ocean Territories`
+    // (`ISO_A2 = -99`, `ISO_A2_EH = AU`, `SOV_A3 = AU1`, `SOVEREIGNT = Australia`) whose polygons
+    // ARE the Cocos atolls. `West Island` (0.0023°) and `South Island` (0.0059°) fall inside the
+    // tolerance and answer `AU`; `Bantam Village` (0.0501°), `Horsburgh Island` (0.0510°) and
+    // `Cocos Islands` (0.1267°) miss it. `null:3 AU:2` → `CC → null` → all five ship
+    // `countryCode: null` with no region → **A-83 Part 9 clause 1 refuses all five as bare
+    // names**, and `west island`, the territory's capital, returned NO MATCH. Two of those three
+    // silences are **one ten-thousandth of a degree** — about eleven metres of coastline
+    // generalisation at 1:10m — from the feature that contains their neighbours.
+    //
+    // The tie-break made it worse rather than better: `''` sorts first, so on a tie the silence
+    // also won.
+    //
+    // **A row the layer neither contains nor places within the tolerance contributes NOTHING.**
+    // It is not a vote for `null`; it is the layer declining to answer. A code ALL of whose
+    // candidate rows abstain still has no modal parent and its rows still ship `null` — the arm
+    // is unoccupied on this corpus, not deleted (A-94 Part 3).
+    //
+    // A row the layer DOES contain inside a feature it gives no ISO code (`ISO_A2_EH = -99`:
+    // Somaliland, Northern Cyprus) is a different thing again — an **answer**, and one that cannot
+    // be a parent. It is counted, published as `noIsoCode`, and it wins nothing, because the
+    // plurality below only elects a code the shipped index can draw.
+    if (hit.via === 'none') ballot.abstain += 1;
+    else if (hit.code === null) ballot.noIsoCode += 1;
+    else ballot.answers.set(hit.code, (ballot.answers.get(hit.code) ?? 0) + 1);
   }
   const codeParent = {};
+  const codeTally = {};
   for (const code of [...perCode.keys()].sort()) {
-    const counts = perCode.get(code);
-    const [best] = [...counts].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
-    codeParent[code] = best[0] !== '' && draws.has(best[0]) ? best[0] : null;
+    const ballot = perCode.get(code);
+    // The plurality is over the ANSWERS. **A tie is broken by the lowest ISO code**, which is a
+    // rule rather than an accident of `Map` order — and it is A-94 Part 9 fault 3: no shipped row
+    // moves on this corpus if it is inverted, and the published tally is how anybody would know.
+    const ranked = [...ballot.answers].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
+    const best = ranked.length > 0 ? ranked[0][0] : null;
+    codeParent[code] = best !== null && draws.has(best) ? best : null;
+    codeTally[code] = {
+      parent: codeParent[code],
+      answers: Object.fromEntries(ranked),
+      noIsoCode: ballot.noIsoCode,
+      abstain: ballot.abstain,
+      candidates: ballot.candidates,
+    };
   }
   console.log(`  parent of each undrawable code, from the layer's own ISO_A2_EH:`);
-  for (const [code, parent] of Object.entries(codeParent)) {
-    const counts = [...perCode.get(code)].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
-    console.log(`    ${code} -> ${parent ?? 'null'}   ${counts.map(([c, n]) => `${c || 'null'}:${n}`).join(' ')}`);
+  console.log(`  (the plurality is over ANSWERS; an abstention is not a vote — A-94 Part 2)`);
+  for (const [code, t] of Object.entries(codeTally)) {
+    const answers = Object.entries(t.answers).map(([c, n]) => `${c}:${n}`).join(' ');
+    console.log(`    ${code} -> ${t.parent ?? 'null'}   ${answers || '(no answer)'}` +
+      `${t.noIsoCode ? ` noIsoCode:${t.noIsoCode}` : ''} abstain:${t.abstain} of ${t.candidates}`);
   }
   console.log(`  coastal tolerance actually used: ${maxNearest.toFixed(4)}° of ${NEAREST_TOLERANCE}°`);
 
@@ -1172,7 +1229,7 @@ async function build(cacheDir, { countryOf, index, draws }) {
   return {
     rows: shipped, admin1, admin1At, countryNames,
     parents, disagreements, census, refusedRows, keptByS, keptByPC, sovereignUsed, classPExempt,
-    clause4, atOrigin, codeParent, sovereignPairs: admin0.sovereignPairs,
+    clause4, atOrigin, codeParent, codeTally, sovereignPairs: admin0.sovereignPairs,
     stats: { candidates: n, selected: nSelected, gates, translated, features, altRows, maxNearest },
   };
 }
@@ -1661,21 +1718,32 @@ function roundTrip(docs, built) {
 
 // ---------------------------------------------------------------- writing
 
+/**
+ * **The corpus is REPLACED, never deleted-then-written** — §8.4 **A-94** Part 6 / QA **R68-9**.
+ *
+ * This function used to `rmSync` every `.json` under the corpus directory and *then* write 963
+ * documents into the hole. **That directory is the artefact of record** (A-90 clause 1): nobody,
+ * including us, can rebuild it from source, so an interrupted run left an empty or partial corpus
+ * recoverable only from git — and `git checkout` is a recovery step, not a property of a tool.
+ *
+ * `tools/corpus-write.mjs` builds the new corpus in a sibling directory and swaps it in with two
+ * renames, so at every interruptible point one complete corpus is on disk. It is a separate module
+ * because **an injected fault has to be executable**: `packages/core/test/gazetteerArtefact.test.ts`
+ * imports it, throws from `beforeSwap`, and asserts the old corpus survived. That is `I-32`'s N8.
+ */
 function write(docs, built) {
-  mkdirSync(CORPUS_DIR, { recursive: true });
-  // A regeneration that shrinks the corpus must not leave last run's shards behind: a stale
-  // `.json` nobody imports is a file the budget test would still count.
-  for (const name of readdirSync(CORPUS_DIR)) {
-    if (name.endsWith('.json')) rmSync(join(CORPUS_DIR, name));
-  }
-  writeFileSync(join(CORPUS_DIR, 'meta.json'), docs.metaText);
-  for (const s of docs.shards) writeFileSync(join(CORPUS_DIR, s.file), s.text);
+  const files = [
+    { name: 'meta.json', text: docs.metaText },
+    ...docs.shards.map((s) => ({ name: s.file, text: s.text })),
+  ];
+  const swap = writeCorpusAtomically(CORPUS_DIR, files);
 
   const total = docs.shards.reduce((n, s) => n + s.bytes, 0) + docs.metaBytes;
   writeFileSync(SHARD_MAP, emitShardMap(docs, built, total));
 
   console.log('');
-  console.log(`wrote packages/core/src/geo/gazetteer/  (${docs.shards.length + 1} documents)`);
+  console.log(`wrote packages/core/src/geo/gazetteer/  (${docs.shards.length + 1} documents, ` +
+    `staged and swapped; ${swap.removed.length} stale document(s) dropped)`);
   console.log(`  meta.json      ${docs.metaBytes} bytes`);
   console.log(`  largest shard  ${docs.largest.bytes} bytes  "${docs.largest.key}"`);
   console.log(`  total          ${total} bytes`);
@@ -1866,6 +1934,66 @@ function decodeAll(meta, docs) {
 // ---------------------------------------------------------------- the goldens
 
 /**
+ * **`fixtures/golden/gazetteer-manifest.json` — a digest over the artefact's OWN BYTES**, §8.4
+ * **A-94** Part 6 item 2 (QA **R68-4**).
+ *
+ * The corpus was guarded off exactly one field: a length-preserving hand edit to a shipped row's
+ * **country code** is caught by the `indexSays` cross-check, and the same edit to its **population
+ * and coordinate** passed every test, the `CORPUS_BYTES` total and the row count. This is one
+ * sha256, row count and byte length **per shipped corpus file**, recomputed from disk by
+ * `packages/core/test/gazetteerArtefact.test.ts`.
+ *
+ * **It is a GOLDEN and deliberately not `meta.json`**: 967 hashes would add ~70 KB to a file every
+ * client fetches, which A-82's byte discipline forbids for a check no client performs.
+ *
+ * **What it does not claim.** The manifest lives in the same repository as the corpus, so it
+ * raises the cost of a silent edit from *one file* to *two files that must agree*; it does not
+ * make one impossible. **The guarantee is still A-90 clause 1's** — 967 reviewable, diffable
+ * documents in git, reviewed — and this is a tripwire under it, not a replacement for it.
+ *
+ * Called AFTER `write()`, and it hashes what is on disk rather than what was in memory: a digest
+ * of the bytes the generator meant to write would not be a digest of the artefact.
+ */
+function writeManifest(sha) {
+  const files = [];
+  for (const name of readdirSync(CORPUS_DIR).filter((n) => n.endsWith('.json')).sort()) {
+    const bytes = readFileSync(join(CORPUS_DIR, name));
+    const doc = JSON.parse(bytes.toString('utf8'));
+    files.push({
+      file: name,
+      bytes: bytes.length,
+      rows: Array.isArray(doc.r) ? doc.r.length : Number(doc.rows ?? 0),
+      sha256: createHash('sha256').update(bytes).digest('hex'),
+    });
+  }
+  const out = {
+    $generatedBy: 'cairn/tools/gen-gazetteer.mjs',
+    $source: ATTRIBUTION,
+    $sourceSha256: sha,
+    $fetched: FETCHED,
+    $what:
+      'One sha256, byte length and row count per document under ' +
+      'packages/core/src/geo/gazetteer/. ARCHITECTURE \u00a78.4 A-94 Part 6 (QA R68-4): the ' +
+      'artefact of record had no digest over its own bytes, so a length-preserving hand edit to ' +
+      "a shipped row's population and coordinate passed every test, the byte total and the row " +
+      'count — the corpus was guarded off ONE field (indexSays) and not the others. A test ' +
+      'recomputes this file from disk. It is a GOLDEN and NOT meta.json on purpose: 967 hashes ' +
+      'would be ~70 KB added to a document every client fetches, for a check no client performs. ' +
+      'IT DOES NOT MAKE A SILENT EDIT IMPOSSIBLE — it makes it cost two files that must agree. ' +
+      'The guarantee is still A-90 clause 1: 967 reviewable, diffable documents in git. rows is ' +
+      "the shard document's own row array length; for meta.json it is the corpus total meta " +
+      'declares.',
+    fileCount: files.length,
+    totalBytes: files.reduce((n, f) => n + f.bytes, 0),
+    totalRows: files.filter((f) => f.file !== 'meta.json').reduce((n, f) => n + f.rows, 0),
+    files,
+  };
+  writeFileSync(MANIFEST_OUT, `${JSON.stringify(out, null, 2)}\n`);
+  console.log(`wrote fixtures/golden/gazetteer-manifest.json  (${files.length} documents, ` +
+    `${out.totalBytes} bytes, ${out.totalRows} emitted rows)`);
+}
+
+/**
  * `fixtures/golden/gazetteer-disagreements.json` — the rows that **ship carrying a contradiction**.
  *
  * That is what *"no shipped row may SILENTLY contradict the index"* means in a file: the
@@ -1901,6 +2029,50 @@ function writeDisagreements(built, sha) {
 }
 
 /**
+ * **Read the committed source log, or STOP AND REPORT** — §8.4 **A-94** Part 5 clause 3 (QA
+ * **R68-3**), amending A-90 clause 3.
+ *
+ * This function used to be a bare `catch {}` inside `writeSourceLog`, on the ORDINARY write path:
+ * a run with no `--repin` and every checksum matching **re-seeded the log** whenever the file was
+ * missing, empty or unparseable, and reported *"5 appended, 5 total"*. A-90 Part 5 residue 2
+ * predicted a golden regeneration would destroy the history; what actually destroys it is an
+ * ordinary corpus build, which is worse, because nobody reviewing that commit is looking at the
+ * supply chain.
+ *
+ * **A missing, empty or unparseable log is a FINDING, not a condition to repair silently.** The
+ * artefact of record is incomplete and the run stops, writing nothing. Seeding happened once, in
+ * the increment that created the file, and never again.
+ */
+function readSourceLog() {
+  const stop = (why) => new Error(
+    `${why}\n  fixtures/golden/gazetteer-source-log.json is the record of what this corpus was ` +
+    'built from, and §8.4 A-94 Part 5 clause 3 says a run that cannot read it STOPS AND REPORTS, ' +
+    'writing nothing. It is NEVER re-seeded: a self-describing file cannot witness its own ' +
+    'history, and the append-only witness is a prefix literal in packages/core/test/ that this ' +
+    'generator does not write. Restore the file from git.',
+  );
+  let text;
+  try {
+    text = readFileSync(SOURCE_LOG_OUT, 'utf8');
+  } catch {
+    throw stop('the source log is MISSING.');
+  }
+  let log;
+  try {
+    log = JSON.parse(text);
+  } catch (err) {
+    throw stop(`the source log does not parse: ${err.message}.`);
+  }
+  if (!Array.isArray(log.entries) || log.entries.length === 0) throw stop('the source log is EMPTY.');
+  for (const e of log.entries) {
+    if (typeof e?.source !== 'string' || !/^[0-9a-f]{64}$/.test(e?.sha256 ?? '')) {
+      throw stop(`the source log carries a malformed entry: ${JSON.stringify(e)}.`);
+    }
+  }
+  return log;
+}
+
+/**
  * **`fixtures/golden/gazetteer-source-log.json` — A-90 clause 3, and it is APPEND-ONLY.**
  *
  * One entry per source per run that moved it: `{fetched, source, bytes, sha256, previousSha256}`.
@@ -1909,28 +2081,33 @@ function writeDisagreements(built, sha) {
  * review was a sentence in a build note and **+15 shipped rows** was drift nobody could see in a
  * golden.
  *
- * **Append-only is a property a TEST asserts, not a comment at the top of the file** (A-90 Part 5
- * residue 2 — `npm run golden` regenerates goldens, and the first person to regenerate this one
- * truncates the history). The file is read, the new entries are appended, and each entry's
- * `previousSha256` chains to the previous entry for the same source, so the chain is checkable
- * from the file alone; `packages/core/test/gazetteerMultiCountry.test.ts` walks it.
+ * **⚠ AMENDED AT REVISION 72 — §8.4 A-94 Part 5, QA R68-3.** This is called **only** under
+ * `--repin`, and it appends to a log `readSourceLog` has already read and verified. Two things
+ * that were here are gone: the seed branch, and the claim that the `previousSha256` chain is the
+ * append-only witness. **The chain is provenance** — it says which bytes an entry replaced — and a
+ * self-describing file cannot witness its own history: every truncation and every rewrite
+ * produces a *consistent* file. The chain was green for a tail truncation, green for a heads-only
+ * rewrite (byte-for-byte what the re-seed produced) and vacuous at five entries and zero links.
+ * **The witness is a prefix literal in `packages/core/test/gazetteerArtefact.test.ts`, which this
+ * generator does not write** — and extending it is part of the same reviewed commit as the re-pin.
  *
  * A run in which nothing moved appends nothing. The log records **movements**, not runs.
  */
-function writeSourceLog(fetched, moved) {
-  let log = { $generatedBy: 'cairn/tools/gen-gazetteer.mjs --repin', $what: '', entries: [] };
-  try {
-    log = JSON.parse(readFileSync(SOURCE_LOG_OUT, 'utf8'));
-  } catch { /* first write */ }
+function writeSourceLog(log, fetched, moved) {
   log.$what =
     'APPEND-ONLY. One entry per source per re-pin: what this corpus was built from, what it was ' +
     'built from before, and the byte length beside the hash so a mismatch can be DIAGNOSED rather ' +
-    'than merely detected. ARCHITECTURE \u00a78.4 A-90 clause 3. $sourceSha256 RECORDS a build\'s ' +
-    'inputs; it does NOT pin bytes anyone can obtain again — GeoNames rebuilds every dump daily, ' +
-    'retains one day of modifications/deletes and archives nothing, so THIS CORPUS CANNOT BE ' +
-    'REBUILT FROM SOURCE by anybody, including us. A re-pin is an explicit --repin run and must ' +
-    'publish this file AND a row-level corpus diff in the SAME COMMIT. Never truncate this array; ' +
-    'a test walks the previousSha256 chain and reddens if a link is missing.';
+    'than merely detected. ARCHITECTURE \u00a78.4 A-90 clause 3, AMENDED by A-94 Part 5 (QA ' +
+    'R68-3). $sourceSha256 RECORDS a build\'s inputs; it does NOT pin bytes anyone can obtain ' +
+    'again — GeoNames rebuilds every dump daily, retains one day of modifications/deletes and ' +
+    'archives nothing, so THIS CORPUS CANNOT BE REBUILT FROM SOURCE by anybody, including us. ' +
+    'THIS FILE IS WRITTEN ONLY UNDER --repin AND IS NEVER RE-SEEDED: an ordinary run that finds ' +
+    'it missing, empty or unparseable STOPS AND REPORTS. A re-pin publishes this file AND a ' +
+    'row-level corpus diff in the SAME COMMIT. previousSha256 is PROVENANCE — it says which bytes ' +
+    'an entry replaced — and it is NOT the append-only witness: a self-describing file cannot ' +
+    'witness its own history, because every truncation and every rewrite leaves a consistent ' +
+    'chain. THE WITNESS IS A PREFIX LITERAL IN packages/core/test/gazetteerArtefact.test.ts, ' +
+    'which the generator does not write, and extending it is part of the reviewed re-pin commit.';
 
   const last = new Map();
   for (const e of log.entries) last.set(e.source, e.sha256);
@@ -1946,14 +2123,8 @@ function writeSourceLog(fetched, moved) {
     });
     appended += 1;
   }
-  // The first write seeds the chain for every source, so the log describes the whole corpus and
-  // not only the sources that happened to move on the day it was created.
-  if (log.entries.length === 0) {
-    for (const [source, got] of Object.entries(fetched)) {
-      log.entries.push({ fetched: FETCHED, source, bytes: got.bytes, sha256: got.sha, previousSha256: null });
-      appended += 1;
-    }
-  }
+  // **No seed branch.** It used to sit here, and it is A-94 Part 9 fault 4: a run that finds the
+  // log empty must stop, not fill it in. `readSourceLog` has already refused an empty file.
   writeFileSync(SOURCE_LOG_OUT, `${JSON.stringify(log, null, 2)}\n`);
   console.log(`wrote fixtures/golden/gazetteer-source-log.json  (${appended} appended, ${log.entries.length} total)`);
 }
@@ -1997,6 +2168,66 @@ function corpusDiff(built) {
   const by = (a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : a.id < b.id ? -1 : 1);
   added.sort(by); removed.sort(by); changed.sort(by);
   return { added, removed, changed };
+}
+
+/**
+ * **§8.4 A-94 Part 10 / ROADMAP `I-32` — the named set, and it is a CAP OF ZERO in either
+ * direction** (§0 position 12 (a)/(c), sequencing rule 12).
+ *
+ * A-94 moves **eight rows and nothing else in 149,085**, and it says which eight, by GeoNames id:
+ * five that begin shipping because `CC → AU`, and three whose `countryCode` goes `null → NZ`
+ * because `TK → NZ`. **The scope is provable from the repository without running anything**:
+ * `codeParent` has twelve entries, exactly two are `null`, and dropping abstentions cannot reorder
+ * the answers of the other ten — removing a key from a plurality does not change the ranking of
+ * the keys that remain.
+ *
+ * So a row moving that is not one of these eight means the election change reached further than
+ * the ruling measured, and **that is a stop-and-report, writing nothing** — not a golden update.
+ * `I-29` is the worked example of why this is a named set and not a threshold: its condition was
+ * *"anything over 100,000 people"*, which fired correctly and could not have seen an 829-person
+ * capital.
+ *
+ * The gate is an **upper bound**, deliberately: a re-run against the corpus this increment commits
+ * produces an empty diff, and an empty diff is not a failure.
+ */
+const A94_NAMED_SET = new Map([
+  ['gn:x5xz', 'West Island (CC, begins shipping AU)'],
+  ['gn:x5yu', 'Bantam Village (CC, begins shipping AU)'],
+  ['gn:x5y5', 'South Island (CC, begins shipping AU)'],
+  ['gn:x5yj', 'Horsburgh Island (CC, begins shipping AU)'],
+  ['gn:x5xw', 'Cocos Islands (CC, begins shipping AU)'],
+  ['gn:4h85j', 'Atafu Village (TK, null -> NZ)'],
+  ['gn:2eefa', 'Fale old settlement (TK, null -> NZ)'],
+  ['gn:4h85h', 'Nukunonu (TK, null -> NZ)'],
+]);
+
+function gateNamedSet(diff) {
+  if (diff === null) return;
+  const outside = [
+    ...diff.added.filter((r) => !A94_NAMED_SET.has(r.id)).map((r) => `+ ${r.id} ${r.name}`),
+    ...diff.removed.filter((r) => !A94_NAMED_SET.has(r.id)).map((r) => `- ${r.id} ${r.name}`),
+    ...diff.changed.filter((r) => !A94_NAMED_SET.has(r.id)).map((r) => `~ ${r.id} ${r.name} (${r.was ?? 'null'} -> ${r.now ?? 'null'})`),
+  ];
+  const moved = [...diff.added, ...diff.removed, ...diff.changed].filter((r) => A94_NAMED_SET.has(r.id));
+  console.log('');
+  console.log(`  A-94 Part 10 — the named set: ${moved.length} of ${A94_NAMED_SET.size} named rows moved, ` +
+    `${outside.length} rows moved outside it.`);
+  for (const [id, what] of A94_NAMED_SET) {
+    const hit = moved.find((r) => r.id === id);
+    console.log(`    ${hit ? 'moved  ' : 'unmoved'} ${id}  ${what}`);
+  }
+  if (outside.length) {
+    console.log('');
+    console.log('  !! ROADMAP I-32 / A-94 Part 10 STOP-AND-REPORT — the corpus diff reaches outside the');
+    console.log('     eight rows A-94 commits by GeoNames id. Writing nothing.');
+    for (const line of outside.slice(0, 40)) console.log(`       ${line}`);
+    throw new Error(
+      `${outside.length} row(s) moved outside A-94 Part 10's named set of eight. STOP AND REPORT, ` +
+        'writing nothing. A-94 Part 1 measures the scope of this change as exactly two stated ' +
+        'codes (CC, TK); a third code moving means the election change reached further than the ' +
+        'ruling measured, and that is a finding for the architect, not a golden update.',
+    );
+  }
 }
 
 function reportCorpusDiff(diff, isRepin) {
@@ -2055,6 +2286,50 @@ function buildRefusals(built) {
   return { total: refusals.length, byReason, refusals };
 }
 
+/**
+ * **A-94 Part 6 (b) / KD-127 — the four audit numbers, in a GOLDEN rather than in a `console.log`
+ * a test greps the generator's source for.**
+ *
+ * `I-31` asserted these four against the generator's **source text**, which catches a deleted or
+ * renamed line and **cannot catch a line printing a wrong number**. They are numbers only a
+ * 625 MB run can produce, and A-90 clause 1 forbids a test that needs the run — so the run writes
+ * them into the artefact the offline tests read.
+ *
+ * **Every number here is derived from the list beside it**, exactly as `buildRefusals` derives
+ * `byReason` from the array it writes: `classPExempt.rows` is the sum of its own groups, and the
+ * pair count is the length of the named pairs. A count in a header that no file can be checked
+ * against is a census with no denominator (§0 position 10a), one artefact out — and it is what
+ * makes A-94 Part 9 fault 7 (print a wrong number in one audit line) reddens a test rather than
+ * scrolling past.
+ */
+function buildAudit(built) {
+  const groups = new Map();
+  for (const r of built.classPExempt) groups.set(r.key, (groups.get(r.key) ?? 0) + 1);
+  const list = [...groups]
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+    .map(([key, rows]) => ({ key, rows }));
+  return {
+    $what:
+      'The four numbers A-93 Part 3 requires the generator to PUBLISH on every run, written here ' +
+      'because they are numbers only a 625 MB generator run can produce and ARCHITECTURE §8.4 ' +
+      'A-90 clause 1 forbids a test that needs the run (§8.4 A-94 Part 6, BUILD-NOTES KD-127). ' +
+      'keptByS: rows kept ONLY by subtracting the row\'s own stated code S. keptByPC: rows kept ' +
+      'ONLY by P(C) beyond P(S). Both are predicted EMPTY and both stay in the rule, because the ' +
+      'rule says "neither the country it states, nor the country we attribute it to, nor the ' +
+      'sovereign of either" — a non-zero list is a result to report, a missing list is the ' +
+      'failure. sovereignPairsUsed: the c -> P(c) pairs clause 4 actually consulted, of the ' +
+      'sovereignPairsAvailable the pinned layer names; a politically loaded pair becoming ' +
+      'load-bearing arrives as a diff here. classPExempt: the class-P rows whose cc2 names a ' +
+      'foreign country and which A-93 Part 3(a) exempts — NOT a claim that their attribution is ' +
+      'right, only that this ruling does not touch it. rows IS the sum of groups.',
+    keptByS: [...built.keptByS],
+    keptByPC: [...built.keptByPC],
+    sovereignPairsUsed: [...built.sovereignUsed].sort(),
+    sovereignPairsAvailable: built.sovereignPairs.size,
+    classPExempt: { rows: list.reduce((n, g) => n + g.rows, 0), groups: list },
+  };
+}
+
 function writeRefusals(built, sha) {
   const { total, byReason, refusals } = buildRefusals(built);
   const out = {
@@ -2075,9 +2350,12 @@ function writeRefusals(built, sha) {
       'below and the generated header is handed this object, not a second count beside it. ' +
       'cc2 is allCountries column 10 verbatim, uppercased and sorted; it is NOT validated ' +
       'against countryInfo.txt (A-89 Part 8 residue 3). NO COORDINATES: a refused row is not a ' +
-      'row the corpus makes a claim about.',
+      'row the corpus makes a claim about. audit carries A-93 Part 3\'s four published numbers ' +
+      '(§8.4 A-94 Part 6, KD-127): they belong in an artefact the offline tests read, not in a ' +
+      'console line nobody can re-run.',
     total,
     byReason,
+    audit: buildAudit(built),
     refusals,
   };
   writeFileSync(REFUSALS_OUT, `${JSON.stringify(out, null, 2)}\n`);
@@ -2110,11 +2388,21 @@ function writeParents(built, sha) {
       'from: the containing feature\'s ISO_A2_EH in ne_10m_admin_0_countries at v5.1.2. A row ' +
       'whose containing feature has no ISO code (Somaliland, Northern Cyprus) ships ' +
       'shippedCode: null and is NEVER REFUSED — its name and region still label it. NO ' +
-      'COORDINATES: ids, names and codes only.',
+      'COORDINATES: ids, names and codes only. codeTally PUBLISHES THE ELECTION (§8.4 A-94 ' +
+      'Part 2, QA R68-1): per undrawable stated code, every answer the layer gave with its ' +
+      'count, the abstentions beside them, and the electorate they are drawn from. AN ' +
+      'ABSTENTION IS NOT A VOTE — a row the layer neither contains nor places within the 0.05° ' +
+      'tolerance contributes NOTHING to the plurality, a tie between answers breaks on the ' +
+      'lowest ISO code, and a code all of whose rows abstain has no parent and its rows ship ' +
+      'null. Counting the silences made CC -> null (null:3 AU:2) and deleted the whole Cocos ' +
+      '(Keeling) Islands territory from the picker via A-83 Part 9 clause 1; noIsoCode is a ' +
+      'THIRD thing — the layer contains the row inside a feature it gives no ISO code — which ' +
+      'is an answer and can never be a parent. candidates = answers + noIsoCode + abstain.',
     total: built.parents.length,
     translated: built.parents.length - nulls,
     shippedNull: nulls,
     codeParent: built.codeParent,
+    codeTally: built.codeTally,
     parents: built.parents,
   };
   writeFileSync(PARENTS_OUT, `${JSON.stringify(out, null, 2)}\n`);

@@ -76,7 +76,20 @@ const SHARD_MAP = join(GEO, 'gazetteerShards.gen.ts');
  * unchanged source bytes, so A-90's re-pin path is not entered and the source log gains no entry.
  * The shard count (962) and the largest shard (`br`, 94,630 bytes) are unchanged.
  */
-const CORPUS_BYTES = 8_748_083;
+/**
+ * **8,748,083 → 8,748,607 at I-32, and every one of the 524 bytes is EIGHT rows** — §8.4 **A-94**
+ * (QA **R68-1**): five that begin shipping and three whose country code changes. **An abstention
+ * is not a vote.** The parent election counted *"the layer has no opinion about this row"* as a
+ * vote for *"this row has no country"*, so three silences outvoted two answers, `CC → null`, and
+ * **the whole Cocos (Keeling) Islands territory shipped zero rows** — `west island`, its capital,
+ * returned NO MATCH. The plurality is now over the layer's **answers**: `CC → AU (AU:2,
+ * abstain:3)`, `TK → NZ (NZ:1, abstain:2)`, **149,085 → 149,090 rows** across 13 shard documents,
+ * and the full per-code tally is published in `fixtures/golden/gazetteer-parents.json`.
+ * **`$sourceSha256` did not move**: this is an election change over unchanged source bytes, so
+ * A-90's re-pin path is not entered and the source log gains no entry. The shard count (962) and
+ * the largest shard (`br`, 94,630 bytes) are unchanged.
+ */
+const CORPUS_BYTES = 8_748_607;
 
 /** A-83 Part 5 ceiling 1: **no single shard document may exceed 96 KiB raw.** */
 const SHARD_BUDGET = 96 * 1024;

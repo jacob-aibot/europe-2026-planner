@@ -32,27 +32,27 @@
  * Filter : **notability, not population** (A-83 Parts 1 and 3). Class `P`, or feature code
  *          `ISL`/`ISLS`; selected on `languages >= 4`, or a Wikipedia link with
  *          population >= 1000, or class P with population >= 20000.
- *          5401680 candidates → 149119 selected → 149085 shipped.
+ *          5401680 candidates → 149119 selected → 149090 shipped.
  *          QA round 60 measured the population-filtered predecessor at **21.5 %** of a
  *          171-destination travel corpus. Hallstatt has 779 residents and a million visitors a
  *          year; the filter was on the wrong axis.
- * Shards : 962 documents, 41 split prefixes, 201585 emitted rows
+ * Shards : 962 documents, 41 split prefixes, 201596 emitted rows
  *          (duplication 1.352×, the price of one-search-one-shard).
  *          Largest 94630 bytes ("br") against a 98304-byte budget;
- *          8748083 bytes committed in total. **The budget is the invariant and the
+ *          8748607 bytes committed in total. **The budget is the invariant and the
  *          width is whatever the budget requires** (A-83 Part 6).
  * Census : 139650 agree with countryOf · 2494 differ (shipped, marked) ·
- *          6941 silent. **Silence is not agreement** — §8.4 **A-84** Part 6: the field is
+ *          6946 silent. **Silence is not agreement** — §8.4 **A-84** Part 6: the field is
  *          `indexSays: 'agrees' | 'differs' | 'silent'`, because the boolean it replaces shipped
  *          all 436 index-silent rows claiming agreement. Every differing row is published with
  *          BOTH answers in `fixtures/golden/gazetteer-disagreements.json`; a row that would
  *          contradict the index without carrying that record is still REFUSED.
- * Parents: 151 rows carry a country code the shipped index cannot draw. Each is resolved
- *          against ne_10m_admin_0_countries' own `ISO_A2_EH` — 148 ship the containing
- *          feature's code, 3 ship `countryCode: null`. **No row is refused for
+ * Parents: 156 rows carry a country code the shipped index cannot draw. Each is resolved
+ *          against ne_10m_admin_0_countries' own `ISO_A2_EH` — 156 ship the containing
+ *          feature's code, 0 ship `countryCode: null`. **No row is refused for
  *          this**: Cairn does not adjudicate a sovereignty its own map cannot draw (A-84 Part 5).
  *          Published in `fixtures/golden/gazetteer-parents.json`.
- * Refused: 34 candidate rows, 18 bare-name · 0 unreadable · 0 delimiter · 16 multi-country. **Every one is named in
+ * Refused: 29 candidate rows, 13 bare-name · 0 unreadable · 0 delimiter · 16 multi-country. **Every one is named in
  *          `fixtures/golden/gazetteer-refusals.json` and these counts ARE that file's group
  *          sizes, read from it** (A-89 Part 3, QA R67-10) — a count in a header no file can be
  *          checked against is a census with no denominator. `bare-name` is A-83 Part 9 clause 1,

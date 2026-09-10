@@ -3,13 +3,256 @@
   "$source": "GeoNames geographical database (allCountries, alternateNamesV2, admin1CodesASCII, countryInfo), https://www.geonames.org/ — licensed CC BY 4.0, https://creativecommons.org/licenses/by/4.0/. Provided \"as is\", without any representation of accuracy, timeliness or completeness. Country outlines: Natural Earth ne_10m_admin_0_countries v5.1.2, public domain.",
   "$sourceSha256": "509364760a7a56a00e188736912f20f328cb44f2ba15fbfbbabc4e65ced18ffb",
   "$fetched": "2026-09-10",
-  "$what": "EVERY candidate row the generator REFUSED to ship, by name, with the reason. ARCHITECTURE §8.4 A-89 Part 3 (QA R67-10): A-83 Part 11 reused this filename for the disagreements, and from then on the refusals were published nowhere but as counts in a generated header — so \"a deliberate hole, countable, nameable and reviewable\" stopped being true of them. reason is drawn from a CLOSED set: bare-name (A-83 Part 9 clause 1 — no country and no region, so the label would be the name alone), unreadable (clause 2, or a name that folds to nothing), delimiter (A-83 Part 11 — a payload separator in a field), multi-country (clause 4, A-89 — cc2 names a country that is neither the row's stated code nor the code we would attribute it to). byReason IS the group sizes of the array below and the generated header is handed this object, not a second count beside it. cc2 is allCountries column 10 verbatim, uppercased and sorted; it is NOT validated against countryInfo.txt (A-89 Part 8 residue 3). NO COORDINATES: a refused row is not a row the corpus makes a claim about.",
-  "total": 34,
+  "$what": "EVERY candidate row the generator REFUSED to ship, by name, with the reason. ARCHITECTURE §8.4 A-89 Part 3 (QA R67-10): A-83 Part 11 reused this filename for the disagreements, and from then on the refusals were published nowhere but as counts in a generated header — so \"a deliberate hole, countable, nameable and reviewable\" stopped being true of them. reason is drawn from a CLOSED set: bare-name (A-83 Part 9 clause 1 — no country and no region, so the label would be the name alone), unreadable (clause 2, or a name that folds to nothing), delimiter (A-83 Part 11 — a payload separator in a field), multi-country (clause 4, A-89 — cc2 names a country that is neither the row's stated code nor the code we would attribute it to). byReason IS the group sizes of the array below and the generated header is handed this object, not a second count beside it. cc2 is allCountries column 10 verbatim, uppercased and sorted; it is NOT validated against countryInfo.txt (A-89 Part 8 residue 3). NO COORDINATES: a refused row is not a row the corpus makes a claim about. audit carries A-93 Part 3's four published numbers (§8.4 A-94 Part 6, KD-127): they belong in an artefact the offline tests read, not in a console line nobody can re-run.",
+  "total": 29,
   "byReason": {
-    "bare-name": 18,
+    "bare-name": 13,
     "unreadable": 0,
     "delimiter": 0,
     "multi-country": 16
+  },
+  "audit": {
+    "$what": "The four numbers A-93 Part 3 requires the generator to PUBLISH on every run, written here because they are numbers only a 625 MB generator run can produce and ARCHITECTURE §8.4 A-90 clause 1 forbids a test that needs the run (§8.4 A-94 Part 6, BUILD-NOTES KD-127). keptByS: rows kept ONLY by subtracting the row's own stated code S. keptByPC: rows kept ONLY by P(C) beyond P(S). Both are predicted EMPTY and both stay in the rule, because the rule says \"neither the country it states, nor the country we attribute it to, nor the sovereign of either\" — a non-zero list is a result to report, a missing list is the failure. sovereignPairsUsed: the c -> P(c) pairs clause 4 actually consulted, of the sovereignPairsAvailable the pinned layer names; a politically loaded pair becoming load-bearing arrives as a diff here. classPExempt: the class-P rows whose cc2 names a foreign country and which A-93 Part 3(a) exempts — NOT a claim that their attribution is right, only that this ruling does not touch it. rows IS the sum of groups.",
+    "keptByS": [],
+    "keptByPC": [],
+    "sovereignPairsUsed": [
+      "AX->FI",
+      "FO->DK",
+      "GG->GB",
+      "JE->GB",
+      "NF->AU",
+      "TF->FR"
+    ],
+    "sovereignPairsAvailable": 41,
+    "classPExempt": {
+      "rows": 139,
+      "groups": [
+        {
+          "key": "FO+DK",
+          "rows": 16
+        },
+        {
+          "key": "AX+FI",
+          "rows": 15
+        },
+        {
+          "key": "AR+AQ",
+          "rows": 11
+        },
+        {
+          "key": "EH+MA",
+          "rows": 8
+        },
+        {
+          "key": "PS+IL",
+          "rows": 6
+        },
+        {
+          "key": "IM+GB",
+          "rows": 5
+        },
+        {
+          "key": "AQ+RU",
+          "rows": 4
+        },
+        {
+          "key": "AR+AQ,CL",
+          "rows": 4
+        },
+        {
+          "key": "CN+MO",
+          "rows": 4
+        },
+        {
+          "key": "AQ+AU",
+          "rows": 3
+        },
+        {
+          "key": "AQ+CN",
+          "rows": 3
+        },
+        {
+          "key": "AZ+AM",
+          "rows": 3
+        },
+        {
+          "key": "JE+GB",
+          "rows": 3
+        },
+        {
+          "key": "MA+EH",
+          "rows": 3
+        },
+        {
+          "key": "AQ+AR",
+          "rows": 2
+        },
+        {
+          "key": "AQ+CL",
+          "rows": 2
+        },
+        {
+          "key": "AQ+IN",
+          "rows": 2
+        },
+        {
+          "key": "AR+AQ,ES",
+          "rows": 2
+        },
+        {
+          "key": "AR+AQ,UY",
+          "rows": 2
+        },
+        {
+          "key": "NU+NZ",
+          "rows": 2
+        },
+        {
+          "key": "RU+JP",
+          "rows": 2
+        },
+        {
+          "key": "SY+IL",
+          "rows": 2
+        },
+        {
+          "key": "TF+FR",
+          "rows": 2
+        },
+        {
+          "key": "AQ+DE",
+          "rows": 1
+        },
+        {
+          "key": "AQ+FI",
+          "rows": 1
+        },
+        {
+          "key": "AQ+JP",
+          "rows": 1
+        },
+        {
+          "key": "AQ+KR",
+          "rows": 1
+        },
+        {
+          "key": "AQ+NO",
+          "rows": 1
+        },
+        {
+          "key": "AQ+PE",
+          "rows": 1
+        },
+        {
+          "key": "AQ+RO",
+          "rows": 1
+        },
+        {
+          "key": "AQ+US",
+          "rows": 1
+        },
+        {
+          "key": "AQ+ZA",
+          "rows": 1
+        },
+        {
+          "key": "AR+AQ,BR",
+          "rows": 1
+        },
+        {
+          "key": "AR+AQ,CN",
+          "rows": 1
+        },
+        {
+          "key": "AR+AQ,CZ",
+          "rows": 1
+        },
+        {
+          "key": "AR+AQ,EC",
+          "rows": 1
+        },
+        {
+          "key": "AR+AQ,KR",
+          "rows": 1
+        },
+        {
+          "key": "AR+AQ,PL",
+          "rows": 1
+        },
+        {
+          "key": "AR+AQ,RU",
+          "rows": 1
+        },
+        {
+          "key": "AR+AQ,UA,UK",
+          "rows": 1
+        },
+        {
+          "key": "AR+AQ,US",
+          "rows": 1
+        },
+        {
+          "key": "BL+FR",
+          "rows": 1
+        },
+        {
+          "key": "CK+NZ",
+          "rows": 1
+        },
+        {
+          "key": "CN+VN",
+          "rows": 1
+        },
+        {
+          "key": "CZ+DE",
+          "rows": 1
+        },
+        {
+          "key": "EH+MR",
+          "rows": 1
+        },
+        {
+          "key": "FR+CH",
+          "rows": 1
+        },
+        {
+          "key": "GG+GB",
+          "rows": 1
+        },
+        {
+          "key": "GS+GB",
+          "rows": 1
+        },
+        {
+          "key": "IL+SY",
+          "rows": 1
+        },
+        {
+          "key": "IT+CH",
+          "rows": 1
+        },
+        {
+          "key": "MF+FR",
+          "rows": 1
+        },
+        {
+          "key": "NF+AU",
+          "rows": 1
+        },
+        {
+          "key": "SY+TR",
+          "rows": 1
+        },
+        {
+          "key": "VA+IT",
+          "rows": 1
+        },
+        {
+          "key": "XK+AL",
+          "rows": 1
+        }
+      ]
+    }
   },
   "refusals": [
     {
@@ -58,17 +301,6 @@
       "reason": "multi-country"
     },
     {
-      "id": "gn:x5yu",
-      "name": "Bantam Village",
-      "statedCode": "CC",
-      "shippedCode": null,
-      "admin1": "",
-      "cc2": [],
-      "cls": "P",
-      "population": 500,
-      "reason": "bare-name"
-    },
-    {
       "id": "gn:zbpw",
       "name": "Borneo",
       "statedCode": "ID",
@@ -96,17 +328,6 @@
       ],
       "cls": "T",
       "population": 158000,
-      "reason": "bare-name"
-    },
-    {
-      "id": "gn:x5xw",
-      "name": "Cocos Islands",
-      "statedCode": "CC",
-      "shippedCode": null,
-      "admin1": "",
-      "cc2": [],
-      "cls": "T",
-      "population": 0,
       "reason": "bare-name"
     },
     {
@@ -211,17 +432,6 @@
       "cls": "T",
       "population": 21107000,
       "reason": "multi-country"
-    },
-    {
-      "id": "gn:x5yj",
-      "name": "Horsburgh Island",
-      "statedCode": "CC",
-      "shippedCode": null,
-      "admin1": "",
-      "cc2": [],
-      "cls": "T",
-      "population": 0,
-      "reason": "bare-name"
     },
     {
       "id": "gn:2a6oh",
@@ -378,17 +588,6 @@
       "reason": "bare-name"
     },
     {
-      "id": "gn:x5y5",
-      "name": "South Island",
-      "statedCode": "CC",
-      "shippedCode": null,
-      "admin1": "",
-      "cc2": [],
-      "cls": "T",
-      "population": 0,
-      "reason": "bare-name"
-    },
-    {
       "id": "gn:1313l",
       "name": "Southwest Cay",
       "statedCode": null,
@@ -453,17 +652,6 @@
       ],
       "cls": "T",
       "population": 0,
-      "reason": "bare-name"
-    },
-    {
-      "id": "gn:x5xz",
-      "name": "West Island",
-      "statedCode": "CC",
-      "shippedCode": null,
-      "admin1": "",
-      "cc2": [],
-      "cls": "T",
-      "population": 120,
       "reason": "bare-name"
     },
     {

@@ -3,23 +3,134 @@
   "$source": "GeoNames geographical database (allCountries, alternateNamesV2, admin1CodesASCII, countryInfo), https://www.geonames.org/ — licensed CC BY 4.0, https://creativecommons.org/licenses/by/4.0/. Provided \"as is\", without any representation of accuracy, timeliness or completeness. Country outlines: Natural Earth ne_10m_admin_0_countries v5.1.2, public domain.",
   "$sourceSha256": "509364760a7a56a00e188736912f20f328cb44f2ba15fbfbbabc4e65ced18ffb",
   "$fetched": "2026-09-10",
-  "$what": "Every shipped row whose SOURCE-STATED country code is not one COUNTRY_INDEX can draw — the empty code included — with the code it ships instead. ARCHITECTURE §8.4 A-84 Part 5 (QA R61-3): A-29 step 4 refused these codes on the stated ground that \"the coordinate attribution already answers the parent\", and for six of the eight codes it names the coordinate answers NOTHING. The parent is instead read from the dataset the index is cut from: the containing feature's ISO_A2_EH in ne_10m_admin_0_countries at v5.1.2. A row whose containing feature has no ISO code (Somaliland, Northern Cyprus) ships shippedCode: null and is NEVER REFUSED — its name and region still label it. NO COORDINATES: ids, names and codes only.",
-  "total": 151,
-  "translated": 148,
-  "shippedNull": 3,
+  "$what": "Every shipped row whose SOURCE-STATED country code is not one COUNTRY_INDEX can draw — the empty code included — with the code it ships instead. ARCHITECTURE §8.4 A-84 Part 5 (QA R61-3): A-29 step 4 refused these codes on the stated ground that \"the coordinate attribution already answers the parent\", and for six of the eight codes it names the coordinate answers NOTHING. The parent is instead read from the dataset the index is cut from: the containing feature's ISO_A2_EH in ne_10m_admin_0_countries at v5.1.2. A row whose containing feature has no ISO code (Somaliland, Northern Cyprus) ships shippedCode: null and is NEVER REFUSED — its name and region still label it. NO COORDINATES: ids, names and codes only. codeTally PUBLISHES THE ELECTION (§8.4 A-94 Part 2, QA R68-1): per undrawable stated code, every answer the layer gave with its count, the abstentions beside them, and the electorate they are drawn from. AN ABSTENTION IS NOT A VOTE — a row the layer neither contains nor places within the 0.05° tolerance contributes NOTHING to the plurality, a tie between answers breaks on the lowest ISO code, and a code all of whose rows abstain has no parent and its rows ship null. Counting the silences made CC -> null (null:3 AU:2) and deleted the whole Cocos (Keeling) Islands territory from the picker via A-83 Part 9 clause 1; noIsoCode is a THIRD thing — the layer contains the row inside a feature it gives no ISO code — which is an answer and can never be a parent. candidates = answers + noIsoCode + abstain.",
+  "total": 156,
+  "translated": 156,
+  "shippedNull": 0,
   "codeParent": {
     "AN": "DO",
     "BQ": "NL",
     "BV": "NO",
-    "CC": null,
+    "CC": "AU",
     "CX": "AU",
     "GF": "FR",
     "GP": "FR",
     "MQ": "FR",
     "RE": "FR",
     "SJ": "NO",
-    "TK": null,
+    "TK": "NZ",
     "YT": "FR"
+  },
+  "codeTally": {
+    "AN": {
+      "parent": "DO",
+      "answers": {
+        "DO": 1
+      },
+      "noIsoCode": 0,
+      "abstain": 0,
+      "candidates": 1
+    },
+    "BQ": {
+      "parent": "NL",
+      "answers": {
+        "NL": 7
+      },
+      "noIsoCode": 0,
+      "abstain": 0,
+      "candidates": 7
+    },
+    "BV": {
+      "parent": "NO",
+      "answers": {
+        "NO": 1
+      },
+      "noIsoCode": 0,
+      "abstain": 0,
+      "candidates": 1
+    },
+    "CC": {
+      "parent": "AU",
+      "answers": {
+        "AU": 2
+      },
+      "noIsoCode": 0,
+      "abstain": 3,
+      "candidates": 5
+    },
+    "CX": {
+      "parent": "AU",
+      "answers": {
+        "AU": 1
+      },
+      "noIsoCode": 0,
+      "abstain": 0,
+      "candidates": 1
+    },
+    "GF": {
+      "parent": "FR",
+      "answers": {
+        "FR": 9,
+        "BR": 1
+      },
+      "noIsoCode": 0,
+      "abstain": 1,
+      "candidates": 11
+    },
+    "GP": {
+      "parent": "FR",
+      "answers": {
+        "FR": 21
+      },
+      "noIsoCode": 0,
+      "abstain": 0,
+      "candidates": 21
+    },
+    "MQ": {
+      "parent": "FR",
+      "answers": {
+        "FR": 18
+      },
+      "noIsoCode": 0,
+      "abstain": 0,
+      "candidates": 18
+    },
+    "RE": {
+      "parent": "FR",
+      "answers": {
+        "FR": 20
+      },
+      "noIsoCode": 0,
+      "abstain": 0,
+      "candidates": 20
+    },
+    "SJ": {
+      "parent": "NO",
+      "answers": {
+        "NO": 17
+      },
+      "noIsoCode": 0,
+      "abstain": 1,
+      "candidates": 18
+    },
+    "TK": {
+      "parent": "NZ",
+      "answers": {
+        "NZ": 1
+      },
+      "noIsoCode": 0,
+      "abstain": 2,
+      "candidates": 3
+    },
+    "YT": {
+      "parent": "FR",
+      "answers": {
+        "FR": 51
+      },
+      "noIsoCode": 0,
+      "abstain": 0,
+      "candidates": 51
+    }
   },
   "parents": [
     {
@@ -54,7 +165,7 @@
       "id": "gn:4h85j",
       "name": "Atafu Village",
       "statedCode": "TK",
-      "shippedCode": null,
+      "shippedCode": "NZ",
       "via": "nearest"
     },
     {
@@ -84,6 +195,13 @@
       "statedCode": "YT",
       "shippedCode": "FR",
       "via": "nearest"
+    },
+    {
+      "id": "gn:x5yu",
+      "name": "Bantam Village",
+      "statedCode": "CC",
+      "shippedCode": "AU",
+      "via": "none"
     },
     {
       "id": "gn:ndae",
@@ -191,6 +309,13 @@
       "via": "contained"
     },
     {
+      "id": "gn:x5xw",
+      "name": "Cocos Islands",
+      "statedCode": "CC",
+      "shippedCode": "AU",
+      "via": "none"
+    },
+    {
       "id": "gn:nddu",
       "name": "Dapani",
       "statedCode": "YT",
@@ -250,7 +375,7 @@
       "id": "gn:2eefa",
       "name": "Fale old settlement",
       "statedCode": "TK",
-      "shippedCode": null,
+      "shippedCode": "NZ",
       "via": "none"
     },
     {
@@ -322,6 +447,13 @@
       "statedCode": "SJ",
       "shippedCode": "NO",
       "via": "nearest"
+    },
+    {
+      "id": "gn:x5yj",
+      "name": "Horsburgh Island",
+      "statedCode": "CC",
+      "shippedCode": "AU",
+      "via": "none"
     },
     {
       "id": "gn:ndbo",
@@ -691,7 +823,7 @@
       "id": "gn:4h85h",
       "name": "Nukunonu",
       "statedCode": "TK",
-      "shippedCode": null,
+      "shippedCode": "NZ",
       "via": "none"
     },
     {
@@ -1017,6 +1149,13 @@
       "via": "contained"
     },
     {
+      "id": "gn:x5y5",
+      "name": "South Island",
+      "statedCode": "CC",
+      "shippedCode": "AU",
+      "via": "nearest"
+    },
+    {
       "id": "gn:1mhdp",
       "name": "Spitsbergen",
       "statedCode": "SJ",
@@ -1077,6 +1216,13 @@
       "name": "Vincendo",
       "statedCode": "RE",
       "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:x5xz",
+      "name": "West Island",
+      "statedCode": "CC",
+      "shippedCode": "AU",
       "via": "nearest"
     }
   ]

@@ -6278,6 +6278,85 @@ cached sources with one command.
 **Fires** when the generator's audit becomes runnable against a fixture-sized corpus, at which point
 this test should assert the output instead of the source and this note goes with it.
 
+### KD-128 — ROADMAP `I-32`'s class-`P` exempt figure is 141 in 57 groups and the corpus this increment ships says 139 in 56, because A-94 moved the two rows itself
+
+ROADMAP `I-32` asks the refusals golden's header to carry *"class-`P` exempt **141** in **57**
+groups"*, carried forward from A-93 Part 3(a). **Measured on the rebuilt corpus it is 139 in 56**,
+and the two rows that left are `Atafu Village` (`gn:4h85j`) and `Nukunonu` (`gn:4h85h`) — which is
+this ruling's own doing, not drift.
+
+The exempt set is the class-`P` rows for which A-93 Part 2's `X \ {S, C, P(S), P(C)}` is non-empty:
+the rows clause 4 would refuse if the class restriction did not exempt them. Both Tokelau rows are
+`P/PPLA` with **`cc2 = NZ`** (verified against the cached `allCountries.txt` by GeoNames id). `P(TK)`
+is `null` — the pinned layer carries no feature whose `ISO_A2_EH` is `TK`, so it names no sovereign
+for it — and before A-94 `C` was `null` as well, so `NZ` survived every subtraction and both rows
+were exempt. **Under A-94 `C` is `NZ`**, the `C` subtraction reaches them, and the two-row `TK+NZ`
+group disappears: 141 − 2 = **139**, 57 − 1 = **56**.
+
+**The five `CC` rows were never in this set**: all five carry an **empty** `cc2`, so clause 4 never
+sees them regardless of class. The four largest groups are unchanged and are A-93 Part 3(a)'s own —
+`FO+DK` 16, `AX+FI` 15, `AR+AQ` 11, `EH+MA` 8. `packages/core/test/gazetteerArtefact.test.ts`
+asserts 139/56 and asserts, separately, that no `TK` group is present.
+
+**Fires** if a future ruling restores `TK → null`, or if a corpus swap gives a class-`P` row a `cc2`
+naming a country that is not its own or its sovereign's.
+
+### KD-129 — A-94 Part 1's feature-class column is wrong for `West Island`, and Part 2's *"the three non-`P` `CC` rows"* undercounts by one; neither changes an outcome
+
+A-94 Part 1's table lists `gn:x5xz West Island` as **`P/PPLC`** — the territory's capital as a
+settlement. **The row in this corpus is `T/ISL`**, the island, with population 120. Verified by
+GeoNames id against the cached `allCountries.txt` A-90's source log records:
+
+| id | name | `cc` | `cc2` | class/code | pop |
+|---|---|---|---|---|---|
+| 1547351 | `West Island` | `CC` | *(empty)* | **`T`/`ISL`** | 120 |
+| 1547382 | `Bantam Village` | `CC` | *(empty)* | `P`/`PPL` | 500 |
+| 1547348 | `Cocos Islands` | `CC` | *(empty)* | `T`/`ISLS` | 0 |
+| 1547357 | `South Island` | `CC` | *(empty)* | `T`/`ISL` | 0 |
+| 1547371 | `Horsburgh Island` | `CC` | *(empty)* | `T`/`ISL` | 0 |
+
+So **four** of the five are non-`P`, not three, and A-94 Part 2's *"the three non-`P` `CC` rows carry
+an empty `cc2`"* is one short. **The load-bearing half of that sentence is stronger than it claims:
+ALL FIVE carry an empty `cc2`**, so A-93's clause 4 cannot see any of them in either direction, and
+the sixteen `'multi-country'` refusals are untouched — which the run confirms, by id.
+
+**Nothing downstream moves.** The rows are candidates through A-83 Part 3's `ISL`/`ISLS` arm rather
+than the class-`P` arm; the bare-name refusal that deleted them is A-83 Part 9 clause 1, which is
+blind to feature class; and a user typing *west island* gets the row either way. It is recorded
+because a ruling's evidence table is what the next builder re-derives from, and because A-94 Part 7
+item 6 is a ruling about exactly this — a criterion made true by a data change is a criterion waiting
+to break.
+
+**Fires** if a future ruling keys anything on `CC`'s class distribution.
+
+### KD-130 — the source log's stop-and-report is EXECUTED; the prefix witness cannot redden on today's five-entry history, and that is a property of the history rather than of the test
+
+A-94 Part 5 clause 3's stop-and-report was run for real, not asserted: the committed
+`fixtures/golden/gazetteer-source-log.json` was moved aside and
+`CAIRN_GAZETTEER_CACHE=/tmp/cairn-gazetteer-src node tools/gen-gazetteer.mjs` run with **no**
+`--repin` and every checksum matching. It **stopped in 3 seconds, before the build**, exit 1,
+printed `gen-gazetteer: the source log is MISSING.` and wrote nothing — no corpus file, no golden,
+no shard map. **All three conditions were run**: an empty file gives *"the source log does not
+parse: Unexpected end of JSON input"*, `{"entries":[]}` gives *"the source log is EMPTY"*, and a
+restored file prints `source log: 5 entries, verified — NOT written (no --repin)` and is never
+opened for writing.
+
+**What fault N4 can and cannot show today.** `I-32` states N4 as *"restore the seed branch → the
+prefix assertion reddens naming the first entry that moved"*. On the **current** history it does not,
+and no test could: the committed log is exactly what the old seed branch produces — five entries, one
+per source, in `Object.entries(SOURCES)` order, each with `previousSha256: null` and the same
+`fetched`. A re-seed today rewrites the file to **byte-identical** content. **The prefix witness
+becomes the instrument A-94 designed it to be at the first re-pin**, when the history is longer than
+one seeding; until then the property is held by the stop-and-report, which is executed above.
+
+This is the same shape as A-94 Part 5's own diagnosis of the chain — *a self-describing file cannot
+witness its own history* — one step further out: a five-entry history has nothing for a witness to
+disagree with. The two assertions that do bite today are the prefix's **shape** (an entry removed,
+reordered or edited reddens) and the `$sourceSha256` re-derivation (fault **N5**: drop the newest
+entry for a source and the digest no longer matches).
+
+**Fires** at the first `--repin`. The remedy is A-90 clause 3's reviewed act: extend `COMMITTED_LOG`
+in `packages/core/test/gazetteerArtefact.test.ts` in the same commit.
 
 
 ## 2. How to run it
