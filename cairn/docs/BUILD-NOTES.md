@@ -1,5 +1,38 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — ROADMAP `I-29`, at `master` = `04c76f4` → this commit.** Five parts routed;
+> **Parts 2, 3, 4 and 5 are BUILT and verified. Part 1 STOPS AND REPORTS — `Antilles` and
+> `Hispaniola` still ship and R67-3 is NOT fixed.** A-91's item 1 is also not built, and the reason
+> is the fence. **Zero `.tsx`, zero `qa/`, zero `apps/web/` except A-92's one type-name change that
+> ROADMAP `I-29` carves out, zero `docs/design/`, zero new dependency, zero lockfile.** No version
+> constant moves: `SCHEMA_VERSION` 5, `SUMMARY_VERSION` 8, §2.10 88, the subpath at 1 symbol.
+> **Zero corpus rows changed** — the generator's own row-level diff for this regeneration is
+> `+0 rows, -0 rows, ~0 changed`, and `$sourceSha256` is unmoved.
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact command** | From `cairn/`: `npm run test:tap` → **1,852 tests, 1,849 pass / 0 fail / 3 skipped** (baseline `04c76f4`: 1,834 / 0). The three skips are named below and carry the stop-and-report as their reason string. `npm run typecheck` → **exit 0 on both projects**. `npm run web:build` → main chunk **1,037.03 kB**, **1 JS asset**, `grep -l 'Hallstatt\|Positano\|Zermatt' apps/web/dist/assets/*.js` returns **nothing** — zero corpus leak. Regenerate: `CAIRN_GAZETTEER_CACHE=/tmp/cairn-gazetteer-src node tools/gen-gazetteer.mjs`. |
+> | **PART 1 — A-83 Part 9 clause 4: IMPLEMENTED, NOT ENABLED. STOP-AND-REPORT CONDITION 1 FIRED.** | The predicate is built exactly as A-89 rules it — `X \ {S, C} ≠ ∅` over `allCountries` column 10 — and **its match set is computed and printed on every run**. What is gated is the `continue` that drops the row (`CLAUSE_4_ENABLED = false`, which carries the whole measurement in its docstring). See **KD-124**. |
+> | **The measurement that stopped it** | Against the committed 149,101-row corpus, from the cached pinned sources: clause 4 matches **169 rows**, **6** of them over 100,000 people and **named nowhere in A-89** — `Borneo` (21,258,000, `cc2=[BN,ID,MY]`), `New Guinea` (11,818,000, `[ID,PG]`), `Laayoune` (196,331, `[MA]`), `Santo António` (129,800, `[MO]`), `Nossa Senhora de Fátima` (126,000, `[MO]`), `Dakhla` (106,277, `[MA]`). **`vatican` is a committed `PROBES` query and goes from a hit to NO MATCH.** Also removed: four capitals (`Tórshavn`, `Saint Helier`, `Douglas`, `Mariehamn`), the Faroes, Jersey, Guernsey, Åland, the Isle of Man, every Antarctic station and every Western Saharan town. |
+> | **Two of A-89's own factual claims do not survive the corpus** | **(1)** Part 8 residue 1 says `Borneo`, `New Guinea` and `Tierra del Fuego` are *"multi-country landmasses GeoNames does not mark in `cc2`"* and therefore survive. **All three are marked and clause 4 refuses all three** — `Borneo [BN,ID,MY]`, `New Guinea [ID,PG]`, `Tierra del Fuego [AR,CL]`. Only `Ireland` (the island) is genuinely `cc2`-empty. **(2)** Part 2 states the false-positive cost on the shipped corpus as *"one village"*, `Trachóni`. **`Trachóni` does not clear A-83 Part 3's selection gates and has never shipped**; the actual false-positive population is 167 rows. |
+> | **What the measurement says the rule actually is** | `cc2` names **any second jurisdictional claim on a row**, not only a landmass spanning two countries: a sovereign parent the translation did **not** supply (`VA`→`IT`, `FO`→`DK`, `IM`→`GB`, `JE`/`GG`→`GB`, `AX`→`FI`), a territorial dispute (`EH`/`MA`, `PS`/`IL`, `RU`/`JP`, `CN`/`MO`), an Antarctic claim. Subtracting `C` closes the case where the translation supplied the parent. **It cannot close the case where the row already states a code the index draws and `cc2` names its sovereign anyway** — which is Vatican City, the Faroes and the Isle of Man. **That is a ruling to make, not a threshold to tune, and it is not mine.** |
+> | **The `S` subtraction's reach, published not assumed** | The generator prints it on every run: **0 rows are kept only by the `S` subtraction**. A-89 Part 2's prediction holds. |
+> | **PART 2 — R67-10, the refusals golden: BUILT** | `fixtures/golden/gazetteer-refusals.json` is back beside the disagreements golden: **18 rows**, `{id, name, statedCode, shippedCode, admin1, cc2, population, reason}`, `reason` from the closed set `'bare-name' \| 'unreadable' \| 'delimiter' \| 'multi-country'`. **The generated header's per-reason counts are READ FROM it** — `buildRefusals` derives `byReason` from the very array it writes, and `emitShardMap` is handed that object. **KD-120's claim is checkable from this repository again**: all seven of A-83 Part 9's named archipelagos are in the golden with `reason: 'bare-name'`, asserted by name. |
+> | **PART 3 — A-84 Part 5's amendments: BUILT, in the generator's own comments** | The **0.05° coastal tolerance** is ADOPTED with what it costs stated (Longyearbyen 0.4 km, Basse-Terre 1.4 km, Dzaoudzi 1.2 km offshore; without it all three ship `null`). The **per-code modal parent** is ADOPTED and **KD-119's Mayotte justification is WITHDRAWN and deleted from the comment** — re-derived with the tolerance in, `YT` is `FR × 51`; what earns the rule is Saint-Georges across 4 rows of 152. ***"The empty code included"* is SCOPED** to a row the layer contains, and A-84 Part 5's *"Picking Hargeisa reports `{null, null}`"* is recorded as **withdrawn as an example, kept as a rule**, with the three Tokelau rows named as what exercises the arm. |
+> | **PART 4 — A-90: BUILT and exercised end to end** | `--repin` is the **only** path from a checksum mismatch to a write. `fixtures/golden/gazetteer-source-log.json` is append-only, one entry per source per movement, `{fetched, source, bytes, sha256, previousSha256}` chained per source. A **row-level corpus diff** against the previously committed corpus is taken **before** the write and printed with a published cap of **200**; over the cap it prints counts only and says stop-and-report. `$sourceSha256` **records** rather than **pins** in `meta.json`'s `$what` and in the generated header, which now says plainly that **this corpus cannot be rebuilt from source by anybody, including us** (§0 position 11). |
+> | **A-90, measured rather than described** | Hand-edited `countryInfo` checksum, **without** `--repin`: reports both values, prints the three-step re-pin procedure, **writes nothing**, exit 3. The same edit **with** `--repin`: writes, appends exactly one chained entry to the source log, and emits the diff (`+0, -0, ~0`). Both runs restored; the log is back to its five seeded entries and the corpus is byte-identical. |
+> | **PART 5 — A-92: BUILT** | `MapBoundsLike` is deleted from `packages/client/src/ports/types.ts`; `MapPort.mount/.update/.refit` take `MapBounds` from `../deps.ts`, which the file already imported four core types from. `apps/web/src/ports/map.ts` imports `MapBounds` from `@cairn/core` — a type-name change and no behaviour, the one `apps/web` line `I-29` carves out. `grep MapBoundsLike` over `packages/` and `apps/` returns **nothing**. **No assignability assertion was added**, per the ruling. |
+> | **A-92 measured, both halves of N10** | With `MapBounds.north` renamed in core: **duplicate deleted → the compiler names `apps/web/src/ports/map.ts`** (with `DayMap.tsx`, `worldMap.ts`, `cluster.ts`). **Duplicate restored → it does not** — the three others only. That is A-84 Part 7 item 2's claim, delivered, and the demonstration that it could not have been delivered before. `test/boundaries.test.ts` gains A-92 clause 3's name check, stated at the width it reaches: it is a grep over one file, it catches the `Like`/`Shape`/`Ish`/`Alike` convention **including the one that was written**, and it does **not** catch a restatement under an unrelated name. |
+> | **A-91 items 2 and 3 — BUILT as far as they reach with no rendered consumer** | `GAZETTEER_CONSUMERS` lives in `test/boundaries.test.ts` with the obligation written beside each entry. Today the set is **`cli.ts` and only `cli.ts`**. Measured: adding `import { loadGazetteerFor } from '@cairn/core/gazetteer'` to `Sidebar.tsx` reddens it naming `Sidebar.tsx`, `App.tsx`, `main.tsx` and `TripView.tsx` — so the first `.tsx` consumer must edit the list. The **hard-code-the-string** fault is caught specifically: `test/cli.test.ts` asserts the printed attribution equals `meta.json`'s `$source` **byte for byte** in all three states and that `cli.ts` holds no attribution literal. **Measured: hard-coding it reddens the new test while the pre-existing regex assertion stays green** — which is why A-91 says that fault is the one that matters. |
+> | **A-91 item 1 — NOT BUILT, and the reason is the fence** | `searchGazetteer` returning `GazetteerResult = {source, hits}` changes **51 call sites across five `qa/` probe files** — `r60-fold-search.mjs` (27), `r67-corpus.mjs` (16), `r60-coverage.mjs` (4), `r60-invariant.mjs` (2), `r64-census.mjs` (2) — which are `.mjs`, so they break at **runtime**, silently, rather than at typecheck. The fence says *"If another `qa/` file must change, stop and report"*, and ROADMAP `I-29`'s own five-part list does not contain A-91 at all — A-91 is `I-30`'s exit criterion. **It needs to be built in the same pass that re-cuts those five probes.** |
+> | **Determinism, re-run and unchanged in meaning** | The generator was run **twice over one fetch** at the final state: **968 corpus documents and the shard map byte-identical**. A-90 clause 4's narrowing — *same fetched bytes ⇒ same output* — is what was checked, and it is still checkable. |
+> | **Coverage, RE-MEASURED off the regenerated corpus** | `qa/r60-coverage.mjs` unmodified: **travel 109/121 = 90.1 %, control 50/50 = 100.0 %**, overall 159/171 = 93.0 %, 1 wrong-country (Monteverde), `differs: 0`, `answered null: 0`. **Identical to the baseline**, which is the expected result of a regeneration that changed zero rows. |
+> | **The named queries, unregressed** | `vienna → Vienna, Austria · AT`; `geneva → Geneva, Switzerland · CH` (with its `differs` marker); `hallstatt → Hallstatt, Upper Austria, Austria`; `positano → Positano, Campania, Italy`; `zermatt → Zermatt, Valais, Switzerland`; `interlaken → Interlaken, Bern, Switzerland`; `A Coruña → A Coruña, Galicia, Spain`; `xian → Xi'an, Shaanxi, China`; `taif → Ta'if, Mecca Region, Saudi Arabia`; `oahu → O'ahu, Hawaii, United States`; `nukualofa → Nuku'alofa, Tongatapu, Tonga`. All rank 1. |
+> | **`qa/` probes, before → after — run, not edited** | Measured against a `git worktree` at `04c76f4`. **`r67-corpus.mjs` 5 FAIL → 5 FAIL**, the same five: `B1` (stale inline refusal model), `L3` (R67-8), `J3` (superseded checksum formula), `M1 ×2` (R67-3, still open — this is Part 1's stop). **`r64-census.mjs` 0 FAIL → 0 FAIL**, and **§F's four `I-24` cases are `ok` by name** — F1 `{CH, picked}`, F2 the one spelling, F3 the erase case, F4 the inherited `null` — with F5–F10 green too. **`r60-coverage.mjs`** identical, above. **`r60-fold-search.mjs` 1 FAIL → 1 FAIL** (the U+2019 curly-apostrophe note). **`r60-invariant.mjs`** throws the same `TypeError` at its own line 126 at both commits — it was already broken at the baseline and I did not touch it. **`M6` is not among the failures and I left it**; the manager routed its re-cut to the breaker. |
+> | **Corpus bytes** | 8,749,255 → **8,749,730**, and **every one of the 475 bytes is `meta.json`'s `$what`** — the sentence A-90 clause 2 requires. `CORPUS_BYTES` in `0-gazetteerBudget.test.ts` re-measured from the generator's own reported total, with the reason written beside it. |
+> | **The three skipped tests, named** | In `packages/core/test/gazetteerMultiCountry.test.ts`: *"Antilles and Hispaniola are absent from every shard"*, *"no shipped row carries the Hispaniola or Antilles GeoNames id"*, *"Antilles and Hispaniola are published as multi-country refusals"*. Each carries the stop-and-report as its `skip` reason. **They are the RED half of a red-green cycle that was deliberately not completed**, and they turn green the moment `CLAUSE_4_ENABLED` is flipped by a ruling. The other twelve in that file are green and guard the nine rescued rows, the N2 control, the ceiling, the named parent outcomes, the Tokelau `null` arm and A-90's mechanism. |
+> | **What I could not verify** | **The `[rendered]` half of A-91 item 3** — a picker in three states with a licence link that was actually loaded. It needs a `.tsx` and the fence forbids one; it is `I-30`'s exit criterion and is untouched. **That a browser fetches one shard** — unchanged from `I-23`, no web consumer exists. **N4 and N5 as end-to-end regenerations** (delete the coastal tolerance; resolve the parent per row): both are asserted from the corpus by the named-outcome test, which reddens if either changes the shipped code, but I did not spend two more four-minute rebuilds to watch them go red — the assertions are there and they read the artefact. |
+
 > **Addendum — QA round 67's builder-routed findings, at `master` = `38929ee`.** Four product
 > files, two test files, `BUILD-NOTES.md`, and the corpus regenerated. **Zero `.tsx`, zero
 > `apps/web/`, zero `packages/client/src`, zero `qa/`, zero `docs/design/`, zero new dependency,
@@ -6063,6 +6096,82 @@ drift and not this repair. The three other sources — `admin1CodesASCII.txt`, `
 `ne_10m_admin_0_countries.geojson` — **matched their existing pins byte for byte** and did not
 move. The drift is legible where A-83 Part 2 says it should be: in the goldens. **Every number in
 this repair pass was re-measured after the regeneration; none was carried over.**
+
+### KD-124 — A-83 Part 9 clause 4 is IMPLEMENTED and NOT ENABLED: ROADMAP `I-29`'s stop-and-report condition 1 fired, and A-89's two factual claims about its cost do not survive the corpus
+
+`tools/gen-gazetteer.mjs`, `CLAUSE_4_ENABLED`. **`Antilles` and `Hispaniola` still ship. QA R67-3 is
+NOT fixed.**
+
+The predicate is built exactly as §8.4 **A-89** rules it — with `S` the row's stated code, `C` the
+code it ships after A-84 Part 5's translation and `X` the uppercased, trimmed non-empty codes of
+`allCountries` column 10 (`cc2`), **refuse when `X \ {S, C}` is non-empty** — and it is positioned
+**last**, after clauses 1–3, so their ordering against the translation does not move and a row that
+would render as a bare name is still published under `'bare-name'`. **Its match set is computed and
+printed on every run whether or not the clause is enabled**, because a refusal that cannot be shown
+to fire is a comment. What is gated is the `continue` that drops the row.
+
+**Measured against the committed 149,101-row corpus, from the cached pinned sources, 2026-09-10:**
+
+| | |
+|---|---|
+| rows clause 4 matches | **169** |
+| of them over 100,000 people and not `Antilles`/`Hispaniola` | **6** |
+| rows kept **only** by the `S` subtraction | **0** — A-89 Part 2's prediction holds |
+
+The six that fire the stop-and-report: `Borneo` (21,258,000, `cc2=[BN,ID,MY]`), `New Guinea`
+(11,818,000, `[ID,PG]`), `Laayoune` (196,331, `[MA]`), `Santo António` (129,800, `[MO]`),
+`Nossa Senhora de Fátima` (126,000, `[MO]`), `Dakhla` (106,277, `[MA]`).
+
+**Two of A-89's own factual claims do not survive the corpus, and both are load-bearing for the
+ruling's cost estimate.**
+
+1. **A-89 Part 8 residue 1 says `Ireland`, `Borneo`, `New Guinea` and `Tierra del Fuego` are
+   *"multi-country landmasses GeoNames does not mark in `cc2`"* and therefore survive clause 4.**
+   Three of the four **are** marked and clause 4 refuses all three: `Borneo [BN,ID,MY]`,
+   `New Guinea [ID,PG]`, `Tierra del Fuego [AR,CL]`. Only `Ireland` (the island) is genuinely
+   `cc2`-empty. The residue is filed against a population it was not measured over.
+2. **A-89 Part 2 states the measured false-positive cost on the shipped corpus as *"one village"*,
+   `Trachóni`.** `Trachóni` does not clear A-83 Part 3's selection gates and **has never shipped**;
+   it cannot be a cost. The actual false-positive population is **167 rows**, and it includes:
+   - **`Vatican City`** — which A-82 Part 2 measured **by name** as resolving correctly, and which
+     is a committed `PROBES` query, so **`vatican` goes from a hit to `NO MATCH`** and
+     `fixtures/golden/gazetteer-probes.json` changes;
+   - **four capitals** — `Tórshavn` (Faroes), `Saint Helier` (Jersey), `Douglas` (Isle of Man),
+     `Mariehamn` (Åland);
+   - the `Faroe Islands`, `Jersey` and `Guernsey` rows themselves, every Åland municipality, every
+     Antarctic research station, every Western Saharan town, the Macau parishes, and the
+     Israel/Palestine and Russia/Japan disputed settlements.
+
+**What the measurement says the rule actually is.** `cc2` names **any second jurisdictional claim
+on a row**, not only a landmass that spans two countries. Four distinct populations carry it:
+
+- a **sovereign parent the translation did not supply**, because the row already states a code the
+  index draws — `VA→IT`, `FO→DK`, `IM→GB`, `JE`/`GG→GB`, `AX→FI`;
+- a **territorial dispute** — `EH`/`MA`, `PS`/`IL`, `RU`/`JP`, `CN`/`MO`, `SY`/`IL`;
+- an **Antarctic claim** — `AQ`/`RU`, `AQ`/`CL`, `AQ`/`NO`;
+- and the case A-89 is about, a **genuine multi-country landmass** — `Antilles`, `Hispaniola`,
+  `Borneo`, `New Guinea`, `Sunda Islands`, `Tierra del Fuego`.
+
+Subtracting `C` closes the first population **only where the translation supplied the parent** —
+which is what keeps `Longyearbyen`, `Barentsburg`, `Ny-Ålesund`, `Olonkinbyen` and `Grand-Case`,
+verified from the source: their `cc2` is `[NO]`, `[NO]`, `[NO]`, `[NO]`, `[FR]`, non-empty in every
+case, and all five are deleted by the naive *"`cc2` is non-empty"* form (**N2**). It **cannot**
+close the case where the row states a drawable code and `cc2` names its sovereign anyway, which is
+Vatican City, the Faroes and the Isle of Man.
+
+**That is a ruling to make, not a threshold to tune, and it is not the builder's.** The corpus is
+therefore unchanged and the two defective rows still ship. Flipping `CLAUSE_4_ENABLED` to `true`
+needs a ruling that says what happens to those 167 rows — the obvious candidates are all dials or
+all new axes, which A-89 Part 2 rejected for good reasons that apply equally here.
+
+**What was verified about the nine, so the widening is not re-derived from scratch.** Every one of
+the nine rows the ordering fix would delete leaves `cc2` **empty**, confirmed from the dump:
+`Guadeloupe`, `Grande-Terre`, `La Désirade`, `Devils Island`, `Bouvetøya`, `Hornsund`,
+`Klovningen`, `Flying Fish Cove`, `Chissioua Mtsamboro` — all `cc2=[]`. **Clause 4 as ruled touches
+none of them**, which is the half of A-89 that is exactly right and is now guarded by a permanent
+test naming all nine (**N1**: restoring KD-122's ordering takes `bare-name` from 18 to 28 and the
+shipped rows from 149,101 to 149,091, measured).
+
 
 ## 2. How to run it
 

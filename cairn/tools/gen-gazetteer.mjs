@@ -289,6 +289,10 @@ const NEAREST_TOLERANCE = 0.05;
  * **That is a ruling to make, not a threshold to tune, and it is not the builder's to make.** The
  * corpus is therefore UNCHANGED and `Antilles` and `Hispaniola` still ship — **the R67-3 defect is
  * NOT fixed**. Flip this to `true` only with a ruling that says what happens to those 167 rows.
+ *
+ * **Disclosed in `docs/BUILD-NOTES.md` as KD-124**, which carries the whole measurement, the four
+ * populations `cc2` turns out to name, and what a ruling would have to decide. This comment is
+ * here so the next person does not enable the flag in five minutes and delete Vatican City.
  */
 const CLAUSE_4_ENABLED = false;
 
