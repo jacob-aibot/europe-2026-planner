@@ -1701,6 +1701,37 @@ adversarial round is scheduled on the read gate.** No version constant moves: `S
 `SUMMARY_VERSION` **8**, `ROW_KEYS` **15**, the covering table **45**, §2.10's runtime export count **88**.
 `ROADMAP.md` revision 72 carries the ledger entry, **I-28**, and sequencing rule **10**.
 
+**Revision 70, 2026-09-10.** **QA round 67 found one defect a user meets and one supply-chain property
+nobody had measured.** Four rulings in §8.4, and **no version constant moves** — `SCHEMA_VERSION` **5**,
+`SUMMARY_VERSION` **8**, §2.10's export count **88**. **A-89 (R67-3, MAJOR)**: `Antilles` and `Hispaniola`
+ship at rank 1 for their own names attributed to the **Dominican Republic**, so a traveller to Haiti who
+types *Hispaniola* gets the wrong country on their lifetime map. The routed fix — move the bare-name
+refusal ahead of the parent translation — was **built, measured and reverted** by the builder (KD-122)
+because it deletes **nine correct rows to remove one sea**, and it does not reach `Hispaniola` at all. The
+answer is a **fourth shipping refusal on a column the corpus never shipped**: GeoNames' own `cc2`, refused
+when it names a country that is neither the row's stated code nor the code we attribute it to. The two
+subtractions are what keep **Longyearbyen** — verified against the source dumps on 2026-09-10, not
+remembered. **A-84 Part 5 is amended at three points** (the coastal tolerance adopted; the modal per-code
+parent adopted with **KD-119's Mayotte justification withdrawn** — `YT` is `FR × 51` once the tolerance is
+in, and Saint-Georges across 4 rows of 152 is what earns it, **R67-11**; *"the empty code included"*
+scoped to a row the layer contains, **KD-120**), its *"Picking Hargeisa reports `{null, null}`"* **example**
+is withdrawn while its **rule** stands (**R67-4**, and the three Tokelau rows are what actually exercise the
+arm), and `gazetteer-refusals.json` comes back as its own golden so the 18 refused rows are nameable
+(**R67-10**). **A-90 (KD-123)**: the pinned GeoNames bytes stopped being served mid-increment. Measured —
+one generation of every dump, one day of deltas, no archive — **the corpus cannot be rebuilt from source by
+anyone, including us**, so the **committed corpus is the artefact of record**, `$sourceSha256` is a
+provenance stamp rather than a pin, determinism narrows to *same bytes ⇒ same output*, and a re-pin becomes
+an explicit `--repin` that publishes a source log and a **row-level diff in its own commit**. Vendoring the
+filtered subset is rejected on arithmetic and the reasoning is in Part 2. **§0 gains position 11.**
+**A-91 (R67-9)**: the CC BY **user-visible** obligation gets a mechanism — `source` inside the returned
+value, a `GAZETTEER_CONSUMERS` allowlist in `boundaries.test.ts` that the first `.tsx` must edit, and a
+rendered assertion with three injected faults — and it is an **exit criterion of the picker increment**,
+not a note. **A-92**: A-84 Part 7 item 2's reader census was **one file short** because
+`packages/client/src/ports/types.ts` **re-declares** `MapBounds` as `MapBoundsLike`; the duplicate is
+deleted rather than tied down, and the general rule is that **a census whose subject is "who promised this
+shape" is a census over declarations, not imports**. `ROADMAP.md` revision 73 carries the ledger entry,
+**I-29**, **I-30** and the `I-23` criterion correction.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -1708,13 +1739,23 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~555k tokens** (re-measured at **revision 69** — **§8 grew 145k → 152k** with §8.4's
+This document is **~566k tokens** (re-measured at **revision 70** — **§8 grew 152k → 162k** with §8.4's
+four new rulings and their five amendment banners; **§0 stays 2k** with **position 11**; §2, §4, §9 and §10
+did not move). **The four are separable and only one of them is about the corpus's contents:**
+
+| ruling | ~size | who reads it, and when |
+|---|---|---|
+| **A-89** | ~4.5k | **The corpus family's newest member.** A builder or breaker of the gazetteer refusals reads **A-89 whole**, then **A-83 Parts 3 and 9** and **A-84 Part 5**, and nothing else — not A-85, not A-86, not A-87, not A-88, not §2 whole, not §4, not §10. |
+| **A-90** | ~2.5k | **Read by anyone who runs, re-pins or audits the generator, and by nobody else.** It needs **§0 position 11** and **A-83 Part 2**; it needs no other ruling. |
+| **A-91** | ~1k | **Read by the builder of the first `.tsx` that touches the corpus**, with `ROADMAP` `I-30`. It needs nothing else in §8.4. |
+| **A-92** | ~1k | **Read by anyone changing a type that crosses `packages/client`'s port boundary.** It needs **A-84 Part 7 item 2** and nothing else. |
+
+The revision-69 note follows and its figures are superseded by these: the document was ~555k (**§8 grew 145k → 152k** with §8.4's
 **A-88**, its amendment banner on **A-87** and its inline corrections in **A-87 Parts 6 and 7** and **A-59
 Part 4**; **§0 grew 1k → 2k** with **position 10**; §2, §4 and §10 did not move). **A-88 is ~6k and it is
 read WITH A-87, never instead of it: A-87 states the read rule, A-88 corrects it at five points and draws
 the line between a defect and a weak claim.** **A builder of ROADMAP `I-28` reads A-88 whole, then A-87
-Parts 2, 3, 6 and 7, then A-59 Part 4, and nothing else.** The revision-68 note follows and its figures are
-superseded by these: the document was ~547k (**§8 grew 136k → 145k** with §8.4's
+Parts 2, 3, 6 and 7, then A-59 Part 4, and nothing else.** The revision-68 note follows: the document was ~547k (**§8 grew 136k → 145k** with §8.4's
 **A-87**, its amendment banner on **A-86**, its corrections in place to **A-86 Part 8 residues 1 and 2**
 and its pointer banners on **A-59 Part 7 residue 1**, **A-59 Part 5** and **A-31 Part 3**; §2, §4 and §10
 did not move. It was **~536k** at revision 67 — **§8 130k → 136k** with **A-86**, its banner on **A-85**
@@ -1936,7 +1977,7 @@ crosses a section boundary. Otherwise this table is the contract.
 
 ---
 
-## 0. Ten positions, stated up front
+## 0. Eleven positions, stated up front
 
 1. **The brief's two hard constraints hold, and one is worse than the brief says.** They force a native
    shell for pillars 4 and 5 — not a native-first architecture. Jacob has confirmed the end state:
@@ -2009,6 +2050,17 @@ crosses a section boundary. Otherwise this table is the contract.
    broader than its mechanism is a **defect in the claim** — a MINOR to the architect, answered by narrowing
    or by making the mechanism reach, and it does **not** gate a product increment. §8.4 **A-88** Parts 3,
    4 and 11 are the worked example; ROADMAP sequencing rule 10 is the routing half.
+11. **A dataset nobody can refetch is pinned by the artefact, not by a checksum.** Added at revision 70,
+   after the first regeneration of the gazetteer corpus could not be run from its own declared inputs.
+   Measured 2026-09-10: **GeoNames rebuilds every dump daily, retains one day of `modifications`/`deletes`
+   and archives nothing**, so a past state cannot be refetched *or* replayed — and Overture, the obvious
+   upgrade, drops each release from public distribution after ~60 days. A checksum **fences** a build; it
+   does not let anyone **rebuild** it, and for a publisher that archives nothing the two are not
+   substitutes. So: **the committed corpus is the artefact of record**, every claim about it is checked
+   against the committed bytes offline with no network and no generator run, determinism means *same
+   fetched bytes ⇒ same output*, and a re-pin is an explicit `--repin` run that publishes a source log and
+   a **row-level corpus diff in the same commit**. **Say plainly that the corpus cannot be rebuilt from
+   source, rather than implying that it can.** §8.4 **A-90**.
 
 ---
 
@@ -21905,6 +21957,12 @@ location — a fix stream, a library index — and a city centre from Natural Ea
 byte-identical output, and runs `--audit-only` against the committed module. A generator that is
 reproducible only on the machine that first ran it is not reproducible.
 
+> **⚠ NARROWED AT REVISION 70 — A-90 clause 4.** This rule means **same fetched bytes ⇒ same output**, run
+> inside one session against one fetch. It never meant *same day ⇒ same corpus* and it cannot mean *any day
+> ⇒ same corpus*: GeoNames rebuilds daily and archives nothing. **Stated that way it is still the strongest
+> determinism claim available here and it still has teeth** — the builder ran it across the re-pin and all
+> 967 corpus files were byte-identical.
+
 ---
 
 **Part 11 — what is deferred, with the trigger that reopens each.**
@@ -22104,6 +22162,17 @@ regenerated daily — both `Last-Modified` values above are *today* — so the c
 > Reproducibility of the *build from source* is bounded by GeoNames' own release discipline, and that is
 > stated here rather than discovered by whoever re-runs the generator next month.
 
+> **⚠ AMENDED AT REVISION 70 — A-90, and the amendment is a MECHANISM rather than a correction.** The
+> paragraph above is right and it was right when it was written: it says the artefact is what is
+> reproducible and that build-from-source is not. **What it lacked is anything that makes *"re-pinning is a
+> deliberate, reviewed act"* true** — so when the re-pin actually happened (KD-123, 2026-09-10, both large
+> dumps rolled over), the review was a sentence in a build note and **+15 shipped rows** was drift nobody
+> could see in a golden. A-90 supplies: `--repin` as the **only** path from a checksum mismatch to a write;
+> an append-only `gazetteer-source-log.json`; and a **row-level corpus diff in the same commit**. It also
+> corrects one word: `$sourceSha256` **records** what a build was made from; it does not **pin** bytes
+> anyone can obtain again — verified 2026-09-10, GeoNames retains **one day** of `modifications`/`deletes`
+> and no dated archive of any dump, so a past state cannot even be replayed.
+
 **The licence is CC BY 4.0 and it is the first attribution obligation in this repository.** Verified
 2026-09-09 from the dump's own `readme.txt`: *"This work is licensed under a Creative Commons Attribution
 4.0 License … The Data is provided 'as is' without warranty or any representation of accuracy, timeliness
@@ -22135,6 +22204,10 @@ downstream sees `Gazetteer` and a `GazetteerRow`; nothing downstream knows the w
 >    `isolanguage` is `link` and whose value names `wikipedia.org`.
 > 3. **feature class `P` and `population ≥ 20,000`** — the floor that guarantees the control set can never
 >    be lost to a dial. It is not the selection rule; it is the guard rail under it.
+
+> **⚠ READ WITH A-89 (revision 70).** *"A `City` record is a settlement or an island you can say you went
+> to"* is the principle A-89 extends: **an island you can say you went to without saying which country you
+> were in is not one.** The selection gates below are unchanged; the refusal is A-83 Part 9 clause 4.
 
 **Why the feature-class restriction and not "everything notable".** Measured over the corpus: of the rows
 that answer a corpus query, **only islands (`T/ISL`) and a single ancient site contribute outside class
@@ -22461,6 +22534,14 @@ new scalar with a total default, so A-72's "no bump" arm does not apply. `SUMMAR
 ---
 
 **Part 9 — the label, which is the one surface A-82 made load-bearing.**
+
+> **⚠ AMENDED AT REVISION 70 — A-89 adds clause 4 and DOES NOT MOVE clauses 1–3 (QA R67-3, MAJOR).**
+> Clause 1's *"would this render as a bare name"* cannot tell a multi-country landmass (`Antilles`,
+> `Hispaniola`) from a territory whose parent A-84 Part 5 deliberately fills in (`Guadeloupe`, `Devils
+> Island`, `Bouvetøya`), because **both are a row with no region and no drawable code of its own** — and
+> KD-122 measured that refusing before the translation deletes **nine correct rows to remove one sea**.
+> Clause 4 is a separate, orthogonal refusal on the source's own `cc2` column, and the ordering of clause 1
+> against the translation is deliberately unchanged. **Read Part 9 with A-89.**
 
 Three defects, one rule each, and two of them are shipping conditions rather than runtime fallbacks —
 because a fallback that fires is a row that should not have been emitted.
@@ -22873,6 +22954,16 @@ stated reason that it is *"the one Natural Earth fills in for the de-facto entit
 > 2. if the containing feature's `ISO_A2_EH` is a code the index draws, ships the row **with that code**
 >    and publishes the substitution in `fixtures/golden/gazetteer-parents.json` as
 >    `{id, name, statedCode, shippedCode}`;
+>
+> **⚠ AMENDED AT REVISION 70 by A-89 Part 4 and Part 5, at three points.** *(a)* Step 1 reads **"locates
+> the row's centre in the layer, or the nearest feature within 0.05°"** — the coastal tolerance is adopted;
+> without it Longyearbyen, Basse-Terre and Dzaoudzi ship `null`. *(b)* The parent is resolved **per stated
+> country code, modally**, not per row; its published justification (KD-119's Mayotte 39/11 split) is
+> **withdrawn** — with the tolerance in, `YT` is `FR × 51` — and what earns it is Saint-Georges, across 4
+> rows of 152. *(c)* *"the empty code included"* is **scoped**: the translation runs for a codeless row
+> **only where the layer contains its centre**, because in GeoNames the codeless rows are ocean features and
+> multi-country archipelagos rather than the Somaliland towns this ruling was written against (KD-120).
+>
 > 3. otherwise ships the row with **`countryCode: null`**, counted and published in the same golden with
 >    `shippedCode: null`.
 >
@@ -22884,9 +22975,12 @@ stated reason that it is *"the one Natural Earth fills in for the de-facto entit
 **Consequences, named so they are outcomes rather than surprises.** Picking Fort-de-France, Basse-Terre,
 Dzaoudzi or St.-Benoît reports **`{FR, picked}`**; Longyearbyen **`{NO, picked}`**; **Saint-Georges reports
 `{FR, picked}` rather than the coordinate's `BR`** — the picked arm outranking a coarse ring, doing exactly
-the job A-83 Part 8 gave it, on a case that is wrong today. Picking Hargeisa reports **`{null, null}`**:
-no country from any source, honestly, and **Cairn does not adjudicate a sovereignty its own map cannot
-draw.** A traveller to Martinique gets **France** on their lifetime map, which is the answer this product
+the job A-83 Part 8 gave it, on a case that is wrong today. ~~Picking Hargeisa reports **`{null, null}`**~~ — **the EXAMPLE is
+WITHDRAWN at revision 70 (A-89 Part 5, QA R67-4): Hargeysa ships `SO` from its own GeoNames row, Famagusta
+and Kyrenia ship `CY`, all three `indexSays: 'silent'`. The RULE stands unchanged — **Cairn does not
+adjudicate a sovereignty its own map cannot draw** — and what exercises the `null` arm in this corpus is
+three Tokelau rows (`Atafu Village`, `Nukunonu`, `Fale old settlement`), measured on the committed corpus:
+no country from any source, honestly. A traveller to Martinique gets **France** on their lifetime map, which is the answer this product
 can fill and the same answer A-29 step 4 was always reaching for.
 
 **What this deliberately does NOT do: `COUNTRY_INDEX` does not move.** Teaching the index France's overseas
@@ -22950,6 +23044,11 @@ It rides `I-23`, which rewrites the payload anyway; nothing in `I-22a` touches t
    > and **the centre is the field that got fitted**. A centre of no points is precisely A-82 Part 7's
    > *"a value nobody measured, wearing the shape of one"*. The box's other fields are already guarded:
    > `paneFrame` reads `empty` first and paints `WHOLE_WORLD`, and a `0 0 0 0` viewBox has no area.
+   > **⚠ THIS MEASUREMENT WAS ONE FILE SHORT, AND A-92 (revision 70) RULES ON IT.**
+   > `packages/client/src/ports/types.ts` **re-declares** the shape as `MapBoundsLike`, so the census —
+   > run over *importers of the type* — could not see it and the compiler only spoke at build time. A census
+   > over readers cannot see a re-declarer; the population is **declarations**. `MapBoundsLike` is deleted
+   > and `MapPort` takes `MapBounds`. *(Original text, preserved:)*
    > Measured: **`apps/web/src/ports/map.ts:48` is the only reader of `MapBounds.centre` in
    > `packages/client` and `apps/web` combined**, so the compiler names the one site that was wrong and
    > no other, and the port's honest behaviour for an empty box is to **not touch the view at all**.
@@ -24412,6 +24511,490 @@ re-queued **behind** `I-23`, reported rather than silently omitted.
    reference-library golden must **not** move for any of this: a healthy count absorbs nothing.
 6. Remove the CLI cap: the 200-absorption row prints 3,529 characters and R65-6's assertion reddens on the
    length and on the absence of *"…and N more"*.
+
+#### A-89 — a landmass the source itself says lies in more than one country is not a city in any of them: the corpus gains a fourth shipping refusal, keyed on a column it never shipped (revision 70, QA **R67-3** MAJOR; **R67-4**, **R67-10**, **R67-11** ride along)
+
+**Part 1 — what the round measured, and why the obvious fix is the wrong one.**
+
+`Antilles` ships as *"Antilles, Dominican Republic"* at rank 1 for its own name; `Hispaniola` ships as
+*"Hispaniola, Dominican Republic"*. Driven through `cityPickFromRow` → `createTrip` → `tripSummary` both
+report **`{DO, picked}`**. **A traveller to Haiti who types *Hispaniola* gets the Dominican Republic on
+their lifetime map**, from the arm A-84 built to outrank a coarse ring. That is a defect a user meets by
+typing a place they have been to, and it is the only thing in round 67 that is.
+
+The routed instruction was *"move the refusal ahead of the translation."* The builder implemented it,
+measured it, and reverted it (**KD-122**) — and the measurement is why this ruling exists rather than a
+four-line patch. Moving A-83 Part 9 clause 1's bare-name refusal in front of A-84 Part 5's parent
+translation removes `Antilles` **and nine rows that are precisely what A-84 Part 5 exists to produce**:
+`Guadeloupe`, `Grande-Terre`, `La Désirade`, `Devils Island`, `Flying Fish Cove`, `Bouvetøya`, `Hornsund`,
+`Klovningen`, `Chissioua Mtsamboro`. Ten rows are rescued from clause 1 by the translation and **nine of
+them are right**. **The predicate is wrong, not its position** — clause 1 asks *"would this render as a bare
+name"*, and that question cannot tell a multi-country landmass from a territory whose parent the
+translation deliberately fills in. Both are a row with no region and no drawable code of its own.
+
+**And no ordering reaches the second case at all.** `Hispaniola` states `DO`, a code the index draws, so it
+never enters the translation and never renders bare under any ordering of the existing rules.
+
+Four narrower rules were considered and each fails on its own terms. Three are the builder's (**KD-122**):
+*refuse a retired code* — `AN` is still line 302 of `countryInfo.txt`; *refuse feature code `ISLS`* — A-83
+Part 3 admits `ISL`/`ISLS` by name and `Guadeloupe` and `Hispaniola` are `ISL`; *refuse an implausible
+population for a settlement* — a new gate on a new axis, a dial rather than a rule. The fourth is this
+ruling's own and it is **rejected with its measurement**: *refuse an `ISL`/`ISLS` row whose population
+exceeds the population of the country it would ship under.* It catches both defects and it catches `Ireland`
+and `Timor` too — and it puts **`Taiwan` (island, 22.9 M) against `TW` (23.5 M) inside 3 %**, so a
+population revision at either end deletes Taiwan from the picker. **A rule whose false-positive set moves
+when a source updates a number is a dial wearing a fact's clothes.**
+
+---
+
+**Part 2 — the fact the source already states, verified rather than remembered.**
+
+`allCountries.txt` column 10 is **`cc2`** — *"alternate country codes, comma separated, ISO-3166 2-letter
+country code"* (GeoNames `readme.txt`, fetched 2026-09-10 through this environment's proxy). Measured the
+same day against the per-country dumps, which carry the identical rows:
+
+| row | class/code | `cc` | `cc2` | population |
+|---|---|---|---|---|
+| **`Antilles`** (3491552) | `T/ISLS` | `AN` | `AG,AW,BQ,CU,CW,DM,DO,GD,HT,JM,KN,KY,LC,MQ,MS,PR,VC,VE,VG,VI` | 42,000,000 |
+| **`Hispaniola`** (3504558) | `T/ISL` | `DO` | **`HT,DO`** | 21,107,000 |
+| `Guadeloupe` (3579144) | `T/ISLS` | `GP` | *(empty)* | 0 |
+| `Grande-Terre` (3579202) | `T/ISL` | `GP` | *(empty)* | 0 |
+| `La Désirade` (3579050) | `T/ISL` | `GP` | *(empty)* | 0 |
+| `Devils Island` (3381836) | `T/ISL` | `GF` | *(empty)* | 0 |
+| `Bouvetøya` (3371122) | `T/ISL` | `BV` | *(empty)* | 0 |
+| `Hornsund` (2730587) | `H/FJD` | `SJ` | *(empty)* | 0 |
+| `Klovningen` (2730303) | `T/ISL` | `SJ` | *(empty)* | 0 |
+| `Chissioua Mtsamboro` (1090097) | `T/ISL` | `YT` | *(empty)* | 0 |
+| `Flying Fish Cove` (2078127) | `P/PPLC` | `CX` | *(empty)* | 500 |
+
+**GeoNames says it itself.** Hispaniola's own row names Haiti. Antilles' names twenty countries. **Every one
+of the nine rows the ordering fix would have deleted leaves the column empty.**
+
+**The column is not an "is it multi-country" flag and the ruling may not read it as one.** Measured over
+every candidate row (class `P`, or code `ISL`/`ISLS`) of `GP GF SJ BV CX YT DO IE MF TL CY BE NL CH`, `cc2`
+is non-empty on **16** rows, and on most of them it names the **sovereign parent rather than a second
+country**: `Longyearbyen` `cc=SJ cc2=[NO]`, `Jan Mayen` `cc=SJ cc2=[NO]`, `Sveagruva`/`Barentsburg`/
+`Ny-Ålesund`/`Olonkinbyen` the same, `Lars Island` `cc=BV cc2=[NO]`, `Grand-Case`/`Oyster Pond`/
+`Anse Marcel` `cc=MF cc2=[FR]`. **A refusal on non-emptiness alone deletes Longyearbyen**, which A-84 Part 5
+names by name as a shipped outcome.
+
+> **Ruling — A-83 Part 9 gains clause 4. Clauses 1–3 are unchanged and their position relative to A-84
+> Part 5's translation does not move, which is what keeps the nine.**
+>
+> Let **`S`** be the row's stated country code (`allCountries` column 9, possibly empty), **`C`** the code
+> the row would ship after the parent translation (possibly `null`), and **`X`** the set of non-empty codes
+> in `cc2`, uppercased and trimmed.
+>
+> **A candidate row is REFUSED when `X \ {S, C}` is non-empty** — when the source's own row names a country
+> that is neither the country the row states nor the country we would attribute it to.
+>
+> The refusal is **published**, per Part 3, as `{id, name, statedCode, shippedCode, cc2, reason:
+> 'multi-country'}`.
+
+**Why this is the predicate and not a proxy for one.** The question A-83 Part 3 asks is *"is this a
+settlement or an island you can say you went to"*, and what disqualifies `Hispaniola` is not its size, its
+feature code or its population: it is that **saying you went to Hispaniola does not say which country you
+were in**. `cc2` is the only field in either source that states that. It is stated by the publisher rather
+than derived by us, it is stated **per row** rather than per code, and it costs no new axis, no threshold
+and no dial.
+
+**The two subtractions are what make it a fact test rather than a flag, and they are not symmetric in
+weight.** Subtracting **`C`** is load-bearing and measured: it is the whole of what keeps `Longyearbyen`,
+`Jan Mayen`, `Lars Island` and the three Svalbard settlements, whose `cc2` names the parent the translation
+itself just supplied. Subtracting **`S`** is what keeps a row that merely restates its own stated code
+alongside another (`Hispaniola`'s `DO`, `Îlets Yacarescin`'s `GF`) from being refused *on the strength of
+the restatement*; **measured over the sweep above, no row is kept by the `S` subtraction alone.** It stays,
+because the rule's sentence is *"neither the country it states nor the country we attribute it to"* and a
+rule that does not say what it means is the next round's finding — and **if it is measured inert over the
+built corpus, that is published in the generator's audit, not quietly removed.**
+
+**What it costs, in the two shapes cost comes in, stated before it is built.**
+
+- **False negatives — and the claim is stated at exactly the width of its mechanism (§0 position 10c).**
+  A multi-country landmass GeoNames does not mark is not caught. Measured: **`Cyprus`** (`cc=CY`, `cc2`
+  empty, 1.14 M) and **`Ireland`** (the island, `cc=IE`, `cc2` empty) both survive. `Cyprus → CY` is the
+  answer the shipped index draws anyway — KD-120 measured Famagusta and Kyrenia shipping `CY` — so it is
+  consistent rather than wrong. `Ireland → IE` is a genuine residue and is filed as one. **The corpus
+  refuses every multi-country landmass GeoNames marks as one, and makes no claim about the ones it does
+  not mark.** It is not *"no landmass is attributed to one of its countries"*, and it may not be written up
+  as though it were.
+- **False positives.** `Trachóni` (`cc=CY cc2=[CY,GB]`, 4,113 people — a village inside the UK Sovereign
+  Base Area) is refused. That is the rule working: it is genuinely in two jurisdictions and Cairn does not
+  adjudicate which. Seven zero-population Oyapock islets (`cc=GF cc2=[BR,GF]`) and five zero-population
+  NL/DE/BE border hamlets are also refused and **none of them clears A-83 Part 3's selection gates in the
+  first place**, so the measured cost of the false-positive arm on the shipped corpus is one village.
+
+---
+
+**Part 3 — R67-10: the refusals get their artefact back, because a hole nobody can name is not a
+deliberate hole.**
+
+A-83 Part 11 repurposed `gazetteer-refusals.json` into `gazetteer-disagreements.json`, so the **18 rows
+refused today are published nowhere** except as a count in a generated header. A-82 Part 10's *"makes a
+deliberate hole countable, nameable and reviewable"* stopped being true of the refusals the moment the file
+that held them was reused for something else, and KD-120's *"every one of A-83 Part 9's seven named
+examples is among them"* is **not checkable from this repository** — only the negative is.
+
+> **Ruling: `fixtures/golden/gazetteer-refusals.json` comes back as its own golden**, beside the
+> disagreements golden, carrying **every** row A-83 Part 9 refuses as
+> `{id, name, statedCode, admin1, cc2, reason}`, `reason` drawn from a closed set —
+> `'bare-name' | 'unreadable' | 'delimiter' | 'multi-country'`. **The generated header's per-reason counts
+> are the sizes of the groups in this file**, read from it rather than computed beside it. A count in a
+> header that no file can be checked against is the same defect as a census without a denominator (§0
+> position 10a), one artefact out.
+
+Size is not a concern and was checked before ruling: the disagreements golden already carries 2,495 rows;
+the refusals are 18 plus clause 4's, which Part 2 measures in the low tens.
+
+---
+
+**Part 4 — R67-11 and KD-119: the per-code modal parent and the coastal tolerance are ADOPTED, and one of
+their two stated reasons is withdrawn.**
+
+A-84 Part 5's ruling text resolves the parent **per row**. `I-23` shipped it **per stated code, modally**,
+plus a **0.05° coastal tolerance** (KD-119). Both are real deviations from the written contract and neither
+was blessed. Round 67 re-derived both against the pinned 1:10m layer at its own sha256 and both are right
+on their outcomes; one is wrong about why.
+
+- **The coastal tolerance is ADOPTED as the builder shipped it.** GeoNames settlement coordinates fall in
+  water at 1:10m where Natural Earth's label points did not — Longyearbyen 0.4 km, Basse-Terre 1.4 km,
+  Dzaoudzi 1.2 km offshore. **A-84 Part 5 step 1 now reads: locates the row's centre in the layer, or the
+  nearest feature within 0.05°.** Without it those three ship `null`.
+- **The per-code modal parent is ADOPTED and its published justification is WITHDRAWN.** KD-119 says it
+  exists because a per-row resolution splits Mayotte 39 `FR` / 11 `null`. **Re-derived with the tolerance
+  in — its own sibling change, in the same commit — `YT` is `FR × 51`.** The stated reason is discharged by
+  the other half of the change that stated it. What earns the rule is the **four rows of 152** it actually
+  changes: `Saint-Georges` `BR → FR`, `Devils Island` `null → FR`, `Klovningen` `null → NO`, `Atafu`
+  `NZ → null`. **Saint-Georges alone earns it** — a French commune on a traveller's lifetime map as Brazil,
+  because it sits across a river from it. The honest sentence, and the one that goes in the document:
+  **a territory's parent is a property of the territory, not of one settlement's coordinate, and the modal
+  containing feature is how the data says which.**
+
+---
+
+**Part 5 — R67-4 and KD-120: A-84 Part 5's `''` clause is scoped, its Hargeisa consequence is corrected,
+and the `null` arm is shown to be non-vacuous.**
+
+A-84 Part 5 says the translation runs for every row whose stated code the index cannot draw, *"the empty
+code included"*, and states as a consequence that *"Picking Hargeisa reports `{null, null}`"*. Both were
+written against a corpus in which the codeless rows were Somaliland and Northern Cyprus towns. **In GeoNames
+they are not.** Hargeysa states `SO`; Famagusta and Kyrenia state `CY`; all three ship those codes with
+`indexSays: 'silent'`. The rows GeoNames leaves codeless are ocean features and multi-country archipelagos,
+and translating *them* ships *"Lesser Antilles, France"* and hands the Paracels to China on a
+nearest-feature test. KD-120 kept the bare-name refusal over the translation for that population, which is
+**correct and is confirmed here**.
+
+> **Ruling, three sentences.**
+>
+> 1. ***"the empty code included"* is SCOPED**: the translation runs for a row whose source states **no**
+>    code **only where the layer contains that row's centre** (within the Part 4 tolerance). A row the layer
+>    does not contain keeps `countryCode: null` and meets clause 1. This is KD-120's shipped behaviour,
+>    ruled rather than tolerated.
+> 2. **A-84 Part 5's *"Picking Hargeisa reports `{null, null}`"* is WITHDRAWN as an example and KEPT as a
+>    rule.** The rule — *Cairn does not adjudicate a sovereignty its own map cannot draw* — is unchanged and
+>    is why the `null` arm exists. The **example** is false in this corpus, because GeoNames draws no such
+>    distinction: Hargeysa ships `SO` from its own source row, and the index's silence about it is
+>    `indexSays: 'silent'` doing exactly its job. **ROADMAP `I-23`'s criterion carrying the same sentence is
+>    corrected in place** (`ROADMAP.md` revision 73).
+> 3. **The `null` arm is not vacuous, and this is what exercises it.** Measured on the committed corpus at
+>    `08c3d8b`, decoding every shard: **three distinct rows ship `countryCode: null`** — `Atafu Village`,
+>    `Nukunonu` and `Fale old settlement`, all Tokelau, each carrying a region so none renders bare (6
+>    emitted rows across shards). **Any future ruling that would take that count to zero is deleting the
+>    arm and must say so.**
+
+---
+
+**Part 6 — version movement, and what does not move.** **Nothing moves.** `GazetteerRow` is generated data
+and not a record class: `SCHEMA_VERSION` stays **5**, `SUMMARY_VERSION` stays **8**, no `City`, `Trip` or
+`TripSummary` field changes, and a moved version constant is a defect in the increment that builds this.
+`$sourceSha256` changes because the corpus does — **A-90** is the ruling on what that value can and cannot
+promise, and it is read with this one.
+
+---
+
+**Part 7 — the injected faults (§0 position 5), because a refusal that cannot be shown to fire is a
+comment.**
+
+1. **Disable clause 4** → the refusals golden loses its `'multi-country'` group, and the assertion that
+   `Antilles` and `Hispaniola` are absent from the shipped corpus reddens naming both. The positive half
+   must be asserted too: `cityPickFromRow` over the `Hispaniola` row must have no row to be given.
+2. **Implement clause 4 as *"`cc2` is non-empty"*** — drop both subtractions. **This is the control, and it
+   is the version somebody will write.** `Longyearbyen`, `Jan Mayen`, `Lars Island`, `Sveagruva`,
+   `Barentsburg`, `Ny-Ålesund`, `Olonkinbyen`, `Grand-Case`, `Oyster Pond` and `Anse Marcel` disappear, and
+   the assertion that **Longyearbyen ships `NO`** reddens. A clause-4 implementation that does not redden
+   this is not clause 4.
+3. **Restore KD-122's ordering fix** — refuse before the translation. **The nine named rows disappear** and
+   a test asserting each of the nine ships reddens, naming them. This fault stays in the suite permanently:
+   it is the wrong fix, it is four lines, and it is the one a future builder will re-derive.
+4. **Delete the coastal tolerance** → Longyearbyen, Basse-Terre and Dzaoudzi ship `null`.
+5. **Make the parent per-row rather than per-code** → Saint-Georges ships `BR`, and the *"every shipped
+   row's `countryCode` is `null` or a code the index draws, zero exceptions"* ceiling is unaffected — which
+   is the point: **this fault is caught only by the named-outcome assertion, not by the ceiling**, so the
+   named outcome is not decoration.
+6. **Compute the header's refusal counts beside the golden instead of from it** → mutate one row out of the
+   golden and the counts still agree; the assertion that the counts are the file's own group sizes reddens.
+
+---
+
+**Part 8 — residues, each with what would fire it.**
+
+1. **`Ireland`, `Borneo`, `New Guinea`, `Tierra del Fuego` — multi-country landmasses GeoNames does not
+   mark in `cc2`.** Clause 4 does not see them and this ruling does not claim it does. **Fires** when a user
+   reports one, or when a corpus swap gives us an **extent** rather than a point — the honest test is
+   *"does this feature's polygon cross a border in the index"*, and we ship a coordinate, not a polygon.
+2. **`Trachóni`, and the dual-jurisdiction settlement.** Clause 4 refuses a real village of 4,113 people.
+   **Fires** if a second such row clears the selection gates; the remedy is that a human can read
+   `reason: 'multi-country'` in the refusals golden and rule on it, which is the whole of why Part 3 exists.
+3. **`cc2` is not validated against `countryInfo.txt`.** A junk or retired code in the column refuses a row
+   it should not. **Fires** when the refusals golden grows a `'multi-country'` row whose `cc2` contains a
+   code `countryInfo.txt` does not list; the cheap remedy is to publish that in the audit rather than to
+   filter silently.
+4. **The refusals golden is a hole nobody has read.** 18 rows plus clause 4's are published and nothing
+   asserts a human ever looked. **Fires** at the next corpus swap: a swap that changes the refusal count
+   by more than a published cap is a stop-and-report, not a golden update.
+
+---
+
+#### A-90 — GeoNames cannot be refetched by anybody, so the committed corpus is the artefact of record and a re-pin is a reviewed, diffed event (revision 70, BUILD-NOTES **KD-123**; the manager's standing question from the `I-23` scoping)
+
+**Part 1 — the question that was answered on hope, and the measurement that settles it.**
+
+When `I-23` was scoped, the manager flagged that GeoNames has no pinnable release tag and asked how
+reproducibility would be achieved. **The answer given was checksums over the fetched bytes**, and A-83
+Part 2 carries it — *"pins each by sha256 and by fetch date"*. **That answer is now measured insufficient,
+and it failed at the first regeneration.** Fixing R67-1 and R67-2 changes `foldPlaceName`, which changes
+every row's token set and therefore the shard it is written into, so the corpus had to be rebuilt — and
+could not be, from the bytes A-83 Part 2 names. `allCountries.zip` 421,188,852 → **421,190,719**;
+`alternateNamesV2.zip` 204,010,583 → **204,011,299**. The generator did exactly what it was told to do:
+reported the mismatch and refused to write (**KD-123**).
+
+**Verified here on 2026-09-10, directly against `download.geonames.org` rather than from memory:**
+
+- the dump directory carries **one** generation of every file, every one of them timestamped the same
+  morning (`2026-09-10 03:47`–`03:50`). **There is no dated archive of any dump.**
+- the only historical artefacts published are `modifications-<date>.txt` and `deletes-<date>.txt`, and
+  **exactly one day of them is retained** — `2026-09-09` and nothing older. **A past state cannot be
+  replayed either.**
+- `admin1CodesASCII.txt`, `countryInfo.txt` and the pinned `ne_10m_admin_0_countries.geojson`
+  **matched their pins byte for byte**. The instability is in the two large dumps, not in all five sources
+  — which matters, because it means the three stable pins are still worth having.
+
+**The distinction the previous answer missed, stated once so it does not have to be re-derived.** A
+checksum is a **fence**: it proves what a build was made from, and refuses a build made from anything else.
+It is not a **pin**: it does not let anyone obtain those bytes again. For a publisher that archives nothing,
+the two are not substitutes — and the difference surfaces exactly once, at the first regeneration, as a red
+audit through no error of the person who ran it.
+
+**And no supplier fixes this by being a different supplier.** Overture Maps — the obvious upgrade, and the
+one a future reader will propose — publishes dated versioned releases (`YYYY-MM-DD.N`) **and, from its
+September 2025 release, removes data files from public distribution after roughly 60 days** under a stated
+retention policy. *(Read 2026-09-10 from Overture's own release documentation; the version scheme and the
+retention window are the publisher's statements and are not measured here.)* **A free global gazetteer with
+durable byte-level pinning is not on the table.** This is a property to design around, not a supplier to
+swap.
+
+---
+
+**Part 2 — the three options, and what each costs.**
+
+- **Vendor the filtered source subset. REJECTED on arithmetic.** Candidacy alone (class `P`, or code
+  `ISL`/`ISLS`) is millions of rows of `allCountries` before any selection gate; vendoring only the
+  **149,101 selected** rows plus the `alternateNamesV2` rows they need is tens of megabytes compressed — to
+  make an **8.7 MB artefact that is already committed** reproducible. And it would not make the corpus
+  **re-derivable**, because a subset chosen *by the selection rule* assumes the selection rule's answer: a
+  rebuild from it could never disagree with the corpus about which rows to select. **Paying several times
+  the artefact's size for a circular proof is a receipt, not a supply chain.**
+- **Accept drift and make the audit tolerate an explicit re-pin.** Necessary and not sufficient on its own:
+  it says what to do when the corpus moves, and says nothing about what the corpus *is* in between.
+- **Treat the committed corpus as the artefact of record, with the generator as a one-way tool. TAKEN**,
+  with the second option's audit rule inside it.
+
+> **Ruling, four clauses.**
+>
+> 1. **The artefact of record is `packages/core/src/geo/gazetteer/` as committed.** 967 reviewable,
+>    diffable JSON documents in git. **Every claim this product makes about its gazetteer — coverage, the
+>    total order, the fold, `indexSays`, the byte ceiling, the refusals, the parents — is a claim about
+>    those bytes, checked against those bytes, offline.** **No test, probe, golden or audit may require the
+>    generator to run, and none may require the network.** That is already true today and round 67 is the
+>    proof — 149,086 rows re-derived with no network at all — and this makes it a rule. **It is why the
+>    corpus being unreproducible from source costs the product nothing at rest.**
+> 2. **`$sourceSha256` is a provenance stamp, not a reproducibility key, and the document says so.** It
+>    records what this corpus was built from and refuses a build made from anything else. **It does not
+>    assert that those bytes can be obtained again**, and A-83 Part 2's *"pins each by sha256 and by fetch
+>    date"* is corrected in place to say *records* rather than *pins*. The generator's refusal-on-mismatch
+>    **stays** — that is the fence doing its job, and it is what caught this. `$fetched` and **each source's
+>    byte length** are published beside the hash, so a mismatch can be diagnosed rather than merely
+>    detected.
+> 3. **A re-pin is an explicit, reviewed act that publishes its own diff.** The generator gains
+>    **`--repin`**, and it is the **only** way a checksum mismatch results in a write. A `--repin` run must
+>    produce, **in the same commit**:
+>    - `fixtures/golden/gazetteer-source-log.json` — **append-only**, one entry per source per re-pin:
+>      `{fetched, source, bytes, sha256, previousSha256}`;
+>    - a **row-level corpus diff** against the previously committed corpus:
+>      `{rowsAdded, rowsRemoved, rowsChanged}`, with every added and removed row named by
+>      `{id, name, countryCode}` while the total is under a published cap, and the counts alone above it.
+>
+>    **+15 shipped rows should have been a number in a golden, not a sentence in a build note.** A re-pin
+>    whose diff is not in its own commit is an unreviewed change to the product's core data, and that is a
+>    defect, routed to the builder.
+> 4. **Determinism is narrowed to what it can actually promise, and it keeps its teeth.** A-82 Part 10's
+>    ship gate — *run the generator twice and require byte-identical output* — means **same fetched bytes ⇒
+>    same corpus**, run inside one session against one fetch. It never meant *same day ⇒ same corpus*, and
+>    it cannot mean *any day ⇒ same corpus*. **Stated that way it is still the strongest determinism claim
+>    available here and it is still checkable**: the builder ran it across the re-pin and all 967 files were
+>    byte-identical.
+
+---
+
+**Part 3 — what this makes the auditor's job, in four questions, because the point of the ruling is that
+somebody can answer them.**
+
+| question | answer |
+|---|---|
+| *Can I rebuild the shipped corpus from its declared sources?* | **No — and nobody can, including us.** Say that plainly rather than implying otherwise. |
+| *Can I check that the shipped corpus is internally correct and consistent with everything else this repo ships?* | **Yes, completely, offline.** That is what every golden, probe and `npm test` assertion does, and what round 67 did over all 149,086 rows. |
+| *Can I see what changed the last time it moved, and why?* | **Yes** — the source log and the corpus diff, in the commit that moved it (clause 3). |
+| *Can I detect a corpus built from undeclared inputs?* | **Yes** — `$sourceSha256`, `$countryIndexSha256` (R67-7's fix) and the meta/shard pairing check. |
+
+**What this ruling deliberately does NOT do.** It does not mirror the dumps to storage we control: that
+moves the trust root to us without making the bytes any more the publisher's, adds an operational
+dependency Phase 2 has no server for, and re-opens a licence question CC BY 4.0 answers for *use* and not
+for *redistribution at scale*. **Reopens if** Cairn ever has a server (Phase 3) and a second dataset asks
+the same question — at which point the decision is one mirror for all datasets, not one per dataset.
+
+---
+
+**Part 4 — §0 gains position 11**, because this is a standing property of the product's core data and the
+next agent must not re-litigate it from first principles at the next regeneration.
+
+---
+
+**Part 5 — residues, each with what would fire it.**
+
+1. **The corpus can go stale in silence.** Nothing tells us GeoNames has moved; only a regeneration finds
+   out, and a regeneration is now a deliberate act. **Fires** on a coverage complaint or a scheduled
+   refresh; the remedy already exists and costs nothing — `--audit-only` reports without writing.
+2. **A golden that must be append-only is still a golden, and `npm run golden` regenerates goldens.**
+   **Fires** the first time somebody regenerates the source log and truncates the history. Append-only is a
+   property a test asserts (the new file's entries are a prefix-preserving superset of the committed one),
+   not a comment at the top of the file.
+3. **The next corpus source will ask this question again.** §8.10 Part 3's airport index is the named one.
+   **Fires** when it is scheduled; this ruling is the precedent and is to be applied rather than
+   re-derived. *(That dataset's publication cadence is not verified here and must be, before it is pinned.)*
+4. **A row-level diff needs a previous corpus to diff against, and a fresh clone at a re-pin commit has
+   one only because git does.** **Fires** if the corpus is ever moved out of the repository — which is the
+   change this ruling exists to make expensive.
+
+---
+
+#### A-91 — the CC BY attribution ships in the same increment as the first screen that reads the corpus, and its mechanism is an allowlist plus a rendered assertion (revision 70, QA **R67-9**, standing)
+
+Round 67 verified that the **source-level** half of the CC BY 4.0 obligation is real and complete:
+`meta.json`'s `$source` carries the text and the licence URL, `Gazetteer.source` is that string on every
+loaded shard **including a miss**, the generator header carries it with its checksums, and `cli.ts cities`
+prints it on hit, on miss and on *"keep typing"*. **The user-visible half is owed, and nothing in code
+fires when the first `.tsx` calls `loadGazetteerFor`**: no test, no type, no boundary. `GazetteerHit` does
+not carry the string, so a screen has to reach for `gazetteer.source` deliberately, and nothing notices if
+it does not.
+
+**A note will be lost.** This is the repository's first attribution obligation; there is no habit to fall
+back on, and the obligation lands in an increment nobody has scheduled yet, written by an agent who will
+not have read this round.
+
+> **Ruling — three mechanisms, in descending order of how hard each is to defeat.**
+>
+> 1. **The attribution is in the value, not beside it.** `searchGazetteer` returns
+>    **`GazetteerResult = { readonly source: string; readonly hits: readonly GazetteerHit[] }`**.
+>    `GazetteerHit` still does **not** carry it — a per-row copy of a constant is the second source of truth
+>    this repository refuses everywhere else — but `hits` stops being reachable without `source` being in
+>    the same destructuring. **A screen that does not render it now has to have dropped it**, which is a
+>    different act from never having seen it.
+> 2. **The set of modules allowed to reach the corpus is an allowlist, and the allowlist is the census's
+>    denominator.** `boundaries.test.ts` gains: **exactly the modules named in `GAZETTEER_CONSUMERS` may
+>    import `loadGazetteerFor`, `searchGazetteer` or `geo/gazetteerShards.gen.ts`, transitively.** Adding
+>    the first `.tsx` consumer requires editing that list **in the same increment**, and the list is where
+>    the obligation is written down, in the file the compiler makes you open. This is §0 position 10(a)'s
+>    shape — a denominator a test maintains — rather than a census over a population that changes
+>    underneath it, **which is the failure this project has now hit five times** (rounds 61–65 and A-84
+>    Part 7 item 2; see **A-92**).
+> 3. **The rendered half is an acceptance criterion with an injected fault, not a note.** In the increment
+>    that adds the first consumer, with the picker in each of its three states — **at least one hit**, **a
+>    miss**, and **"keep typing"** — the rendered output contains the exact `Gazetteer.source` string and a
+>    link to `https://creativecommons.org/licenses/by/4.0/` that was **actually loaded and confirmed to
+>    resolve** (root `CLAUDE.md`'s ticket rule, applied to a licence).
+>    **Injected faults:** delete the attribution node → all three assertions redden; render the text but
+>    drop the licence link → the link assertion reddens alone; **hard-code the string instead of reading
+>    `source`** → a test that changes `$source` in a fixture and asserts the rendered text follows it
+>    reddens. The third is the one that matters: a hard-coded attribution passes the first two forever and
+>    goes stale at the next re-pin (**A-90** clause 3).
+>
+> **And the gate, stated where it will be read: the first `.tsx` that calls `loadGazetteerFor` may not
+> land without item 3.** It is an **exit criterion of that increment**, not a follow-up, and `ROADMAP.md`
+> carries it on `I-30`.
+
+**What this ruling refuses, and why.** A lint rule over `.tsx` text — it checks spelling, not rendering. A
+`<GazetteerAttribution>` component a screen must remember to mount, with nothing checking that it did —
+that is the note again, wearing a component's clothes. `source` on every `GazetteerHit` — 149,101 copies of
+one constant, and a miss has no hits to carry it, which is exactly the case the CLI already gets right.
+
+**Residue.** The obligation is discharged for the **picker**. A second surface that renders gazetteer data
+— a map label, a share page, an export — owes it again, and item 2's allowlist is what will make that
+surface's author find this ruling. **Fires** when `GAZETTEER_CONSUMERS` gains its second `.tsx` entry.
+
+---
+
+#### A-92 — a type a port passes is declared once: `MapBoundsLike` is deleted, and a reader census's population is *declarations*, not imports (revision 70, §8.4 **A-84** Part 7 item 2's residue, carried from the previous increment)
+
+**What was found, and it is the fifth face of one class.** A-84 Part 7 item 2 measured *"`apps/web/src/
+ports/map.ts:48` is the only reader of `MapBounds.centre` in `packages/client` and `apps/web` combined, so
+the compiler names the one site that was wrong and no other."* **It was one file short.**
+`packages/client/src/ports/types.ts` declares **`MapBoundsLike`**, a hand-maintained structural restatement
+of `core.MapBounds`, with **nothing tying the two together** — so the compiler named it at build time,
+after the census had already concluded, and `I-22b`'s *"two files"* was one short.
+
+**This is the same species as the closure-claim failures of rounds 61–65: a census run over the wrong
+population.** A census over *importers of a type* cannot see a *re-declarer of its shape*. Stated at the
+level it lives at, once: **the import graph answers *who uses this name*; it does not answer *who has
+promised this shape*.**
+
+**And the restatement has no reason to exist.** Its own docstring says it is what *"lets `MapPort` be
+declared without `packages/client` depending on the derivation."* Measured: `packages/core/src/index.ts`
+exports `MapBounds`; `packages/client/src/deps.ts` is `export * from '../../core/src/index.ts'` and is the
+one place the client reaches into core; and `ports/types.ts` **already imports `IsoDate`, `PhotoId`,
+`TripId` and `TripSummaryRow` from `deps.ts`**. The dependency the restatement exists to avoid is one the
+file already has, on the same line.
+
+> **Ruling, and it is a deletion rather than an assertion.**
+>
+> 1. **`MapBoundsLike` is DELETED.** `MapPort.mount`, `.update` and `.refit` take **`MapBounds`**, imported
+>    from `../deps.ts`. The builder proposed a compile-time assignability assertion between the two and
+>    correctly did not build it: **that is the right instinct and the wrong remedy** — it makes a duplicate
+>    safe instead of removing it, and leaves a second declaration for the next census to miss.
+> 2. **A type `packages/core` exports may not be restated in `packages/client/src/ports/types.ts`.** Ports
+>    declare **port-shaped** types — `MapPoint`, `MapHandle`, `TripDoc`, `StorageVersion` — and **import**
+>    domain types. This is the general rule and it is what a reviewer applies.
+> 3. **The mechanism, at exactly the width it reaches (§0 position 10c).** `boundaries.test.ts` gains one
+>    check: **no type declared in `packages/client/src/ports/types.ts` may have a name that, with a trailing
+>    `Like`, `Shape`, `Ish` or `Alike` stripped, is exported by `packages/core`.** It is total over the
+>    file, it is a `grep`, and it catches the naming convention a structural restatement almost always
+>    arrives under — **including the one that was actually written.** **It does not catch a restatement
+>    under an unrelated name, and this ruling does not claim it does.** There is no cheap total mechanism
+>    for *"is this shape a copy of that shape"*; the sentence is narrowed rather than dressed up, and
+>    clause 2 is the part that has to be applied by a person.
+> 4. **When a ruling changes a type's shape, the population it must census is every DECLARATION of that
+>    shape** — which is one, if clause 2 holds. A ruling that says *"measured: N readers"* about a type
+>    crossing a package boundary states which of the two it counted.
+
+**Injected faults.** Re-add a `MapBoundsLike` alias to `ports/types.ts` → the boundaries check reddens
+naming it. Make `MapBounds.centre` non-nullable again → **`apps/web/src/ports/map.ts` is the only site the
+compiler names**, which is what A-84 Part 7 item 2 claimed and, with the duplicate present, could not
+deliver.
+
+**Residue.** `MapPoint` is *also* hand-declared here and is **not** a restatement — no core type has that
+shape — but it is the shape a future ruling would be tempted to make one. **Fires** if `packages/core` ever
+exports a point type with `label`/`category`; at that moment clause 2 applies to it.
+
+---
 
 ### 8.5 Observed travel — the shape Phase 5 must be able to land on
 
