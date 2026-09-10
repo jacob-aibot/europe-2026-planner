@@ -1900,6 +1900,47 @@ sentences in this file are corrected in place.
   refusals golden's header and are re-derived from the committed artefact, because a number only a 625 MB
   run can produce belongs in a golden the offline tests read (A-90 clause 1).
 
+**Revision 76, 2026-09-10.** **`I-32` is BUILT and QA round 69 returned SHIP on it; its eight findings are
+fixed in code (`d7d6211`).** `ARCHITECTURE.md` revision 73 carries the corrections and one new ruling,
+**A-95**. **Nothing in this revision is user-meetable** (sequencing rule 10): every item is about the
+strength of an instrument a reviewer or a builder uses, not about anything Jacob can type. **Nothing here
+gates `I-30`.** Two increments are scheduled and one criterion is corrected.
+
+- **`I-33` — A-91 item 1, scheduled after being deferred twice, and it is scheduled AHEAD of the picker.**
+  `searchGazetteer` returns `{source, hits}`. It has been deferred twice on fence grounds because its
+  consumers include five `.mjs` probes under `qa/` that break at **runtime**, not at typecheck — so the
+  increment that changes it must own the re-cuts, and no `.tsx` increment should be doing that work in the
+  same commit as a screen. **Measured for this revision: 94 call sites** — 45 across five `qa/` probes, 44
+  across four `packages/core/test/` files, 3 in `tools/gen-gazetteer.mjs`, 1 in `cli.ts`, 1 in
+  `test/boundaries.test.ts` — **and not one `.tsx`, because no `.tsx` consumer exists yet.** That is the
+  whole argument for now rather than later: the blast radius is entirely in files `I-30` must not be
+  opening, and it only grows. **This is A-91's own mechanism for the CC BY obligation, and leaving it
+  unowned is how the obligation is lost** — so it is owned, by name, with the re-cuts in scope.
+  **`I-30` may not land before `I-33`.**
+- **`I-34` — A-95's `--review`, and it gates nothing.** R69-1's fix made `--dry-run` take the same gates in
+  the same order as a real run — correct, and verified by round 69 — and thereby made a **refused** corpus
+  the one change no run in this system can describe, against A-90 clause 1's premise that a corpus change
+  is *reviewable*. **A-95 separates a class-1 precondition (an absence — the run cannot compute an audit)
+  from a class-2 review gate (a refusal — the audit is complete and the write is refused)**, and lets only
+  class 2 report. **The gates stay closed for everything that writes.**
+- **One criterion corrected in place, and the builder found it: `I-32`'s exempt figure.** It asked the
+  refusals golden's header to carry *"class-`P` exempt **141** in **57** groups"*, carried forward from
+  A-93 Part 3(a). **The corpus `I-32` ships says 139 in 56, and A-94 moved the two rows itself** —
+  `Atafu Village` and `Nukunonu`, reached by the `C` subtraction once `C` became `NZ` (BUILD-NOTES
+  **KD-128**, re-derived independently by the breaker at round 69 and again offline). **Sequencing rule 12
+  (b) again: a builder who measures a ruling false is doing the architect's job, and the criterion changes,
+  not the measurement.**
+- **A fault that cannot fire is now a §0 rule rather than a fifth lesson.** **A-94 Part 9 fault 3** —
+  invert the tie-break — could not redden anything, because **no tie exists in the twelve published
+  tallies**, and unlike **N4** it was *claimed* to be caught. §0 position 5 gains clause **(b)**: **a
+  stated fault is shown to fire, or is declared unfireable at its site**, naming what holds the property
+  meanwhile. **How a criterion is written** gains **rule 9** below; a criterion carrying an unfireable `N`,
+  undeclared, is a design defect routed to me. **⚠ And a numbering hazard, recorded because round 69's
+  reports tripped over it: `I-32`'s `N1…N8` below and A-94 Part 9's `1…7` are TWO DIFFERENT ENUMERATIONS
+  of the same increment's faults** — this entry has no tie-break fault at all, and A-94 Part 9 has no
+  interrupted-write fault. They agree by coincidence at 4 (the seed branch) and nowhere else. **Cite a
+  fault by its document and its number, never by its number alone.**
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1927,9 +1968,9 @@ trips has a travel history.
 
 ## How a criterion is written
 
-Eight rules. They apply to every phase in this document, and a criterion that breaks one is a defect
-routed to me, not to whoever failed to meet it. **Rule 8 is revision 70's and it is the newest**; rule 7 is
-revision 69's; rule 6 is revision 53's; the other five are unchanged.
+Nine rules. They apply to every phase in this document, and a criterion that breaks one is a defect
+routed to me, not to whoever failed to meet it. **Rule 9 is revision 76's and it is the newest**; rule 8 is
+revision 70's; rule 7 is revision 69's; rule 6 is revision 53's; the other five are unchanged.
 
 **1. Every count carries an outcome clause.** A number is satisfiable while the thing misbehaves. *"12
 blockers"* was true and meant nothing. The clause names what must be true of each counted item, and for
@@ -2008,6 +2049,25 @@ This is rule 5's family — a criterion the design has already made unsatisfiabl
 rule 7 is about a criterion no correct implementation can meet, and rule 8 is about a criterion **two
 different implementations can both meet**. Where rule 7 says *do not assert which words a file lacks*,
 rule 8 says *do not leave the reader a choice, and do not count a population you do not own*.
+
+**9. An injected fault is shown to fire, or it is declared unfireable where it is stated** (revision 76,
+§0 position 5 (b), ARCHITECTURE §8.4 **A-94** Part 9 fault 3, QA **R69-3**). Rule 3 says a rule ships with
+an injected-fault criterion. **This is the failure mode of rule 3 itself**, and it is the fourth instance:
+a fault the artefact offers nothing to bite is **a criterion that reports success for doing nothing**, and
+at every distance a reviewer stands at it is indistinguishable from a passing test. **A-94 Part 9's fault
+3** — invert the tie-break — moves no shipped row, no tally and no golden byte on this corpus, because
+**there is no tie in the twelve published tallies**; inverting the comparator in the generator *and* in the test that
+re-derives it leaves the whole suite green. **The rule is not that every fault must fire — some cannot, and
+that is a property of the data.** The rule is that a criterion says which it is. Three consequences.
+**(a)** A builder who cannot make a stated `N` redden **reports it as a routed finding**, not as a build
+note — which is what `I-32`'s builder did, correctly, for **N4** (BUILD-NOTES **KD-130**) and what nobody
+had done for N3. **(b)** A criterion that states an unfireable fault **names the property of the artefact
+that makes it unfireable and the instrument that holds the property meanwhile** — for N4 that is the
+five-entry history and the stop-and-report; for N3 it is the tie-free corpus and a synthetic tied ballot.
+**(c)** Where the fault matters, the cheap remedy is to **lift the decision into a module a test can call
+with a synthetic input** — `tools/elect-parent.mjs`, on the `corpus-write.mjs` precedent — so the fault
+fires against the **mechanism** when the data offers it nothing. **An undeclared unfireable `N` is a design
+defect routed to me**, and it is worse than a missing one, because a missing fault is visible.
 
 ---
 
@@ -8066,9 +8126,20 @@ sixteen refusals must come out of the run unchanged.
     replacement for it, and this criterion does not claim otherwise.)*
   - **The audit numbers are in a golden, not in a grep of the generator** `[stated]`, KD-127: the refusals
     golden's header carries `S`-only **0**, `P(C)`-only **0**, sovereign pairs used **6** (named) and
-    class-`P` exempt **141** in **57** groups, and the test **re-derives** each from the committed corpus
+    class-`P` exempt **139** in **56** groups, and the test **re-derives** each from the committed corpus
     and the committed goldens rather than comparing the header with itself. **N7, injected: change one
     header number** → that assertion reddens naming the number.
+    **⚠ CORRECTED AT REVISION 76 (BUILD-NOTES KD-128, QA R69-4): this criterion said 141 in 57 groups**,
+    carried forward from A-93 Part 3(a). **This increment's own ruling moves the figure**: `Atafu Village`
+    (`gn:4h85j`) and `Nukunonu` (`gn:4h85h`) are `P/PPLA` with `cc2 = NZ`, and once A-94 makes `C` = `NZ`
+    the `C` subtraction reaches them — 141 − 2 = **139**, 57 − 1 = **56**, with the four largest groups
+    (`FO+DK` 16, `AX+FI` 15, `AR+AQ` 11, `EH+MA` 8) unmoved. **The builder measured it, disclosed it, and
+    asserted the measured value with the derivation beside it; the criterion was wrong and it is the
+    criterion that changes** (sequencing rule 12 (b)). **And the predicate is A-89's `X \ {S, C}`, not
+    A-93 Part 2's `X \ {S, C, P(S), P(C)}`** — the second yields **84**, because `FO+DK` and `AX+FI` are
+    kept by the **sovereign** subtraction rather than by the class restriction, and a future
+    re-derivation from the wrong sentence gets 84 and reports drift that is not there (**R69-4**;
+    KD-128 carries the corrected sentence).
   - **An interrupted write leaves the corpus intact** `[stated]`: kill the generator between the delete and
     the write — or inject a throw at the same point — and `packages/core/src/geo/gazetteer/` still holds a
     complete, loadable corpus. **N8, injected: restore the delete-then-write order** → the assertion that
@@ -8093,6 +8164,149 @@ sixteen refusals must come out of the run unchanged.
   three goldens, one new golden and the corpus. **Part 3's log half and Part 4 are separable from Parts 1–2
   and may land in either order within the increment; they may not land in a different commit from the
   corpus diff they change.**
+
+#### I-33 — `searchGazetteer` returns `{source, hits}`, and the increment that changes it owns every re-cut (revision 76, `ARCHITECTURE.md` §8.4 **A-91** item 1, QA **R67-9** standing; deferred at revisions 73 and 75, scheduled here)
+
+**Read A-91 whole. Then A-83 Part 7 (the loading contract and the pairing check) and §2.10's export-surface
+rule. Nothing else in §8.4** — not A-82, not A-84…A-90, not A-93, not A-94, not A-95, not §2 whole, not §4,
+not §10. **No `DESIGN.md`**: this increment renders nothing.
+
+**Why it exists, and why now.** A-91 item 1 is **the mechanism for this repository's first attribution
+obligation**. `Gazetteer.source` carries the CC BY 4.0 text on every loaded shard including a miss, and
+nothing makes a consumer see it: `GazetteerHit` does not carry it, so a screen has to reach for
+`gazetteer.source` **deliberately**, and nothing notices if it does not. Returning `{source, hits}` means
+**hits stop being reachable without `source` being in the same destructuring** — a screen that does not
+render it has to have *dropped* it, which is a different act from never having seen it.
+
+**It has been deferred twice on fence grounds and the fence is the reason to do it now, not later.**
+`searchGazetteer`'s consumers include five `.mjs` probes under `qa/`, which are **not typechecked** and
+break at **runtime** — so the increment that changes the return type must own the re-cuts, and that work
+must not be sitting in the same commit as `I-30`'s first `.tsx`. **Measured at revision 76**, by
+`grep -c 'searchGazetteer(' `: **45** call sites across five `qa/` probes (`r60-fold-search` 24,
+`r67-corpus` 16, `r60-coverage` 2, `r64-census` 2, `r60-invariant` 1), **44** across four
+`packages/core/test/` files (`gazetteer.test.ts` 41, plus `cityPick`, `pickCentre`, `gazetteerElection`),
+**3** in `tools/gen-gazetteer.mjs`, **1** in `cli.ts`, **1** in `test/boundaries.test.ts` — **94 call
+sites, and not one `.tsx`, because no `.tsx` consumer exists yet.** The blast radius is entirely in files
+`I-30` must not be opening, and it only grows.
+
+**What it is NOT.** **No `.tsx`, no `apps/web` file of any kind, no `packages/client/src`.** Not the picker.
+**Not A-91 item 3** — the rendered attribution is `I-30`'s exit criterion and stays there. **Not a change to
+`GazetteerHit`**, which must not gain `source`: 149,101 copies of one constant is the second source of truth
+this repository refuses everywhere else, and a **miss** has no hit to carry it, which is the case `cli.ts`
+already gets right. **No corpus file, no golden, no generator output byte.** `SCHEMA_VERSION` (5) and
+`SUMMARY_VERSION` (8) do not move.
+
+- **Built, in three parts, and part 3 is not optional.**
+  1. **The type and the function.** `GazetteerResult = { readonly source: string; readonly hits: readonly
+     GazetteerHit[] }` is exported from `packages/core/src/index.ts`; `searchGazetteer` returns it. `source`
+     is `gazetteer.source` — read from the loaded shard, **never** a module constant, because that is what
+     makes it follow a re-pin (A-90 clause 3). **A miss returns `{source, hits: []}`, not `{source: '',
+     hits: []}` and not `null`** — a miss is the case the obligation is easiest to lose in. Both of
+     `searchGazetteer`'s existing programmer-error throws are unchanged.
+  2. **A-91 item 2's allowlist, since this is the increment that makes the boundary real.**
+     `GAZETTEER_CONSUMERS` in `test/boundaries.test.ts`: exactly the modules named there may import
+     `loadGazetteerFor`, `searchGazetteer` or `geo/gazetteerShards.gen.ts`, transitively. `I-30` adds its
+     screen to that list **in the same increment as the screen**, and the list is where the obligation is
+     written down.
+  3. **Every one of the 94 call sites, re-cut in this commit**, including all five `qa/` probes. **A probe
+     left broken is this increment failing**, not a follow-up: an `.mjs` probe that throws at runtime is
+     indistinguishable from a probe that found nothing, which is the failure mode `qa/` exists to not have.
+- **Verification.** Tagged per **How a criterion is written**; the ceilings are ceilings (rule 4).
+  - **`source` cannot be dropped by accident** `[stated]`: `searchGazetteer` returns an object whose
+    `source` is byte-identical to the loaded `Gazetteer.source`, **on a hit, on a miss and on a
+    "keep typing" empty query**, over the real `loadGazetteerFor`. **N1, injected: return `hits` alone
+    again** → the typecheck fails at every call site in `packages/core/test/` and `cli.ts`, and the
+    boundaries test's own call fails; the criterion is that the **compiler** names them, not a grep.
+  - **`source` follows the shard, not a constant** `[stated]`: a fixture shard whose `$source` differs is
+    loaded and `searchGazetteer(...).source` is **that** string. **N2, injected: return a module-level
+    literal** → this reddens and N1 does not. **This is the fault that matters** — it is A-91 item 3's N3
+    one layer down, and a hard-coded `source` passes every other assertion forever and goes stale at the
+    next re-pin.
+  - **The allowlist is the denominator** `[stated]`: a module importing `loadGazetteerFor` without a
+    `GAZETTEER_CONSUMERS` entry fails `boundaries.test.ts`. **N3, injected: add such an import** → the test
+    reddens **naming the module**. **N4, injected: delete an entry for a module that does import it** → the
+    test reddens too, so the list cannot be satisfied by being empty.
+  - **Every `qa/` probe still runs** `[stated]`: all five re-cut probes execute to completion and their
+    pass/FAIL counts are reported **before and after**, from a `git worktree` at the parent commit,
+    **flip by flip**. A probe whose count changes for a reason other than the re-cut is a finding.
+    **The probes are re-cut, never weakened**: an assertion that was FAIL before is FAIL after unless the
+    re-cut is what fixed it, and that case is named.
+  - **Nothing else moved** `[stated]`: the corpus, all five goldens and `gazetteerShards.gen.ts` are
+    byte-identical; the named queries of round 69 answer identically (`west island`, `bantam village`,
+    `atafu`, and the eleven rank-1 queries); `packages/core` and `packages/client` still have **zero**
+    runtime dependencies; §2.10's **runtime** export count does **not** move, because `GazetteerResult` is a
+    type and types are not runtime symbols — **state the count and say that it did not move.**
+- **Dependencies / blockers.** None. It shares no file with `I-34`. **`I-30` may not land before this
+  increment** — A-91 item 3's rendered criterion is written against the shape item 1 establishes, and a
+  picker built on the array shape reaches for `gazetteer.source` deliberately, which is the exact act item
+  1 exists to make impossible. **This is a gate on `I-30`'s ordering and not on its design**: `I-30` is
+  fenced by the unresolved visual direction, and this increment does not touch that fence in either
+  direction.
+- **Route: builder + breaker, mandatory** — a `packages/core` export surface change with 94 call sites and
+  a licence obligation behind it.
+
+#### I-34 — `--review`: the generator can describe a corpus change it refuses (revision 76, `ARCHITECTURE.md` revision 73's §8.4 **A-95**; QA **R69-7**, the builder's recorded objection at `d7d6211`)
+
+**Read A-95 whole. Then A-90 clause 3 (with its revision-73 extension) and A-94 Part 10 (with its
+revision-73 extension). Nothing else** — not A-94's other parts, not A-93, not A-89, not A-91, not §2, not
+§4, not §10, not `DESIGN.md`.
+
+**Why it exists, and it is NOT user-meetable** (sequencing rule 10). R69-1's fix moved both ship gates above
+the `--dry-run` return so a dry run stops exactly where a real run would. Correct, verified, and it leaves
+this: **`gateNamedSet` throws, so the dry run's audit never runs, so no run in this system can show a
+reviewer the full audit of a corpus the named-set gate refuses.** A-90 clause 1 made the committed corpus
+the artefact of record **so that a change to it would be reviewable**, and the reviewer's own tool now
+refuses to describe the change it is refusing. **The builder raised this as an objection, built the
+symmetric version, and did not decide it; A-95 decides it.**
+
+**What it is NOT.** **No `.tsx`, no `apps/web`, no `packages/client`.** **No corpus file, no golden, no
+generator output byte** — a run of this increment's generator must reproduce the committed corpus and all
+five goldens byte-identically. **It does not weaken `--dry-run`**, which keeps throwing. **It does not add a
+`--force`, an environment variable or a way for any mode to write past a refused gate** (A-95 Part 4).
+
+- **Built, in `tools/gen-gazetteer.mjs` and one test file.**
+  1. **Flag handling, before any source is fetched**: `--review` requires `--dry-run`; `--review --write` is
+     refused; both refusals are a usage error with exit 1 and **no fetch**.
+  2. **The class-2 gates collect instead of throwing under `--review`** — A-90 clause 3's row-diff cap and
+     A-94 Part 10's named set — and the run prints the **full** row diff, the named-set verdict with every
+     row inside and outside it named, then the ordinary dry-run audit, then the refusals verbatim with A-94
+     Part 10 (b)'s retirement sentence beside them, then **exits 1**.
+  3. **Class-1 preconditions are untouched** and still throw in `--review`: the source log missing, empty or
+     unparseable; the previous corpus present and unreadable; a shard whose `$sourceSha256` disagrees with
+     `meta.json`. **This is the half that must not move**, and it is what R69-1 fixed.
+  4. **No writer is guarded by a new condition.** `--review` returns on the same line `--dry-run` returns
+     on, above every writer (A-95 clause 5). A new guard at a write site would be a new thing to get wrong.
+- **Verification.** `[stated]` throughout; every fault below is **fireable today** and the plants are round
+  69's own, from a `git worktree`.
+  - **A refused change is described in full and the run still fails** `[stated]`: with one shipped row
+    edited out of the named set, `--dry-run --review` prints the row diff naming that row, prints the
+    named-set verdict naming it as outside the set, prints the audit, and **exits 1**; `git status` in the
+    worktree shows **the plant and nothing else**. **N1, injected: exit 0 on a refusal** → the exit-code
+    assertion reddens alone, with the diff assertion still green — the two are separate assertions
+    precisely so a fix to one cannot mask the other.
+  - **A precondition still throws in `--review`** `[stated]`: a shard whose `s` disagrees with `meta.json`
+    gives **exit 1 in seconds, before the build, with no diff and no audit**, and a message naming the
+    discrepancy — **in `--review` exactly as in a real run and as in a plain `--dry-run`**, all three
+    asserted. **N2, injected: report instead of throw for that condition under `--review`** → this reddens.
+    **This is R69-1's own attack re-run in the new mode and it is the fault this increment exists to be
+    tested by.**
+  - **The mode cannot be reached by accident** `[stated]`: `--review` alone exits 1 with a usage error
+    **having fetched nothing** (asserted by the cache directory being untouched, not by reading a log
+    line); `--review --write` does the same. **N3, injected: accept either** → the matching assertion
+    reddens.
+  - **A genuine first build is still a first build in `--review`** `[stated]`: corpus directory and
+    manifest golden both absent → the run reports a genuine first build, runs both gates, prints their
+    verdicts, writes nothing and exits **0**. **N4, injected: treat a genuine first build as a class-1
+    stop** → this reddens, which is what stops the fix for R69-1 being over-applied.
+  - **Nothing else moved** `[stated]`: a full generator run from this increment's tree leaves `git status`
+    **empty** — 963 documents, the shard map and all five goldens byte-identical — and a plain `--dry-run`
+    on a clean tree still prints the row diff and the named-set line and exits 0 (R69-7's own assertion,
+    re-run unchanged).
+- **Dependencies / blockers.** None. It shares no file with `I-33`, and either may land first. **It gates
+  nothing, including `I-30`** — sequencing rule 10: this is a finding about the strength of a reviewer's
+  instrument, not a defect a user can reach.
+- **Route: builder + breaker, mandatory** (delegation table: the generator that writes committed generated
+  data). Small, and the breaker's job is item 3 — that no class-1 condition became reportable.
 
 #### I-30 — the city picker: the first screen that reads the corpus, and the first attribution this repository owes a user (revision 73, `ARCHITECTURE.md` revision 70's §8.4 **A-91**, QA **R67-9** standing; **`DESIGN.md` owns everything this entry does not**)
 
@@ -8124,9 +8338,13 @@ it does not, `I-30` ships with a known, published, two-row hole and says so.** T
      miss**, and **"keep typing"**. A-83 Part 7's pairing check is not bypassed and no shard is inlined.
   2. **The pick is written whole** — `cityPickFromRow`, through the door `I-24` made safe — and the country
      on the lifetime map is read off the pick. Nothing on this screen types a country.
-  3. **A-91, all three mechanisms.** `searchGazetteer` returns
-     `{ source, hits }`; `GAZETTEER_CONSUMERS` in `boundaries.test.ts` gains this screen's module and
-     **nothing else may import the loader**; and the attribution renders.
+  3. **A-91, all three mechanisms** — **⚠ REVISION 76: items 1 and 2 move OUT of this increment and into
+     `I-33`, which is scheduled ahead of it.** `searchGazetteer` returning `{ source, hits }` changes **94
+     measured call sites**, 45 of them in five `.mjs` probes under `qa/` that break at runtime rather than
+     at typecheck; that work does not belong in the same commit as this repository's first `.tsx` on the
+     corpus path. **What stays here is item 2's entry and item 3 in full**: `GAZETTEER_CONSUMERS` in
+     `boundaries.test.ts` gains this screen's module — **nothing else may import the loader** — and **the
+     attribution renders**, which is this increment's gate and is unchanged.
 - **Verification** `[rendered]` for item 3, `[stated]` for the rest.
   - **The attribution is on screen in all three states** `[rendered]`: with at least one hit, with a miss,
     and in *"keep typing"*, the rendered output contains the exact `Gazetteer.source` string and a link to
@@ -8147,7 +8365,12 @@ it does not, `I-30` ships with a known, published, two-row hole and says so.** T
     (`cairn-constraints` §8, root `docs/PLANNER.md`).
 - **A gate, stated where it will be read.** **This increment may not land without the `[rendered]`
   attribution criterion above** (A-91). It is not a follow-up and it is not a note.
-- **Dependencies / blockers.** **The visual direction, and nothing else.** `I-27` sits behind this
+- **Dependencies / blockers.** **The visual direction is still the only thing FENCING this increment**, and
+  revision 76 changes nothing about that: neither `I-33` nor `I-34` touches a `.tsx`, `apps/web`,
+  `packages/client/src` or `DESIGN.md`. **What revision 76 adds is one ORDERING gate: `I-30` may not land
+  before `I-33`** (A-91 item 1). It is an ordering gate and not a fence — the design below is fixed, and
+  `I-33` exists so that the moment the visual direction resolves this is a build against a settled return
+  type rather than a build plus 94 call-site re-cuts. **`I-34` gates nothing here.** `I-27` sits behind this
   increment because it opens `Library.tsx`.
 - **Route: builder + breaker, mandatory** — the first `.tsx` on the corpus path, and the repository's
   first attribution obligation.
@@ -10682,6 +10905,15 @@ built.
    diff over the published cap is a **stop-and-report**, not a golden update. `I-23`'s **+15 shipped rows**
    arrived as a sentence in a build note; that is the failure this rule exists to prevent, and it is a
    supply-chain property of the product's core data rather than a documentation nicety.
+   **(c)** *(revision 76, ARCHITECTURE §8.4 **A-95**, QA **R69-1** MAJOR / **R69-7**.)* **These gates fail
+   CLOSED, and the two ways of not having a diff are different things.** A gate whose diff cannot be
+   computed has **refused, not passed** — the absence of an audit is never an audit that passed — and the
+   one exception is **defined** rather than caught: a genuine first build is an absent-or-empty corpus
+   directory **with no manifest golden beside it**. Round 69 found all three of these gates disabled by a
+   bare `catch` on exactly the state an interrupted run of the same tool leaves behind. Separately, a
+   **precondition** (the run cannot compute an audit) and a **review gate** (the audit is complete, the
+   write is refused) are not the same instrument: a precondition throws everywhere, a review gate may be
+   *reported* in a mode that cannot write, and **an increment adding a gate says which class it is in**.
 12. **A rule over committed data is scoped by a named set, and an increment that builds one stops on a
    difference rather than on a size** (revision 74, §0 position 12, ARCHITECTURE §8.4 **A-93**, BUILD-NOTES
    **KD-124**). `I-29` is the worked example and it worked: the builder built the ruled predicate, measured

@@ -1815,11 +1815,11 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~583k tokens** (re-measured at **revision 73** — **§8 is 178k** and **§0 is 3.1k**, the
-growth being §8.4's new **A-95** (**2.2k**) and revision 73's in-place corrections inside **A-90 clause 3
-and Part 5 residue 4** and **A-94 Parts 3, 5, 9 and 10**; §2, §4, §9 and §10 did not move. **The
-revision-72 figures — ~582k, §8 176k, §0 3k — and the revision-70/71 figures below are superseded by
-these.**)
+This document is **~588k tokens** (re-measured with `doc-section` at **revision 73** — **§8 grew 176k →
+180k** and **§0 2.7k → 3.1k**, the growth being §8.4's new **A-95** (**2.2k**), revision 73's in-place
+corrections inside **A-90 clause 3 and Part 5 residue 4** and **A-94 Parts 3, 5, 9 and 10**, A-91's
+scheduling banner, and **§0 position 5 (b)**; §1–§7, §9 and §10 did not move. **The revision-72 figures —
+~582k, §8 176k — and the revision-70/71 figures below are superseded by these.**)
 
 | ruling | ~size | who reads it, and when |
 |---|---|---|
@@ -1834,7 +1834,7 @@ revision 70 are separable and only one of them is about the corpus's contents:**
 |---|---|---|
 | **A-89** | ~5k | **⚠ Its Part 2 predicate is superseded by A-93 and its Parts 2 and 8 carry corrections in place.** Still read whole by anyone working on the gazetteer refusals, **with A-93 beside it**, then **A-83 Parts 3 and 9** and **A-84 Part 5**, and nothing else — not A-85, not A-86, not A-87, not A-88, not §2 whole, not §4, not §10. |
 | **A-90** | ~3.3k | **Read by anyone who runs, re-pins or audits the generator, and by nobody else.** It needs **§0 position 11** and **A-83 Part 2**; it needs no other ruling. **Revision 73 extends clause 3 (what the gates do when the diff cannot be computed) and marks residue 4 as fired**; anyone reading clause 3 reads the extension with it, and **A-95** beside it if they are changing a mode. |
-| **A-91** | ~1.1k | **Read by the builder of the first `.tsx` that touches the corpus**, with `ROADMAP` `I-30` — **and, as of revision 73, by the builder of `I-33`, which builds item 1 (`{source, hits}`) ahead of that screen.** It needs nothing else in §8.4. |
+| **A-91** | ~1.4k | **Read by the builder of the first `.tsx` that touches the corpus**, with `ROADMAP` `I-30` — **and, as of revision 73, by the builder of `I-33`, which builds item 1 (`{source, hits}`) ahead of that screen.** It needs nothing else in §8.4. |
 | **A-92** | ~1k | **Read by anyone changing a type that crosses `packages/client`'s port boundary.** It needs **A-84 Part 7 item 2** and nothing else. |
 
 The revision-69 note follows and its figures are superseded by these: the document was ~555k (**§8 grew 145k → 152k** with §8.4's
@@ -26092,7 +26092,10 @@ Two findings, one rule. **(a)** The artefact of record has no digest over its ow
 length-preserving hand edit to a shipped row's population and coordinate passes all tests, the
 `CORPUS_BYTES` total and the row count (the same edit to the **country code** is caught, by the `indexSays`
 cross-check — the corpus is guarded off one field and not the others). **(b)** `I-31`'s four audit numbers
-— `S`-only 0, `P(C)`-only 0, sovereign pairs 6 of 41, class-`P` exempt 141 in 57 groups — are asserted
+— `S`-only 0, `P(C)`-only 0, sovereign pairs 6 of 41, class-`P` exempt 141 in 57 groups (**⚠ revision 73:
+this ruling itself moves the last of the four to 139 in 56** — Part 2 makes `C` = `NZ` for the two `TK`
+rows and the `C` subtraction reaches them; the exempt predicate is **A-89's `X \ {S, C}`**, and A-93 Part
+2's `X \ {S, C, P(S), P(C)}` yields **84**, not 139. BUILD-NOTES **KD-128**, QA **R69-4**) — are asserted
 against the generator's **source text**, so the test catches a deleted line and cannot catch a line printing
 a wrong number (KD-127, disclosed).
 
