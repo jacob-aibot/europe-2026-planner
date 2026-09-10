@@ -106,9 +106,28 @@ test('a day on one street never fits below MIN_SPAN_KM', () => {
   assert.ok(b.north > b.south && b.east > b.west);
 });
 
-test('mapBounds refuses to invent a box for no points', () => {
+/**
+ * **I-22b — ARCHITECTURE §8.4 A-84 Part 7 item 2 (QA R61-10).** `empty: true` used to arrive with
+ * `centre: {lat: 0, lng: 0}`, and `apps/web/src/ports/map.ts:48` fitted exactly that box — so a
+ * trip with no located stop opened its day map on the **Gulf of Guinea at street zoom**. A flag a
+ * caller must remember to read is the same shape as `{0, 0}`: a value that looks like an answer.
+ * A centre of no points is A-82 Part 7's *"a value nobody measured, wearing the shape of one"*,
+ * one type over, so it is `null` — and the compiler, not a reviewer, names the site that fitted it.
+ *
+ * `empty: true` **stays** and stays honest: `paneFrame` reads it first and paints `WHOLE_WORLD`
+ * (A-51's I7), which is a legitimate reader. **`mapBounds` deliberately does not return `null`** —
+ * `worldMap.ts` calls `mapBounds([])` on purpose to give its empty pane a box.
+ *
+ * **N1, injected:** restore `{lat: 0, lng: 0}` on the empty branch and the first arm reddens.
+ */
+test('I-22b (A-84 Part 7 item 2): mapBounds refuses to invent a box — or a CENTRE — for no points', () => {
   const b = mapBounds([]);
   assert.equal(b.empty, true);
+  assert.equal(b.centre, null, 'a centre of no points is not a measurement');
+  // The other side, so the arm is not one-sided: a box that HAS points still has its centre.
+  const one = mapBounds([{ lat: 48.2082, lng: 16.3738 }]);
+  assert.equal(one.empty, false);
+  assert.deepEqual(one.centre, { lat: 48.2082, lng: 16.3738 });
 });
 
 test('rollUpCost: badge-only "free" stops contribute nothing', () => {

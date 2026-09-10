@@ -44,8 +44,13 @@ function fit(entry: Entry): void {
   }
   entry.pendingFit = false;
   map.invalidateSize({ animate: false });
+  // **§8.4 A-84 Part 7 item 2 (QA R61-10).** This used to be
+  // `setView([bounds.centre.lat, bounds.centre.lng], 12)`, and `mapBounds([])` handed it
+  // `{lat: 0, lng: 0}` — so a day with no located stop opened on the Gulf of Guinea at street
+  // zoom, fitting a centre nobody measured. `MapBounds.centre` is `null` for an empty box now,
+  // and the honest behaviour for a box with nothing in it is to **not touch the view at all**:
+  // the map stays wherever the user left it.
   if (bounds.empty) {
-    map.setView([bounds.centre.lat, bounds.centre.lng], 12, { animate: false });
     return;
   }
   map.fitBounds(toLatLngBounds(bounds), { padding: [28, 28], animate: false, maxZoom: 16 });

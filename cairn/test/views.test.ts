@@ -428,6 +428,44 @@ test('I-8a / A-40 Part 2: the two maps share no interface', () => {
 });
 
 /**
+ * **I-22b — ARCHITECTURE §8.4 A-84 Part 7 item 2 (QA R61-10): the port does not fit an empty
+ * box, and it does not fit a fabricated centre either.**
+ *
+ * `mapBounds([])` returned `centre: {lat: 0, lng: 0}` with `empty: true` and a docstring saying
+ * callers must not fit it; `fit()` called `setView([0, 0], 12)` on exactly that box, so **a trip
+ * with no located stop opened its day map on the Gulf of Guinea at street zoom**. `MapBounds.centre`
+ * is now `LatLng | null` and the port's honest behaviour for an empty box is to **not touch the
+ * view at all** — the map stays where it was.
+ *
+ * **This is a source-text assertion and it is a weaker instrument than a stubbed Leaflet map**, and
+ * the pass records it as such rather than claiming otherwise. A-84's criterion asks for a call-count
+ * assertion, but **`apps/web` cannot be imported from here** — §3's dependency test forbids it, and
+ * it is the boundary that keeps the live planner's data out of a bundle — and `apps/web` has no test
+ * runner of its own, so building one is the wider change this increment exists not to take. What a
+ * grep *can* do is exactly what the injected fault needs: `setView` is the only Leaflet call that
+ * moves a view without a box, so its **absence from the whole file** is checkable, and `fitBounds`
+ * appearing **once** pins the empty branch out of that route too.
+ *
+ * **N2, injected:** restore `map.setView([bounds.centre.lat, bounds.centre.lng], 12, …)` and the
+ * first arm reddens naming `setView`; reroute the empty branch to `fitBounds` and the second does.
+ */
+test('I-22b / A-84 Part 7 item 2: the Leaflet port never moves the view for an empty box', () => {
+  // Comments stripped, so the port may name the call it deleted without tripping this rule.
+  const port = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/ports/map.ts'), 'utf8'));
+  assert.ok(
+    !port.includes('setView'),
+    'ports/map.ts calls setView — the only way this port can move a view with no box is the ' +
+    'fabricated centre A-84 Part 7 item 2 deleted',
+  );
+  assert.equal(
+    port.split('fitBounds(').length - 1, 1,
+    'ports/map.ts fits a box somewhere other than its one non-empty branch',
+  );
+  // The empty branch is still *handled* — it returns rather than falling through to the fit.
+  assert.match(port, /if \(bounds\.empty\) \{\s*\n\s*return;/);
+});
+
+/**
  * **The tab shell: three slots, and no fourth.** ROADMAP I-8 — *"Navigation becomes Trips ·
  * Map · Profile — three tabs, not four. **No DISCOVER tab**: a slot that exists to promise
  * something is the opposite of what this product's conventions say about presenting things

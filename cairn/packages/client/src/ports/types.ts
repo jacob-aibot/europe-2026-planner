@@ -213,7 +213,17 @@ export interface PhotoPort {
 export type MapPoint = { id: string; lat: number; lng: number; label: string; category: string };
 
 export type MapBoundsLike = {
-  centre: { lat: number; lng: number };
+  /**
+   * **`null` exactly when `empty` is true** — this field tracks `core.MapBounds.centre` and moved
+   * with it at §8.4 **A-84** Part 7 item 2 (QA **R61-10**). A centre of no points is not a
+   * measurement, and a port that fits one opens the map on the Gulf of Guinea at street zoom.
+   *
+   * **This type is a hand-maintained structural restatement of `core.MapBounds`**, which is what
+   * lets `MapPort` be declared without `packages/client` depending on the derivation. Nothing ties
+   * the two together, so a shape change to either is a change to both — A-84's own census of
+   * *readers* could not see this declaration, and it is the second file the one-line ruling needed.
+   */
+  centre: { lat: number; lng: number } | null;
   north: number;
   south: number;
   east: number;

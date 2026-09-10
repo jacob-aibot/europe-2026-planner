@@ -177,7 +177,19 @@ export function fitSpanKm(points: readonly LatLng[]): number {
 }
 
 export type MapBounds = {
-  centre: LatLng;
+  /**
+   * The centre of the points this box was built from — **`null` exactly when `empty` is true**
+   * (§8.4 **A-84** Part 7 item 2, QA **R61-10**).
+   *
+   * **A centre of no points is not a measurement.** This was `{lat: 0, lng: 0}` on the empty
+   * branch, beside an `empty: true` flag and a docstring telling callers not to fit the box —
+   * and `apps/web/src/ports/map.ts` fitted it anyway, so a trip with no located stop opened its
+   * day map on the Gulf of Guinea at street zoom. A flag a caller must remember to read is the
+   * same shape as `{0, 0}`: a value that looks like an answer. This is A-82 Part 7's
+   * *"a value nobody measured, wearing the shape of one"*, one type over, and the fix is the
+   * same one — make the type say it, so the compiler names the site that was wrong.
+   */
+  centre: LatLng | null;
   /** The span this box was built to cover, in km — always ≥ MIN_SPAN_KM. */
   spanKm: number;
   north: number;
@@ -192,11 +204,17 @@ export type MapBounds = {
 /**
  * The bounds a map port should fit. The client NEVER computes this itself (§4.4). Pure.
  *
- * @returns `empty: true` with a zeroed box when there are no points; callers must not fit.
+ * @returns `empty: true` with a zeroed box and a **`null` centre** when there are no points;
+ *   callers must not fit. **It does not return `null` itself**, deliberately (§8.4 A-84 Part 7
+ *   item 2): `selectors/worldMap.ts` calls `mapBounds([])` on purpose to give its empty pane a
+ *   box (A-51's I7), so a nullable return would push nullability through `WorldMapPane` and
+ *   A-51's and A-54's pane types and tests — a large ripple to correct one line. The box's other
+ *   fields are already guarded: `paneFrame` reads `empty` first and paints `WHOLE_WORLD`, and a
+ *   `0 0 0 0` viewBox has no area.
  */
 export function mapBounds(points: readonly LatLng[]): MapBounds {
   if (points.length === 0) {
-    return { centre: { lat: 0, lng: 0 }, spanKm: MIN_SPAN_KM, north: 0, south: 0, east: 0, west: 0, clamped: true, empty: true };
+    return { centre: null, spanKm: MIN_SPAN_KM, north: 0, south: 0, east: 0, west: 0, clamped: true, empty: true };
   }
   const raw = rawSpanKm(points);
   const centre = {
