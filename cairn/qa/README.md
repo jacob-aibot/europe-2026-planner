@@ -4491,3 +4491,68 @@ property: F7 counts the door's reads with an accessor, F8 asserts the absence of
 None of the three round-65 scripts writes to the repo: `r65-gate.mjs` builds every fixture in
 memory and reads `fixtures/` and the repo's own source only; `r65-mutants.sh` and `r65-axes.sh`
 work exclusively inside a `git worktree` they create and remove.
+
+---
+
+**Round 66** is the adversarial pass ROADMAP `I-28` owes, over `8c409ff` / §8.4 **A-88** — *a
+predicate widened in place names its callers, a coverage claim names its denominators, and the
+read-gate arc closes here*. Four scripts, run from `cairn/`:
+
+```bash
+node --experimental-strip-types qa/r66-gate.mjs   # 8 sections; 39 ok, 5 FAIL at 8c409ff
+bash qa/r66-mutants.sh                            # stage 1: 15 literals audited; stage 2: 21 mutants
+bash qa/r66-axes.sh                               # 4 type-level injections, one per record class
+bash qa/r66-prea45.sh                             # one question, asked at the commit before A-45
+```
+
+**`qa/r66-mutants.sh` is the one to reach for whenever a mutation harness is the thing in
+question, and its stage 1 is the durable half.** A mutant that silently fails to apply reports
+success for doing nothing, which is worse than a missing test. Stage 1 checks **every** literal
+replaced by a bare `perl -0pi` or an unasserted `python s.replace()` in the three harnesses still
+in use — `r65-mutants.sh` (4), `r65-axes.sh` (4), `r64-mutants.sh` (7) — at the commit each one
+targets, and prints APPLIES / DOES-NOT-APPLY. **14 of 15 apply; `r65-mutants.sh` M10 alone does
+not**, because `I-28` Part 5 renamed `${paths.join(', ')}` to `${shown.join(', ')}`. That clears
+two earlier findings rather than only fixing one line: **R64-4**'s M1 does apply at `fcac762`, and
+all three of `r65-axes.sh`'s injections do apply, so the MAJOR behind A-88 Part 4 was measured
+rather than manufactured. Stage 2 re-cuts M10 against the capped expression (**RED**), runs
+round 65's other ten through the asserting `mut()` (all **RED**), and adds ten for `I-28` — both
+sides of Part 1 (M12/M13), the Part 2 and Part 3 reversions (M14/M15/M16), the CLI cap (M18), the
+read-once fix (M19), and **M20**, which decides the builder's second disclosure by changing only
+`GatedRow`'s type declaration: it is **RED**, so the name-based source tripwire really does fire
+on `stopCount: number` in `travelStats.ts`. Its suite includes
+`packages/client/test/travel-history.test.ts`, which round 65's battery did not run and which is
+where `I-28` Part 1's own assertions live.
+
+**One mutant is GREEN and it is the round's only assertion-liveness finding (R66-2).** M17 makes
+the count gate publish `7` for `stopCount: 'x'` — A-88 Part 12 item 5's own injected fault — and
+nothing reddens, because `seenStops += Math.max(stopRecords, rowLocatedStops)` clamps to the
+reference row's `located.stops` of **132**, so every wrong value in `[0, 132]` publishes what `0`
+publishes. **M17b** (100000) is **RED**, which is what makes the finding *vacuous below the
+clamp* rather than *dead*.
+
+`qa/r66-axes.sh` is `r65-axes.sh` with the fourth class added (`TripSummaryCity`, which round 65
+had no reason to run) and with every injection **asserting that it applied**. All four now point
+`tsc` at a `Record<keyof …, true>` key record **and** a table inside `test/stats-storage.test.ts`,
+and the script prints the matching source lines so a fixture literal cannot be mistaken for the
+covering table.
+
+`qa/r66-gate.mjs` is the behavioural half, and every section says whether what it measures is
+reachable: **§A** A-59 Part 4's *"exactly one"* rule over the new population — the *"throws
+exactly two ways"* premise searched over **405** plain-data row shapes (30 throw, all of them
+date shapes, all of them named by `rowDatesReadable`), the non-string duplicate id that names an
+unrelated row (**R66-3**), the residue measured from both sides, and the ungated row container
+whose `TypeError` escapes the failure branch (**R66-5**); **§B** the new census arm as an
+equality against the value it stands in for, plus `unattributed ≤ located ≤ seen` through it;
+**§C** the two premises A-88 Part 6 rests on, tested rather than accepted, and the cross-realm
+false positive the docstring says does not exist (**R66-6**); **§D** the three counts;
+**§E** the CLI cap; **§F** the privacy check with a door PIN planted in four stored fields;
+**§G** the standing constraints; **§H** non-regression.
+
+`qa/r66-prea45.sh` answers A-88 Part 2's residue trigger by **running the build that shipped
+before §2.9 A-45** (`909b4a3`): its `fromJSON` accepts `2026-02-30` and `tripSummary` writes it
+straight into the stored row, while today's `fromJSON` refuses the same document — so the row
+cannot be re-derived out of that state and the population is permanent for whoever imported one.
+
+None of the four writes to the repo: `r66-gate.mjs` builds every fixture in memory and reads
+`fixtures/` and the repo's own source only; the other three work exclusively inside a
+`git worktree` they create and remove.
