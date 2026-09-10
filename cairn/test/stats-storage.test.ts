@@ -68,7 +68,7 @@ import { dirname, relative, resolve, sep } from 'node:path';
 // `ExperimentalWarning`, which is noise in `node --test` and not a failure.
 import { stripTypeScriptTypes } from 'node:module';
 import { COUNTRY_INDEX, SCHEMA_VERSION, SUMMARY_VERSION, tripSummary, travelStats, createTrip, addPhoto, addStop, migrateDoc, sequentialIds, toJSON, fromJSON } from '../packages/core/src/index.ts';
-import type { BuildCtx, IsoDate, Trip, TravelStats, TripSummaryCity, TripSummaryRow } from '../packages/core/src/index.ts';
+import type { AttributionCensus, BuildCtx, IsoDate, Trip, TravelStats, TravelStatsAbsorption, TripSummaryCity, TripSummaryRow } from '../packages/core/src/index.ts';
 // §2.10's "tests do not create surface": `addPlace` is an internal, imported by module path
 // exactly as `packages/core/test/readOnce.test.ts` already imports it. Axis C's `attribution
 // .places` cell cannot be reached without a `Place` that carries an `at`, and there is no
@@ -525,10 +525,28 @@ const CITY_KEY_RECORD: Record<keyof TripSummaryCity, true> = {
   lastDay: true,
 };
 
-/** A cell's stated expectation. `{ absorbed }` names the PATH, which is half of what is claimed. */
-type Outcome = 'inert' | 'throws' | { absorbed: string };
+/**
+ * A cell's stated expectation. `{ absorbed }` names the PATH **and the KIND** — §8.4 **A-88**
+ * Part 9's **R65-9**: the kind used to be read off the value under test, so the table asserted it
+ * against itself and claimed a property it did not check. The property is pinned; what was wrong
+ * is that the table claimed it.
+ */
+type Outcome = 'inert' | 'throws' | { absorbed: string; kind: TravelStatsAbsorption['kind'] };
 
-/** The fixed hostile shape set A-87 Part 7 names. */
+const absList = (path: string): Outcome => ({ absorbed: path, kind: 'list' });
+const absEntry = (path: string): Outcome => ({ absorbed: path, kind: 'entry' });
+const absField = (path: string): Outcome => ({ absorbed: path, kind: 'field' });
+const absDate = (path: string): Outcome => ({ absorbed: path, kind: 'date' });
+const absCensus = (path: string): Outcome => ({ absorbed: path, kind: 'census' });
+
+/**
+ * The fixed hostile shape set A-87 Part 7 names, **plus a `Date`** — §8.4 **A-88** Part 6
+ * (ROADMAP I-28 Part 4). A-87 Part 7 excused the exotic object kinds with *"storage returns plain
+ * data from structured clone or `JSON.parse`"*; the accessor half of that premise is right and
+ * the *plain data* half is false, because structured clone carries `Date`, `Map`, `Set`,
+ * `RegExp`, `BigInt` and `Error`. A `Date` is one representative of that class on **every** axis;
+ * `packages/core/test/absorption.test.ts`' N3 arm carries the rest of the kinds.
+ */
 const SHAPES: Array<[label: string, value: unknown]> = [
   ['undefined', undefined],
   ['null', null],
@@ -537,12 +555,14 @@ const SHAPES: Array<[label: string, value: unknown]> = [
   ['a plain object', {}],
   ['an array', []],
   ['a boolean', true],
+  ['a Date', new Date(0)],
 ];
 
-/** …plus, for the two containers, a non-object entry. A string is already in the set above. */
+/** …plus, for the two containers, a non-object entry and a non-STORED-RECORD entry. */
 const CONTAINER_SHAPES: Array<[label: string, value: unknown]> = [
   ...SHAPES,
   ['an array holding a non-object entry', [42]],
+  ['an array holding a Date entry', [new Date(0)]],
 ];
 
 const ABSENT = 'undefined';
@@ -552,11 +572,31 @@ const STR = 'a string';
 const OBJ = 'a plain object';
 const ARR = 'an array';
 const BOOL = 'a boolean';
+const DATE = 'a Date';
 const ENTRY = 'an array holding a non-object entry';
+const DATE_ENTRY = 'an array holding a Date entry';
 
 /** Every shape of one key mapped to the same outcome — for the keys nothing reads. */
 const all = (o: Outcome, shapes = SHAPES): Record<string, Outcome> =>
   Object.fromEntries(shapes.map(([label]) => [label, o]));
+
+/**
+ * A stored **count**'s cells — `stopCount`, `poolCount`, `placeCount` (A-88 Part 6) and each of
+ * `AttributionCensus`' two numbers (A-88 Part 5). Absent and `null` are values; a count is the
+ * count; everything else present is one absorption at the number's own path.
+ */
+const countCells = (path: string, kind: TravelStatsAbsorption['kind'] = 'field'): Record<string, Outcome> => ({
+  [ABSENT]: 'inert',
+  [NULLED]: 'inert',
+  // 42 IS a count. `inert` here is the classifier's negative — *no absorption* — and not a claim
+  // that the published numbers are the healthy row's; a count that reads is a count that counts.
+  [NUM]: 'inert',
+  [STR]: { absorbed: path, kind },
+  [OBJ]: { absorbed: path, kind },
+  [ARR]: { absorbed: path, kind },
+  [BOOL]: { absorbed: path, kind },
+  [DATE]: { absorbed: path, kind },
+});
 
 /**
  * The ROW axis. Denominated by `ROW_KEYS`' own type, so a sixteenth field fails to compile here.
@@ -581,44 +621,59 @@ const ROW_TABLE: Record<keyof TripSummaryRow, Record<string, Outcome>> = {
   // lie. A-87 Part 7 states this is now the WHOLE throw list over the reachable population.
   startDate: all('throws'),
   endDate: all('throws'),
-  // Already gated by `countOf` before this ruling (A-84 Part 7 item 1 / A-85 Part 3): a stored
-  // count is read as a count or as nothing, and the reader does not own them, so they absorb
-  // nothing. A-86 Part 5's *no ceiling* is untouched.
-  placeCount: all('inert'),
-  stopCount: all('inert'),
-  poolCount: all('inert'),
+  // **§8.4 A-88 Part 6's closing clause (ROADMAP I-28 Part 4) — these nine cells MOVE, by
+  // ruling.** They were *inert* on the stated ground that *"the reader does not own them"*:
+  // `countOf` outside the gate, so a stored `'x'` read `0` and was reported by **nothing**, a
+  // third convention for a stored number beside the census numbers, which absorb. The three
+  // counts are now in the reader with the rest. **The published value is unchanged at `0`** —
+  // A-86 Part 5's *no ceiling* is untouched, `countOf` still floors and does not cap — so a
+  // present-and-wrong shape is *absorbed* and `42` is still a perfectly good count.
+  placeCount: countCells('placeCount'),
+  stopCount: countCells('stopCount'),
+  poolCount: countCells('poolCount'),
   countryCodes: {
     [ABSENT]: 'inert',
     [NULLED]: 'inert',
-    [NUM]: { absorbed: 'countryCodes' },
-    [STR]: { absorbed: 'countryCodes' },
-    [OBJ]: { absorbed: 'countryCodes' },
+    [NUM]: absList('countryCodes'),
+    [STR]: absList('countryCodes'),
+    [OBJ]: absList('countryCodes'),
     [ARR]: 'inert',
-    [BOOL]: { absorbed: 'countryCodes' },
-    [ENTRY]: { absorbed: 'countryCodes[0]' },
+    [BOOL]: absList('countryCodes'),
+    [DATE]: absList('countryCodes'),
+    [ENTRY]: absField('countryCodes[0]'),
+    [DATE_ENTRY]: absField('countryCodes[0]'),
   },
   cities: {
     [ABSENT]: 'inert',
     [NULLED]: 'inert',
-    [NUM]: { absorbed: 'cities' },
-    [STR]: { absorbed: 'cities' },
-    [OBJ]: { absorbed: 'cities' },
+    [NUM]: absList('cities'),
+    [STR]: absList('cities'),
+    [OBJ]: absList('cities'),
     [ARR]: 'inert',
-    [BOOL]: { absorbed: 'cities' },
-    [ENTRY]: { absorbed: 'cities[0]' },
+    [BOOL]: absList('cities'),
+    [DATE]: absList('cities'),
+    [ENTRY]: absEntry('cities[0]'),
+    // **A-88 Part 6 consequence 1.** A `Date` entry is an object but not a stored record, so it
+    // fails at its OWN level now. At `ede933f` it counted as a city record with every field
+    // absent: it absorbed nothing and inflated `unnamedCities` instead.
+    [DATE_ENTRY]: absEntry('cities[0]'),
   },
   attribution: {
     [ABSENT]: 'inert',
     [NULLED]: 'inert',
-    [NUM]: { absorbed: 'attribution' },
-    [STR]: { absorbed: 'attribution' },
+    [NUM]: absCensus('attribution'),
+    [STR]: absCensus('attribution'),
     // A plain object carrying neither census is the same answer as no `attribution` at all — a
-    // row minted before SUMMARY_VERSION 4 (A-31 Part 3). A `{places: {}}`, where the census IS
-    // present and carries neither of its declared numbers, absorbs; that cell is
-    // `packages/core/test/absorption.test.ts`' own, because it is not a shape of this set.
+    // row minted before SUMMARY_VERSION 4 (A-31 Part 3). The container's own axis, below, is
+    // what covers `{places: …}` shape by shape.
     [OBJ]: 'inert',
-    [ARR]: { absorbed: 'attribution' },
-    [BOOL]: { absorbed: 'attribution' },
+    [ARR]: absCensus('attribution'),
+    [BOOL]: absCensus('attribution'),
+    // **§8.4 A-88 Part 6 (QA R65-5).** At `ede933f` this read as *"this row carries no census"*
+    // and dropped `located.places` and `located.stops` to 0 in silence — absorbing **nothing**,
+    // while `attribution.places: <Date>` one level down absorbed. One convention at one level
+    // and another at the level below, inside one record.
+    [DATE]: absCensus('attribution'),
   },
 };
 
@@ -632,49 +687,140 @@ const CITY_TABLE: Record<keyof TripSummaryCity, Record<string, Outcome>> = {
   name: {
     [ABSENT]: 'inert',
     [NULLED]: 'inert',
-    [NUM]: { absorbed: 'cities[0].name' },
+    [NUM]: absField('cities[0].name'),
     [STR]: 'inert',
-    [OBJ]: { absorbed: 'cities[0].name' },
-    [ARR]: { absorbed: 'cities[0].name' },
-    [BOOL]: { absorbed: 'cities[0].name' },
+    [OBJ]: absField('cities[0].name'),
+    [ARR]: absField('cities[0].name'),
+    [BOOL]: absField('cities[0].name'),
+    [DATE]: absField('cities[0].name'),
   },
   countryCode: {
     [ABSENT]: 'inert',
     [NULLED]: 'inert',
-    [NUM]: { absorbed: 'cities[0].countryCode' },
-    [STR]: { absorbed: 'cities[0].countryCode' },
-    [OBJ]: { absorbed: 'cities[0].countryCode' },
-    [ARR]: { absorbed: 'cities[0].countryCode' },
-    [BOOL]: { absorbed: 'cities[0].countryCode' },
+    [NUM]: absField('cities[0].countryCode'),
+    [STR]: absField('cities[0].countryCode'),
+    [OBJ]: absField('cities[0].countryCode'),
+    [ARR]: absField('cities[0].countryCode'),
+    [BOOL]: absField('cities[0].countryCode'),
+    [DATE]: absField('cities[0].countryCode'),
   },
   centre: {
     [ABSENT]: 'inert',
     [NULLED]: 'inert',
-    [NUM]: { absorbed: 'cities[0].centre' },
-    [STR]: { absorbed: 'cities[0].centre' },
-    [OBJ]: { absorbed: 'cities[0].centre' },
-    [ARR]: { absorbed: 'cities[0].centre' },
-    [BOOL]: { absorbed: 'cities[0].centre' },
+    [NUM]: absField('cities[0].centre'),
+    [STR]: absField('cities[0].centre'),
+    [OBJ]: absField('cities[0].centre'),
+    [ARR]: absField('cities[0].centre'),
+    [BOOL]: absField('cities[0].centre'),
+    [DATE]: absField('cities[0].centre'),
   },
-  // The pair is ENTRY-scoped (A-59 Part 2), so the path is the entry and never the field.
+  // The pair is ENTRY-scoped (A-59 Part 2), so the path is the entry and never the field — and
+  // the KIND is `date` where the neighbouring entry-level absorption is `entry`, which is
+  // precisely why A-88 Part 9's R65-9 makes the table state it instead of reading it back.
   firstDay: {
     [ABSENT]: 'inert',
     [NULLED]: 'inert',
-    [NUM]: { absorbed: 'cities[0]' },
-    [STR]: { absorbed: 'cities[0]' },
-    [OBJ]: { absorbed: 'cities[0]' },
-    [ARR]: { absorbed: 'cities[0]' },
-    [BOOL]: { absorbed: 'cities[0]' },
+    [NUM]: absDate('cities[0]'),
+    [STR]: absDate('cities[0]'),
+    [OBJ]: absDate('cities[0]'),
+    [ARR]: absDate('cities[0]'),
+    [BOOL]: absDate('cities[0]'),
+    [DATE]: absDate('cities[0]'),
   },
   lastDay: {
     [ABSENT]: 'inert',
     [NULLED]: 'inert',
-    [NUM]: { absorbed: 'cities[0]' },
-    [STR]: { absorbed: 'cities[0]' },
-    [OBJ]: { absorbed: 'cities[0]' },
-    [ARR]: { absorbed: 'cities[0]' },
-    [BOOL]: { absorbed: 'cities[0]' },
+    [NUM]: absDate('cities[0]'),
+    [STR]: absDate('cities[0]'),
+    [OBJ]: absDate('cities[0]'),
+    [ARR]: absDate('cities[0]'),
+    [BOOL]: absDate('cities[0]'),
+    [DATE]: absDate('cities[0]'),
   },
+};
+
+// ---------------------------------------------------------------------------
+// (I-28) **The other TWO axes — §8.4 A-88 Part 4 (QA R65-2, MAJOR).**
+//
+// A-87 Part 7 claimed coverage denominated by `Record<keyof TripSummaryRow, true>` (15) and
+// `Record<keyof TripSummaryCity, true>` (7). **The reader descends into FOUR stored record
+// classes, not two.** The other two are the `attribution` container and `AttributionCensus`, the
+// second of which is gated **per key, by name**, and emits `attribution.places.located`
+// absorptions. Injected, a third census number compiled green and was gated by nothing, reported
+// by nothing and expected by no cell — while the control, a sixteenth `TripSummaryRow` key,
+// pointed `tsc` straight into `ROW_KEYS`. A-87 Part 7's qualifier — *"which today means a record
+// class added to `TripSummaryRow` after this ruling"* — was false when it was written, and its
+// own falsification condition (b) fired on the ruling that wrote it.
+//
+// > **A covering claim over a reader names every record class that reader descends into, and each
+// > class is denominated by a constant the compiler maintains.** A ruling that puts a new stored
+// > record class on the derive path adds its axis **in the same increment**. Four today, and the
+// > ruling that makes it five says so.
+//
+// What the mechanism reaches, said plainly: every **key** of every one of the four classes,
+// because `keyof` is the compiler's own enumeration. It does **not** reach the arrival of a fifth
+// *class* — nothing in `tsc` can demand a row for a record nobody has declared yet. That gap is
+// closed by an obligation on the architect, not by a type.
+//
+// Both axes are **test-local**: neither is a new exported type and neither moves a version
+// constant (§2.10's runtime export count stays 88, `ROW_KEYS` stays 15).
+// ---------------------------------------------------------------------------
+
+/**
+ * **Compile-time.** A third census class on the container — `attribution.days` — is a `tsc` error
+ * here until it has a row. Denominated by the row's own type, so it cannot fall behind it.
+ */
+const ATTRIBUTION_KEY_RECORD: Record<keyof TripSummaryRow['attribution'], true> = {
+  places: true,
+  stops: true,
+};
+
+/** **Compile-time.** A third census NUMBER is a `tsc` error here until it has a row. */
+const CENSUS_KEY_RECORD: Record<keyof AttributionCensus, true> = {
+  located: true,
+  attributed: true,
+};
+
+/**
+ * The `attribution` CONTAINER axis — each of its two keys crossed with the hostile shape set,
+ * measured on a row whose container is otherwise healthy.
+ *
+ * `{}` is *inert* **by ruling** (A-88 Part 5): a census declaring neither of its numbers is the
+ * same answer as `places: null` and as a pre-`SUMMARY_VERSION`-4 row. That cell was *absorbed*
+ * at `ede933f` and it moved because reporting an **absent** number as a defect inverts A-87
+ * Part 2 arm 1.
+ */
+const ATTRIBUTION_TABLE: Record<keyof TripSummaryRow['attribution'], Record<string, Outcome>> = {
+  places: {
+    [ABSENT]: 'inert',
+    [NULLED]: 'inert',
+    [NUM]: absCensus('attribution.places'),
+    [STR]: absCensus('attribution.places'),
+    [OBJ]: 'inert',
+    [ARR]: absCensus('attribution.places'),
+    [BOOL]: absCensus('attribution.places'),
+    [DATE]: absCensus('attribution.places'),
+  },
+  stops: {
+    [ABSENT]: 'inert',
+    [NULLED]: 'inert',
+    [NUM]: absCensus('attribution.stops'),
+    [STR]: absCensus('attribution.stops'),
+    [OBJ]: 'inert',
+    [ARR]: absCensus('attribution.stops'),
+    [BOOL]: absCensus('attribution.stops'),
+    [DATE]: absCensus('attribution.stops'),
+  },
+};
+
+/**
+ * The `AttributionCensus` axis — the class the reader gates **per key, by name**, applied inside
+ * `attribution.places`. Same three-way gate as every other field on this path, which is A-88
+ * Part 5's whole content: the pair is not a unit for the value arm.
+ */
+const CENSUS_TABLE: Record<keyof AttributionCensus, Record<string, Outcome>> = {
+  located: countCells('attribution.places.located', 'census'),
+  attributed: countCells('attribution.places.attributed', 'census'),
 };
 
 /** The six row keys and two city keys the derivation does not read — A-87 Part 3's control half. */
@@ -743,8 +889,10 @@ function checkCell(label: string, r: TripSummaryRow, expected: Outcome, healthy:
     }
     return;
   }
-  assert.deepEqual(s.absorbed, [{ rowId: r.id, path: expected.absorbed, kind: s.absorbed[0]?.kind }],
-    `${label}: expected exactly one absorption at ${expected.absorbed}, got ${JSON.stringify(s.absorbed)}`);
+  // **R65-9 (A-88 Part 9):** `kind` is the TABLE's, not the value under test's. It used to be
+  // read back off `s.absorbed[0]`, which asserted the field against itself.
+  assert.deepEqual(s.absorbed, [{ rowId: r.id, path: expected.absorbed, kind: expected.kind }],
+    `${label}: expected exactly one ${expected.kind} absorption at ${expected.absorbed}, got ${JSON.stringify(s.absorbed)}`);
 }
 
 test('I-26 (A-87 Part 7): the covering table is COMPLETE — every key of both records, every shape, no holes', () => {
@@ -761,9 +909,26 @@ test('I-26 (A-87 Part 7): the covering table is COMPLETE — every key of both r
     assert.deepEqual(Object.keys(cells).sort(), SHAPES.map(([l]) => l).sort(),
       `TripSummaryCity.${key}: a cell with no stated expectation is a hole (A-87 Part 7)`);
   }
+  // **I-28 (A-88 Part 4): the other two axes, same mechanism, same completeness rule.**
+  for (const key of Object.keys(ATTRIBUTION_KEY_RECORD)) {
+    const cells = ATTRIBUTION_TABLE[key as keyof TripSummaryRow['attribution']];
+    assert.ok(cells, `no covering-table row for attribution.${key} — a hole`);
+    assert.deepEqual(Object.keys(cells).sort(), SHAPES.map(([l]) => l).sort(),
+      `attribution.${key}: a cell with no stated expectation is a hole`);
+  }
+  for (const key of Object.keys(CENSUS_KEY_RECORD)) {
+    const cells = CENSUS_TABLE[key as keyof AttributionCensus];
+    assert.ok(cells, `no covering-table row for AttributionCensus.${key} — a hole`);
+    assert.deepEqual(Object.keys(cells).sort(), SHAPES.map(([l]) => l).sort(),
+      `AttributionCensus.${key}: a cell with no stated expectation is a hole`);
+  }
   // The denominators are the compiler's, and they are stated so a widening is visible in a diff.
+  // **FOUR record classes** (A-88 Part 4), not two: a covering claim over a reader names every
+  // record class that reader descends into.
   assert.equal(Object.keys(ROW_TABLE).length, 15);
   assert.equal(Object.keys(CITY_TABLE).length, 7);
+  assert.equal(Object.keys(ATTRIBUTION_TABLE).length, 2);
+  assert.equal(Object.keys(CENSUS_TABLE).length, 2);
 });
 
 test('I-26 (A-87 Part 7): every ROW cell measures what the table says — 15 keys × the hostile shape set', () => {
@@ -791,6 +956,49 @@ test('I-26 (A-87 Part 7): every CITY cell measures what the table says — 7 key
       const r = { ...base, cities: [{ ...base.cities[0], [key]: value }] } as unknown as TripSummaryRow;
       checkCell(`cities[0].${key} = ${shapeLabel}`, r, cells[shapeLabel],
         UNREAD_CITY_KEYS.includes(key) ? healthy : null);
+    }
+  }
+});
+
+/**
+ * **N5 — §8.4 A-88 Part 4 (QA R65-2, MAJOR).** The `attribution` CONTAINER axis, measured.
+ *
+ * **Injected:** delete `ATTRIBUTION_KEY_RECORD` and the injection that motivated it — a third
+ * census class, `attribution.days` — compiles green again; delete a cell and the completeness
+ * arm above reddens.
+ */
+test('I-28 (A-88 Part 4): every `attribution` CONTAINER cell measures what the table says', () => {
+  const healthy = travelStats([baseRow()], COVER_TODAY);
+  assert.deepEqual(healthy.absorbed, [], 'the baseline row is not healthy, so the table proves nothing');
+  for (const key of Object.keys(ATTRIBUTION_KEY_RECORD) as Array<keyof TripSummaryRow['attribution']>) {
+    for (const [shapeLabel, value] of SHAPES) {
+      const base = baseRow();
+      const r = { ...base, attribution: { ...base.attribution, [key]: value } } as unknown as TripSummaryRow;
+      checkCell(`attribution.${key} = ${shapeLabel}`, r, ATTRIBUTION_TABLE[key][shapeLabel], null);
+    }
+  }
+});
+
+/**
+ * **N5, the second axis.** `AttributionCensus` is gated **per key, by name** and emits
+ * `attribution.places.located` absorptions, and nothing denominated it: a third census number
+ * compiled green, gated by nothing and expected by no cell.
+ *
+ * **Injected:** delete `CENSUS_KEY_RECORD` and `AttributionCensus.disputed` compiles green with
+ * no cell demanding it; restore `readCensus`' both-numbers arm and the `undefined`/`null` cells
+ * redden on an absorption the table calls inert.
+ */
+test('I-28 (A-88 Part 4): every `AttributionCensus` cell measures what the table says', () => {
+  const healthy = travelStats([baseRow()], COVER_TODAY);
+  assert.deepEqual(healthy.absorbed, []);
+  for (const key of Object.keys(CENSUS_KEY_RECORD) as Array<keyof AttributionCensus>) {
+    for (const [shapeLabel, value] of SHAPES) {
+      const base = baseRow();
+      const r = {
+        ...base,
+        attribution: { ...base.attribution, places: { ...base.attribution.places, [key]: value } },
+      } as unknown as TripSummaryRow;
+      checkCell(`attribution.places.${key} = ${shapeLabel}`, r, CENSUS_TABLE[key][shapeLabel], null);
     }
   }
 });

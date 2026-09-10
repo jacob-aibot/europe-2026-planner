@@ -827,3 +827,56 @@ test('I-26 Part 4: over the reference library `cli stats` prints no absorbed lin
   // …over a command that printed something, so "no such line" is about a clean library.
   assert.match(r.out, /^travel statistics as of 2026-08-24/m);
 });
+
+/**
+ * **N6 — §8.4 A-88 Part 9 (QA R65-6).** A-87 Part 10 residue 1's own trigger — *"the first
+ * surface that renders the list rather than a count caps its own display and says it is
+ * capping"* — **fired inside `I-26`**, on the surface `I-26` added, and nothing capped: a row
+ * with 200 absorptions printed one line of **3,529 characters**. The residue is discharged here
+ * rather than deferred a second time.
+ *
+ * **Five** because the line exists to name the row and give a repair a starting point, not to
+ * enumerate storage.
+ *
+ * **Injected:** remove the cap and this reddens twice — on the length, and on the absence of
+ * *"…and N more"*. The presence arm of A-87 Part 8 item 4 is unaffected: the block still prints
+ * for a library that carries an absorption, so an early `return` above it still reddens the
+ * I-26 test above rather than sailing past an absence check.
+ */
+test('I-28 (A-88 Part 9, R65-6): the per-row absorbed line CAPS its path list and says it is capping', async () => {
+  const travelled = core.createTrip(
+    { title: 'Vienna', startDate: '2019-04-01', endDate: '2019-04-09', cities: [{ name: 'Vienna' }] },
+    { ids: core.sequentialIds('i28-'), now: '2019-04-01' },
+  );
+  const base = core.tripSummary(travelled, core.COUNTRY_INDEX);
+  const cities = Array.from({ length: 200 }, (_, i) => ({ ...base.cities[0], key: `c-${i}`, name: i }));
+  const corrupt = { ...base, id: 'r', cities };
+  const stubCore = {
+    COUNTRY_INDEX: core.COUNTRY_INDEX,
+    tripSummary: () => corrupt,
+    travelStats: core.travelStats,
+  };
+  // The library really does carry 200 absorptions on one row — otherwise the cap proves nothing.
+  assert.equal(core.travelStats([corrupt as never], '2026-06-15' as never).absorbed.length, 200);
+
+  const printed: string[] = [];
+  const dir = mkdtempSync(join(CAIRN, 'cmdstats-cap-'));
+  try {
+    const file = join(dir, 'lifted-cmd-stats.ts');
+    writeFileSync(file, `export function cmdStats(core, trip, today, todayIsValid, out) {\n${cmdStatsBody()}\n}\n`);
+    const mod = await import(pathToFileURL(file).href) as {
+      cmdStats: (
+        c: unknown, t: unknown, today: string, valid: () => boolean, out: (s: string) => void,
+      ) => void;
+    };
+    mod.cmdStats(stubCore, travelled, '2026-06-15', () => true, (s) => printed.push(s));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  const lines = printed.filter((l) => l.includes('unreadable stored values'));
+  assert.equal(lines.length, 1, 'one line per row holding absorptions:\n' + printed.join('\n'));
+  const line = lines[0];
+  assert.ok(line.length < 200, `the line is ${line.length} characters — it renders the whole list:\n${line}`);
+  assert.match(line, /…and 195 more$/, `the line does not say it is capping:\n${line}`);
+  assert.match(line, /^ {2}trip r: unreadable stored values at cities\[0]\.name, cities\[1]\.name, cities\[2]\.name, cities\[3]\.name, cities\[4]\.name …and 195 more$/);
+});

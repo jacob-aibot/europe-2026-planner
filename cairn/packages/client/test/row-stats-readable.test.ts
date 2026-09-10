@@ -450,7 +450,10 @@ test('I-26 (A-87 Part 4): `travelHistory` returns `ok: true` for all five measur
     ['cities: [null]', { cities: [null] }, 'cities[0]'],
     ['cities: [{…, name: 42}]', { cities: [{ ...cityish, name: 42 }] }, 'cities[0].name'],
     ['countryCodes: 42', { countryCodes: 42 }, 'countryCodes'],
-    ['attribution: {places: {}}', { attribution: { places: {} } }, 'attribution.places'],
+    // **I-28 (A-88 Part 5)** moves shape 5's `{places: {}}` form from *absorbed* to *inert* by
+    // ruling — a census declaring neither of its numbers is the same answer as no census at all.
+    // A-87 Part 1 lists `{places: 'x'}` as the same shape, and that form still absorbs.
+    ["attribution: {places: 'x'}", { attribution: { places: 'x' } }, 'attribution.places'],
   ];
   for (const [label, patch, path] of shapes) {
     const r = { ...healthy(), ...patch } as unknown as TripSummaryRow;

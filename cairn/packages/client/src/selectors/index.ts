@@ -248,9 +248,12 @@ export function summaryScan(state: Pick<AppState, 'library' | 'rescan'>): Summar
  *
  *   1. `travelStats`'s duplicate-id error embeds the offending id in its message
  *      (`travelStats: duplicate summary id "…"`), and this selector extracts it.
- *   2. Otherwise, when `rowStatsReadable` finds **exactly one** suspect row in the library,
+ *   2. Otherwise, when `rowDatesReadable` finds **exactly one** suspect row in the library,
  *      that row is named. Two or more stays `null`, because *"one of these three"* is not an
- *      attribution and the surface's copy names one row.
+ *      attribution and the surface's copy names one row. **The predicate is `rowDatesReadable`
+ *      and A-88 Part 2 is why**: A-59 Part 4's *"exactly one"* rule stands verbatim, stated over
+ *      the population that can produce the throw being attributed rather than over every row
+ *      carrying an absorbed value.
  *
  * The malformed-date error still names no row of its own — `travelStats` throws from inside a
  * loop over every travelled row with no per-row context carried into the message — so the
@@ -268,13 +271,19 @@ export type TravelHistoryResult =
       message: string;
       rowId: string | null;
       /**
-       * Every library row failing `rowStatsReadable`, in library order. Computed **only on the
-       * failure branch**; `[]` when nothing fails, which is the honest *"the refusal is not a
-       * date"* answer for the duplicate-id case.
+       * Every library row failing **`rowDatesReadable`** — the rows that could have caused *this*
+       * refusal — in library order. Computed **only on the failure branch**; `[]` when nothing
+       * fails, which is the honest *"the refusal is not a date"* answer for the duplicate-id case.
        *
-       * Like A-47's `openFailures.message`, this may exceed what a shipped surface reads today
-       * — it is the fact, recorded once, for the Trips-list treatment A-59 Part 5 specifies and
-       * deliberately does not schedule here.
+       * **§8.4 A-88 Part 2 (QA R65-1) states the population in this clause**, and it is not
+       * `rowStatsReadable`: over the reachable population `travelStats` throws exactly two ways,
+       * the duplicate id is matched by its own regex, and A-37 Part 2's shape-invalid trip date
+       * is the other. A row whose only fault is *absorbed* is non-fatal by A-87's own ruling and
+       * is therefore not a suspect here. The **wide** fact — every unreadable stored value on any
+       * row — is `TravelStats.absorbed`, on the **success** path (A-87 Part 4).
+       *
+       * The name is kept deliberately (A-88 Part 2 item 4): renaming it costs three test files
+       * and two `qa/` probes to say what this docstring says.
        */
       unreadableRows: readonly string[];
     };
@@ -288,7 +297,14 @@ export function travelHistory(state: Pick<AppState, 'library'>, today: core.IsoD
     const message = e instanceof Error ? e.message : String(e);
     const m = DUPLICATE_ROW_ID_RE.exec(message);
     if (m) return { ok: false, message, rowId: JSON.parse(m[1]) as string, unreadableRows: [] };
-    const unreadableRows = state.library.filter((r) => !rowStatsReadable(r)).map((r) => r.id);
+    // **§8.4 A-88 Part 2 (QA R65-1, MAJOR).** `rowDatesReadable`, **not** `rowStatsReadable`.
+    // The failure branch carries ONE population: the rows that could have caused *this* refusal.
+    // Over the reachable population `travelStats` throws exactly two ways, and the duplicate id
+    // is already matched by its own regex above — so what is left is A-37 Part 2's shape-invalid
+    // `startDate`/`endDate`, and `rowDatesReadable` is the predicate for it. A-87 Part 6 widened
+    // `rowStatsReadable` over precisely the rows `I-26` had just made *non-fatal*, which made a
+    // merely-absorbed row a suspect for a throw it did not cause and took the named-row arm dark.
+    const unreadableRows = state.library.filter((r) => !rowDatesReadable(r)).map((r) => r.id);
     return { ok: false, message, rowId: unreadableRows.length === 1 ? unreadableRows[0] : null, unreadableRows };
   }
 }
@@ -428,10 +444,24 @@ export function rowDatesReadable(row: { startDate: string; endDate: string }): b
  * ledger has `cities` arriving at version 2), a library mid-rescan legitimately holds one, and
  * absent is a **value** on every gated field.
  *
- * **Residue (A-87 Part 10 item 3):** this now costs one `travelStats` call per row. Cheap on
- * today's rows and reached only on a failure branch. **Trigger:** the first surface that calls it
- * per card on every render — at which point it is **memoised in the selector layer**, not
- * re-implemented.
+ * **It has no production caller, and that is stated rather than hidden** — §8.4 **A-88** Part 2
+ * item 3. `travelHistory`'s `catch` was the one, and it asks `rowDatesReadable` now: widening
+ * this predicate was right for the row-level question and wrong for the failure branch's
+ * question. The caller it is waiting for is A-59 Part 5's Trips-list treatment, which is
+ * unscheduled. It cannot drift while it waits, because its body is an **identity** with core by
+ * construction rather than a second implementation — and `packages/client`'s selectors already
+ * carry facts ahead of their surfaces by design (A-47's `openFailures.message`).
+ *
+ * **Residue (A-87 Part 10 item 3, corrected in place by A-88 Part 8):** this costs one
+ * `travelStats` call per row, and the residue's original remedy — *"memoised in the selector
+ * layer"* — saves nothing, because the call takes a different argument per row, so a memo caches
+ * N distinct entries and pays the full cost on first paint. Measured over a 40-row library: one
+ * call per row is **0.99 ms** against **0.71 ms** for deriving the whole library's statistics
+ * once. Part 2 removes the only per-row caller in shipped code, so the cost is paid nowhere
+ * today. **A surface that needs the per-row answer for a whole library derives the library once
+ * and groups `absorbed` by `rowId`** — one function over `TravelStats`, not a second
+ * implementation of one, and not a memo. **Trigger unchanged:** the first surface that asks the
+ * question per card.
  */
 export function rowStatsReadable(row: core.TripSummaryRow): boolean {
   if (!rowDatesReadable(row)) return false;

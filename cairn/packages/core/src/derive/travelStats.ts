@@ -402,23 +402,63 @@ const isUnreadableDay = (v: unknown): boolean => v !== null && v !== undefined &
 //   4. `attribution` is gated at all three levels and its numbers go through `countOf`, so a
 //      `'5'`, a `NaN` and a `-1` are all 0 and none of them can reach an output. A-86 Part 5's
 //      *no ceiling* stands: `countOf` floors and does not cap, and nothing here adds a cap.
+//      **§8.4 A-88 Parts 5 and 6 correct this rule in place:** the three object levels are gated
+//      by a real stored-record test (`isStoredRecord`), and the two census numbers are gated
+//      **independently** — an absent half is a value and the readable half beside it survives.
+//      The same ruling brings `stopCount`/`poolCount`/`placeCount` inside this reader, which
+//      were the last stored numbers read outside it and reported by nothing.
 //   5. The value arm is `undefined` **and** `null`, uniformly, on every field. `countryCodes:
 //      null` therefore stops throwing and starts contributing nothing, uncounted — the one
 //      behaviour change here that is not a repair. A field whose `null` is a defect beside a
 //      field whose `null` is a value is the second convention A-86 Part 1 reason 3 refused, and
 //      the observable outcome of `countryCodes: null` is identical to `countryCodes: []`, a row
-//      that legitimately visited nowhere. **Residue:** a `null` on a field no generation ever
-//      wrote `null` to is absorbed and reported by nothing. **Trigger:** a measurement that a
-//      shipped write path can produce one — at which point it is a write-side defect, not a gate.
+//      that legitimately visited nowhere. **Residue, re-worded by §8.4 A-88 Part 7 (QA R65-7),
+//      because the original trigger was written in the direction that can never fire:** on a
+//      field every generation has written, the value arm has **no population**, and its cost is
+//      real — `countryCodes: null` makes a row's stored country list vanish from the lifetime
+//      map, uncounted. The arm is kept because uniformity across neighbouring fields is worth
+//      more than the one shape it costs. **Trigger:** a `SUMMARY_VERSION` generation that
+//      **omits** a field it used to write — which is what gives the arm its population, and is
+//      why the arm is right for `cities` (arrived at version 2) and empty for `countryCodes`
+//      (version 1). **Second trigger:** the first surface that must distinguish *"visited
+//      nowhere"* from *"says nothing"* — carried by `absorbed`, per row and per path, not by a
+//      per-field convention. *(The old trigger read "a measurement that a shipped write path can
+//      produce it": a write path producing `null` is exactly what would make `null` a **value**,
+//      so it argued the opposite of what the residue records.)*
 //
 // **`key` and `countrySource` get no gate**, because no derivation reads them. That is safe
 // because `test/stats-storage.test.ts`' covering table **asserts** them inert: the day a
 // derivation starts reading one, its cell's expectation changes and the test demands the gate.
 // ---------------------------------------------------------------------------
 
-/** A plain object — not `null`, not an array. The shape every stored record claims to be. */
-const isPlainObject = (v: unknown): v is Record<string, unknown> =>
-  typeof v === 'object' && v !== null && !Array.isArray(v);
+/**
+ * **A stored record** — §8.4 **A-88** Part 6. Not `null`, not an array, and its prototype is
+ * `Object.prototype` or `null`. **One predicate at all three object gates**: a `cities` entry,
+ * the `attribution` container, and each census.
+ *
+ * Its predecessor was called `isPlainObject` and was not one — it asked `typeof v === 'object' &&
+ * v !== null && !Array.isArray(v)` and nothing more. A-87 Part 7 excused that with *"storage
+ * returns plain data from structured clone or `JSON.parse`"*, and **the "plain data" half of that
+ * premise is false**: structured clone carries `Date`, `Map`, `Set`, `RegExp`, `BigInt` and
+ * `Error`. Measured at `ede933f`, `attribution: new Date()` read as *"this row carries no
+ * census"* and dropped both censuses in silence, and `cities: [new Error('boom')]` put a city
+ * named `"Error"` on the lifetime map through `Error.prototype.name` — both of them A-87 Part 2
+ * arm 3 not being honoured, reported one level down and not at their own level.
+ *
+ * **The prototype test has no false positive**, verified in this Node:
+ * `structuredClone(Object.create(null))` comes back carrying `Object.prototype`, so nothing a
+ * storage port returns is refused by it — and a genuinely null-prototype object, which
+ * `JSON.parse` with a reviver can build, is accepted because it *is* a record.
+ *
+ * A-87 Part 7's scope-limit sentence is corrected with it: the population the covering table does
+ * not reach is a stored value behind an **accessor**, and the reason is that neither structured
+ * clone nor `JSON.parse` can produce one.
+ */
+const isStoredRecord = (v: unknown): v is Record<string, unknown> => {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
+  const proto: unknown = Object.getPrototypeOf(v);
+  return proto === Object.prototype || proto === null;
+};
 
 /** `countOf`'s own predicate, split out so the gate can tell *"not a count"* from *"zero"*. */
 const isCount = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0;
@@ -447,16 +487,47 @@ type GatedRow = {
   /** `null` where the row carries no census for that class — A-31 Part 3's own answer. */
   places: AttributionCensus | null;
   stops: AttributionCensus | null;
+  /**
+   * **A-88 Part 6.** The three stored counts, gated here rather than at the fold, and carried as
+   * the two totals the fold actually consumes: `stopCount + poolCount`, and `placeCount`.
+   *
+   * **Named `…Records` and not `…Count` deliberately**, exactly as the fold's own locals already
+   * are: `test/stats-storage.test.ts`' name-based source tripwire classifies `stopCount: number`
+   * outside `TripSummaryRow` as a stored lifetime count, and this is neither stored nor a
+   * lifetime number — it is one row's own gated read, on the return path of a pure function
+   * (6b-5 pins that nothing which persists anything imports this module). Widening that
+   * allow-list is an architect's ruling; not tripping a false positive is not.
+   */
+  stopRecords: number;
+  placeRecords: number;
 };
 
 /**
- * `attribution.places` / `attribution.stops`, gated at its own level and then per number.
+ * `attribution.places` / `attribution.stops`, gated at its own level and then **per number,
+ * independently** — §8.4 **A-88** Part 5 (QA **R65-3**).
  *
- * A census that does not carry both of its declared numbers **is not a census**, so it fails at
- * its own level and takes its two fields with it — one absorption at `attribution.places`, and
- * the documented fallback is A-31 Part 3's *"a row minted before `SUMMARY_VERSION` 4 carries no
- * census and contributes none"*. A census that carries them reads each through `countOf`, so a
- * garbage number is one absorption at `attribution.places.located` and reads `0`.
+ * A value present and not a stored record fails at its own level: one absorption at
+ * `attribution.places`, and the documented fallback is A-31 Part 3's *"a row minted before
+ * `SUMMARY_VERSION` 4 carries no census and contributes none"*.
+ *
+ * Otherwise **each number is gated three ways on its own, exactly as every other field on this
+ * path is**: absent or `null` → `0`, uncounted, **no absorption**; a count → the count; anything
+ * else present → `0` and one absorption at `attribution.places.located` / `.attributed`, through
+ * `countOf`'s own predicate, so a `'5'`, a `NaN` and a `-1` are all `0`. **The pair is not a unit
+ * for the value arm.**
+ *
+ * The arm this replaces — *"a census that does not carry both of its declared numbers is not a
+ * census"* — inverted A-87 Part 2 arm 1 for one record class: `{located: 5}` reported a defect
+ * for an **absent** number and discarded the readable observation beside it. A-87 Part 3 rule 5's
+ * own argument decides it: **the value arm's outcome must equal the outcome of the legitimate
+ * value it stands in for**, and `{located: 5}` ≡ `{located: 5, attributed: 0}` — five located
+ * records, none recorded as attributed — which publishes `unattributed.places` **5**, the honest
+ * hole. Deleting the 5 invents *"this row has no census"* out of a row that plainly has half of
+ * one, which is the move A-60 Part 6.2 refused a whole record over.
+ *
+ * **Consequence, by ruling and not by accident:** `{places: {}}` is **inert** — neither number is
+ * declared, so neither is counted, which is the same answer as `places: null` and as a
+ * pre-`SUMMARY_VERSION`-4 row.
  */
 function readCensus(
   value: unknown,
@@ -464,23 +535,39 @@ function readCensus(
   absorb: (path: string, kind: TravelStatsAbsorption['kind']) => void,
 ): AttributionCensus | null {
   if (value === undefined || value === null) return null;
-  if (!isPlainObject(value)) {
+  if (!isStoredRecord(value)) {
     absorb(path, 'census');
     return null;
   }
   const rawLocated = value.located;
   const rawAttributed = value.attributed;
-  if (rawLocated === undefined || rawLocated === null || rawAttributed === undefined || rawAttributed === null) {
-    absorb(path, 'census');
-    return null;
-  }
   let located = 0;
   let attributed = 0;
   if (isCount(rawLocated)) located = rawLocated;
-  else absorb(`${path}.located`, 'census');
+  else if (rawLocated !== undefined && rawLocated !== null) absorb(`${path}.located`, 'census');
   if (isCount(rawAttributed)) attributed = rawAttributed;
-  else absorb(`${path}.attributed`, 'census');
+  else if (rawAttributed !== undefined && rawAttributed !== null) absorb(`${path}.attributed`, 'census');
   return { located, attributed };
+}
+
+/**
+ * A stored **count** — `stopCount`, `poolCount`, `placeCount` — §8.4 **A-88** Part 6's closing
+ * clause. Absent or `null` → `0`, uncounted; a count → the count; anything else present → `0`
+ * **and one `field` absorption at its own path**.
+ *
+ * These three were the reader's last exception: read through `countOf` outside the gate, a stored
+ * `'x'` read `0` and was **reported by nothing** — a third convention for a stored number, beside
+ * the census numbers, which absorb. **The published value is unchanged**: `countOf` still floors
+ * and does not cap, so A-86 Part 5's *no ceiling* is untouched. What is added is the report.
+ */
+function readCount(
+  value: unknown,
+  path: string,
+  absorb: (path: string, kind: TravelStatsAbsorption['kind']) => void,
+): number {
+  if (!isCount(value) && value !== undefined && value !== null) absorb(path, 'field');
+  // The value stays `countOf`'s, deliberately: this adds the report and changes nothing else.
+  return countOf(value);
 }
 
 /**
@@ -510,10 +597,14 @@ function readRow(row: TripSummaryRow, absorbed: TravelStatsAbsorption[]): GatedR
       cityRecords = storedCities.length;
       for (let i = 0; i < storedCities.length; i++) {
         const entry: unknown = storedCities[i];
-        // Tested exactly as `rowStatsReadable` tests it, which is what keeps A-87 Part 6's
-        // identity an identity. An array IS an object here, deliberately: it then fails on its
-        // fields, one level down, rather than on two conventions at once.
-        if (entry === null || typeof entry !== 'object') {
+        // **§8.4 A-88 Part 6.** One predicate — `isStoredRecord` — at this gate and at the two
+        // `attribution` gates below. A-87's shipped comment defended admitting an array here
+        // ("it then fails on its fields, one level down"); the defence does not hold, because
+        // `[]` has no fields to fail, so it absorbed **nothing** and inflated `unnamedCities`
+        // instead. One entry, one convention. `unnamedCities` falls to 0 for these shapes,
+        // because an entry that fails at its own level is not asked for its `name` (rule 1) —
+        // the same treatment `cities: [42]` already gets, which is the point.
+        if (!isStoredRecord(entry)) {
           absorb(`cities[${i}]`, 'entry');
           continue;
         }
@@ -544,15 +635,21 @@ function readRow(row: TripSummaryRow, absorbed: TravelStatsAbsorption[]): GatedR
         // The date PAIR — A-59 Part 2, entry-scoped, at most one absorption per entry. Gated for
         // every entry, including one whose name folded away: the absorption is a fact about the
         // stored value, not about whether a consumer went on to use it.
-        const unreadableDays = isUnreadableDay(c.firstDay) || isUnreadableDay(c.lastDay);
+        //
+        // **QA R65-4, and the fix is R64-1's own: bind the value once.** These two were read
+        // twice each — once by the predicate, once to build the entry — inside the increment
+        // whose rule is *reads it exactly once*.
+        const rawFirstDay: unknown = c.firstDay;
+        const rawLastDay: unknown = c.lastDay;
+        const unreadableDays = isUnreadableDay(rawFirstDay) || isUnreadableDay(rawLastDay);
         if (unreadableDays) absorb(`cities[${i}]`, 'date');
         cities.push({
           name,
           nameKey,
           countryCode,
           located,
-          firstDay: unreadableDays ? null : ((c.firstDay as IsoDate | null | undefined) ?? null),
-          lastDay: unreadableDays ? null : ((c.lastDay as IsoDate | null | undefined) ?? null),
+          firstDay: unreadableDays ? null : ((rawFirstDay as IsoDate | null | undefined) ?? null),
+          lastDay: unreadableDays ? null : ((rawLastDay as IsoDate | null | undefined) ?? null),
         });
       }
     }
@@ -582,7 +679,7 @@ function readRow(row: TripSummaryRow, absorbed: TravelStatsAbsorption[]): GatedR
   let places: AttributionCensus | null = null;
   let stops: AttributionCensus | null = null;
   if (storedAttribution !== undefined && storedAttribution !== null) {
-    if (!isPlainObject(storedAttribution)) {
+    if (!isStoredRecord(storedAttribution)) {
       absorb('attribution', 'census');
     } else {
       places = readCensus(storedAttribution.places, 'attribution.places', absorb);
@@ -590,7 +687,14 @@ function readRow(row: TripSummaryRow, absorbed: TravelStatsAbsorption[]): GatedR
     }
   }
 
-  return { row, cityRecords, cities, countryCodes, places, stops };
+  // --- the three stored counts --------------------------------------------
+  // **§8.4 A-88 Part 6's closing clause.** Read through the gate here rather than through a bare
+  // `countOf` at the fold, so a stored `'x'` still publishes 0 and is no longer reported by
+  // nothing. Last in the field order, so they are last in the row's absorption order.
+  const stopRecords = readCount(row.stopCount, 'stopCount', absorb) + readCount(row.poolCount, 'poolCount', absorb);
+  const placeRecords = readCount(row.placeCount, 'placeCount', absorb);
+
+  return { row, cityRecords, cities, countryCodes, places, stops, stopRecords, placeRecords };
 }
 
 /**
@@ -805,12 +909,17 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
     // is clamped to the `located` beside it — R28-4's clamp, one field over: a row out of storage
     // that claims more located records than it carries would otherwise break
     // `located <= seen` for the whole library rather than for itself.
-    const stopRecords = countOf(row.stopCount) + countOf(row.poolCount);
+    //
+    // **§8.4 A-88 Part 6's closing clause.** These three are read in `readRow` and never here.
+    // They were the reader's last exception — `countOf` outside the gate, so a stored `'x'` read
+    // `0` and was reported by **nothing**, a third convention for a stored number beside the
+    // census numbers, which absorb. The published value is unchanged; the report is new.
+    const stopRecords = g.stopRecords;
     // **§8.4 A-85 Part 3 (QA R62-1).** `placeCount` is the row's own total place count and it is
-    // read exactly as `stopCount`/`poolCount` are: through `countOf`, so a row from before
-    // generation 8 — which has no such key — contributes 0 and is floored at its own `located`
-    // below, and a hand-edited `'95'`, `-1` or `NaN` does the same.
-    const placeRecords = countOf(row.placeCount);
+    // read exactly as `stopCount`/`poolCount` are — through `countOf` inside the gate, so a row
+    // from before generation 8, which has no such key, contributes 0 and is floored at its own
+    // `located` below, and a hand-edited `'95'`, `-1` or `NaN` does the same and says so.
+    const placeRecords = g.placeRecords;
     //
     // **§8.4 A-87 Part 3 rule 4.** The census is read through the gate above and never here: a
     // row whose `attribution` is present and hostile used to publish `NaN` for `seen.places`,
@@ -818,6 +927,7 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
     // stored `located: '5'` published `"05"` by string concatenation. Both numbers now come
     // through `countOf`, so a `'5'`, a `NaN` and a `-1` are all `0` and none of them can reach an
     // output. A-86 Part 5's *no ceiling* is untouched: `countOf` floors and does not cap.
+    // **§8.4 A-88 Part 5** gates the two numbers independently, so `{located: 5}` publishes 5.
     let rowLocatedStops = 0;
     let rowLocatedPlaces = 0;
     if (g.places) {

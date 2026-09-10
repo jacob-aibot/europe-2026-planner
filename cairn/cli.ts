@@ -308,8 +308,20 @@ function cmdStats() {
     if (!paths) byRow.set(a.rowId, [a.path]);
     else if (!paths.includes(a.path)) paths.push(a.path);
   }
+  //
+  // **§8.4 A-88 Part 9 (QA R65-6), and it discharges A-87 Part 10 residue 1 rather than
+  // deferring it a second time.** That residue's own trigger — *"the first surface that renders
+  // the list rather than a count caps its own display and says it is capping"* — fired inside
+  // `I-26`, on the surface `I-26` added, and nothing capped: a row with 200 absorptions printed
+  // one line of 3,529 characters. **Five paths, then "…and N more."** Five because the line
+  // exists to name the row and give a repair a starting point, not to enumerate storage — and it
+  // says it is capping, because a silently truncated list is a list that lies about its length.
+  // The literal lives here rather than at module scope: `test/cli.test.ts` lifts this body into a
+  // standalone function, and a module-level binding would be out of scope there.
   for (const [rowId, paths] of byRow) {
-    out(`  trip ${rowId}: unreadable stored values at ${paths.join(', ')}`);
+    const shown = paths.slice(0, 5);
+    const more = paths.length - shown.length;
+    out(`  trip ${rowId}: unreadable stored values at ${shown.join(', ')}${more > 0 ? ` …and ${more} more` : ''}`);
   }
 }
 

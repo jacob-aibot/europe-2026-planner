@@ -85,3 +85,55 @@ test('A-59: a malformed date comes back ok:false, and the single suspect row is 
   assert.equal(result.rowId, 't-1');
   assert.deepEqual(result.unreadableRows, ['t-1']);
 });
+
+/**
+ * **N1 — ARCHITECTURE §8.4 A-88 Parts 1 and 2 (QA R65-1, MAJOR). The regression `I-28` exists
+ * for, pinned in BOTH directions.**
+ *
+ * `I-26` widened `rowStatsReadable` in place and the ruling never named this caller. The suspect
+ * set was then computed from the **widened** predicate while the thing being attributed — the
+ * throw — still came from the **narrow** one, so a row whose only fault is *absorbed* (non-fatal
+ * by that very ruling) became a suspect for a failure it could not have caused. Measured:
+ * `rowId` was `"the-broken-one"` at `e1e1973` and `null` at `ede933f`, and `WorldMap.tsx:100`
+ * reads `rowId` and nothing else — so one sentence on a shipped screen went vague.
+ *
+ * **Injected (arm 1):** point the filter back at `rowStatsReadable` → `rowId: null` and
+ * `unreadableRows` gains `"merely-absorbed"`; the first arm reddens.
+ * **Injected (arm 2), the other side:** return `[]` unconditionally → the second arm's *"two or
+ * more stays `null`"* still passes but its `unreadableRows` assertion reddens, and arm 1 loses
+ * its name. A one-sided test on an attribution is an attribution that will be inverted
+ * (A-34 Part 4).
+ */
+test('I-28 (A-88 Part 2): the suspect population is `rowDatesReadable`, so the row that took the library down is NAMED', () => {
+  const broken = row({ id: 'the-broken-one', startDate: 'not-a-date' as IsoDate, endDate: '2026-01-05' });
+  const absorbedOnly = row({ id: 'merely-absorbed', startDate: '2026-03-01', endDate: '2026-03-10' });
+  (absorbedOnly as unknown as { cities: unknown[] }).cities = [
+    { key: 'c1', name: 'Vienna', countryCode: 'at', countrySource: 'stated', centre: null, firstDay: null, lastDay: null },
+  ];
+  // The second row really is absorbed-but-not-fatal: core names it on the SUCCESS path, which is
+  // where the wide fact lives now (A-87 Part 4). If this stops holding the library is the wrong
+  // library and the arm below proves nothing.
+  assert.deepEqual(
+    core.travelStats([absorbedOnly], TODAY).absorbed,
+    [{ rowId: 'merely-absorbed', path: 'cities[0].countryCode', kind: 'field' }],
+    'INCONCLUSIVE: `merely-absorbed` is not an absorbed-only row',
+  );
+
+  const result = travelHistory({ library: [broken, absorbedOnly] }, TODAY);
+  assert.equal(result.ok, false);
+  if (result.ok) return;
+  assert.equal(result.rowId, 'the-broken-one', 'the named-row arm went dark for a fault one row caused');
+  assert.deepEqual(result.unreadableRows, ['the-broken-one']);
+});
+
+test('I-28 (A-88 Part 2): two rows that could each have caused the throw stays `null` — the rule is unchanged', () => {
+  const library = [
+    row({ id: 'bad-a', startDate: 'not-a-date' as IsoDate, endDate: '2026-01-05' }),
+    row({ id: 'bad-b', startDate: '2026-03-01', endDate: 'also-not-a-date' as IsoDate }),
+  ];
+  const result = travelHistory({ library }, TODAY);
+  assert.equal(result.ok, false);
+  if (result.ok) return;
+  assert.equal(result.rowId, null, '"one of these two" is not an attribution');
+  assert.deepEqual(result.unreadableRows, ['bad-a', 'bad-b']);
+});

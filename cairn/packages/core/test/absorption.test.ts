@@ -94,7 +94,13 @@ test('I-26 (A-87 Part 1): the five measured shapes RETURN, and each reports exac
     ['cities: [null]', { cities: [null] }, 'cities[0]', 'entry'],
     ['cities: [{…, name: 42}]', { cities: [{ ...cityish, name: 42 }] }, 'cities[0].name', 'field'],
     ['countryCodes: 42', { countryCodes: 42 }, 'countryCodes', 'list'],
-    ['attribution: {places: {}}', { attribution: { places: {} } }, 'attribution.places', 'census'],
+    // A-87 Part 1 shape 5 is `{places: {}}` **or `{places: 'x'}`**, and **I-28 (A-88 Part 5)
+    // moves the first of the two from *absorbed* to *inert* by ruling**: a census declaring
+    // neither of its numbers is the same answer as no census at all, and reporting an ABSENT
+    // number as a defect inverted A-87 Part 2 arm 1. Shape 5's other form is the one that still
+    // absorbs at this path — present, and not a stored record — and the moved cell is pinned
+    // beside it in `I-28 (A-88 Part 5)` below.
+    ["attribution: {places: 'x'}", { attribution: { places: 'x' } }, 'attribution.places', 'census'],
   ];
   for (const [label, patch, path, kind] of cases) {
     const row = over(patch);
@@ -335,4 +341,200 @@ test('I-26: `travelStats` is pure — the caller\'s rows come back untouched', (
   const before = JSON.stringify(row);
   travelStats([row], TODAY);
   assert.equal(JSON.stringify(row), before);
+});
+
+// ===========================================================================
+// (I-28) A-88 Parts 5 and 6 — the census gates its two numbers independently, and one
+// stored-record predicate stands at all three object gates.
+// ===========================================================================
+
+/**
+ * **N2 — §8.4 A-88 Part 5 (QA R65-3).** `readCensus` gated its two numbers as a **unit**: an
+ * **absent** number was reported as a defect and the readable number beside it was thrown away.
+ * That inverts A-87 Part 2 arm 1 — absent and `null` are a *value* — for exactly one record
+ * class, and it deletes a real observation to arrive at a less precise version of the same
+ * invention (A-60 Part 6.2's refusal, one record over).
+ *
+ * The decisive argument is A-87 Part 3 rule 5's own: **the value arm's outcome must equal the
+ * outcome of the legitimate value it stands in for.** `{located: 5}` ≡ `{located: 5,
+ * attributed: 0}` — five located records, none recorded as attributed — which publishes
+ * `unattributed.places` **5**, the honest hole.
+ *
+ * **Injected:** restore the both-numbers arm (`if either is absent or null → absorb at the
+ * census path and return null`) and the first two cases redden on a published `0` and on an
+ * absorption the table now calls inert.
+ */
+test('I-28 (A-88 Part 5): `readCensus` gates its two numbers INDEPENDENTLY — an absent half is a value', () => {
+  const stops = { located: 0, attributed: 0 };
+
+  // The half-census: the readable observation survives, and nothing is reported.
+  const half = over({ attribution: { places: { located: 5 }, stops } });
+  const h = travelStats([half], TODAY);
+  assertAllFinite(h, 'attribution: {places: {located: 5}}');
+  assert.deepEqual(h.absorbed, [], 'an ABSENT census number was reported as a defect');
+  assert.equal(h.located.places, 5, 'the readable observation beside the absent one was discarded');
+  assert.equal(h.unattributed.places, 5, '`{located: 5}` ≡ `{located: 5, attributed: 0}` — the honest hole');
+
+  // …and it is literally the same answer as the row that stored the zero.
+  const explicit = over({ attribution: { places: { located: 5, attributed: 0 }, stops } });
+  assert.deepEqual(h, travelStats([explicit], TODAY), 'the value arm did not equal the value it stands in for');
+
+  // Neither number declared is INERT, by ruling: the same answer as `places: null` and as a
+  // pre-SUMMARY_VERSION-4 row. This cell moved from *absorbed* at `ede933f`.
+  for (const [label, attribution] of [
+    ['{places: {}}', { places: {}, stops }],
+    ['{places: null}', { places: null, stops }],
+  ] as Array<[string, unknown]>) {
+    const s = travelStats([over({ attribution })], TODAY);
+    assertAllFinite(s, label);
+    assert.deepEqual(s.absorbed, [], `${label}: a census declaring neither number is inert`);
+    assert.equal(s.located.places, 0, label);
+  }
+
+  // Present-and-wrong is unchanged: one absorption at the NUMBER's own path, value 0, and the
+  // readable sibling beside it still survives.
+  const wrong = over({ attribution: { places: { located: '5', attributed: 2 }, stops } });
+  const w = travelStats([wrong], TODAY);
+  assertAllFinite(w, "{places: {located: '5', attributed: 2}}");
+  assert.deepEqual(w.absorbed, [{ rowId: wrong.id, path: 'attribution.places.located', kind: 'census' }]);
+  assert.equal(w.located.places, 0, '`countOf` reads a stored `\'5\'` as 0');
+  assert.equal(w.unattributed.places, 0, 'attributed 2 against located 0 clamps at 0 (QA R28-4), never negative');
+});
+
+/**
+ * **N3 — §8.4 A-88 Part 6 (QA R65-5, plus the architect's own find).** `isPlainObject` was not a
+ * plain-object test: it asked `typeof v === 'object' && v !== null && !Array.isArray(v)` and
+ * nothing more. A-87 Part 7 excused that with *"storage returns plain data from structured clone
+ * or `JSON.parse`"* — **the accessor half of that premise is right and the "plain data" half is
+ * false**: structured clone carries `Date`, `Map`, `Set`, `RegExp` and `Error`, all verified in
+ * this Node, and `structuredClone(Object.create(null))` comes back carrying `Object.prototype`,
+ * which is why the prototype test has no false positive.
+ *
+ * Measured at `ede933f`: `attribution: new Date()` read as *"this row carries no census"* and
+ * dropped both censuses in silence; `cities: [new Error('boom')]` put a city named **"Error"** on
+ * the lifetime map (`Error.prototype.name`, through the prototype chain) absorbing nothing. Those
+ * are not a sixth hostile shape — they are A-87 Part 2 arm 3 not being honoured, one convention
+ * at one level and another at the level below, inside one record.
+ *
+ * **Injected:** relax the predicate back to `typeof === 'object'` and both halves redden from one
+ * change, which is the evidence that this is one decision and not two.
+ */
+test('I-28 (A-88 Part 6): a present value that is not a STORED RECORD is a defect at its OWN level', () => {
+  // The `cities` entry gate. An entry that fails at its own level is not asked for its `name`
+  // (A-87 Part 3 rule 1), so `unnamedCities` FALLS to 0 for these shapes — the same treatment
+  // `cities: [42]` already gets, which is the point.
+  for (const [label, entry] of [
+    ['an Error', new Error('boom')],
+    ['a Date', new Date(0)],
+    ['a Map', new Map()],
+    ['a Set', new Set()],
+    ['a RegExp', /x/],
+    ['an array', []],
+  ] as Array<[string, unknown]>) {
+    const r = over({ cities: [entry] });
+    const s = travelStats([r], TODAY);
+    assertAllFinite(s, `cities: [${label}]`);
+    assert.deepEqual(s.absorbed, [{ rowId: r.id, path: 'cities[0]', kind: 'entry' }], `cities: [${label}]`);
+    assert.deepEqual(s.cities, [], `cities: [${label}]: a non-record entered the lifetime map`);
+    assert.equal(s.seen.cities, 1, `cities: [${label}]: A-87 Part 3 rule 1 — \`seen.cities\` is the stored length`);
+    assert.equal(s.unnamedCities, 0, `cities: [${label}]: an entry that failed at its own level was asked for its name`);
+  }
+
+  // The `attribution` container gate, and the census gate one level down.
+  for (const [label, attribution] of [
+    ['a Date', new Date(0)],
+    ['a Map', new Map()],
+    ['a RegExp', /x/],
+  ] as Array<[string, unknown]>) {
+    const r = over({ attribution });
+    const s = travelStats([r], TODAY);
+    assertAllFinite(s, `attribution: ${label}`);
+    assert.deepEqual(s.absorbed, [{ rowId: r.id, path: 'attribution', kind: 'census' }], `attribution: ${label}`);
+    assert.equal(s.located.places, 0, `attribution: ${label}`);
+    assert.equal(s.located.stops, 0, `attribution: ${label}`);
+  }
+  const nested = over({ attribution: { places: new Date(0), stops: { located: 0, attributed: 0 } } });
+  assert.deepEqual(travelStats([nested], TODAY).absorbed,
+    [{ rowId: nested.id, path: 'attribution.places', kind: 'census' }]);
+
+  // A null-prototype object IS a stored record — `structuredClone` cannot produce one, but
+  // `JSON.parse` with a reviver can, and refusing it would be a false positive on the gate.
+  const bare = Object.assign(Object.create(null) as Record<string, unknown>, { located: 3, attributed: 1 });
+  const b = travelStats([over({ attribution: { places: bare, stops: { located: 0, attributed: 0 } } })], TODAY);
+  assert.deepEqual(b.absorbed, [], 'a null-prototype object was refused as a stored record');
+  assert.equal(b.located.places, 3);
+});
+
+/**
+ * **N4 — §8.4 A-88 Part 6's closing clause, which is the architect's own find and which no round
+ * reported.** `stopCount`, `poolCount` and `placeCount` were read through `countOf` outside the
+ * reader, so a stored `'x'` read **0** and was **reported by nothing** — a third convention for a
+ * stored number, beside the census numbers, which absorb. Measured at `b96a54e`:
+ * `stopCount: 'x'` → `absorbed = 0`, silently 0; `attribution.places.located: '5'` →
+ * `absorbed = 1`, reported.
+ *
+ * The three counts move into the reader with the rest. **The published value does not change**:
+ * `countOf` still floors and does not cap (A-86 Part 5's *no ceiling*, untouched) and the count
+ * still reads `0`. What changes is that the absorption is on the channel.
+ *
+ * **Injected:** make the gate change the value as well as adding the report — `stopCount: 'x'`
+ * reading anything but `0` — and the *every published number is finite* arm of the covering table
+ * reddens beside this one.
+ */
+test('I-28 (A-88 Part 6): the three stored counts are the reader\'s last exception, and they go with the rest', () => {
+  const baseline = travelStats([refRow()], TODAY);
+  for (const key of ['stopCount', 'poolCount', 'placeCount'] as const) {
+    for (const [label, value] of [['a string', 'x'], ['a negative', -1], ['a NaN', Number.NaN], ['an object', {}], ['a Date', new Date(0)]] as Array<[string, unknown]>) {
+      const r = over({ [key]: value });
+      const s = travelStats([r], TODAY);
+      assertAllFinite(s, `${key} = ${label}`);
+      assert.deepEqual(s.absorbed, [{ rowId: r.id, path: key, kind: 'field' }], `${key} = ${label}: silently 0`);
+      // The VALUE is unchanged — this adds the report and nothing else.
+      const zeroed = travelStats([over({ [key]: 0 })], TODAY);
+      assert.deepEqual({ ...s, absorbed: [] }, zeroed, `${key} = ${label}: the gate changed the published value`);
+    }
+    // absent and `null` are values, uniformly, exactly as everywhere else on this path.
+    for (const [label, row] of [[`${key} absent`, rowWithout(key)], [`${key}: null`, over({ [key]: null })]] as Array<[string, TripSummaryRow]>) {
+      assert.deepEqual(travelStats([row], TODAY).absorbed, [], label);
+    }
+  }
+  // A healthy row absorbs nothing — over the whole committed reference library.
+  assert.deepEqual(baseline.absorbed, []);
+});
+
+/**
+ * **N7 — §8.4 A-88 Part 9's R65-4.** *Read exactly once* is half of A-87 Part 2's rule, and
+ * `cities[i].firstDay` and `.lastDay` were each read **twice** inside the increment whose subject
+ * is that rule: once by the pair predicate, once again to build the gated entry. R64-1's own fix
+ * applies — **bind the value once** — and this is the same counting-accessor measurement
+ * `packages/core/test/readOnce.test.ts` makes one model layer up.
+ *
+ * A counting accessor returning a **stable** value is a measurement device, not the hostile
+ * accessor A-87 Part 7 excludes: it answers the same thing every time, so it cannot change what
+ * the reader computes — only how many times the reader asked.
+ *
+ * **Injected:** re-inline `c.firstDay` / `c.lastDay` at the push site and this reddens at
+ * `{firstDay: 2, lastDay: 2}`, which is the measurement R65-4 reported.
+ */
+test('I-28 (A-88 Part 9, R65-4): every gated field of a `cities` entry is read EXACTLY once', () => {
+  const values: Record<string, unknown> = {
+    key: 'c1', name: 'Vienna', countryCode: 'AT', countrySource: 'stated',
+    centre: { lat: 48.2, lng: 16.4 }, firstDay: '2026-08-08', lastDay: '2026-08-10',
+  };
+  const reads: Record<string, number> = {};
+  const entry: Record<string, unknown> = {};
+  for (const k of Object.keys(values)) {
+    reads[k] = 0;
+    Object.defineProperty(entry, k, {
+      enumerable: true,
+      get() { reads[k] += 1; return values[k]; },
+    });
+  }
+  const s = travelStats([over({ cities: [entry] })], TODAY);
+  assert.deepEqual(s.absorbed, [], 'the counting entry is healthy, so the read counts are about reads');
+  assert.deepEqual(reads, {
+    key: 0, countrySource: 0,            // nothing reads these — A-87 Part 3's control half
+    name: 1, countryCode: 1, centre: 1,  // gated, once each
+    firstDay: 1, lastDay: 1,             // R65-4: these were 2 and 2
+  });
 });
