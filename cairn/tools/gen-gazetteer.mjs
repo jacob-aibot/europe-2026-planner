@@ -1956,9 +1956,20 @@ function decodeAll(meta, docs) {
  */
 function writeManifest(sha) {
   const files = [];
-  for (const name of readdirSync(CORPUS_DIR).filter((n) => n.endsWith('.json')).sort()) {
+  // **The DIRECTORY, not `*.json` in it — QA R69-5.** This used to filter on `.json`, which made
+  // the manifest a digest over the corpus's JSON *documents* and left the corpus *directory*
+  // unaudited: a `.mjs` parked in here was invisible to it, and round 67's M8 — the A-78 shard-map
+  // guard passing a `.mjs` in this directory whose name appears in a doc comment — is still open.
+  // A file that is not a JSON document is covered by its sha256 and byte length and carries
+  // `rows: 0`.
+  for (const name of readdirSync(CORPUS_DIR).sort()) {
     const bytes = readFileSync(join(CORPUS_DIR, name));
-    const doc = JSON.parse(bytes.toString('utf8'));
+    let doc = {};
+    try {
+      doc = JSON.parse(bytes.toString('utf8'));
+    } catch {
+      doc = {}; // not a JSON document — still hashed, still counted, rows 0.
+    }
     files.push({
       file: name,
       bytes: bytes.length,
@@ -1972,8 +1983,9 @@ function writeManifest(sha) {
     $sourceSha256: sha,
     $fetched: FETCHED,
     $what:
-      'One sha256, byte length and row count per document under ' +
-      'packages/core/src/geo/gazetteer/. ARCHITECTURE \u00a78.4 A-94 Part 6 (QA R68-4): the ' +
+      'One sha256, byte length and row count per FILE under ' +
+      'packages/core/src/geo/gazetteer/ — the directory, not *.json in it (QA R69-5). ' +
+      'ARCHITECTURE \u00a78.4 A-94 Part 6 (QA R68-4): the ' +
       'artefact of record had no digest over its own bytes, so a length-preserving hand edit to ' +
       "a shipped row's population and coordinate passed every test, the byte total and the row " +
       'count — the corpus was guarded off ONE field (indexSays) and not the others. A test ' +
@@ -1982,14 +1994,14 @@ function writeManifest(sha) {
       'IT DOES NOT MAKE A SILENT EDIT IMPOSSIBLE — it makes it cost two files that must agree. ' +
       'The guarantee is still A-90 clause 1: 967 reviewable, diffable documents in git. rows is ' +
       "the shard document's own row array length; for meta.json it is the corpus total meta " +
-      'declares.',
+      'declares; for a file that is not a JSON document it is 0.',
     fileCount: files.length,
     totalBytes: files.reduce((n, f) => n + f.bytes, 0),
     totalRows: files.filter((f) => f.file !== 'meta.json').reduce((n, f) => n + f.rows, 0),
     files,
   };
   writeFileSync(MANIFEST_OUT, `${JSON.stringify(out, null, 2)}\n`);
-  console.log(`wrote fixtures/golden/gazetteer-manifest.json  (${files.length} documents, ` +
+  console.log(`wrote fixtures/golden/gazetteer-manifest.json  (${files.length} files, ` +
     `${out.totalBytes} bytes, ${out.totalRows} emitted rows)`);
 }
 

@@ -6323,8 +6323,17 @@ groups"*, carried forward from A-93 Part 3(a). **Measured on the rebuilt corpus 
 and the two rows that left are `Atafu Village` (`gn:4h85j`) and `Nukunonu` (`gn:4h85h`) — which is
 this ruling's own doing, not drift.
 
-The exempt set is the class-`P` rows for which A-93 Part 2's `X \ {S, C, P(S), P(C)}` is non-empty:
-the rows clause 4 would refuse if the class restriction did not exempt them. Both Tokelau rows are
+The exempt set is the class-`P` rows for which **A-89's `X \ {S, C}`** is non-empty: the rows
+clause 4 would refuse **if the class restriction did not exempt them and the sovereign subtraction
+did not exist**. **⚠ CORRECTED (QA R69-4): this paragraph said A-93 Part 2's
+`X \ {S, C, P(S), P(C)}`, which is a different predicate and a different number — measured, it
+yields 84**, because `FO+DK` (16) and `AX+FI` (15), two of the four largest groups named below, are
+kept by the sovereign subtraction rather than by the class restriction. The generator groups on
+A-89's form deliberately and says so at the site (`tools/gen-gazetteer.mjs`, clause 4's exempt
+block): *"it is the cost of the class restriction, and the sovereign subtraction is the other half
+of the rule, priced separately."* **139 in 56 was always the right measurement; the sentence saying
+how to reproduce it was not, and a future re-derivation from the old sentence gets 84.** Both
+Tokelau rows are
 `P/PPLA` with **`cc2 = NZ`** (verified against the cached `allCountries.txt` by GeoNames id). `P(TK)`
 is `null` — the pinned layer carries no feature whose `ISO_A2_EH` is `TK`, so it names no sovereign
 for it — and before A-94 `C` was `null` as well, so `NZ` survived every subtraction and both rows
