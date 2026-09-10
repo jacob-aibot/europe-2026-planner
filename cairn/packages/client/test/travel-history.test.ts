@@ -126,6 +126,49 @@ test('I-28 (A-88 Part 2): the suspect population is `rowDatesReadable`, so the r
   assert.deepEqual(result.unreadableRows, ['the-broken-one']);
 });
 
+/**
+ * **QA R66-3 (MINOR) — the duplicate-id arm MISATTRIBUTES, which is worse in kind than the
+ * vagueness R65-1 was about.**
+ *
+ * `travelStats` embeds the offending id with `JSON.stringify`, which quotes a string and does
+ * **not** quote a number, a boolean, `null` or `undefined`. `DUPLICATE_ROW_ID_RE` required the
+ * quotes, so all four escaped their own arm, fell through to the date filter, and the surface
+ * named whichever OTHER row had an unreadable date — a row that reads perfectly and did not cause
+ * the refusal. Measured at `ca9a64d`: message *"duplicate summary id 42"*, `rowId:
+ * "has-a-bad-date"`.
+ *
+ * The regex now matches the encoded id whatever its JSON shape, and the arm answers with the id
+ * only when the stored id **is** a string — `TravelHistoryResult.rowId` is `string | null` and a
+ * stored `42` is not a row id anything else can look up. `unreadableRows` stays `[]`, which is
+ * the same *"the refusal is not a date"* answer the string case already gives.
+ *
+ * Reachable only from hand-edited storage (a stored row id that is not a string, twice).
+ *
+ * **Injected:** put the quotes back in the regex and every non-string case below names
+ * `"has-a-bad-date"`; return `JSON.parse(m[1])` unconditionally and `undefined` throws while
+ * `42`/`true`/`null` break the declared type.
+ */
+test('I-28 (QA R66-3): a duplicate id that is not a string never names an innocent row', () => {
+  const innocent = row({ id: 'has-a-bad-date', startDate: '2026-02-30' as IsoDate, endDate: '2026-03-04' });
+  // The control: the innocent row really is the one the date filter would name, so a fall-through
+  // is visible rather than accidentally correct.
+  const control = travelHistory({ library: [row({ id: 'dup', startDate: '2026-01-01', endDate: '2026-01-05' }), row({ id: 'dup', startDate: '2026-03-01', endDate: '2026-03-10' }), innocent] }, TODAY);
+  assert.equal(control.ok, false);
+  if (control.ok) return;
+  assert.equal(control.rowId, 'dup', 'INCONCLUSIVE: the string control does not name itself');
+  assert.deepEqual(control.unreadableRows, []);
+
+  for (const id of [42, null, true, undefined, { id: 'x' }] as unknown[]) {
+    const dup = () => ({ ...row({ id: 'placeholder', startDate: '2026-01-01', endDate: '2026-01-05' }), id }) as TripSummaryRow;
+    const result = travelHistory({ library: [dup(), dup(), innocent] }, TODAY);
+    assert.equal(result.ok, false, `id ${String(id)}`);
+    if (result.ok) return;
+    assert.match(result.message, /duplicate summary id/, `id ${String(id)}: not the duplicate-id refusal`);
+    assert.equal(result.rowId, null, `id ${String(id)}: the arm named a row that did not cause the refusal`);
+    assert.deepEqual(result.unreadableRows, [], `id ${String(id)}: the refusal is not a date`);
+  }
+});
+
 test('I-28 (A-88 Part 2): two rows that could each have caused the throw stays `null` — the rule is unchanged', () => {
   const library = [
     row({ id: 'bad-a', startDate: 'not-a-date' as IsoDate, endDate: '2026-01-05' }),

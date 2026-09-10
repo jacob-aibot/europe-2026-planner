@@ -288,7 +288,31 @@ export type TravelHistoryResult =
       unreadableRows: readonly string[];
     };
 
-const DUPLICATE_ROW_ID_RE = /^travelStats: duplicate summary id (".*")$/;
+/**
+ * The duplicate-id arm's own matcher. **QA R66-3**: this used to require the id to be JSON-quoted
+ * (`(".*")`), but `travelStats` embeds it with `JSON.stringify`, which does not quote a number, a
+ * boolean, `null` or `undefined` — so all four escaped this arm, fell through to the date filter
+ * below, and the surface named whichever *other* row had an unreadable date. A-59 Part 4 is an
+ * **attribution**; misattributing is worse than declining to attribute.
+ */
+const DUPLICATE_ROW_ID_RE = /^travelStats: duplicate summary id ([\s\S]*)$/;
+
+/**
+ * The id out of a duplicate-id message, or `null` when the stored id was not a string.
+ *
+ * `TravelHistoryResult.rowId` is `string | null` and it exists to be looked up — a stored `42`,
+ * `true`, `null` or `undefined` is not a row id any surface can find a row with, so the honest
+ * answer is `null` rather than a coerced one. `JSON.parse` also **throws** on the literal text
+ * `undefined`, which is exactly what `JSON.stringify(undefined)` puts in the message.
+ */
+function duplicateRowId(encoded: string): string | null {
+  try {
+    const parsed: unknown = JSON.parse(encoded);
+    return typeof parsed === 'string' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
 export function travelHistory(state: Pick<AppState, 'library'>, today: core.IsoDate): TravelHistoryResult {
   try {
@@ -296,7 +320,7 @@ export function travelHistory(state: Pick<AppState, 'library'>, today: core.IsoD
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     const m = DUPLICATE_ROW_ID_RE.exec(message);
-    if (m) return { ok: false, message, rowId: JSON.parse(m[1]) as string, unreadableRows: [] };
+    if (m) return { ok: false, message, rowId: duplicateRowId(m[1]), unreadableRows: [] };
     // **§8.4 A-88 Part 2 (QA R65-1, MAJOR).** `rowDatesReadable`, **not** `rowStatsReadable`.
     // The failure branch carries ONE population: the rows that could have caused *this* refusal.
     // Over the reachable population `travelStats` throws exactly two ways, and the duplicate id

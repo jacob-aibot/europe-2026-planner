@@ -480,17 +480,37 @@ test('I-28 (A-88 Part 6): a present value that is not a STORED RECORD is a defec
  * **Injected:** make the gate change the value as well as adding the report — `stopCount: 'x'`
  * reading anything but `0` — and the *every published number is finite* arm of the covering table
  * reddens beside this one.
+ *
+ * **QA R66-2 (MINOR): the *value is unchanged* pin was vacuous below the fixture's own clamp, and
+ * this is where that is fixed.** The published total is
+ * `seenStops += Math.max(stopRecords, rowLocatedStops)` (`travelStats.ts:947`, R28-4's per-row
+ * clamp), and the reference row's `attribution.stops.located` is **132** — so on that row **any**
+ * wrong count in `[0, 132]` publishes exactly what `0` publishes. Measured by the breaker: a gate
+ * returning `7` was **GREEN** across all six test files, the same gate returning `100000` was
+ * **RED**, and the arm A-88 names as the catcher — *every published number is finite* — cannot
+ * see it either, because `7` is finite. The pin is therefore taken on a row whose census is
+ * **zero**, where `Math.max` is the identity and every wrong count is visible; the `NO_CENSUS`
+ * liveness check below fails the test rather than passing it if that ever stops being true.
  */
+const NO_CENSUS = { places: { located: 0, attributed: 0 }, stops: { located: 0, attributed: 0 } };
+
 test('I-28 (A-88 Part 6): the three stored counts are the reader\'s last exception, and they go with the rest', () => {
   const baseline = travelStats([refRow()], TODAY);
   for (const key of ['stopCount', 'poolCount', 'placeCount'] as const) {
+    // **The pin's own liveness (QA R66-2).** On this base a count of `7` MUST publish something
+    // other than what `0` publishes, or the `deepEqual` below cannot see the fault it names.
+    assert.notDeepEqual(
+      travelStats([over({ attribution: NO_CENSUS, [key]: 7 })], TODAY),
+      travelStats([over({ attribution: NO_CENSUS, [key]: 0 })], TODAY),
+      `${key}: INCONCLUSIVE — a clamp hides a wrong count on this base, so the pin below is vacuous`,
+    );
     for (const [label, value] of [['a string', 'x'], ['a negative', -1], ['a NaN', Number.NaN], ['an object', {}], ['a Date', new Date(0)]] as Array<[string, unknown]>) {
-      const r = over({ [key]: value });
+      const r = over({ attribution: NO_CENSUS, [key]: value });
       const s = travelStats([r], TODAY);
       assertAllFinite(s, `${key} = ${label}`);
       assert.deepEqual(s.absorbed, [{ rowId: r.id, path: key, kind: 'field' }], `${key} = ${label}: silently 0`);
       // The VALUE is unchanged — this adds the report and nothing else.
-      const zeroed = travelStats([over({ [key]: 0 })], TODAY);
+      const zeroed = travelStats([over({ attribution: NO_CENSUS, [key]: 0 })], TODAY);
       assert.deepEqual({ ...s, absorbed: [] }, zeroed, `${key} = ${label}: the gate changed the published value`);
     }
     // absent and `null` are values, uniformly, exactly as everywhere else on this path.
