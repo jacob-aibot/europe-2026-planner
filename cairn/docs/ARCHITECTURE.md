@@ -1787,6 +1787,27 @@ mine and it was unsatisfiable**). **§0 position 12 gains consequence (d).** `RO
 the ledger entry and **I-32**. **Nothing here gates `I-30`**, which is still fenced by the unresolved
 visual direction and by nothing else.
 
+**Revision 73, 2026-09-10.** **QA round 69 returned SHIP on `I-32` and its eight findings are fixed in
+code (`d7d6211`).** This revision is **corrections and one new ruling**. **No engine, no type, no version
+constant, no export count and no corpus row moves**, and **nothing in it is user-meetable** (sequencing
+rule 10). The new ruling is **A-95**: *the gate that refuses a write and the report a reviewer reads are
+not the same instrument.* R69-1's fix correctly made `--dry-run` take the same gates in the same order as a
+real run, and thereby made the **refused** corpus the one change no run in this system can describe — while
+A-90 clause 1's whole premise is that a corpus change is **reviewable**. A-95 adds **`--review`**, a
+modifier on `--dry-run` with no write path, which reports a refused *review gate* in full and exits **1**,
+and leaves every *precondition* throwing exactly as R69-1 left it. **The distinction is the ruling**, and it
+is why this does not reopen the hole R69-1 closed. Five sentences are corrected at their own sites:
+**A-90 clause 3** and **A-94 Part 10** now *define* a genuine first build instead of leaving it to a `catch`
+(**R69-1**); **A-94 Part 9 fault 3** is declared **unfireable against this corpus** and names the synthetic
+ballot that holds its property (**R69-3**); **A-94 Part 5 clause 2**'s three-tuple becomes all five fields
+(**R69-6**); **A-94 Part 3 item 4** names the pin that actually reddens when the `null` arm is deleted
+(**R69-6**); and **A-94 Part 10** gains the sentence that retires the named-set gate (**R69-8**).
+**§0 position 5 gains clause (b)** — *a stated fault is shown to fire, or is declared unfireable at its
+site* — because this is the fourth time it has been re-learned. `ROADMAP.md` revision 76 carries the ledger
+entry, **I-33** (A-91 item 1, deferred twice and now scheduled, owning its own probe re-cuts), **I-34**
+(A-95), and `I-32`'s corrected exempt figure (**139 in 56**, KD-128). **Nothing here gates `I-30`**, which
+is still fenced by the unresolved visual direction and by nothing else.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -1794,15 +1815,16 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~582k tokens** (re-measured at **revision 72** — **§8 grew 168k → 176k** with §8.4's
-**A-94** and its amendment banners on **A-84 Part 5**, **A-89 Part 5**, **A-90 clause 3** and **Part 5
-residue 2**, and its four in-place corrections inside **A-93 Parts 2, 7 and 9**; **§0 grows 2k → 3k** with
-**position 12 (d)**; §2, §4, §9 and §10 did not move. The revision-70 and revision-71 figures below are
-superseded by these).
+This document is **~583k tokens** (re-measured at **revision 73** — **§8 is 178k** and **§0 is 3.1k**, the
+growth being §8.4's new **A-95** (**2.2k**) and revision 73's in-place corrections inside **A-90 clause 3
+and Part 5 residue 4** and **A-94 Parts 3, 5, 9 and 10**; §2, §4, §9 and §10 did not move. **The
+revision-72 figures — ~582k, §8 176k, §0 3k — and the revision-70/71 figures below are superseded by
+these.**)
 
 | ruling | ~size | who reads it, and when |
 |---|---|---|
-| **A-94** | ~6k | **The parent election, the corrections A-93 and A-89 owed, and the source log's witness.** A builder or breaker of ROADMAP **`I-32`** reads **A-94 whole, then A-84 Part 5, then A-89 Parts 4 and 5, then A-90 whole, then A-83 Part 9 clause 1 — and nothing else.** **Not A-93** (its predicate does not move and its sixteen refusals are asserted unchanged, which is a golden read, not a ruling read), not A-91, not A-92, not §2 whole, not §4, not §10. |
+| **A-95** | ~2.2k | **The generator's modes, and only them.** Read by anyone building or reviewing a change to how `tools/gen-gazetteer.mjs` gates a write — ROADMAP **`I-34`**. It needs **A-90 clause 3** and **A-94 Part 10** and nothing else in §8.4: not A-93, not A-94's other parts, not A-91, not §2, not §4, not §10. Its Part 2 — **class 1 preconditions vs class 2 review gates** — is the sentence a later gate is classified by. |
+| **A-94** | ~7.5k | **The parent election, the corrections A-93 and A-89 owed, and the source log's witness.** A builder or breaker of ROADMAP **`I-32`** reads **A-94 whole, then A-84 Part 5, then A-89 Parts 4 and 5, then A-90 whole, then A-83 Part 9 clause 1 — and nothing else.** **Not A-93** (its predicate does not move and its sixteen refusals are asserted unchanged, which is a golden read, not a ruling read), not A-91, not A-92, not §2 whole, not §4, not §10. **Revision 73 corrects Parts 3, 5, 9 and 10 in place** (QA R69-1, R69-3, R69-6, R69-8); read the ⚠ banners, they change what the part claims rather than adding to it. |
 | **A-93** | ~5.5k | **The predicate that ships, and it is READ WITH A-89, never instead of it.** A builder or breaker of ROADMAP **`I-31`** reads **A-93 whole, then A-89 whole, then A-83 Parts 3 and 9, then A-84 Part 5, then BUILD-NOTES KD-122 and KD-124 — and nothing else.** Not A-90, not A-91, not A-92, not §2 whole, not §4, not §10. A-89 supplies Parts 1 and 3–7, which A-93 depends on and does not repeat; A-93 supplies the rule. |
 
 **The revision-70 table follows and the A-89 row in it is superseded by the row above. The four rulings of
@@ -1811,8 +1833,8 @@ revision 70 are separable and only one of them is about the corpus's contents:**
 | ruling | ~size | who reads it, and when |
 |---|---|---|
 | **A-89** | ~5k | **⚠ Its Part 2 predicate is superseded by A-93 and its Parts 2 and 8 carry corrections in place.** Still read whole by anyone working on the gazetteer refusals, **with A-93 beside it**, then **A-83 Parts 3 and 9** and **A-84 Part 5**, and nothing else — not A-85, not A-86, not A-87, not A-88, not §2 whole, not §4, not §10. |
-| **A-90** | ~2.5k | **Read by anyone who runs, re-pins or audits the generator, and by nobody else.** It needs **§0 position 11** and **A-83 Part 2**; it needs no other ruling. |
-| **A-91** | ~1k | **Read by the builder of the first `.tsx` that touches the corpus**, with `ROADMAP` `I-30`. It needs nothing else in §8.4. |
+| **A-90** | ~3.3k | **Read by anyone who runs, re-pins or audits the generator, and by nobody else.** It needs **§0 position 11** and **A-83 Part 2**; it needs no other ruling. **Revision 73 extends clause 3 (what the gates do when the diff cannot be computed) and marks residue 4 as fired**; anyone reading clause 3 reads the extension with it, and **A-95** beside it if they are changing a mode. |
+| **A-91** | ~1.1k | **Read by the builder of the first `.tsx` that touches the corpus**, with `ROADMAP` `I-30` — **and, as of revision 73, by the builder of `I-33`, which builds item 1 (`{source, hits}`) ahead of that screen.** It needs nothing else in §8.4. |
 | **A-92** | ~1k | **Read by anyone changing a type that crosses `packages/client`'s port boundary.** It needs **A-84 Part 7 item 2** and nothing else. |
 
 The revision-69 note follows and its figures are superseded by these: the document was ~555k (**§8 grew 145k → 152k** with §8.4's
@@ -2061,6 +2083,21 @@ crosses a section boundary. Otherwise this table is the contract.
    warning rather than asserting a defect, and every rule ships with an **injected-fault criterion** —
    the exact fault it exists to catch, and the exact output it must produce. `ROADMAP.md` "How a criterion
    is written".
+   **(b)** *Added at revision 73, after the fourth instance.* **A stated fault is shown to fire, or is
+   declared unfireable at its site** — in the ruling that states it, naming the property of the artefact
+   that makes it unfireable and the instrument that holds the property meanwhile. A fault that cannot
+   redden anything is not a weak test; it is a **criterion that reports success for doing nothing**, which
+   is the one failure mode a fault harness has and the one that is indistinguishable from a passing test at
+   every distance a reviewer stands at. **Four in this project**: round 42's vacuous fault harness; A-90
+   Part 5 residue 2's `previousSha256` chain, *"vacuous today at 5 entries and 0 links"*; **N4** on `I-32`,
+   which cannot redden on a five-entry history and **says so** (BUILD-NOTES KD-130); and **A-94 Part 9
+   fault 3**, which is *claimed* to be caught and is not, because no tie exists in the twelve published
+   tallies (QA **R69-3**). **The difference between the last two is the whole clause** — one declared it,
+   the other asserted it — and it is the difference between a disclosed gap and a false claim of coverage.
+   Where a fault is unfireable against the committed artefact, the remedy is the one round 69's builder
+   took: **lift the decision into a module a test can call with a synthetic input** (`tools/elect-parent.mjs`,
+   on the `corpus-write.mjs` precedent), so the fault fires against the mechanism even when the data offers
+   it nothing to bite. **An unfireable fault is disclosed at its site or it is not stated at all.**
 6. **A fact about a resource is only valid at the moment, and in the place, the resource itself stated
    it.** Everything else is a copy, and every copy goes stale. This is one principle with three
    consequences — nothing may fence *or gate* a write to storage with a property of the document; nothing
@@ -24969,6 +25006,22 @@ swap.
 >      `{rowsAdded, rowsRemoved, rowsChanged}`, with every added and removed row named by
 >      `{id, name, countryCode}` while the total is under a published cap, and the counts alone above it.
 >
+>    **⚠ EXTENDED AT REVISION 73 (QA R69-1, MAJOR): what these gates do when the diff CANNOT be computed.**
+>    This clause and A-94 Part 10 both stated what happens when the diff **is** computable and neither
+>    stated what happens when it is not — and *"proceed"* is the answer the code gave on behalf of both, a
+>    `catch` returning `null` that every gate downstream read as *"first build"*, on exactly the condition
+>    under which an unreviewed corpus change is most likely and least visible. **Ruled, so it is not left
+>    to a `catch`: a genuine first build is a distinguishable state, and this is the definition — the
+>    corpus directory is absent or empty AND no corpus manifest golden (A-94 Part 6 item 2) sits beside
+>    it.** The manifest is written by the same run that writes the corpus, so a tree carrying one and
+>    unable to read the other is **broken, not new**. **Every other way of not having a previous corpus to
+>    diff is a stop-and-report, before the build, naming the discrepancy** — a truncated or unparseable
+>    shard, a shard whose `$sourceSha256` disagrees with `meta.json`, a directory that cannot be read. On
+>    the genuine-first-build path both gates still **run and print their verdict**; they are not skipped,
+>    they have nothing to refuse. **The absence of an audit is never an audit that passed**, and a gate
+>    that cannot see the change it guards has **refused**, not passed. *(A-95 rules what a reviewer may do
+>    with a refusal on the other side of this line.)*
+>
 >    **+15 shipped rows should have been a number in a golden, not a sentence in a build note.** A re-pin
 >    whose diff is not in its own commit is an unreviewed change to the product's core data, and that is a
 >    defect, routed to the builder.
@@ -25027,6 +25080,12 @@ next agent must not re-litigate it from first principles at the next regeneratio
 4. **A row-level diff needs a previous corpus to diff against, and a fresh clone at a re-pin commit has
    one only because git does.** **Fires** if the corpus is ever moved out of the repository — which is the
    change this ruling exists to make expensive.
+   **⚠ THIS RESIDUE FIRED, AT ITS OTHER END, AND IS RULED AT REVISION 73 (QA R69-1).** It priced the corpus
+   *leaving* git. What happened instead is the corpus **staying** in git and not **reading** — which is what
+   an interruption between `corpus-write.mjs`'s two renames leaves behind, and it is a state this tool
+   produces itself. The effect on the diff is the one the residue named; the effect it did not price is
+   that **both gates fell open and the run wrote**. Clause 3's revision-73 extension above is the ruling.
+   The residue's own stated trigger is unchanged and still stands.
 
 ---
 
@@ -25074,6 +25133,19 @@ not have read this round.
 > **And the gate, stated where it will be read: the first `.tsx` that calls `loadGazetteerFor` may not
 > land without item 3.** It is an **exit criterion of that increment**, not a follow-up, and `ROADMAP.md`
 > carries it on `I-30`.
+
+> **⚠ ITEM 1 IS SCHEDULED AT REVISION 73, AND IT IS SCHEDULED AHEAD OF THE PICKER (ROADMAP `I-33`).** Item
+> 1 has been deferred twice on fence grounds — it changes a `packages/core` return type whose consumers
+> include five `.mjs` probes under `qa/`, which break at **runtime** rather than at typecheck, so an
+> increment that changes it must own the re-cuts and no `.tsx` increment wants that work in the same
+> commit as a screen. **Measured at revision 73**: `searchGazetteer(` is called at **45** sites across
+> five `qa/` probes, **44** across four `packages/core/test/` files, **3** in `tools/gen-gazetteer.mjs`,
+> **1** in `cli.ts` and **1** in `test/boundaries.test.ts` — **94 call sites**, none of them a `.tsx`,
+> because no `.tsx` consumer exists yet. **That is the argument for doing it now rather than inside
+> `I-30`**: the blast radius is entirely in files the picker's increment must not be opening, and it only
+> grows. **`I-33` owns the core change and every re-cut; `I-30` may not land before it**, because item 3's
+> rendered criterion is written against the shape item 1 establishes and a picker built on the array shape
+> would reach for `gazetteer.source` deliberately — the exact act item 1 exists to make impossible.
 
 **What this ruling refuses, and why.** A lint rule over `.tsx` text — it checks spelling, not rendering. A
 `<GazetteerAttribution>` component a screen must remember to mount, with nothing checking that it did —
@@ -25926,9 +25998,20 @@ no shipped row carries `countryCode: null`, and A-89 Part 5 sentence 3's populat
    same layer, and it is stated here rather than discovered: the label still reads *"Nukunonu, Nukunonu,
    New Zealand"* and *"West Island, Australia"*, name and region first. **A row with no country at all is a
    row a lifetime map cannot draw**; a row with its administering country is one it can.
-4. **A test may not assert that the shipped `null` count is zero.** It asserts the two arms by their
-   mechanism — the tally is published, and the 13 refusals keep their reason — because a count of zero is
-   satisfied by deleting the arm, which is the failure A-89 Part 5 sentence 3 was written against.
+4. **A test may not assert that the shipped `null` count is zero**, because a count of zero is satisfied
+   by deleting the arm, which is the failure A-89 Part 5 sentence 3 was written against.
+   **⚠ CORRECTED AT REVISION 73 (QA R69-6): this item named the wrong instruments.** It said the arm is
+   held by *"the tally is published, and the 13 refusals keep their reason"*. **Measured by deleting the
+   arm, neither reddens.** A published tally and a refusal reason are both facts about rows that are *not*
+   on the arm, and after Part 2 the arm's shipping population is **0**, so no row in the corpus exercises
+   it — which is §0 position 5 (b) at its own site: **an unoccupied arm is held by a synthetic input or it
+   is held by nothing.** **The pin that actually holds it is `packages/core/test/gazetteer.test.ts:423`**,
+   which decodes a **synthetic** shard row carrying no ISO code and asserts `countryCode === null`;
+   **deleting the arm reddens it**, which is the property this item asked for and did not name. The
+   codeless half is pinned beside it by `gazetteerMultiCountry.test.ts:369`, which names all **13**
+   refusals **individually**, so that half cannot be satisfied by deletion either. The tally and the
+   refusal reasons stay — they are what make the two ways *back in* readable — but they are not this arm's
+   pin and this item no longer says they are.
 
 ---
 
@@ -25985,7 +26068,11 @@ zero links.
 >    test actually does.
 > 2. **The witness is a literal in a test file, because the generator writes goldens and does not write
 >    `packages/core/test/`.** The test carries the committed log's entries in order as
->    `{source, sha256, fetched}` literals and asserts the file on disk **starts with exactly that list**,
+>    `{fetched, source, bytes, sha256, previousSha256}` literals — **⚠ CORRECTED AT REVISION 73 (QA
+>    R69-6): this clause named a three-tuple, `{source, sha256, fetched}`, and a three-tuple leaves
+>    `bytes` and `previousSha256` free, so a rewrite that keeps the pinned three and changes the other two
+>    is green. The literal pins ALL FIVE fields of every committed entry**, which is what `COMMITTED_LOG`
+>    carries as of `d7d6211` — and asserts the file on disk **starts with exactly that list**,
 >    same order, same values, no gaps — a prefix assertion, not an equality, so a genuine `--repin` appends
 >    and stays green. Extending the literal is the reviewed act; a run that shortens or reorders the past
 >    reddens. **A monotonic entry count is not enough** — it survives a heads-only rewrite that keeps the
@@ -26084,9 +26171,23 @@ in the increment's own commit (§0 position 11, sequencing rule 11).
    `Fale old settlement` are answered directly, `Cocos Islands` (0.1267°) still abstains, and **the
    published tallies change for codes this ruling does not touch** — which is the fault's whole point: the
    assertion that the tally for every other code is unchanged reddens, and a dial is visible as a dial.
-3. **Break the tie-break** — resolve a tie by highest code instead of lowest → no shipped row moves on this
-   corpus and **the assertion that the tally is published, per code, with its abstention count, is what
-   catches it**. A tie is a result to report; today there is none, and the tallies are how anybody knows.
+3. **Break the tie-break** — resolve a tie by highest code instead of lowest.
+   **⚠ CORRECTED AT REVISION 73 (QA R69-3): as stated this fault CANNOT REDDEN ANYTHING, and unlike N4 it
+   was CLAIMED to be caught.** *"The assertion that the tally is published, per code, with its abstention
+   count, is what catches it"* is **false**: **there is no tie in the twelve published tallies**, so
+   inverting the comparator in the generator moves no shipped row, no tally and no golden byte — and
+   inverting it in the generator **and** in the test that independently re-derives it leaves the whole
+   suite green. A fault the corpus offers nothing to bite is **unfireable against that corpus and must say
+   so** (§0 position 5 (b)); a corpus-level assertion cannot catch a rule the corpus never invokes.
+   **Declared, and the property is held where it can be exercised.** The tie-break is lifted out of the
+   generator into **`tools/elect-parent.mjs`** — the `corpus-write.mjs` precedent, that an injected fault
+   has to be **executable** — the generator elects through it, and `gazetteerElection.test.ts` calls it on
+   **ballots that are tied**, including one whose lowest code is undrawable, so the tie-break and Part 3's
+   `null` arm are pinned by the same synthetic ballot. **Restated so it fires**: invert the comparator in
+   `elect-parent.mjs` → **2** tests redden; invert it in the test file's own independent re-derivation →
+   **1** reddens. (Both counts measured by the builder at `d7d6211`.) **The published tallies stay and are
+   not this fault's instrument** — they are what makes a *future* tie a result a reviewer reads rather than
+   a coin flip, which is a reason to publish them and not evidence that this fault fires.
 4. **Seed the source log on the ordinary path** (Part 5 clause 3) → the run stops and reports, writing
    nothing; and with the stop removed, the prefix assertion in the test reddens naming the first entry that
    moved.
@@ -26111,6 +26212,30 @@ in the increment's own commit (§0 position 11, sequencing rule 11).
 > the corpus diff contains any added, removed or changed row outside those eight**, or if
 > A-93 Part 8's sixteen `'multi-country'` refusals differ in either direction.
 
+> **⚠ EXTENDED AT REVISION 73 — THE TWO SENTENCES THIS PART OWED (QA R69-1 MAJOR, R69-8).**
+>
+> **(a) What the gate does when the diff cannot be computed: it stops and reports.** This part stated the
+> gate's behaviour on a **computable** diff and said nothing about an **uncomputable** one, and A-90
+> clause 3 had the same hole — *"proceed"* was the answer the code gave on behalf of both. **A-90 clause
+> 3's revision-73 extension is the answer for both and is deliberately not repeated here**: a genuine first
+> build is an absent-or-empty corpus directory **with no manifest golden beside it**; on that path this
+> gate **runs and prints its verdict** rather than falling silent; every other unreadable-previous-corpus
+> state stops before the build, naming the discrepancy. **A gate that cannot see the change it guards has
+> refused, not passed.**
+>
+> **(b) What retires this gate, and who — because it has no expiry and would otherwise stop the next
+> legitimate `--repin`.** This set is **increment-scoped, and it expires with `I-32`'s corpus rather than
+> with `I-32`'s commit.** **`A94_NAMED_SET` is deleted in the same reviewed commit as the next legitimate
+> corpus move — a `--repin` (A-90 clause 3) or a filter change — by whoever publishes that commit's row
+> diff, and its deletion is reviewed as part of that diff.** **The row diff is the artefact that replaces
+> it**: this set exists because `I-32` could name its eight rows *in advance*, and a re-pin cannot name its
+> rows in advance — which is exactly why A-90 clause 3 makes a re-pin publish them **afterwards**. So the
+> two instruments are successors, not rivals, and there is no window with neither. **A corpus-moving commit
+> that leaves this set in place is the defect; the run that stopped is not** — and the run says so, by
+> naming what retires it. **The next increment that moves the corpus either declares its own named set
+> (§0 position 12 (c)) or deletes this one. It may not inherit it**, because an inherited named set is a
+> set nobody measured against the corpus it is now guarding.
+
 ---
 
 **Part 11 — residues, each with what would fire it.**
@@ -26130,6 +26255,129 @@ in the increment's own commit (§0 position 11, sequencing rule 11).
 5. **The prefix witness needs a human to extend it.** A re-pin that appends and does not extend the test's
    literal is green and leaves the newest entries unpinned. **Fires** at the second re-pin; the remedy is
    that extending the literal is part of the same reviewed commit, which is the act A-90 clause 3 defines.
+
+---
+
+
+#### A-95 — the gate that refuses a write and the report a reviewer reads are not the same instrument: `--review` describes a refused corpus change in full, writes nothing, and exits 1 (revision 73, QA **R69-7**; the builder's recorded objection at `d7d6211`; ROADMAP **I-34**)
+
+**Part 1 — the tension, and it is real.**
+
+R69-1's fix moved A-90 clause 3's row-level diff and A-94 Part 10's named-set gate **above** the
+`--dry-run` return, so both paths take the same gates in the same order (`tools/gen-gazetteer.mjs`, the
+`corpusDiff` / `reportCorpusDiff` / `gateNamedSet` block immediately before `if (flag('dry-run'))`). **That
+fix is right and it is not in question here.** Its consequence is: `gateNamedSet` throws, so `--dry-run`'s
+audit never runs, so **no run in this system can show a reviewer the full audit of a corpus the named-set
+gate refuses.** A-90 clause 1 made the committed corpus the artefact of record **so that a change to it
+would be reviewable**, and the reviewer's own tool now refuses to describe the change it is refusing. The
+builder raised this as an objection, built the symmetric version, and explicitly did not decide it. **This
+is the ruling.**
+
+---
+
+**Part 2 — the question that has to be answered rather than assumed: does a report-don't-throw mode reopen
+the fail-open hole R69-1 just closed?**
+
+**No — and the reason is that "the gates" were never one thing. R69-1 was a confusion of two kinds of gate,
+and separating them once is the whole ruling.**
+
+- **Class 1 — preconditions.** *Can this run compute an audit at all?* The source log is missing, empty or
+  unparseable (A-94 Part 5 clause 3); the previously committed corpus does not read — a truncated or
+  unparseable shard, a shard whose `$sourceSha256` disagrees with `meta.json`, an unreadable directory
+  (A-90 clause 3's revision-73 extension). **These are R69-1's condition exactly.** Under them there is no
+  diff, no verdict and no audit; there is an **absence**. R69-1's entire finding is that an absence was
+  being read as a pass.
+- **Class 2 — review gates.** *This run computed the change; may it be written?* A-90 clause 3's row-level
+  diff over its published cap, and A-94 Part 10's named set. Under these the audit **exists and is
+  complete**; what is refused is the **write**.
+
+**A reviewer's need is class 2 and only class 2.** A report over a corpus that does not read is not a
+report — it is the same absence R69-1 filed, wearing an audit's clothes. And the two properties that made
+R69-1 a MAJOR were that the degradation was **silent** and that the run went on to **write**. A mode that is
+loud and cannot write fails neither test. **The gates stay closed for everything that writes**, which is the
+constraint this ruling was given and the one it keeps.
+
+> **Ruling, five clauses.**
+>
+> 1. **`--dry-run` does not change.** It takes the same gates in the same order as a real run and it
+>    **throws** on a refused diff, exactly as R69-7 built it. That symmetry is what makes a dry run worth
+>    running *before* a write — it stops where the real run would — and nothing here weakens it.
+> 2. **The new mode is `--review`, and it is a modifier ON `--dry-run`, not a mode beside it.** The
+>    argument parser **refuses `--review` unless `--dry-run` is also present**, and refuses `--review`
+>    together with `--write` outright, **before any source is fetched**. A reviewer types both words; the
+>    mode cannot be reached by habit or by a stray flag, and the flag meaning *"write nothing"* stays in
+>    the command line that gets pasted into the review.
+> 3. **Class 1 still throws under `--review`, unchanged, with the same message and the same exit code.**
+>    **The mode changes what happens to a refusal; it never changes what happens to an absence.** This is
+>    the clause that answers the question in Part 2, and it is the one an injected fault must attack
+>    (Part 3 item 2).
+> 4. **Class 2 collects instead of throwing, and the run then does the work the reviewer came for.** Under
+>    `--review` the row-level diff and the named-set verdict are **computed, recorded and printed in full**
+>    — every added, removed and changed row by `{id, name, countryCode}` under A-90 clause 3's published
+>    cap and the counts alone above it, every named-set row with its verdict, and **every row that moved
+>    outside the set, named** — the ordinary `--dry-run` audit then runs to completion, and **the collected
+>    refusals are re-printed last, verbatim, as the refusal the run would have raised**, with A-94 Part
+>    10 (b)'s retirement sentence beside them. The run then **exits 1**. **Exit 0 under `--review` means
+>    every gate would have passed**, and means nothing else.
+> 5. **The mode has no write path, and that is structural rather than branched.** `--review` returns on the
+>    same line `--dry-run` already returns on, **above** `write`, `writeManifest`, `writeSourceLog`,
+>    `writeDisagreements`, `writeParents` and `writeRefusals`; no writer is guarded by a new condition,
+>    because a new condition is a new thing to get wrong. **There is nothing for a class-2 refusal to fail
+>    open into.**
+
+---
+
+**Part 3 — the injected faults (§0 position 5, including its new clause (b): each of these fires today, and
+the plant for the first two is round 69's own).**
+
+1. **Make `--review` exit 0 on a refused gate** → the assertion that a planted out-of-set row gives exit
+   **1** *and* the full diff on stdout reddens. **Fireable now**: the plant is the breaker's own — one
+   edited field in one shipped row in a throwaway worktree.
+2. **Make a class-1 condition report instead of throw under `--review`** → the assertion that a shard whose
+   `$sourceSha256` disagrees with `meta.json` gives **exit 1, no diff, no audit** and a message naming the
+   discrepancy reddens **in `--review` as in a real run**. **This is R69-1's own attack re-run in the new
+   mode, and it is the fault this ruling exists to be tested by.**
+3. **Accept `--review` without `--dry-run`** → the assertion that `--review` alone exits 1 with a usage
+   error, **having fetched nothing**, reddens.
+4. **Accept `--review --write`** → the same assertion, second case.
+5. **Move the class-2 gates back below the `--dry-run` return** → R69-7's own assertion reddens (a dry run
+   prints the row diff and the named-set line), and so does clause 4's, because `--review` reads the same
+   computed diff.
+
+---
+
+**Part 4 — what this ruling refuses, and why.**
+
+- **An environment variable instead of a flag.** It does not appear in the command a reviewer pastes into
+  the review, and an invisible mode is the shape a habit forms around. `CAIRN_GAZETTEER_CACHE` is a path;
+  this is a decision.
+- **A `--force` that lets `--review` write.** There is exactly **one** path from a refused review gate to a
+  write and it is A-90 clause 3's: change the ruling, name the new set, publish the diff, review the
+  commit. **A flag that overrides a review gate is the fail-open hole with a name on it.**
+- **Downgrading the named-set gate to a warning on the real path.** The gate stays a stop-and-report
+  wherever it stops a write. **The complaint was never that it refuses; it was that nothing described what
+  it refused.**
+- **A separate audit tool that re-reads the corpus.** The corpus a reviewer wants described is the one this
+  run **built and has not written**. A second tool can only read what is on disk, which is the corpus that
+  did not change — and `--audit-only` already does that.
+
+---
+
+**Part 5 — residues, each with what would fire it.**
+
+1. **A reviewer can now read a refused change in full and could then approve it by editing the named set.**
+   That is the **intended** act — A-94 Part 10 (b) is its rule — and it is reviewed as a code change in the
+   commit that publishes the diff. **Fires** if a named set is ever edited in a commit that does not also
+   publish its row diff; that commit is the defect, and it is visible in `git diff` by construction.
+2. **`--review` costs a full ~625 MB build to produce its report**, like every run that is not
+   `--audit-only`. **Fires** the first time somebody wants a refused diff without paying for the build. The
+   answer then is **not** to cache: it is A-90 Part 5 residue 1's `--audit-only`, which reads the committed
+   corpus and by construction cannot describe an unwritten one.
+3. **Class 1 and class 2 are a judgement about each gate, not a property the code carries.** A gate added
+   later lands in one class by whoever writes it, and getting it wrong in the class-1 direction is R69-1
+   again. **Fires** at the next gate. The cheap remedy is that **a gate's class is stated in the ruling
+   that adds it** — this ruling does that for both existing gates, and A-90 clause 3 and A-94 Part 5
+   clause 3 are now the two worked examples of class 1.
 
 ---
 
