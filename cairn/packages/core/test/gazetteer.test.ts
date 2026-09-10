@@ -78,7 +78,21 @@ test('A-82 Part 3: the whole substitution table, each letter NFD cannot decompos
   assert.equal(foldPlaceName('Œœ'), 'oeoe');
   assert.equal(foldPlaceName('ı'), 'i');
   assert.equal(foldPlaceName('Ħħ'), 'hh');
-  assert.equal(foldPlaceName("aʻbʼc"), 'abc');
+  assert.equal(foldPlaceName("a\u02BBb\u02BCc"), 'abc');
+  // **All four spellings of the okina, because the corpus uses the two the table used to miss**
+  // (**QA R67-2**): U+02BB and U+02BC are the modifier letters A-82 Part 3 wrote down; U+2018 and
+  // U+2019 are the typographic quotes GeoNames actually spells the same sound with, in 1,243
+  // shipped rows. All four are DELETED, so `Nuku\u2018alofa` folds to `nukualofa` — one token —
+  // exactly as `Nuku\u02BBalofa` does.
+  assert.equal(foldPlaceName("a\u2018b\u2019c"), 'abc');
+  assert.equal(foldPlaceName('a\u0060b'), 'ab');
+  assert.equal(foldPlaceName('Nuku\u2018alofa'), 'nukualofa');
+  assert.equal(foldPlaceName('Nuku\u2019alofa'), 'nukualofa');
+  assert.equal(foldPlaceName('Xi\u2019an'), 'xian');
+  assert.equal(foldPlaceName('O\u2018ahu'), 'oahu');
+  // The ASCII apostrophe is NOT in the table and must stay a separator: it is a word boundary in
+  // `L'Aquila` and `N'Djamena`, which 617 shipped rows spell that way.
+  assert.equal(foldPlaceName("L'Aquila"), 'l aquila');
 });
 
 test('A-82 Part 3 step 5: every run of non-alphanumerics collapses to one space, and it trims', () => {
@@ -741,6 +755,129 @@ test('A-83 Part 4: core\'s foldPlaceName puts every shipped row in the shard it 
   }
   assert.deepEqual(stray.slice(0, 10), [], `${stray.length} rows are in a shard their own fold does not reach`);
   assert.ok(checked > 190_000, `only ${checked} emitted rows checked`);
+});
+
+/**
+ * **QA R67-1 — the two-character rule is on the QUERY, not on its first token.**
+ *
+ * `loadGazetteer` read `foldPlaceName(query).split(' ')[0].length < 2`, so an eight-character
+ * query with a one-character first word was told *"keep typing"* and **152 shipped rows answered
+ * nothing when a user typed their own full name** — *A Coruña* (245,000 people), *L'Aquila*,
+ * *L'Alcúdia*, *T'aebaek*. The answer was on disk the whole time: a one-character first token
+ * resolves to the **terminal `a$` shard**, which by construction holds exactly the rows whose
+ * first token *is* `a`, and searching it returns the row. A-83 Part 6 rules on the **folded
+ * query**; a one-character *query* is still `null`.
+ */
+test('A-83 Part 6 / R67-1: a one-character FIRST TOKEN resolves to the terminal shard and finds the row', async () => {
+  for (const [query, key] of [['A Coruña', 'a$'], ["L'Aquila", 'l$']] as const) {
+    const g = await load(query);
+    assert.ok(g, `"${query}" is ${query.length} characters and the loader answered "keep typing"`);
+    assert.equal(g.shard, key, `"${query}" resolved to shard "${g.shard}"`);
+    const hits = searchGazetteer(query, g, { limit: 20 });
+    assert.ok(
+      hits.some((h) => foldPlaceName(h.name) === foldPlaceName(query)),
+      `"${query}" returns ${hits.length} hits and none of them is that place`,
+    );
+  }
+  // The case A-83 Part 6 actually rules — a one-character QUERY — is unchanged.
+  assert.equal(await load('a'), null);
+  assert.equal(await load('A'), null);
+  assert.equal(await load(' ł '), null, 'a query folding to one character is still "keep typing"');
+});
+
+/**
+ * The ceiling behind R67-1, asked of the whole corpus rather than of three examples: **a row a
+ * user cannot reach by typing its own full name is a row that does not exist to them.**
+ *
+ * Two classes are `null` by A-83 Part 6's own ruling and are counted rather than asserted away —
+ * a fold under two characters, and a fold that *is* a split prefix (KD-118's disclosed arm, ten
+ * rows: `Ål`, `Ba`, `Bo`, `Bø`, `Ha`, `Mo`, `Pa`, `Pô` …). Everything else must be **held by the
+ * shard its own first token resolves to**, which is the path `loadGazetteerFor` actually walks.
+ */
+test('A-83 Parts 6 and 7 / R67-1: every shipped row is held by the shard its own full name resolves to', () => {
+  const meta = decodeGazetteerMeta(metaDoc());
+  const splits = new Set(meta.splits);
+  const idsByKey = new Map<string, Set<string>>();
+  for (const doc of shardDocs()) idsByKey.set(doc.k, new Set(doc.r.map((packed) => packed.split('|')[7])));
+
+  const keepTyping: string[] = [];
+  const unreachable: string[] = [];
+  let checked = 0;
+  for (const row of whole().rows) {
+    checked += 1;
+    const fold = row.fold;
+    const token = fold.split(' ')[0];
+    if (fold.length < 2 || (fold === token && splits.has(token))) { keepTyping.push(row.name); continue; }
+    const key = shardKeyFor(token, meta.splits);
+    if (!idsByKey.get(key)?.has(row.id.slice(row.id.indexOf(':') + 1))) {
+      unreachable.push(`${row.name} (${row.id}) folds to "${fold}" and resolves to shard "${key}", which does not hold it`);
+    }
+  }
+  assert.deepEqual(
+    unreachable.slice(0, 10), [],
+    `${unreachable.length} of ${checked} shipped rows cannot be reached by typing their own name`,
+  );
+  assert.ok(checked > 140_000, `only ${checked} rows checked`);
+  assert.ok(
+    keepTyping.length <= 12,
+    `${keepTyping.length} rows are "keep typing" against their own name (KD-118's arm): ${keepTyping.slice(0, 20).join(', ')}`,
+  );
+});
+
+/**
+ * **QA R67-2 — a pinned verification pair that cannot see its own row verifies its own spelling.**
+ *
+ * A-82 Part 3 pins `foldPlaceName('Nuku\u02BBalofa') === 'nukualofa'` and that pair was **green**
+ * while the query `nukualofa` returned **no rows at all**: the shipped row is spelled
+ * `Nuku\u2018alofa`, U+2018 was not in the substitution table, and step 5 turned it into a space.
+ * The pair asserted a fold of a string the test itself wrote. It now has to reach the row.
+ */
+test('A-82 Part 3 / R67-2: the pinned pair reaches the SHIPPED row it stands for', async () => {
+  const rows = whole().rows.filter((r) => /^Nuku.alofa$/u.test(r.name));
+  assert.ok(rows.length > 0, 'no Nuku\u2018alofa row ships — the pinned pair stands for nothing');
+  const g = await load('nukualofa');
+  assert.ok(g, '`nukualofa` is "keep typing" — the pinned pair produces a query the loader refuses');
+  const hits = searchGazetteer('nukualofa', g, { limit: 20 });
+  for (const r of rows) {
+    assert.ok(
+      hits.some((h) => h.id === r.id),
+      `the pinned pair folds to "nukualofa" and ${JSON.stringify(r.name)} (${r.id}) is not among the ${hits.length} rows it returns`,
+    );
+  }
+});
+
+test('A-82 Part 3 / R67-2: the okina family is one mark, and omitting it still finds the place', async () => {
+  for (const [query, name] of [
+    ['xian', 'Xi\u2019an'],
+    ['oahu', 'O\u2018ahu'],
+    ['taif', 'Ta\u2019if'],
+  ] as const) {
+    const g = await load(query);
+    assert.ok(g, `"${query}" is "keep typing"`);
+    const hits = searchGazetteer(query, g, { limit: 20 });
+    assert.ok(
+      hits.some((h) => h.name === name),
+      `"${query}" returns ${JSON.stringify(hits.slice(0, 3).map((h) => h.label))} and none of them is ${JSON.stringify(name)}`,
+    );
+  }
+});
+
+/**
+ * The ceiling behind R67-2, over every row the mark touches: **de-punctuating a name is what a
+ * person types**, and 700 of 763 such rows used to answer nothing.
+ */
+test('A-82 Part 3 / R67-2: every row spelled with an okina is reachable without it', async () => {
+  const MARK = /[\u2018\u2019\u02BB\u02BC\u0060]/u;
+  const rows = whole().rows.filter((r) => MARK.test(r.name));
+  assert.ok(rows.length > 500, `only ${rows.length} shipped rows carry an okina-family mark`);
+  const lost: string[] = [];
+  for (const r of rows) {
+    const q = foldPlaceName(r.name.replace(new RegExp(MARK, 'gu'), ''));
+    const g = await load(q);
+    const hits = g === null ? [] : searchGazetteer(q, g, { limit: 500 });
+    if (!hits.some((h) => h.id === r.id)) lost.push(`${r.name} → typing "${q}" does not reach it`);
+  }
+  assert.deepEqual(lost.slice(0, 10), [], `${lost.length} of ${rows.length} okina rows are unreachable without the mark`);
 });
 
 test('A-82 Part 2: the shipped rows are in the emitted total order, and that order is the artefact', () => {

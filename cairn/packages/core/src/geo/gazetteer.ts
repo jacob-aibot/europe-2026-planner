@@ -139,6 +139,17 @@ export type Gazetteer = {
  */
 export type GazetteerMeta = {
   readonly source: string;
+  /**
+   * **The checksum of every input the corpus is a function of** — not only of the downloads.
+   *
+   * It is sha256 over the five pinned source checksums **and over the shipped `COUNTRY_INDEX`**
+   * (**QA R67-7**). The index is a real input: the generator reads it to decide `indexSays` for
+   * all 149,086 rows, to refuse a silent contradiction, and to decide which stated codes need
+   * A-84 Part 5's parent translation. While it was outside this value, two corpora built either
+   * side of a country-index regeneration were **different documents carrying the same
+   * `$sourceSha256`** — and since GeoNames has no pinnable release tag, checksums are the entire
+   * reproducibility guarantee, so a gap in them is a gap in the guarantee.
+   */
   readonly sourceSha256: string;
   readonly idPrefix: string;
   readonly admin1: readonly string[];
@@ -172,8 +183,24 @@ const nfd = (s: string): string => (typeof s.normalize === 'function' ? s.normal
  * a letter whose diacritic is part of the glyph, and those are exactly the letters that make this
  * feature fail silently for a whole language.
  *
- * `ʻ` (U+02BB) and `ʼ` (U+02BC) are **deleted** rather than spaced, which is what folds
- * `Nukuʻalofa` to `nukualofa` and not to `nuku alofa`.
+ * **The okina family is deleted rather than spaced, and the table carries all FOUR spellings of
+ * it** — `ʻ` U+02BB, `ʼ` U+02BC, `‘` U+2018 and `’` U+2019 (**QA R67-2**). A-82 Part 3 wrote the
+ * table against a corpus that spelled the mark U+02BB, and its pinned pair `Nukuʻalofa →
+ * nukualofa` is written with U+02BB. **The corpus that ships spells it U+2019 (808 rows) and
+ * U+2018 (435).** With only the first two in the table, step 5 turned each of the others into a
+ * **space**, and 700 of the 763 rows they touch were unreachable by the query a person actually
+ * types: `xian` reached *Xiangyang* and not *Xi’an*, `oahu` reached nothing, and the shipped
+ * `Nuku‘alofa` — the row the pinned pair stands for — could not be found by `nukualofa` while the
+ * pinned pair itself stayed green. **A verification pair that cannot see its own row is a pair
+ * that verifies its own spelling**; `gazetteer.test.ts` now asserts the pair *and* the row.
+ *
+ * These five are one mark in five encodings, not five marks: U+02BB/U+02BC are the modifier
+ * letters, U+2018/U+2019 the typographic quotes data sources reach for when they have no keyboard
+ * for the first two, and U+0060 the ASCII grave a transliteration reaches for when it has neither
+ * (six shipped rows: Al-`Ula, Giv`at H̱ananya, Qal`at al Ḩişn, Slov`yanoserbsk, Ta`ū, Ra`s
+ * Ghārib). **The ASCII apostrophe U+0027 is deliberately NOT here** —
+ * it is a word separator in `L'Aquila` and `N'Djamena`, and 602 shipped rows use it that way, so
+ * deleting it would merge two tokens a person types as two.
  *
  * Uppercase forms are absent on purpose: step 1 has already lowercased. `İ` is *not* here — it is
  * the case the ordering handles, not the table (see `foldPlaceName`).
@@ -192,6 +219,9 @@ const SUBSTITUTIONS: Readonly<Record<string, string>> = {
   'ŀ': 'l',
   'ʻ': '',
   'ʼ': '',
+  '‘': '',
+  '’': '',
+  '`': '',
 };
 
 /** Step 4: every Unicode `Mn` (combining mark) NFD produced. */
@@ -585,7 +615,14 @@ const META_ONCE = new WeakMap<GazetteerDocuments, Promise<GazetteerMeta>>();
  * **A query that cannot resolve to a single shard returns `null`, and `null` means "keep
  * typing"** (A-83 Part 6). That is two cases and they are one rule:
  *
- *  - a first token under **two characters** — Part 6's own case, stated by length;
+ *  - a **folded query** under **two characters** — Part 6's own case, stated by length, and it is
+ *    the *query* that is measured, not its first token (**QA R67-2**: this used to read
+ *    `q.split(' ')[0].length < 2`, so `A Coruña` — eight characters, 245,000 people — was told to
+ *    keep typing, and 152 shipped rows answered nothing when a user typed their own full name.
+ *    The answer was on disk the whole time: a one-character first token resolves to the terminal
+ *    `a$` shard, which holds exactly the rows whose first token *is* `a`, and searching it returns
+ *    the row. A one-character *query* still returns `null`, which is the case Part 6 actually
+ *    rules);
  *  - a **one-token query that IS a split prefix** — the same case, stated by the manifest instead
  *    of by an assumption about how deep the tree goes. `de` is a split prefix in the shipped
  *    corpus, so the true answer to `de` spans that prefix's whole subtree — `del`, `den`, `det`
@@ -616,8 +653,8 @@ export async function loadGazetteer(
   docs: GazetteerDocuments,
 ): Promise<Gazetteer | null> {
   const q = foldPlaceName(query);
+  if (q.length < 2) return null;
   const token = q.split(' ')[0];
-  if (token.length < 2) return null;
 
   let metaOnce = META_ONCE.get(docs);
   if (metaOnce === undefined) {

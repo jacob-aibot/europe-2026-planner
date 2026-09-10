@@ -1453,16 +1453,37 @@ test('A-78 Part 1: there is nothing else under packages/core/src — no `.d.ts`,
     'rules on this file; do not exclude it.',
   );
 
+  // **The positive half asks the map's KEY SET, not the map's TEXT** (**QA R67-6**). It used to be
+  // `shardMap.includes("'./gazetteer/<name>'")` — a substring test over the generated file — so a
+  // `.mjs` parked in the corpus directory passed both halves of this guard as long as its name
+  // appeared anywhere in the file, **including in a doc comment**. That is a hole in a guard whose
+  // own message reads *"an architect rules on this file; do not exclude it"*, and it is the one
+  // shape the neighbouring `.ts` census cannot see. Three assertions now, over specifiers taken
+  // from the file with its comments removed:
+  //
+  //  1. every file in the corpus directory is a `.json` document — the exemption's whole reason is
+  //     that JSON is not TypeScript, so a non-`.json` file is outside the exemption by definition;
+  //  2. every file in it is one the map actually `import()`s;
+  //  3. every specifier the map imports is a file that is actually there.
   const shardMap = readFileSync(resolve(SRC, 'geo', 'gazetteerShards.gen.ts'), 'utf8');
-  const unnamed = walk(SRC)
-    .filter((f) => f.startsWith(CORPUS))
-    .map((f) => f.slice(CORPUS.length))
-    .filter((n) => n !== 'meta.json' || !n.endsWith('.json'))
-    .filter((n) => n !== 'meta.json' && !shardMap.includes(`'./gazetteer/${n}'`));
+  const code = shardMap.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+  const imported = new Set([...code.matchAll(/import\(\s*'\.\/gazetteer\/([^']+)'/g)].map((m) => m[1]));
+  const inCorpus = walk(SRC).filter((f) => f.startsWith(CORPUS)).map((f) => f.slice(CORPUS.length));
+
   assert.deepEqual(
-    unnamed, [],
-    'a file under `packages/core/src/geo/gazetteer/` is not a shard document the generated map ' +
+    inCorpus.filter((n) => !n.endsWith('.json')), [],
+    'a file under `packages/core/src/geo/gazetteer/` is not a `.json` document. The exemption ' +
+    'exists because JSON is not TypeScript and cannot declare a door; it does not reach anything ' +
+    'else. An architect rules on this file; do not exclude it.',
+  );
+  assert.deepEqual(
+    inCorpus.filter((n) => !imported.has(n)), [],
+    'a file under `packages/core/src/geo/gazetteer/` is not a document the generated shard map ' +
     'imports. The exemption above covers the corpus, not a parking space.',
+  );
+  assert.deepEqual(
+    [...imported].filter((n) => !inCorpus.includes(n)).sort(), [],
+    'the generated shard map imports a document that is not on disk.',
   );
 });
 

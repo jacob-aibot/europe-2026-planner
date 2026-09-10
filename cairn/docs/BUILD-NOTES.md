@@ -1,5 +1,29 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — QA round 67's builder-routed findings, at `master` = `38929ee`.** Four product
+> files, two test files, `BUILD-NOTES.md`, and the corpus regenerated. **Zero `.tsx`, zero
+> `apps/web/`, zero `packages/client/src`, zero `qa/`, zero `docs/design/`, zero new dependency,
+> zero lockfile.** No version constant moves: `SCHEMA_VERSION` 5, `SUMMARY_VERSION` 8, §2.10 88,
+> the subpath at 1 symbol.
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact command** | From `cairn/`: `npm run test:tap` → **1,834 pass / 0 fail** (baseline `38929ee`: 1,829 / 0; the +5 are this pass's new assertions). `npm run typecheck` → **exit 0 on both projects**. `npm run web:build` → main chunk **1,037.01 → 1,037.03 kB, +0.02 kB** against a 2 kB ceiling, **1 JS asset**, and `grep -l 'Hallstatt\|Positano\|Zermatt' apps/web/dist/assets/*.js` returns **nothing** — zero corpus leak, unchanged. |
+> | **R67-1 — FIXED** | `packages/core/src/geo/gazetteer.ts`: `const token = q.split(' ')[0]; if (token.length < 2)` → `if (q.length < 2) return null; const token = …`. A-83 Part 6 rules on the **folded query**; the test had moved to its first token. `node cli.ts cities "A Coruña"` → **`A Coruña, Galicia, Spain · 43.3714,-8.396 · ES`**; `L'Aquila` → **`L'Aquila, Abruzzo, Italy`**; `O‘ahu` → **`O‘ahu, Hawaii, United States`**. A one-character *query* is still `null` — asserted. |
+> | **R67-1 — the generator's audit can now see the class** | The audit swept ~35 fixed probes and reported only the split-prefix arm, which is why a class of 152 rows was invisible. It now asks **every shipped row** whether the loader answers for its own full name and whether the shard it resolves to **holds** it, in three buckets: fold under two characters (**0**), fold *is* a split prefix (**10** — KD-118's disclosed arm, `Ål Ba Bo Bø Ha Mo Pa Pô`…, newly countable), and **resolved shard does not hold the row (0, and non-zero throws)**. Run red before green: against the pre-regeneration corpus with the corrected fold it reported **70 rows the resolved shard does not hold** and refused. The same ceiling is asserted from the reading side in `gazetteer.test.ts`. |
+> | **R67-2 — FIXED, and the pinned pair can now fail** | `SUBSTITUTIONS` gains **U+2018, U+2019 and U+0060** beside U+02BB/U+02BC — one mark in five encodings. Measured on the shipped corpus: U+2019 **772** rows, U+2018 **408**, U+02BB **4**, U+0060 **6**. The ASCII `'` is deliberately **not** added: it is a word separator in `L'Aquila` and `N'Djamena`, 602 rows. `xian` → **Xi’an, Shaanxi, China** at rank 1 (was *Xiangyang*); `taif` → **Ta’if, Mecca Region, Saudi Arabia** at rank 1 (was *Taifa, Ghana*); `oahu` → **O‘ahu**; `nukualofa` → **Nuku‘alofa, Tongatapu, Tonga**. A-82 Part 3's pinned pair `Nukuʻalofa → nukualofa` now has a **second assertion beside it that reaches the shipped row through the real loader**, plus a corpus-wide ceiling: every row spelled with an okina-family mark is reachable by the query that omits it. Both were run red against the old corpus. `qa/r67-corpus.mjs` **§N1 is GREEN**. |
+> | **R67-3 — NOT FIXED, deliberately: STOP AND REPORT** | See **KD-122**. The ordering fix was implemented and measured: it removes `Antilles` **and nine correct rows** — `Guadeloupe`, `Grande-Terre`, `La Désirade`, `Devils Island`, `Flying Fish Cove`, `Bouvetøya`, `Hornsund`, `Klovningen`, `Chissioua Mtsamboro` — because A-83 Part 9 clause 1's *"would render as a bare name"* does not distinguish a multi-country landmass from a territory whose parent A-84 Part 5 exists to fill in. **And no ordering reaches `Hispaniola` at all**: it states `DO`, a code the index draws, so it never enters the translation. Reverted; the measurement is the evidence for the architect. |
+> | **R67-6 — FIXED** | `packages/core/test/storable.test.ts`: the positive half was `shardMap.includes("'./gazetteer/<name>'")`, a substring test over the generated file's **text**. It now strips comments, extracts the specifiers the map actually `import()`s, and asserts three things — every corpus file is `.json`, every corpus file is imported, every imported specifier is on disk. Run red before green with a hand plant (`evil.mjs` + its name in a doc comment): *"not ok — A-78 Part 1: there is nothing else under packages/core/src"*. **`qa/r67-guard.sh` runs against `git rev-parse HEAD`, so its M8 only turns RED after this is committed** — see *before/after* below. |
+> | **R67-7 — FIXED** | `$sourceSha256` is now sha256 over the five source checksums **and** `COUNTRY_INDEX` (hashed **by value**, so a comment in the generated module is not a data change). `meta.json` gains `$countryIndexSha256` and the generated header publishes both. `qa/r67-corpus.mjs` **§J6 is GREEN**; **§J3 is now RED and that is the fix, not a regression** — J3 re-derives the *old* formula (five checksums only) and asserts the committed value equals it. |
+> | **R67-8 — NOT FIXED, and the reason is the fence** | The one-line validation was written, ran, and was reverted: making `decodeGazetteer` throw on a non-finite numeric field makes `qa/r67-corpus.mjs` **abort at §L3**, before §J, §M and §N — the three sections that verify the rest of this pass. §L3 calls the decoder outside its own `try`. `qa/` is fenced and R67-8 was not in the routed list, so it is left with its probe. **It needs a probe re-cut in the same pass as the fix.** |
+> | **The corpus was regenerated, and it had to be re-pinned to do it** | See **KD-123**. The fold change alters every row's token set and therefore its shard, so regeneration was mandatory — and the pinned bytes are no longer served (GeoNames regenerates daily, archives nothing). `allCountries.zip` and `alternateNamesV2.zip` were re-pinned to the 2026-09-10 dumps, **13,464,110 features / 19,157,627 alternate-name rows**; `admin1CodesASCII.txt`, `countryInfo.txt` and `ne_10m_admin_0_countries.geojson` **matched their existing pins byte for byte**. **+15 shipped rows (149,086 → 149,101) is dataset drift, not this repair.** |
+> | **Byte-reproducible, verified twice** | The generator was run **twice** at the final state: sha256 over all **967** emitted files (962 shards + `meta.json` + the shard map + three goldens) is **byte-identical**. `--audit-only` fetches nothing, audits the committed bytes and reports *"probes golden: matches the committed file"*. **962 shards, 41 split prefixes, 201,620 emitted rows (duplication 1.352×), 8,749,255 bytes, largest shard `br.json` at 94,630 B** against the 96 KiB budget. `CORPUS_BYTES` re-measured, not carried. |
+> | **Coverage, RE-MEASURED after the regeneration** | `qa/r60-coverage.mjs` **unmodified**: **travel 109/121 = 90.1 %, control 50/50 = 100.0 %**, overall 159/171 = 93.0 %, 1 wrong-country (Monteverde), and **identical whether scored over the assembled whole corpus or through the real `loadGazetteerFor` path** (`differs: 0`, `answered null: 0`). Same as the baseline — the fold fix does not move the 121-destination set, whose names carry no okina, and the +15 drifted rows are not among them. |
+> | **`qa/` probes, before → after** | `qa/r67-corpus.mjs` **131 ok / 7 FAIL → 133 ok / 5 FAIL**. Closed: **N1** (okina reachability) and **J6** (the sha's coverage). Newly red: **J3**, which asserts the old five-checksum formula — that is R67-7's fix showing up. Still red and each accounted for: **B1** (see below), **L3** (R67-8, above), **M1 ×2** (R67-3, above). `qa/r67-parents.mjs` **0 FAIL → 0 FAIL**. `qa/r64-census.mjs` **0 FAIL → 0 FAIL**, §F's four I-24 cases all `ok` by name. `qa/r67-guard.sh` **7 ok / M8 GREEN → 8 ok / 1 FAIL**, measured after the commit: **M8 is now RED**, which is the finding closed. **M6 flipped GREEN → RED and that is a strengthening, not a regression** — M6 deletes a shard the map still imports and the probe's own note records that `storable.test.ts` does **not** notice (*"the guard walks what EXISTS"*), leaving it to `gazetteer.test.ts`. The third assertion added for R67-6 — *every specifier the map imports is on disk* — now notices it too, so the gap M6 documents is closed and M6's expectation is stale in the good direction. **`qa/r67-guard.sh` line 107's `GREEN` needs re-cutting to `RED`**; `qa/` is fenced and I did not touch it. |
+> | **`qa/r67-corpus.mjs` §B1 is a stale probe model, and the probe prints its own counter-evidence** | B1 reimplements the loader's refusal **inline** (`if (t.length < 2) return false`, line 143) rather than calling it, so it still scores the *old* rule and still reports 120. Its very next lines call the shipped path and print **`loadGazetteerFor("A Coruña") → shard a$`** — not `null`. The 120 it counts are rows a fixed loader answers for. `qa/` is fenced; **B1 needs its line 143 re-cut to `c.length < 2`**, and then it measures the 10 KD-118 rows the generator's audit now also publishes. |
+> | **What I could not verify** | **That a browser fetches one shard** — unchanged from `I-23`: no web consumer exists and adding one is fenced. **That the re-pinned dumps are better or worse than the previous day's** — they are a different day of the same source; the diff is legible in the three goldens and nothing else was measured about it. **R67-5 was not attempted** (it is builder-routed and was not in the routed list; `writeParents` publishing each row's own resolved code is a change to a golden's shape). |
+
+
 > **Addendum — ROADMAP `I-23`: the gazetteer's filter becomes notability, the corpus is sharded,
 > and a search fetches one shard (`ARCHITECTURE.md` §8.4 **A-83** Parts 1–7 and 9–11, **A-84**
 > Parts 5 and 6).** Builds on `d357895`. **Fifteen files plus the generated corpus** — the
@@ -5957,6 +5981,88 @@ edit: every file under `geo/gazetteer/` must be a `.json` document that `meta.js
 shard map **names**, so the exemption cannot become a parking space. The guard's own subject — a
 `.d.ts` declaring a door over a JS implementation — is untouched and still refused everywhere.
 
+
+### KD-122 — QA **R67-3** is NOT fixed, the reason is the rule rather than the implementation, and refusing before the translation would delete nine real islands to remove one sea
+
+`tools/gen-gazetteer.mjs`, A-83 Part 9 clause 1's bare-name refusal; ROADMAP `I-23`'s
+*"stop and report"*.
+
+The routed instruction was *"fix the ordering so translation cannot rescue a row the refusal is
+meant to catch,"* with an explicit escape: *"if you conclude the rule itself is ambiguous rather
+than the implementation, stop and report rather than deciding it."* **I implemented the ordering
+fix, measured it, and reverted it.**
+
+Moving the refusal ahead of A-84 Part 5's translation — refusing a row whose *stated* code the
+index cannot draw and whose `admin1` is `''` — is four lines and it works. It removes `Antilles`.
+It also removes, measured on the committed corpus, **exactly nine other rows, and all nine are
+right**:
+
+| row | states | ships | why it is not `Antilles` |
+|---|---|---|---|
+| `Guadeloupe` | `GP` | `FR` | the island; *"Guadeloupe, France"* is what A-84 Part 5 exists to produce |
+| `Grande-Terre` | `GP` | `FR` | half of Guadeloupe |
+| `La Désirade` | `GP` | `FR` | an inhabited island of Guadeloupe |
+| `Devils Island` | `GF` | `FR` | Île du Diable, French Guiana, at `5.2932,-52.5832` |
+| `Flying Fish Cove` | `CX` | `AU` | the **settlement** on Christmas Island — a class `P` row, not an island |
+| `Bouvetøya` | `BV` | `NO` | Bouvet Island |
+| `Hornsund` | `SJ` | `NO` | Svalbard |
+| `Klovningen` | `SJ` | `NO` | Svalbard |
+| `Chissioua Mtsamboro` | `YT` | `FR` | Mayotte |
+
+Ten rows are rescued by the translation from this refusal; one of them is the defect. A-83 Part 9
+clause 1's mechanism is *"would this row render as a bare name"*, and that predicate does not
+separate a multi-country landmass from a territory whose parent A-84 Part 5 deliberately fills in.
+**Both are a row with no region and no drawable code of its own**, which is exactly the shape the
+translation was built for.
+
+Three narrower rules were considered and each fails on its own terms:
+
+- **Refuse a retired code.** `AN` is still a row of `countryInfo.txt` (*Netherlands Antilles*,
+  line 302), so *"a code the source no longer lists"* does not name it.
+- **Refuse feature code `ISLS`.** A-83 Part 3 admits `ISL`/`ISLS` by name, and `Guadeloupe` and
+  `Hispaniola` are islands, not island groups.
+- **Refuse a row whose population bucket is implausible for a settlement.** That is a new gate on
+  a new axis, and it is a dial, not a rule.
+
+**And no ordering reaches `Hispaniola` at all**, which is the round's other named case: it states
+`DO` outright, a code the index draws, so it never enters the translation, and it renders
+*"Hispaniola, Dominican Republic"* — not a bare name under any ordering of the existing tests. A
+traveller to Haiti who types *Hispaniola* still gets the Dominican Republic on their lifetime map.
+
+So the fix is a **widening of A-83 Part 9's refusal** — a rule about what class of feature may be a
+`City` at all, which is the same question A-83 Part 3's *"a settlement or an island you can say you
+went to"* answers for the selection gate — and that is an architect's ruling. The measurement above
+is the evidence it needs; the comment at the refusal site names this entry so the next person does
+not spend twenty minutes writing the four-line version and deleting nine islands.
+
+### KD-123 — the two GeoNames dumps were RE-PINNED, because the bytes the previous pin names are no longer served
+
+`tools/gen-gazetteer.mjs`, `SOURCES.allCountries` and `SOURCES.alternateNames`.
+
+Fixing R67-1 and R67-2 changes `foldPlaceName`, which changes every row's **token set**, which
+changes which shard every row is written into. The corpus had to be regenerated; that was expected
+and the routing said so. What was not expected is that **it could not be regenerated from the
+pinned bytes**: GeoNames regenerates its dumps daily, publishes no release tag and archives
+nothing, and by the time this ran the two big files had rolled over —
+`allCountries.zip` 421,188,852 → **421,190,719** bytes, `alternateNamesV2.zip` 204,010,583 →
+**204,011,299**. The generator did exactly what A-83 Part 2 says it should: reported the mismatch
+and refused to write.
+
+**I re-pinned rather than inventing a second build path.** The alternative considered was a
+`--reshard` mode that rebuilds the shard documents from the *committed* corpus with the corrected
+fold, touching no source: it keeps the dataset frozen and isolates the diff to the two defects,
+which is attractive. It was rejected because the committed corpus is lossy in exactly the place
+that matters — a row's `alts` ship **already folded**, so an English alternate spelled with a
+typographic okina cannot be re-folded under the corrected table, and the reshard would produce a
+corpus the primary path would *not* reproduce. A corpus no declared input reproduces is worse than
+a corpus reproduced from one day's later data.
+
+**What re-pinning costs, stated rather than buried:** the corpus is now built from the 2026-09-10
+dumps rather than the 2026-09-09 ones, so **+15 shipped rows** (149,086 → 149,101) are dataset
+drift and not this repair. The three other sources — `admin1CodesASCII.txt`, `countryInfo.txt` and
+`ne_10m_admin_0_countries.geojson` — **matched their existing pins byte for byte** and did not
+move. The drift is legible where A-83 Part 2 says it should be: in the goldens. **Every number in
+this repair pass was re-measured after the regeneration; none was carried over.**
 
 ## 2. How to run it
 

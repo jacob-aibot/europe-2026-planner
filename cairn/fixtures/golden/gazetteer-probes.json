@@ -1,7 +1,7 @@
 {
   "$generatedBy": "cairn/tools/gen-gazetteer.mjs --audit-only --write",
   "$source": "GeoNames geographical database (allCountries, alternateNamesV2, admin1CodesASCII, countryInfo), https://www.geonames.org/ — licensed CC BY 4.0, https://creativecommons.org/licenses/by/4.0/. Provided \"as is\", without any representation of accuracy, timeliness or completeness. Country outlines: Natural Earth ne_10m_admin_0_countries v5.1.2, public domain.",
-  "$sourceSha256": "f484e7ef8d61e993ea4a221418b117ac2f275a13fd47ead706593209a30f9daa",
+  "$sourceSha256": "509364760a7a56a00e188736912f20f328cb44f2ba15fbfbbabc4e65ced18ffb",
   "$fetched": "2026-09-10",
   "$what": "The top 5 hits searchGazetteer returns for each probe query, over the ONE SHARD loadGazetteerFor resolves that query to — which is what a consumer gets. This pins THE ANSWER, not the mechanism: a fold that stops handling a letter, a comparator whose tie moves, a shard split that moves a row, or a coordinate that shifted between source revisions all show up here as a diff. COORDINATES ARE PUBLISHED here deliberately — A-82 Part 10: country-holes.json's NO COORDINATES line has the live planner's own records as its subject, and this file's subject is a licensed public dataset already committed in full.",
   "probeDepth": 5,

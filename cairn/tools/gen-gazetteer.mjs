@@ -49,6 +49,13 @@
  * > re-pinning is a deliberate, reviewed act: a human updates the constants below, re-runs, and
  * > reads the diff in the goldens, which are what make the change legible.
  *
+ * **The two GeoNames dumps below were re-pinned on 2026-09-10 (QA round 67; disclosed as
+ * KD-123).** The QA R67-2 fold repair changes every row's token set and therefore which shard
+ * every row is written into, so the corpus had to be regenerated — and the bytes the previous pin
+ * named were no longer being served. The three other sources matched their existing pins exactly
+ * and did not move. The cost of the re-pin is one day of GeoNames drift, +15 shipped rows, and it
+ * is legible in the goldens, which is what this procedure is for.
+ *
  * Reproducibility of the **artefact** is preserved in full and is what actually matters: the
  * generated corpus is committed, `--audit-only` fetches nothing and audits the committed bytes,
  * and every test runs against those bytes. Reproducibility of the **build from source** is bounded
@@ -122,19 +129,19 @@ const SOURCES = {
     url: 'https://download.geonames.org/export/dump/allCountries.zip',
     file: 'allCountries.zip',
     entry: 'allCountries.txt',
-    bytes: 421_188_852,
-    sha256: '8f5ac3347ebb11b9b0ae06f541c89aa2a317d503b1ecb3d6e0cfbbdab39670bd',
-    lastModified: 'Wed, 09 Sep 2026 01:49:04 GMT',
-    rows: 13_464_089,
+    bytes: 421_190_719,
+    sha256: '8864727474760039d91b60137fbe81fe203ae399a13289be4cf21afd0ebec826',
+    lastModified: 'Thu, 10 Sep 2026 01:57:10 GMT',
+    rows: 13_464_110,
   },
   alternateNames: {
     url: 'https://download.geonames.org/export/dump/alternateNamesV2.zip',
     file: 'alternateNamesV2.zip',
     entry: 'alternateNamesV2.txt',
-    bytes: 204_010_583,
-    sha256: '8458f088fe1582c095963e31fff1ea1edd0e955eb1b66b7f012bf65b13d9382a',
-    lastModified: 'Wed, 09 Sep 2026 01:54:00 GMT',
-    rows: 19_157_584,
+    bytes: 204_011_299,
+    sha256: '14386dea2d574f807d6e69fa269531ea427db2f61ebd59cf9b4d0e19e1aa40cf',
+    lastModified: 'Thu, 10 Sep 2026 02:02:05 GMT',
+    rows: 19_157_627,
   },
   admin1: {
     url: 'https://download.geonames.org/export/dump/admin1CodesASCII.txt',
@@ -246,9 +253,16 @@ const opt = (name, dflt) => {
 // in a shard its own fold does not resolve to, and `packages/core/test/gazetteer.test.ts` says so
 // by name over every shipped row. You do not have to ship a value to verify it.
 
+// **The okina family is all FIVE of its spellings** — U+02BB, U+02BC, U+2018, U+2019 and the
+// ASCII grave U+0060 (**QA R67-2**). GeoNames spells it U+2019 (772 shipped rows), U+2018 (408),
+// U+02BB (4) and U+0060 (6); A-82 Part 3's table carried only the two modifier letters, so step 5
+// turned the rest into a space and 700 of the 763 rows they touched were unreachable by the query
+// a person types. The ASCII apostrophe is deliberately absent: it is a word separator in
+// `L'Aquila`, and 602 shipped rows use it that way.
 const SUBSTITUTIONS = {
   'ł': 'l', 'ø': 'o', 'đ': 'd', 'ð': 'd', 'þ': 'th', 'ß': 'ss',
-  'æ': 'ae', 'œ': 'oe', 'ı': 'i', 'ħ': 'h', 'ŀ': 'l', 'ʻ': '', 'ʼ': '',
+  'æ': 'ae', 'œ': 'oe', 'ı': 'i', 'ħ': 'h', 'ŀ': 'l',
+  'ʻ': '', 'ʼ': '', '\u2018': '', '\u2019': '', '\u0060': '',
 };
 
 function foldPlaceName(name) {
@@ -302,19 +316,34 @@ async function main() {
   mkdirSync(cacheDir, { recursive: true });
   const shas = {};
   for (const [name, src] of Object.entries(SOURCES)) shas[name] = await ensureSource(cacheDir, src);
-  const corpusSha = createHash('sha256')
-    .update(Object.keys(SOURCES).sort().map((k) => `${k}:${shas[k]}`).join('\n'))
-    .digest('hex');
-  console.log(`corpus sha256 (over the five pinned source checksums): ${corpusSha}`);
-
   const { countryOf, COUNTRY_INDEX } = await import('../packages/core/src/index.ts');
   const draws = new Set(COUNTRY_INDEX.countries.map((c) => c.code));
   console.log(`the shipped index draws ${draws.size} country codes at scale ${COUNTRY_INDEX.scale}`);
 
+  // **The corpus sha covers every input the corpus is a function of, and `COUNTRY_INDEX` is one
+  // of them — QA R67-7.** It used to be sha256 over the five downloads alone. But the generator
+  // reads the shipped index to decide `indexSays` for every row, to refuse a row that would
+  // contradict it silently, and to decide which stated codes need A-84 Part 5's parent
+  // translation; so two corpora built either side of a country-index regeneration were
+  // **different documents carrying the same `$sourceSha256`**, and the loader's skew check —
+  // which compares exactly that value — could not tell them apart. GeoNames has no pinnable
+  // release tag, which makes these checksums the entire reproducibility guarantee; a gap in them
+  // is a gap in the guarantee. The index is hashed by VALUE rather than by file bytes so that a
+  // comment or a reformat in the generated module does not read as a data change.
+  const indexSha = createHash('sha256').update(JSON.stringify(COUNTRY_INDEX)).digest('hex');
+  const corpusSha = createHash('sha256')
+    .update([
+      ...Object.keys(SOURCES).sort().map((k) => `${k}:${shas[k]}`),
+      `countryIndex:${indexSha}`,
+    ].join('\n'))
+    .digest('hex');
+  console.log(`COUNTRY_INDEX sha256 (by value): ${indexSha}`);
+  console.log(`corpus sha256 (over the five source checksums AND the country index): ${corpusSha}`);
+
   const built = await build(cacheDir, { countryOf, index: COUNTRY_INDEX, draws });
   report(built);
 
-  const docs = shard(built, corpusSha);
+  const docs = shard(built, corpusSha, indexSha);
   console.log('');
   console.log(`shards         ${docs.shards.length}   (${docs.splits.length} split prefixes)`);
   console.log(`emitted rows   ${docs.emitted}   (duplication factor ${(docs.emitted / built.rows.length).toFixed(3)})`);
@@ -769,6 +798,30 @@ async function build(cacheDir, { countryOf, index, draws }) {
       refusedRows.push({ why: 'delimiter', name: r.name, admin1: r.admin1 });
       continue;
     }
+    // **QA R67-3 IS NOT FIXED HERE AND THE REASON IS THE RULE, NOT THIS LINE.** The finding is
+    // that `Antilles` — the sea — ships as *"Antilles, Dominican Republic"*, rank 1 for its own
+    // name, because it states the retired code `AN`, A-84 Part 5's translation resolved that to a
+    // modal `DO`, and the row therefore no longer renders as a bare name by the time this test
+    // runs. Moving the test before the translation was implemented and MEASURED, and it is not
+    // the fix: **exactly ten shipped rows are "rescued" by the translation from this refusal, and
+    // nine of them are right** — `Guadeloupe`, `Grande-Terre` and `La Désirade` (stating `GP`,
+    // shipping `FR`), `Devils Island` in French Guiana (`GF` → `FR`), `Flying Fish Cove`, the
+    // settlement on Christmas Island (`CX` → `AU`), `Bouvetøya` (`BV` → `NO`), `Hornsund` and
+    // `Klovningen` (`SJ` → `NO`) and `Chissioua Mtsamboro` (`YT` → `FR`). Refusing a row *before*
+    // the translation deletes all nine to remove one, and *"Guadeloupe, France"* is the exact
+    // outcome A-84 Part 5 exists to produce.
+    //
+    // Nor does any ordering reach `Hispaniola`, the round's other case: it states `DO` outright,
+    // never touches the translation, and renders *"Hispaniola, Dominican Republic"*, which is not
+    // a bare name under any ordering of these tests. And a "refuse a retired code" rule does not
+    // separate them either — `AN` is still a row of `countryInfo.txt`.
+    //
+    // So the mechanism A-83 Part 9 clause 1 states — *would this row render as a bare name* —
+    // does not distinguish a multi-country landmass from a territory whose parent A-84 Part 5
+    // deliberately fills in. That is a rule to widen, not a line to move, and ROADMAP `I-23`'s
+    // instruction on this case is to STOP AND REPORT rather than decide it. Reported in
+    // `docs/BUILD-NOTES.md`; this comment is here so the next person does not "fix" it in twenty
+    // minutes and delete nine real islands. Disclosed as **KD-122**.
     if (code === null && r.admin1 === '') {
       refused.bareName += 1;
       refusedRows.push({ why: 'bare name', name: r.name, admin1: r.admin1 });
@@ -1021,7 +1074,7 @@ function pack(r, admin1At) {
  * budget requires*. Fixed widths were measured and rejected: one character gives a largest shard
  * of 600 kB–1.3 MB, and two characters still cannot answer an `isla` prefix at 306 kB.
  */
-function shard(built, corpusSha) {
+function shard(built, corpusSha, indexSha) {
   const packed = built.rows.map((r) => pack(r, built.admin1At));
   const cost = packed.map((s) => Buffer.byteLength(JSON.stringify(s), 'utf8') + 1);
 
@@ -1125,11 +1178,15 @@ function shard(built, corpusSha) {
     v: 1,
     $source: ATTRIBUTION,
     $sourceSha256: corpusSha,
+    $countryIndexSha256: indexSha,
     $fetched: FETCHED,
     $what:
       'The session-once half of the sharded offline city gazetteer (ARCHITECTURE §8.4 A-83 Part 5). ' +
       'GENERATED by cairn/tools/gen-gazetteer.mjs — do not edit. Every shard beside this file ' +
-      'carries the same $sourceSha256 and the loader refuses a pair that disagrees.',
+      'carries the same $sourceSha256 and the loader refuses a pair that disagrees. ' +
+      '$sourceSha256 is sha256 over the five pinned source checksums AND $countryIndexSha256, ' +
+      'because the corpus is a function of the shipped COUNTRY_INDEX too — it decides indexSays, ' +
+      'the silent-contradiction refusal and A-84 Part 5\'s parent translation (QA R67-7).',
     idPrefix: ID_PREFIX,
     rows: built.rows.length,
     shardCount: shards.length,
@@ -1146,7 +1203,7 @@ function shard(built, corpusSha) {
   }
   return {
     shards, splits: splitList, emitted, largest, meta,
-    metaText, metaBytes: Buffer.byteLength(metaText, 'utf8'), packed, corpusSha,
+    metaText, metaBytes: Buffer.byteLength(metaText, 'utf8'), packed, corpusSha, indexSha,
   };
 }
 
@@ -1246,9 +1303,13 @@ function emitShardMap(docs, built, total) {
  *          file is pinned by **sha256 and by fetch date** rather than by a ref, and the generator
  *          REFUSES TO WRITE on a mismatch. Fetched ${FETCHED}.
 ${Object.entries(SOURCES).map(([k, s]) => ` *          ${k.padEnd(15)} ${s.sha256}`).join('\n')}
+ *          countryIndex    ${docs.indexSha}  (sha256 of COUNTRY_INDEX by value)
  *          corpus sha256   ${docs.corpusSha}
- *          (the corpus sha is taken over the five source checksums; \`meta.json\` and every shard
- *          carry it, and the loader refuses a pair that disagrees — A-83 Part 4's skew hazard.)
+ *          (the corpus sha is taken over the five source checksums **and the shipped
+ *          \`COUNTRY_INDEX\`**, which the generator reads for \`indexSays\`, for the silent-
+ *          contradiction refusal and for A-84 Part 5's parent translation — QA R67-7. \`meta.json\`
+ *          and every shard carry it, and the loader refuses a pair that disagrees — A-83 Part 4's
+ *          skew hazard.)
  * Filter : **notability, not population** (A-83 Parts 1 and 3). Class \`P\`, or feature code
  *          \`ISL\`/\`ISLS\`; selected on \`languages >= ${NOTABILITY.languages}\`, or a Wikipedia link with
  *          population >= ${NOTABILITY.wikiPopulation}, or class P with population >= ${NOTABILITY.floorPopulation}.
@@ -1537,6 +1598,48 @@ async function audit(corpus, { writeProbes }) {
   if (keepTyping.length) console.log(`  "keep typing" (the token is a split prefix): ${keepTyping.join(', ')}`);
   if (mismatched) throw new Error(`${mismatched} queries answer differently from one shard than from the corpus`);
   console.log('  one-search-one-shard: every probe answers identically from its shard and from the whole corpus');
+
+  // **Can a row be reached by typing its OWN NAME? Asked of every shipped row — QA R67-1.**
+  //
+  // The sweep above asks a fixed list of ~35 queries and reports only the ones the loader refuses
+  // as a split prefix, which is the arm KD-118 discloses. It could not see the other arm: the
+  // length test was applied to the query's FIRST TOKEN rather than to the folded query, so
+  // `A Coruña` — eight characters, 245,000 people — was told to keep typing while the terminal
+  // `a$` shard held the row. 152 shipped rows answered nothing when a user typed their full name
+  // and no audit line said so, because no probe in the list has a one-character first token.
+  //
+  // A fixed probe list can only see the classes somebody thought of. This asks the whole corpus,
+  // and it is the shape a reachability regression has: **a row the loader will not answer for, or
+  // answers for out of a shard that does not hold it.** The third bucket is a hard failure — it
+  // is the same incompleteness the round trip catches from the writing side, asked from the
+  // reading side, through the loader's own refusal rule.
+  const idsByKey = new Map();
+  for (const s of corpus.shards) idsByKey.set(s.key, new Set(s.doc.r.map((packed) => packed.split('|')[7])));
+  const unreachable = { short: [], splitPrefix: [], wrongShard: [] };
+  for (const r of corpus.rows) {
+    const f = foldPlaceName(r.name);
+    const token = f.split(' ')[0];
+    if (f.length < 2) { unreachable.short.push(r.name); continue; }
+    if (f === token && splits.has(token)) { unreachable.splitPrefix.push(r.name); continue; }
+    const ids = idsByKey.get(shardKeyFor(token, splits));
+    const bare36 = r.id.slice(r.id.indexOf(':') + 1);
+    if (ids === undefined || !ids.has(bare36)) {
+      unreachable.wrongShard.push(`${r.name} → ${shardKeyFor(token, splits)}`);
+    }
+  }
+  const say = (what, list) => {
+    console.log(`  ${String(list.length).padStart(6)} ${what}${list.length ? `: ${list.slice(0, 6).join(', ')}` : ''}`);
+  };
+  console.log('  reachable by its own full name — every shipped row, through the loader\'s own rule:');
+  say('rows whose whole folded name is under two characters ("keep typing")', unreachable.short);
+  say('rows whose whole folded name IS a split prefix ("keep typing", KD-118)', unreachable.splitPrefix);
+  say('rows the resolved shard DOES NOT HOLD', unreachable.wrongShard);
+  if (unreachable.wrongShard.length) {
+    throw new Error(
+      `${unreachable.wrongShard.length} shipped rows resolve to a shard that does not hold them: ` +
+        `${unreachable.wrongShard.slice(0, 5).join(', ')}`,
+    );
+  }
 
   const ambiguous = new Map();
   for (const r of corpus.rows) ambiguous.set(r.fold, (ambiguous.get(r.fold) ?? 0) + 1);

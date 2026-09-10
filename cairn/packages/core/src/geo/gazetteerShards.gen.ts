@@ -17,27 +17,31 @@
  * Pinned : GeoNames publishes no release tag — the dumps are regenerated daily — so each source
  *          file is pinned by **sha256 and by fetch date** rather than by a ref, and the generator
  *          REFUSES TO WRITE on a mismatch. Fetched 2026-09-10.
- *          allCountries    8f5ac3347ebb11b9b0ae06f541c89aa2a317d503b1ecb3d6e0cfbbdab39670bd
- *          alternateNames  8458f088fe1582c095963e31fff1ea1edd0e955eb1b66b7f012bf65b13d9382a
+ *          allCountries    8864727474760039d91b60137fbe81fe203ae399a13289be4cf21afd0ebec826
+ *          alternateNames  14386dea2d574f807d6e69fa269531ea427db2f61ebd59cf9b4d0e19e1aa40cf
  *          admin1          590651498043f674accda2b7f46d21286cda0e290b02f8561c5005eee9a5448c
  *          countryInfo     93bafc525813f22e4711ff9ed6d626343094ce48c26388dc7c49189b3d7d5512
  *          admin0          239eec57ac17f100a11e2536cffc56752c318b50ae765b0918ff7aab4ce8f255
- *          corpus sha256   f484e7ef8d61e993ea4a221418b117ac2f275a13fd47ead706593209a30f9daa
- *          (the corpus sha is taken over the five source checksums; `meta.json` and every shard
- *          carry it, and the loader refuses a pair that disagrees — A-83 Part 4's skew hazard.)
+ *          countryIndex    03bcbfaad49ac6c9a7c712ff069593bbd16711a5cb7c2f59942cf2ea71357e43  (sha256 of COUNTRY_INDEX by value)
+ *          corpus sha256   509364760a7a56a00e188736912f20f328cb44f2ba15fbfbbabc4e65ced18ffb
+ *          (the corpus sha is taken over the five source checksums **and the shipped
+ *          `COUNTRY_INDEX`**, which the generator reads for `indexSays`, for the silent-
+ *          contradiction refusal and for A-84 Part 5's parent translation — QA R67-7. `meta.json`
+ *          and every shard carry it, and the loader refuses a pair that disagrees — A-83 Part 4's
+ *          skew hazard.)
  * Filter : **notability, not population** (A-83 Parts 1 and 3). Class `P`, or feature code
  *          `ISL`/`ISLS`; selected on `languages >= 4`, or a Wikipedia link with
  *          population >= 1000, or class P with population >= 20000.
- *          5401676 candidates → 149104 selected → 149086 shipped.
+ *          5401680 candidates → 149119 selected → 149101 shipped.
  *          QA round 60 measured the population-filtered predecessor at **21.5 %** of a
  *          171-destination travel corpus. Hallstatt has 779 residents and a million visitors a
  *          year; the filter was on the wrong axis.
- * Shards : 966 documents, 41 split prefixes, 202020 emitted rows
- *          (duplication 1.355×, the price of one-search-one-shard).
+ * Shards : 962 documents, 41 split prefixes, 201620 emitted rows
+ *          (duplication 1.352×, the price of one-search-one-shard).
  *          Largest 94630 bytes ("br") against a 98304-byte budget;
- *          8761994 bytes committed in total. **The budget is the invariant and the
+ *          8749255 bytes committed in total. **The budget is the invariant and the
  *          width is whatever the budget requires** (A-83 Part 6).
- * Census : 139641 agree with countryOf · 2495 differ (shipped, marked) ·
+ * Census : 139656 agree with countryOf · 2495 differ (shipped, marked) ·
  *          6950 silent. **Silence is not agreement** — §8.4 **A-84** Part 6: the field is
  *          `indexSays: 'agrees' | 'differs' | 'silent'`, because the boolean it replaces shipped
  *          all 436 index-silent rows claiming agreement. Every differing row is published with
@@ -385,7 +389,6 @@ const SHARDS: Readonly<Record<string, () => Promise<{ default: unknown }>>> = {
   "dy": () => import('./gazetteer/dy.json', { with: { type: 'json' } }),
   "dz": () => import('./gazetteer/dz.json', { with: { type: 'json' } }),
   "də": () => import('./gazetteer/u-64-259.json', { with: { type: 'json' } }),
-  "e$": () => import('./gazetteer/e-.json', { with: { type: 'json' } }),
   "ea": () => import('./gazetteer/ea.json', { with: { type: 'json' } }),
   "eb": () => import('./gazetteer/eb.json', { with: { type: 'json' } }),
   "ec": () => import('./gazetteer/ec.json', { with: { type: 'json' } }),
@@ -429,7 +432,6 @@ const SHARDS: Readonly<Record<string, () => Promise<{ default: unknown }>>> = {
   "ft": () => import('./gazetteer/ft.json', { with: { type: 'json' } }),
   "fu": () => import('./gazetteer/fu.json', { with: { type: 'json' } }),
   "fy": () => import('./gazetteer/fy.json', { with: { type: 'json' } }),
-  "g$": () => import('./gazetteer/g-.json', { with: { type: 'json' } }),
   "ga": () => import('./gazetteer/ga.json', { with: { type: 'json' } }),
   "gb": () => import('./gazetteer/gb.json', { with: { type: 'json' } }),
   "gc": () => import('./gazetteer/gc.json', { with: { type: 'json' } }),
@@ -615,7 +617,6 @@ const SHARDS: Readonly<Record<string, () => Promise<{ default: unknown }>>> = {
   "lay": () => import('./gazetteer/lay.json', { with: { type: 'json' } }),
   "laz": () => import('./gazetteer/laz.json', { with: { type: 'json' } }),
   "lc": () => import('./gazetteer/lc.json', { with: { type: 'json' } }),
-  "ld": () => import('./gazetteer/ld.json', { with: { type: 'json' } }),
   "le": () => import('./gazetteer/le.json', { with: { type: 'json' } }),
   "lg": () => import('./gazetteer/lg.json', { with: { type: 'json' } }),
   "lh": () => import('./gazetteer/lh.json', { with: { type: 'json' } }),
@@ -829,7 +830,6 @@ const SHARDS: Readonly<Record<string, () => Promise<{ default: unknown }>>> = {
   "q": () => import('./gazetteer/q.json', { with: { type: 'json' } }),
   "r$": () => import('./gazetteer/r-.json', { with: { type: 'json' } }),
   "ra": () => import('./gazetteer/ra.json', { with: { type: 'json' } }),
-  "rc": () => import('./gazetteer/rc.json', { with: { type: 'json' } }),
   "rd": () => import('./gazetteer/rd.json', { with: { type: 'json' } }),
   "re": () => import('./gazetteer/re.json', { with: { type: 'json' } }),
   "rf": () => import('./gazetteer/rf.json', { with: { type: 'json' } }),
@@ -838,8 +838,8 @@ const SHARDS: Readonly<Record<string, () => Promise<{ default: unknown }>>> = {
   "ri": () => import('./gazetteer/ri.json', { with: { type: 'json' } }),
   "rj": () => import('./gazetteer/rj.json', { with: { type: 'json' } }),
   "rl": () => import('./gazetteer/rl.json', { with: { type: 'json' } }),
+  "rm": () => import('./gazetteer/rm.json', { with: { type: 'json' } }),
   "ro": () => import('./gazetteer/ro.json', { with: { type: 'json' } }),
-  "rq": () => import('./gazetteer/rq.json', { with: { type: 'json' } }),
   "rr": () => import('./gazetteer/rr.json', { with: { type: 'json' } }),
   "rs": () => import('./gazetteer/rs.json', { with: { type: 'json' } }),
   "rt": () => import('./gazetteer/rt.json', { with: { type: 'json' } }),

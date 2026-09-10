@@ -34,8 +34,16 @@ const SHARD_MAP = join(GEO, 'gazetteerShards.gen.ts');
 
 /**
  * Bytes written by `node tools/gen-gazetteer.mjs`, as the generator reported them on 2026-09-10:
- * **149,086 rows in 966 shard documents plus `meta.json`**, 3,665 admin-1 names, 239 country
- * names, 202,020 emitted rows at a duplication factor of 1.355.
+ * **149,101 rows in 962 shard documents plus `meta.json`**, 3,665 admin-1 names, 239 country
+ * names, 201,620 emitted rows at a duplication factor of 1.352.
+ *
+ * **8,761,994 → 8,749,255 at the QA round 67 repair.** Two causes, both measured: **QA R67-2** put
+ * U+2018, U+2019 and U+0060 into the fold's substitution table, so 763 rows whose names GeoNames
+ * spells with a typographic okina fold to **one** token instead of two and are written into one
+ * shard instead of two (−400 emitted rows, −4 shard documents); and the two GeoNames dumps were re-pinned
+ * on the same day, because they are regenerated daily and the previous day's bytes are no longer
+ * served (+15 shipped rows). The duplication factor fell with the token count, which is the fold
+ * fix showing up in the bytes.
  *
  * **434,212 → 8,761,994, and that is the increment, not drift.** The predecessor was 7,342 rows of
  * `ne_10m_populated_places` — a **cartographic** layer selected by administrative rank and
@@ -48,7 +56,7 @@ const SHARD_MAP = join(GEO, 'gazetteerShards.gen.ts');
  * Re-run the generator to move these numbers; do not guess them, and never shave the dataset to
  * fit one.
  */
-const CORPUS_BYTES = 8_761_994;
+const CORPUS_BYTES = 8_749_255;
 
 /** A-83 Part 5 ceiling 1: **no single shard document may exceed 96 KiB raw.** */
 const SHARD_BUDGET = 96 * 1024;
