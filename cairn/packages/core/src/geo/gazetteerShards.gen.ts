@@ -39,7 +39,7 @@
  * Shards : 962 documents, 41 split prefixes, 201620 emitted rows
  *          (duplication 1.352×, the price of one-search-one-shard).
  *          Largest 94630 bytes ("br") against a 98304-byte budget;
- *          8749255 bytes committed in total. **The budget is the invariant and the
+ *          8749730 bytes committed in total. **The budget is the invariant and the
  *          width is whatever the budget requires** (A-83 Part 6).
  * Census : 139656 agree with countryOf · 2495 differ (shipped, marked) ·
  *          6950 silent. **Silence is not agreement** — §8.4 **A-84** Part 6: the field is
@@ -52,8 +52,29 @@
  *          feature's code, 3 ship `countryCode: null`. **No row is refused for
  *          this**: Cairn does not adjudicate a sovereignty its own map cannot draw (A-84 Part 5).
  *          Published in `fixtures/golden/gazetteer-parents.json`.
- * Refused: 18 would have rendered as a bare name · 0 unreadable · 0 carried a
- *          payload delimiter (A-83 Part 9, A-83 Part 11).
+ * Refused: 18 candidate rows, 18 bare-name · 0 unreadable · 0 delimiter · 0 multi-country. **Every one is named in
+ *          `fixtures/golden/gazetteer-refusals.json` and these counts ARE that file's group
+ *          sizes, read from it** (A-89 Part 3, QA R67-10) — a count in a header no file can be
+ *          checked against is a census with no denominator. `bare-name` is A-83 Part 9 clause 1,
+ *          `unreadable` clause 2, `delimiter` A-83 Part 11, and **`multi-country` is clause 4**
+ *          (§8.4 **A-89**, QA R67-3): a row whose `cc2` — `allCountries` column 10 — names a
+ *          country that is neither the code it states nor the code we attribute it to. GeoNames'
+ *          own `Hispaniola` row names Haiti; `Antilles`' names twenty countries. **It catches
+ *          only the landmasses GeoNames MARKS**: `Ireland`, `Borneo`, `New Guinea` and
+ *          `Tierra del Fuego` leave the column empty and survive, because the honest test needs
+ *          a polygon and we ship a coordinate.
+ * Rebuild: **THIS CORPUS CANNOT BE REBUILT FROM SOURCE — by anybody, including us** (§0 position
+ *          11, §8.4 **A-90**). GeoNames regenerates every dump daily, retains **one day** of
+ *          `modifications`/`deletes` and archives nothing, so a past state can be neither
+ *          refetched nor replayed; Overture, the obvious upgrade, drops each release after ~60
+ *          days. So **the committed corpus is the artefact of record** and every claim this
+ *          product makes about its gazetteer is checked against these bytes, offline, with no
+ *          network and no generator run. The checksums above are a **fence** — they prove what
+ *          this build was made from and refuse a build made from anything else — and **not a
+ *          pin**: they do not let anyone obtain those bytes again. Determinism means **same
+ *          fetched bytes => same output**, which is checkable and is checked. A re-pin is an
+ *          explicit `--repin` run that publishes `gazetteer-source-log.json` (append-only) and
+ *          a row-level corpus diff **in the same commit**.
  * Order  : ascending folded name, then descending population bucket, then ascending country code,
  *          then ascending GeoNames id. A **total** order, so a regeneration cannot reshuffle the
  *          list, and it is a property of these files — `decodeGazetteer` preserves it.

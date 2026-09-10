@@ -9,6 +9,7 @@
  *   node tools/gen-gazetteer.mjs --audit-only  # audit the COMMITTED corpus, fetch nothing
  *   node tools/gen-gazetteer.mjs --audit-only --write
  *                                              # …and rewrite fixtures/golden/gazetteer-probes.json
+ *   node tools/gen-gazetteer.mjs --repin       # the ONLY path from a checksum mismatch to a write
  *
  * `--cache <dir>` (or `CAIRN_GAZETTEER_CACHE`) keeps the five downloaded source files on disk
  * between runs. **It is not a way around the pin**: a cached file is checksummed on every run
@@ -38,29 +39,56 @@
  *     (`indexSays: 'differs'`) instead of being resolved silently, and why `population` is never
  *     rendered as a fact about a place.
  *
- * ## The pin, and what reproducibility means without a release tag
+ * ## THE CORPUS CANNOT BE REBUILT FROM SOURCE — by anybody, including us
  *
- * **GeoNames has no pinnable ref.** The dumps are regenerated daily — `gen-countries.mjs` pins
- * Natural Earth at `v5.1.2` and nothing here can do that. A-83 Part 2 rules that the pin still
- * exists and its meaning changes:
+ * Say that plainly rather than implying otherwise. §8.4 **A-90**, §0 position **11**. Verified
+ * 2026-09-10 directly against `download.geonames.org`:
  *
- * > The generator pins each source file **by sha256 and by fetch date**, both recorded in the
- * > generated documents. A fetch that does not match is REPORTED and the run REFUSES TO WRITE, and
- * > re-pinning is a deliberate, reviewed act: a human updates the constants below, re-runs, and
- * > reads the diff in the goldens, which are what make the change legible.
+ *  - the dump directory carries **one** generation of every file, all timestamped the same
+ *    morning. **There is no dated archive of any dump.**
+ *  - the only historical artefacts published are `modifications-<date>.txt` and
+ *    `deletes-<date>.txt`, and **exactly one day of them is retained**. **A past state cannot be
+ *    replayed either.**
  *
- * **The two GeoNames dumps below were re-pinned on 2026-09-10 (QA round 67; disclosed as
- * KD-123).** The QA R67-2 fold repair changes every row's token set and therefore which shard
- * every row is written into, so the corpus had to be regenerated — and the bytes the previous pin
- * named were no longer being served. The three other sources matched their existing pins exactly
- * and did not move. The cost of the re-pin is one day of GeoNames drift, +15 shipped rows, and it
- * is legible in the goldens, which is what this procedure is for.
+ * And no supplier fixes this by being a different supplier: Overture — the obvious upgrade —
+ * publishes dated releases and **removes each one from public distribution after ~60 days**. A
+ * free global gazetteer with durable byte-level pinning is not on the table. This is a property to
+ * design around, not a supplier to swap.
  *
- * Reproducibility of the **artefact** is preserved in full and is what actually matters: the
- * generated corpus is committed, `--audit-only` fetches nothing and audits the committed bytes,
- * and every test runs against those bytes. Reproducibility of the **build from source** is bounded
- * by GeoNames' own release discipline, and that is stated here rather than discovered by whoever
- * re-runs this next month.
+ * **So the distinction that was missed, stated once.** A checksum is a **fence**: it proves what a
+ * build was made from, and refuses a build made from anything else. It is not a **pin**: it does
+ * not let anyone obtain those bytes again. For a publisher that archives nothing the two are not
+ * substitutes, and the difference surfaces exactly once — at the first regeneration, as a red
+ * audit through no error of the person who ran it (**KD-123**: fixing R67-1/R67-2 changed the
+ * fold, which changed every row's shard, so the corpus had to be rebuilt — and could not be, from
+ * the bytes it named).
+ *
+ * ### What that makes true, and what it makes somebody's job
+ *
+ *  1. **The artefact of record is `packages/core/src/geo/gazetteer/` as committed** — 968
+ *     reviewable, diffable JSON documents in git. **Every claim this product makes about its
+ *     gazetteer is a claim about those bytes, checked against those bytes, offline.** No test,
+ *     probe, golden or audit may require this generator to run, and none may require the network.
+ *     **That is why the corpus being unreproducible from source costs the product nothing at
+ *     rest.**
+ *  2. **`$sourceSha256` RECORDS; it does not PIN.** The refusal-on-mismatch stays — that is the
+ *     fence doing its job, and it is what caught this. `$fetched` and each source's **byte
+ *     length** are published beside the hash, so a mismatch can be diagnosed rather than merely
+ *     detected.
+ *  3. **A re-pin is an explicit, reviewed act that publishes its own diff.** `--repin` is the
+ *     **only** way a checksum mismatch results in a write, and a `--repin` run produces, **in the
+ *     same commit**, an append-only `fixtures/golden/gazetteer-source-log.json` and a **row-level
+ *     corpus diff**. **+15 shipped rows should have been a number in a golden, not a sentence in
+ *     a build note.**
+ *  4. **Determinism is narrowed to what it can promise, and it keeps its teeth**: *same fetched
+ *     bytes ⇒ same corpus*, run inside one session against one fetch. It never meant *same day ⇒
+ *     same corpus*, and it cannot mean *any day ⇒ same corpus*. Stated that way it is still the
+ *     strongest determinism claim available here and it is still checkable — the ship gate runs
+ *     this generator twice over one fetch and requires byte-identical output.
+ *
+ * **The two GeoNames dumps below were re-pinned on 2026-09-10** (QA round 67, KD-123); the three
+ * other sources matched their recorded checksums byte for byte and did not move, which is worth
+ * having: the instability is in the two large dumps, not in all five sources.
  *
  * ## Why the corpus changed at all
  *
@@ -77,8 +105,9 @@
  * ## Determinism
  *
  * No clock, no randomness, no reliance on source order or on `Map` iteration order. Every emission
- * order is a total order over the data. Two runs against the same input produce byte-identical
- * output, and I-23's ship gate runs it twice and diffs.
+ * order is a total order over the data. **Two runs against the SAME FETCHED BYTES produce
+ * byte-identical output**, and the ship gate runs it twice and diffs. That is the whole claim —
+ * see A-90 clause 4 above for why it is not, and never was, a claim about two different days.
  *
  * **This runs at generation time, by a human, once. Nothing in the shipped product runs it.**
  * `packages/core`, `packages/client`, `apps/web` and `cli.ts` never fetch anything for this
@@ -110,6 +139,8 @@ const SHARD_MAP = resolve(CAIRN, 'packages/core/src/geo/gazetteerShards.gen.ts')
 const DISAGREEMENTS_OUT = resolve(CAIRN, 'fixtures/golden/gazetteer-disagreements.json');
 const PARENTS_OUT = resolve(CAIRN, 'fixtures/golden/gazetteer-parents.json');
 const PROBES_OUT = resolve(CAIRN, 'fixtures/golden/gazetteer-probes.json');
+const REFUSALS_OUT = resolve(CAIRN, 'fixtures/golden/gazetteer-refusals.json');
+const SOURCE_LOG_OUT = resolve(CAIRN, 'fixtures/golden/gazetteer-source-log.json');
 
 // ---------------------------------------------------------------- the pins
 
@@ -203,10 +234,63 @@ const NOT_A_LANGUAGE = new Set([
 
 /**
  * How far off the pinned 1:10m coastline a settlement coordinate may be and still be located in
- * the feature it is beside — **A-84 Part 5's parent translation, as this corpus needs it**. 0.05°
- * is ~5.5 km; the largest fallback the shipped corpus actually uses is reported on every run.
+ * the feature it is beside. **ADOPTED into A-84 Part 5 step 1 at revision 70** (A-89 Part 4, QA
+ * R67-11), which now reads *"locates the row's centre in the layer, **or the nearest feature
+ * within 0.05°**"*: GeoNames settlement coordinates fall in water at 1:10m where Natural Earth's
+ * label points did not — **Longyearbyen 0.4 km, Basse-Terre 1.4 km, Dzaoudzi 1.2 km offshore** —
+ * and without this all three ship `countryCode: null`. 0.05° is ~5.5 km; the largest fallback the
+ * shipped corpus actually uses is reported on every run, so the headroom is measured rather than
+ * assumed.
  */
 const NEAREST_TOLERANCE = 0.05;
+
+/**
+ * **A-83 Part 9 CLAUSE 4 IS IMPLEMENTED AND IS NOT ENABLED. ROADMAP `I-29`'s stop-and-report
+ * condition 1 fired, and this constant is the report.**
+ *
+ * The predicate is built exactly as §8.4 **A-89** rules it — refuse when `X \ {S, C}` is non-empty,
+ * with `X` the `cc2` codes, `S` the stated code and `C` the code after A-84 Part 5's translation —
+ * and **its refusal set is computed and printed on every run** whether or not this is `true`. What
+ * is gated is the `continue` that drops the row.
+ *
+ * **The condition ROADMAP `I-29` names: *"if clause 4 removes anything over 100,000 people that is
+ * not `Antilles` or `Hispaniola`, stop and report"*.** Measured against the committed corpus
+ * (149,101 rows) on 2026-09-10, from the cached pinned sources:
+ *
+ * | | |
+ * |---|---|
+ * | rows clause 4 refuses | **169** |
+ * | of them over 100,000 people and not `Antilles`/`Hispaniola` | **6** |
+ * | rows kept only by the `S` subtraction | **0** — A-89 Part 2's prediction holds |
+ *
+ * The six: `Borneo` (21.3 M, `cc2=[BN,ID,MY]`), `New Guinea` (11.8 M, `cc2=[ID,PG]`), `Laayoune`
+ * (196,331, `cc2=[MA]`), `Santo António` (129,800, `cc2=[MO]`), `Nossa Senhora de Fátima` (126,000,
+ * `cc2=[MO]`), `Dakhla` (106,277, `cc2=[MA]`).
+ *
+ * **And two of A-89's own factual claims do not survive the corpus.**
+ *
+ *  1. **Part 8 residue 1 says `Borneo`, `New Guinea` and `Tierra del Fuego` are *"multi-country
+ *     landmasses GeoNames does not mark in `cc2`"* and therefore survive.** They are marked, and
+ *     clause 4 refuses all three. Only `Ireland` (the island) is genuinely `cc2`-empty.
+ *  2. **Part 2 states the false-positive cost on the shipped corpus as *"one village"*
+ *     (`Trachóni`).** `Trachóni` does not clear A-83 Part 3's selection gates and has never
+ *     shipped. The actual false-positive population is 167 rows, and it includes
+ *     **`Vatican City`** — which A-82 Part 2 measured by name as resolving correctly, and which
+ *     `PROBES` queries, so the `vatican` probe goes from a hit to **NO MATCH** — plus four
+ *     capitals (`Tórshavn`, `Saint Helier`, `Douglas`, `Mariehamn`), the Faroes, Jersey, Guernsey,
+ *     Åland, the Isle of Man, every Antarctic station and every Western Saharan town.
+ *
+ * `cc2` turns out to name **any** second jurisdictional claim on a row — a sovereign parent the
+ * translation did NOT supply (`VA`→`IT`, `FO`→`DK`, `IM`→`GB`), a territorial dispute (`EH`/`MA`,
+ * `PS`/`IL`, `RU`/`JP`), an Antarctic claim — and not only a landmass spanning two countries.
+ * Subtracting `C` closes the case where the translation supplied the parent; it cannot close the
+ * case where the row already states a code the index draws and `cc2` names its sovereign anyway.
+ *
+ * **That is a ruling to make, not a threshold to tune, and it is not the builder's to make.** The
+ * corpus is therefore UNCHANGED and `Antilles` and `Hispaniola` still ship — **the R67-3 defect is
+ * NOT fixed**. Flip this to `true` only with a ruling that says what happens to those 167 rows.
+ */
+const CLAUSE_4_ENABLED = false;
 
 /** A-83 Part 6: **while** a shard's packed payload exceeds this, it is split. 96 KiB. */
 const SHARD_BUDGET = 96 * 1024;
@@ -315,7 +399,16 @@ async function main() {
   const cacheDir = opt('cache', process.env.CAIRN_GAZETTEER_CACHE ?? join(tmpdir(), 'cairn-gazetteer-src'));
   mkdirSync(cacheDir, { recursive: true });
   const shas = {};
-  for (const [name, src] of Object.entries(SOURCES)) shas[name] = await ensureSource(cacheDir, src);
+  const fetched = {};
+  for (const [name, src] of Object.entries(SOURCES)) {
+    const got = await ensureSource(cacheDir, src);
+    shas[name] = got.sha;
+    fetched[name] = got;
+  }
+  const moved = Object.entries(fetched).filter(([, g]) => g.moved).map(([name]) => name);
+  if (flag('repin') && moved.length === 0) {
+    console.log('--repin: no source moved — this run is an ordinary regeneration.');
+  }
   const { countryOf, COUNTRY_INDEX } = await import('../packages/core/src/index.ts');
   const draws = new Set(COUNTRY_INDEX.countries.map((c) => c.code));
   console.log(`the shipped index draws ${draws.size} country codes at scale ${COUNTRY_INDEX.scale}`);
@@ -365,9 +458,17 @@ async function main() {
     return;
   }
 
+  // **A-90 clause 3's row-level diff, taken BEFORE the write** — a diff needs the previous corpus
+  // to diff against, and after `write()` there is no previous corpus on disk. A fresh clone at a
+  // re-pin commit has one only because git does.
+  const diff = corpusDiff(built);
+
   write(docs, built);
+  writeSourceLog(fetched, moved);
+  reportCorpusDiff(diff, moved.length > 0);
   writeDisagreements(built, corpusSha);
   writeParents(built, corpusSha);
+  writeRefusals(built, corpusSha);
 
   // Audit the corpus that was actually written, in a CHILD PROCESS, because this process has
   // already imported `packages/core/src/index.ts` and a stale module cache would let the guard
@@ -402,18 +503,32 @@ async function ensureSource(cacheDir, src) {
   }
   const sha = createHash('sha256').update(buf).digest('hex');
   console.log(`  ${buf.length} bytes, sha256 ${sha}`);
-  if (sha !== src.sha256 || buf.length !== src.bytes) {
-    console.error(`  pinned : ${src.bytes} bytes, sha256 ${src.sha256}`);
+  if (sha === src.sha256 && buf.length === src.bytes) return { sha, bytes: buf.length, moved: false };
+
+  // **A-90 clause 3: `--repin` is the ONLY path from a checksum mismatch to a write.**
+  console.error(`  recorded: ${src.bytes} bytes, sha256 ${src.sha256}`);
+  if (!flag('repin')) {
     console.error(
-      'gen-gazetteer: DOWNLOAD DOES NOT MATCH THE PIN. Not writing.\n' +
-        '  GeoNames regenerates its dumps daily and has no release tag, so this is EXPECTED to\n' +
-        '  happen eventually and it is NOT something to absorb. Re-pinning is a deliberate,\n' +
-        '  reviewed act: update SOURCES and FETCHED above, re-run, and read the diff in\n' +
-        '  fixtures/golden/gazetteer-*.json — those goldens are what make the change legible.',
+      'gen-gazetteer: THE FETCHED BYTES DO NOT MATCH THE ONES THIS CORPUS RECORDS. Not writing.\n' +
+        '  GeoNames regenerates every dump daily and archives nothing, so this is EXPECTED to\n' +
+        '  happen and it is NOT something to absorb. The checksum is a FENCE, not a pin: it proves\n' +
+        '  what a build was made from and refuses a build made from anything else. It does not let\n' +
+        '  anyone obtain those bytes again — nobody can, including us.\n' +
+        '\n' +
+        '  A re-pin is an explicit, REVIEWED act (§8.4 A-90):\n' +
+        '    1. update SOURCES and FETCHED above to the bytes you actually fetched;\n' +
+        '    2. re-run with --repin, which is the only flag that lets a mismatch write;\n' +
+        '    3. commit fixtures/golden/gazetteer-source-log.json (append-only) AND the row-level\n' +
+        '       corpus diff it prints, IN THE SAME COMMIT as the corpus.\n' +
+        '  +15 shipped rows should have been a number in a golden, not a sentence in a build note.',
     );
     process.exit(3);
   }
-  return sha;
+  console.error(
+    `  --repin: ${src.file} moved and this run is allowed to write it. The source log records ` +
+      'both checksums and the corpus diff must be reviewed in the same commit.',
+  );
+  return { sha, bytes: buf.length, moved: true, previousSha256: src.sha256 };
 }
 
 // ---------------------------------------------------------------- reading the sources
@@ -520,6 +635,24 @@ const isIso = (c) => typeof c === 'string' && /^[A-Z]{2}$/.test(c);
 const isLatinFold = (s) => /^[a-z0-9 ]+$/.test(s);
 /** A-83 Part 4: `min(35, floor(log2(pop)))`, one base-36 character, decoding to `2 ** b`. */
 const popBucket = (pop) => (pop > 0 ? Math.min(35, Math.floor(Math.log2(pop))) : 0);
+
+/**
+ * **`allCountries` column 10 (`cc2`), uppercased, trimmed, empties dropped** — A-83 Part 9 clause
+ * 4's set `X`, and nothing more. Deduplicated and sorted so the refusals golden is a total order
+ * over the data rather than over the source's field order.
+ *
+ * **This column is NOT an "is it multi-country" flag and clause 4 may not read it as one.** On
+ * most of the rows that carry it, it names the **sovereign parent** rather than a second country
+ * — `Longyearbyen` `cc=SJ cc2=[NO]`, `Grand-Case` `cc=MF cc2=[FR]` — which is why the refusal
+ * subtracts both the row's stated code and the code we attribute it to. See the predicate at the
+ * refusal site.
+ *
+ * **It is not validated against `countryInfo.txt`** (A-89 Part 8 residue 3): a junk or retired
+ * code in the column refuses a row it should not. The cheap remedy when that fires is to publish
+ * it in the audit rather than to filter it silently, so the audit prints the codes it saw.
+ */
+const cc2Of = (field) =>
+  [...new Set((field ?? '').split(',').map((c) => c.trim().toUpperCase()).filter((c) => c !== ''))].sort();
 
 /**
  * The whole pipeline: four streaming passes over the two big dumps, then the country resolution.
@@ -658,6 +791,11 @@ async function build(cacheDir, { countryOf, index, draws }) {
       lat: q(+f[4]),
       lng: q(+f[5]),
       stated: isIso(cc) ? cc : null,
+      // **`allCountries` column 10 — `cc2`, "alternate country codes, comma separated".** A-83
+      // Part 9 clause 4's whole input, and a column this corpus never shipped before I-29. It is
+      // read here, with the rest of the display data, because clause 4 is a SHIPPING condition and
+      // a shipping condition needs the row it is about.
+      cc2: cc2Of(f[9]),
       admin1: admin1Names.get(`${cc}.${f[10]}`) ?? '',
       population: +f[14] || 0,
       alt: '',
@@ -694,37 +832,54 @@ async function build(cacheDir, { countryOf, index, draws }) {
   // ---- the country resolution (A-84 Part 5) and the index verdict (A-84 Part 6) ----
   const admin0 = readAdmin0(cacheDir);
 
-  // **A-84 Part 5, resolved per CODE rather than per row, and the reason is measured.**
+  // **A-84 Part 5, resolved per CODE rather than per row — ADOPTED at revision 70 (A-89 Part 4,
+  // QA R67-11). This is no longer a deviation disclosed in a build note; it is the rule.**
   //
-  // The ruling reads the parent off *"the containing feature's `ISO_A2_EH`"*, one row at a time.
-  // Done that way over this corpus, **39 of Mayotte's 50 rows ship `FR` and 11 ship `null`** — the
-  // difference being whether a settlement coordinate happens to land inside a 1:10m coastline —
-  // and **Saint-Georges, a French commune on the Oyapock, ships `BR`**, which is the exact
-  // attribution A-84 Part 5 names as wrong. A territory does not have a different sovereign in
-  // each of its villages, and one row's coastline accident may not decide the other forty-nine.
+  // The ruling as first written read the parent off *"the containing feature's `ISO_A2_EH`"*, one
+  // row at a time. **The justification this generator published for departing from that is
+  // WITHDRAWN.** KD-119 said the per-code mode existed because a per-row resolution splits Mayotte
+  // 39 `FR` / 11 `null`. Re-derived with the coastal tolerance in — its own sibling change, in the
+  // same commit — **`YT` is `FR × 51`**. The stated reason was discharged by the other half of the
+  // change that stated it, and it is not repeated here.
+  //
+  // **What actually earns the rule is four rows of 152**: `Saint-Georges` `BR → FR`, `Devils
+  // Island` `null → FR`, `Klovningen` `null → NO`, `Atafu` `NZ → null`. **Saint-Georges alone
+  // earns it** — a French commune on a traveller's lifetime map as Brazil, because it sits across
+  // a river from it. The honest sentence, and the one the ruling adopted: **a territory's parent
+  // is a property of the territory, not of one settlement's coordinate, and the modal containing
+  // feature is how the data says which.**
   //
   // So the layer is still the only source and nothing is typed: every row carrying an undrawable
   // code is located, and the code's parent is the **modal** answer over all of them, ties broken
   // alphabetically so the result is a property of the data and not of the row order. A row with no
-  // stated code at all has no code to take a mode over and keeps its own answer. **Disclosed in
-  // BUILD-NOTES as KD-119** — it is a deviation from the ruling's stated mechanism, taken because
-  // the ruling's own named outcomes (Fort-de-France, Basse-Terre, Dzaoudzi, St.-Benoît and
-  // Longyearbyen drawable; Saint-Georges `FR`, not the coordinate's `BR`) are otherwise
-  // unreachable at this corpus's coordinates.
+  // stated code at all has no code to take a mode over and keeps its own answer.
   const located = new Map();
   const perCode = new Map();
   let maxNearest = 0;
   for (const r of rows) {
-    // **Only a STATED code is translated, and A-83 Part 9's own measurement is why.** A-84 Part 5
-    // says *"the empty code included"*, and in the corpus it was written against the codeless rows
-    // were **Somaliland and Northern Cyprus towns** — real cities the layer draws with no ISO
-    // code. GeoNames states a drawable code for every one of those (Hargeysa is `SO`), and the
-    // rows it leaves codeless are a different population entirely (**KD-120**): **ocean features
-    // and multi-country archipelagos** — `Lesser Antilles`, `French West Indies`, `Woody Island`,
-    // `Virgin Islands`. Translating those hands `Lesser Antilles` to France and the disputed
-    // Paracels to China, which is A-84 Part 5's own *"Cairn does not adjudicate a sovereignty"*
-    // read backwards — and it resurrects the exact ten rows **A-83 Part 9 clause 1 refuses by
-    // name**. A row that states no country keeps `null` and meets the bare-name refusal.
+    // **A-84 Part 5's *"the empty code included"* is SCOPED, and the scoping is now RULED rather
+    // than tolerated** (A-89 Part 5 sentence 1, QA R67-4): the translation runs for a row whose
+    // source states **no** code **only where the layer contains that row's centre**, within the
+    // coastal tolerance. This generator ships the strict form of that — a codeless row is not
+    // located at all — and the two coincide on this corpus, because the codeless population here
+    // is entirely outside the layer.
+    //
+    // A-84 Part 5 was written against a corpus in which the codeless rows were **Somaliland and
+    // Northern Cyprus towns** — real cities the layer draws with no ISO code. **In GeoNames they
+    // are not** (**KD-120**): Hargeysa states `SO`, Famagusta and Kyrenia state `CY`, and all
+    // three ship those codes with `indexSays: 'silent'`. The rows GeoNames leaves codeless are a
+    // different population entirely — **ocean features and multi-country archipelagos**: `Lesser
+    // Antilles`, `French West Indies`, `Woody Island`, `Virgin Islands`. Translating *those* ships
+    // *"Lesser Antilles, France"* and hands the disputed Paracels to China on a nearest-feature
+    // test, which is A-84 Part 5's own *"Cairn does not adjudicate a sovereignty"* read backwards
+    // — and it resurrects the exact rows **A-83 Part 9 clause 1 refuses by name**. A row that
+    // states no country keeps `null` and meets the bare-name refusal.
+    //
+    // **A-84 Part 5's *"Picking Hargeisa reports `{null, null}`"* is WITHDRAWN as an example and
+    // KEPT as a rule.** The rule — *Cairn does not adjudicate a sovereignty its own map cannot
+    // draw* — is unchanged and is why the `null` arm exists. What exercises that arm in this
+    // corpus is three Tokelau rows: `Atafu Village`, `Nukunonu`, `Fale old settlement`. **Any
+    // future change that takes that count to zero is deleting the arm and must say so.**
     if (r.stated === null || draws.has(r.stated)) continue;
     const hit = admin0.locate(r.lng, r.lat);
     located.set(r.gid, hit);
@@ -750,8 +905,35 @@ async function build(cacheDir, { countryOf, index, draws }) {
   const parents = [];
   const disagreements = [];
   const census = { agrees: 0, differs: 0, silent: 0 };
-  const refused = { bareName: 0, unreadable: 0, delimiter: 0, silentContradiction: 0 };
   const refusedRows = [];
+  /** A-89 Part 2: rows kept ONLY by the `S` subtraction. Predicted empty; PUBLISHED, not assumed. */
+  const keptByS = [];
+  /**
+   * **Every row A-83 Part 9 clause 4 WOULD refuse, collected whether or not the clause is enabled.**
+   * The measurement is the deliverable while the clause is gated — a hole nobody can name is not a
+   * deliberate hole, and a refusal that cannot be shown to fire is a comment. `report()` prints
+   * this set in full on every run, and the stop-and-report gate is evaluated over it.
+   */
+  const clause4 = [];
+  /**
+   * **R67-10: a refusal is a RECORD, not a counter.** `{id, name, statedCode, admin1, cc2,
+   * reason}`, `reason` from the closed set `'bare-name' | 'unreadable' | 'delimiter' |
+   * 'multi-country'`, published in `fixtures/golden/gazetteer-refusals.json` — and **the header's
+   * per-reason counts are the sizes of that file's groups, read from it**. A count in a header
+   * that no file can be checked against is a census with no denominator, one artefact out.
+   */
+  const refuse = (r, reason, code) => {
+    refusedRows.push({
+      id: `${ID_PREFIX}:${r.gid.toString(36)}`,
+      name: r.name,
+      statedCode: r.stated,
+      shippedCode: code ?? null,
+      admin1: r.admin1,
+      cc2: r.cc2,
+      population: r.population,
+      reason,
+    });
+  };
   const shipped = [];
   const atOrigin = [];
   let translated = 0;
@@ -789,13 +971,11 @@ async function build(cacheDir, { countryOf, index, draws }) {
     // is a row that never ships; each class is counted and the count is published.
     const text = [r.name, r.admin1, ...alts];
     if (text.some((s) => s.includes('�') || s.includes('?'))) {
-      refused.unreadable += 1;
-      refusedRows.push({ why: 'unreadable', name: r.name, admin1: r.admin1 });
+      refuse(r, 'unreadable', code);
       continue;
     }
     if (text.some((s) => s.includes('|') || s.includes('\n') || s.includes('\r'))) {
-      refused.delimiter += 1;
-      refusedRows.push({ why: 'delimiter', name: r.name, admin1: r.admin1 });
+      refuse(r, 'delimiter', code);
       continue;
     }
     // **QA R67-3 IS NOT FIXED HERE AND THE REASON IS THE RULE, NOT THIS LINE.** The finding is
@@ -823,15 +1003,72 @@ async function build(cacheDir, { countryOf, index, draws }) {
     // `docs/BUILD-NOTES.md`; this comment is here so the next person does not "fix" it in twenty
     // minutes and delete nine real islands. Disclosed as **KD-122**.
     if (code === null && r.admin1 === '') {
-      refused.bareName += 1;
-      refusedRows.push({ why: 'bare name', name: r.name, admin1: r.admin1 });
+      refuse(r, 'bare-name', code);
       continue;
     }
     if (fold === '') {
-      refused.unreadable += 1;
-      refusedRows.push({ why: 'folds to nothing', name: r.name, admin1: r.admin1 });
+      refuse(r, 'unreadable', code);
       continue;
     }
+
+    // ---------------------------------------------------------------------------------------
+    // **A-83 Part 9 CLAUSE 4 — a landmass the source itself says lies in more than one country
+    // is not a city in any of them.** (§8.4 A-89; QA R67-3, MAJOR.)
+    //
+    // With `S` the row's stated code (possibly null), `C` the code it ships after A-84 Part 5's
+    // parent translation (possibly null) and `X` the non-empty codes of `cc2`:
+    //
+    //     REFUSE when  X \ {S, C}  is non-empty
+    //
+    // — when GeoNames' own row names a country that is neither the country the row states nor
+    // the country we attribute it to. `Hispaniola`'s `cc2` is `HT,DO`: **the source names Haiti
+    // itself.** `Antilles`' names twenty countries. **Every one of the nine rows the translation
+    // rescues from clause 1 leaves the column empty** and is untouched by this.
+    //
+    // **The question A-83 Part 3 asks is "is this a settlement or an island you can say you went
+    // to", and what disqualifies `Hispaniola` is not its size, its feature code or its
+    // population: it is that saying you went to Hispaniola does not say which country you were
+    // in.** `cc2` is the only field in either source that states that. It is stated by the
+    // publisher rather than derived by us, it is stated per ROW rather than per code, and it
+    // costs no new axis, no threshold and no dial. Four narrower rules were considered and each
+    // failed on its own terms — refuse a retired code (`AN` is still a row of `countryInfo.txt`),
+    // refuse feature code `ISLS` (`Guadeloupe` and `Hispaniola` are `ISL`), refuse an implausible
+    // population (a dial wearing a rule's clothes), and refuse an island whose population exceeds
+    // its country's (**it puts Taiwan inside 3 % of `TW`**, so a population revision at either
+    // end deletes Taiwan from the picker).
+    //
+    // **CLAUSE 4's POSITION IS LAST AND IT IS DELIBERATE.** Clauses 1–3 and their ordering
+    // against A-84 Part 5's translation **do not move** — that ordering is the whole of what
+    // keeps the nine (KD-122), and clause 4 is orthogonal to it. Last, so a row that would render
+    // as a bare name is published under `'bare-name'`, which is the reason a reviewer needs and
+    // the reason A-83 Part 9's seven named archipelagos are recorded under.
+    //
+    // **Both subtractions are load-bearing, and they are not symmetric in weight.** Subtracting
+    // `C` is measured: it is the whole of what keeps `Longyearbyen`, `Barentsburg`, `Ny-Ålesund`,
+    // `Olonkinbyen` and `Grand-Case`, whose `cc2` names the parent the translation itself just
+    // supplied. A refusal on *"`cc2` is non-empty"* is a different rule that deletes all five.
+    // Subtracting `S` keeps a row that merely restates its own stated code alongside another from
+    // being refused on the strength of the restatement; **A-89 Part 2 predicts no row is kept by
+    // the `S` subtraction alone on this corpus, and the audit PRINTS that count rather than
+    // assuming it** — a non-zero count is a result to report, and a missing line is the failure.
+    //
+    // **What this deliberately does NOT do, at exactly the width of its mechanism.** It catches
+    // only the landmasses GeoNames MARKS. `Ireland`, `Borneo`, `New Guinea` and `Tierra del
+    // Fuego` leave `cc2` empty and survive — the honest test is *"does this feature's polygon
+    // cross a border in the index"*, and **we ship a coordinate, not a polygon**. So: the corpus
+    // refuses every multi-country landmass GeoNames marks as one, and **makes no claim about the
+    // ones it does not mark**. It is not *"no landmass is attributed to one of its countries"*.
+    const foreign = r.cc2.filter((c) => c !== r.stated && c !== code);
+    if (foreign.length > 0) {
+      clause4.push({ ...r, shippedCode: code, foreign });
+      if (CLAUSE_4_ENABLED) {
+        refuse(r, 'multi-country', code);
+        continue;
+      }
+    }
+    // Kept *only* because `S` was subtracted — `cc2` names something other than `C`, and every
+    // one of those is the row's own stated code. Predicted empty here; published either way.
+    if (r.cc2.some((c) => c !== code)) keptByS.push(r.name);
 
     if (r.lat === 0 && r.lng === 0) atOrigin.push(r.name);
 
@@ -890,7 +1127,7 @@ async function build(cacheDir, { countryOf, index, draws }) {
 
   return {
     rows: shipped, admin1, admin1At, countryNames,
-    parents, disagreements, census, refused, refusedRows, atOrigin, codeParent,
+    parents, disagreements, census, refusedRows, keptByS, clause4, atOrigin, codeParent,
     stats: { candidates: n, selected: nSelected, gates, translated, features, altRows, maxNearest },
   };
 }
@@ -1015,7 +1252,8 @@ function readAdmin0(cacheDir) {
 }
 
 function report(built) {
-  const { census, refused, stats } = built;
+  const { census, stats } = built;
+  const refusals = buildRefusals(built);
   console.log('');
   console.log(`rows shipped   ${built.rows.length}`);
   console.log(`admin-1 dict   ${built.admin1.length}`);
@@ -1030,12 +1268,43 @@ function report(built) {
   console.log(`  translated to a drawable parent   ${stats.translated}`);
   console.log(`  shipped countryCode: null         ${built.parents.length - stats.translated}`);
   console.log('');
-  console.log('A-83 Part 9 / Part 11 — refusals, each published:');
-  console.log(`  would render as a bare name  ${refused.bareName}`);
-  console.log(`  unreadable name or region    ${refused.unreadable}`);
-  console.log(`  carries a payload delimiter  ${refused.delimiter}`);
-  for (const r of built.refusedRows.slice(0, 40)) {
-    console.log(`    refused (${r.why}) ${JSON.stringify(r.name)} / ${JSON.stringify(r.admin1)}`);
+  console.log('A-83 Part 9 / Part 11 — refusals, each published by name in the refusals golden:');
+  for (const [reason, n] of Object.entries(refusals.byReason)) {
+    console.log(`  ${reason.padEnd(15)} ${String(n).padStart(6)}`);
+  }
+  // **The stop-and-report condition, checked here rather than in a reviewer's head** (ROADMAP
+  // I-29): A-89's false-positive claim was measured over 14 country files, not over the corpus.
+  // If clause 4 removes a settlement of real size that the ruling did not name, that is a result
+  // to report, not a number to absorb.
+  const BIG = 100_000;
+  const bigMulti = built.clause4
+    .filter((r) => r.population > BIG && r.name !== 'Antilles' && r.name !== 'Hispaniola');
+  console.log('');
+  console.log(
+    `  A-83 Part 9 clause 4 (${CLAUSE_4_ENABLED ? 'ENABLED' : 'IMPLEMENTED, NOT ENABLED'}) — ` +
+      `${built.clause4.length} rows match the predicate. Every one, with its cc2 and population:`,
+  );
+  for (const r of built.clause4) {
+    console.log(`    ${r.name} (${r.stated ?? 'no code'} -> ${r.shippedCode ?? 'null'}) cc2=[${r.cc2.join(',')}] pop=${r.population}`);
+  }
+  // **A-89 Part 2: the `S` subtraction's own reach, PRINTED rather than assumed.** The ruling
+  // predicts zero on this corpus. A non-zero count is a result to report; a MISSING line is the
+  // failure, so this prints unconditionally.
+  console.log(`  clause 4 — rows kept ONLY by the S subtraction: ${built.keptByS.length}` +
+    (built.keptByS.length ? ` — ${built.keptByS.slice(0, 20).join(', ')}` : '  (A-89 Part 2 predicts 0)'));
+  if (bigMulti.length) {
+    console.log('');
+    console.log('  !! ROADMAP I-29 STOP-AND-REPORT CONDITION 1 — clause 4 matches rows over 100,000');
+    console.log('     people that A-89 names neither as a target nor as a false positive:');
+    for (const r of bigMulti) console.log(`       ${r.name} (${r.population}) cc2=[${r.cc2.join(',')}]`);
+    if (CLAUSE_4_ENABLED) {
+      throw new Error(
+        `A-83 Part 9 clause 4 removed ${bigMulti.length} row(s) over ${BIG} people that are neither ` +
+          "Antilles nor Hispaniola. A-89's false-positive claim was measured over 14 country files, " +
+          'not over the corpus. STOP AND REPORT rather than committing a data change nobody reviewed.',
+      );
+    }
+    console.log('     CLAUSE_4_ENABLED is false, so no row is dropped and the corpus is unchanged.');
   }
   if (built.atOrigin.length) {
     console.log('');
@@ -1184,9 +1453,15 @@ function shard(built, corpusSha, indexSha) {
       'The session-once half of the sharded offline city gazetteer (ARCHITECTURE §8.4 A-83 Part 5). ' +
       'GENERATED by cairn/tools/gen-gazetteer.mjs — do not edit. Every shard beside this file ' +
       'carries the same $sourceSha256 and the loader refuses a pair that disagrees. ' +
-      '$sourceSha256 is sha256 over the five pinned source checksums AND $countryIndexSha256, ' +
-      'because the corpus is a function of the shipped COUNTRY_INDEX too — it decides indexSays, ' +
-      'the silent-contradiction refusal and A-84 Part 5\'s parent translation (QA R67-7).',
+      '$sourceSha256 RECORDS what this corpus was built from — sha256 over the five source ' +
+      'checksums AND $countryIndexSha256, because the corpus is a function of the shipped ' +
+      'COUNTRY_INDEX too: it decides indexSays, the silent-contradiction refusal and A-84 Part ' +
+      "5's parent translation (QA R67-7). It is a FENCE, not a key: it refuses a build made from " +
+      'anything else, and it does NOT assert those bytes can be obtained again. GeoNames rebuilds ' +
+      'every dump daily and archives nothing, so THIS CORPUS CANNOT BE REBUILT FROM SOURCE by ' +
+      'anybody, including us (\u00a78.4 A-90, \u00a70 position 11). $fetched and each source\'s ' +
+      'byte length are published in fixtures/golden/gazetteer-source-log.json so a mismatch can ' +
+      'be diagnosed rather than merely detected.',
     idPrefix: ID_PREFIX,
     rows: built.rows.length,
     shardCount: shards.length,
@@ -1279,7 +1554,13 @@ function write(docs, built) {
 }
 
 function emitShardMap(docs, built, total) {
-  const { census, refused, stats } = built;
+  const { census, stats } = built;
+  // **R67-10: the header's per-reason counts are READ FROM the refusals golden**, not computed
+  // beside it. `buildRefusals` derives `byReason` from the very array it writes, so deleting a row
+  // from the file moves a number here. A count in a header that no file can be checked against is
+  // a census with no denominator, one artefact out (§0 position 10a).
+  const { byReason, total: refusedTotal } = buildRefusals(built);
+  const refusedLine = Object.entries(byReason).map(([reason, n]) => `${n} ${reason}`).join(' \u00b7 ');
   const entries = docs.shards
     .map((s) => `  ${JSON.stringify(s.key)}: () => import('./gazetteer/${s.file}', { with: { type: 'json' } }),`)
     .join('\n');
@@ -1333,8 +1614,29 @@ ${Object.entries(SOURCES).map(([k, s]) => ` *          ${k.padEnd(15)} ${s.sha25
  *          feature's code, ${built.parents.length - stats.translated} ship \`countryCode: null\`. **No row is refused for
  *          this**: Cairn does not adjudicate a sovereignty its own map cannot draw (A-84 Part 5).
  *          Published in \`fixtures/golden/gazetteer-parents.json\`.
- * Refused: ${refused.bareName} would have rendered as a bare name · ${refused.unreadable} unreadable · ${refused.delimiter} carried a
- *          payload delimiter (A-83 Part 9, A-83 Part 11).
+ * Refused: ${refusedTotal} candidate rows, ${refusedLine}. **Every one is named in
+ *          \`fixtures/golden/gazetteer-refusals.json\` and these counts ARE that file's group
+ *          sizes, read from it** (A-89 Part 3, QA R67-10) — a count in a header no file can be
+ *          checked against is a census with no denominator. \`bare-name\` is A-83 Part 9 clause 1,
+ *          \`unreadable\` clause 2, \`delimiter\` A-83 Part 11, and **\`multi-country\` is clause 4**
+ *          (§8.4 **A-89**, QA R67-3): a row whose \`cc2\` — \`allCountries\` column 10 — names a
+ *          country that is neither the code it states nor the code we attribute it to. GeoNames'
+ *          own \`Hispaniola\` row names Haiti; \`Antilles\`' names twenty countries. **It catches
+ *          only the landmasses GeoNames MARKS**: \`Ireland\`, \`Borneo\`, \`New Guinea\` and
+ *          \`Tierra del Fuego\` leave the column empty and survive, because the honest test needs
+ *          a polygon and we ship a coordinate.
+ * Rebuild: **THIS CORPUS CANNOT BE REBUILT FROM SOURCE — by anybody, including us** (§0 position
+ *          11, §8.4 **A-90**). GeoNames regenerates every dump daily, retains **one day** of
+ *          \`modifications\`/\`deletes\` and archives nothing, so a past state can be neither
+ *          refetched nor replayed; Overture, the obvious upgrade, drops each release after ~60
+ *          days. So **the committed corpus is the artefact of record** and every claim this
+ *          product makes about its gazetteer is checked against these bytes, offline, with no
+ *          network and no generator run. The checksums above are a **fence** — they prove what
+ *          this build was made from and refuse a build made from anything else — and **not a
+ *          pin**: they do not let anyone obtain those bytes again. Determinism means **same
+ *          fetched bytes => same output**, which is checkable and is checked. A re-pin is an
+ *          explicit \`--repin\` run that publishes \`gazetteer-source-log.json\` (append-only) and
+ *          a row-level corpus diff **in the same commit**.
  * Order  : ascending folded name, then descending population bucket, then ascending country code,
  *          then ascending GeoNames id. A **total** order, so a regeneration cannot reshuffle the
  *          list, and it is a property of these files — \`decodeGazetteer\` preserves it.
@@ -1465,6 +1767,191 @@ function writeDisagreements(built, sha) {
   };
   writeFileSync(DISAGREEMENTS_OUT, `${JSON.stringify(out, null, 2)}\n`);
   console.log(`wrote fixtures/golden/gazetteer-disagreements.json  (${built.disagreements.length} rows)`);
+}
+
+/**
+ * **`fixtures/golden/gazetteer-source-log.json` — A-90 clause 3, and it is APPEND-ONLY.**
+ *
+ * One entry per source per run that moved it: `{fetched, source, bytes, sha256, previousSha256}`.
+ * It exists because *"re-pinning is a deliberate, reviewed act"* was true as an intention and
+ * nothing made it true as a mechanism — so when the re-pin actually happened (**KD-123**), the
+ * review was a sentence in a build note and **+15 shipped rows** was drift nobody could see in a
+ * golden.
+ *
+ * **Append-only is a property a TEST asserts, not a comment at the top of the file** (A-90 Part 5
+ * residue 2 — `npm run golden` regenerates goldens, and the first person to regenerate this one
+ * truncates the history). The file is read, the new entries are appended, and each entry's
+ * `previousSha256` chains to the previous entry for the same source, so the chain is checkable
+ * from the file alone; `packages/core/test/gazetteerMultiCountry.test.ts` walks it.
+ *
+ * A run in which nothing moved appends nothing. The log records **movements**, not runs.
+ */
+function writeSourceLog(fetched, moved) {
+  let log = { $generatedBy: 'cairn/tools/gen-gazetteer.mjs --repin', $what: '', entries: [] };
+  try {
+    log = JSON.parse(readFileSync(SOURCE_LOG_OUT, 'utf8'));
+  } catch { /* first write */ }
+  log.$what =
+    'APPEND-ONLY. One entry per source per re-pin: what this corpus was built from, what it was ' +
+    'built from before, and the byte length beside the hash so a mismatch can be DIAGNOSED rather ' +
+    'than merely detected. ARCHITECTURE \u00a78.4 A-90 clause 3. $sourceSha256 RECORDS a build\'s ' +
+    'inputs; it does NOT pin bytes anyone can obtain again — GeoNames rebuilds every dump daily, ' +
+    'retains one day of modifications/deletes and archives nothing, so THIS CORPUS CANNOT BE ' +
+    'REBUILT FROM SOURCE by anybody, including us. A re-pin is an explicit --repin run and must ' +
+    'publish this file AND a row-level corpus diff in the SAME COMMIT. Never truncate this array; ' +
+    'a test walks the previousSha256 chain and reddens if a link is missing.';
+
+  const last = new Map();
+  for (const e of log.entries) last.set(e.source, e.sha256);
+  let appended = 0;
+  for (const source of moved) {
+    const got = fetched[source];
+    log.entries.push({
+      fetched: FETCHED,
+      source,
+      bytes: got.bytes,
+      sha256: got.sha,
+      previousSha256: last.get(source) ?? null,
+    });
+    appended += 1;
+  }
+  // The first write seeds the chain for every source, so the log describes the whole corpus and
+  // not only the sources that happened to move on the day it was created.
+  if (log.entries.length === 0) {
+    for (const [source, got] of Object.entries(fetched)) {
+      log.entries.push({ fetched: FETCHED, source, bytes: got.bytes, sha256: got.sha, previousSha256: null });
+      appended += 1;
+    }
+  }
+  writeFileSync(SOURCE_LOG_OUT, `${JSON.stringify(log, null, 2)}\n`);
+  console.log(`wrote fixtures/golden/gazetteer-source-log.json  (${appended} appended, ${log.entries.length} total)`);
+}
+
+/**
+ * **A-90 clause 3's row-level corpus diff, against the PREVIOUSLY COMMITTED corpus.**
+ *
+ * `{rowsAdded, rowsRemoved, rowsChanged}`, with every added and removed row named by
+ * `{id, name, countryCode}` while the total is under the published cap, and the counts alone above
+ * it. **A diff over the cap is a stop-and-report** — a data change nobody reviewed is a defect,
+ * not a golden update.
+ *
+ * Reads the corpus off disk, so it must be called BEFORE `write()`.
+ */
+const DIFF_CAP = 200;
+
+function corpusDiff(built) {
+  let previous;
+  try {
+    previous = readCommittedCorpus().rows;
+  } catch {
+    return null; // no previous corpus — a first build, and there is nothing to diff.
+  }
+  const before = new Map(previous.map((r) => [r.id, r]));
+  const after = new Map(built.rows.map((r) => [`${ID_PREFIX}:${r.id}`, r]));
+
+  const added = [];
+  const removed = [];
+  const changed = [];
+  for (const [id, r] of after) {
+    const was = before.get(id);
+    if (was === undefined) { added.push({ id, name: r.name, countryCode: r.countryCode }); continue; }
+    if (was.name !== r.name || was.countryCode !== r.countryCode || was.admin1 !== r.admin1 ||
+        was.centre.lat !== r.lat || was.centre.lng !== r.lng || was.indexSays !== r.says) {
+      changed.push({ id, name: r.name, was: was.countryCode, now: r.countryCode });
+    }
+  }
+  for (const [id, r] of before) {
+    if (!after.has(id)) removed.push({ id, name: r.name, countryCode: r.countryCode });
+  }
+  const by = (a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : a.id < b.id ? -1 : 1);
+  added.sort(by); removed.sort(by); changed.sort(by);
+  return { added, removed, changed };
+}
+
+function reportCorpusDiff(diff, isRepin) {
+  console.log('');
+  if (diff === null) {
+    console.log('corpus diff: no previously committed corpus to diff against (first build).');
+    return;
+  }
+  const total = diff.added.length + diff.removed.length;
+  console.log(
+    `corpus diff vs the previously committed corpus: ` +
+      `+${diff.added.length} rows, -${diff.removed.length} rows, ~${diff.changed.length} changed`,
+  );
+  if (total <= DIFF_CAP) {
+    for (const r of diff.added) console.log(`  + ${r.id}  ${r.name}  ${r.countryCode ?? 'null'}`);
+    for (const r of diff.removed) console.log(`  - ${r.id}  ${r.name}  ${r.countryCode ?? 'null'}`);
+    for (const r of diff.changed) console.log(`  ~ ${r.id}  ${r.name}  ${r.was ?? 'null'} -> ${r.now ?? 'null'}`);
+  } else {
+    console.log(
+      `  ${total} added+removed rows is over the published cap of ${DIFF_CAP}, so the counts are\n` +
+        '  published and the names are not. **STOP AND REPORT**: a data change this large is not a\n' +
+        '  golden update, and A-90 clause 3 says the diff goes in the same commit as the corpus.',
+    );
+  }
+  console.log(
+    isRepin
+      ? '  ^ this run RE-PINNED a source. This diff and the source log belong in the SAME COMMIT\n' +
+        '    as the corpus — a re-pin whose diff is not in its own commit is an unreviewed change\n' +
+        '    to the product\'s core data.'
+      : '  ^ no source moved: this is the diff of a code change, not of a re-pin.',
+  );
+}
+
+/**
+ * **`fixtures/golden/gazetteer-refusals.json` — R67-10, and it is the artefact the refusals lost.**
+ *
+ * A-83 Part 11 repurposed this filename into `gazetteer-disagreements.json`, so from that moment
+ * the rows the generator refuses were published **nowhere** except as three counts in a generated
+ * header. A-82 Part 10's *"makes a deliberate hole countable, nameable and reviewable"* stopped
+ * being true of the refusals, and KD-120's claim that A-83 Part 9's seven named archipelagos were
+ * among them was **not checkable from this repository** — only the negative was.
+ *
+ * **`byReason` is derived HERE, from `refusals`, and the generated header is handed this object
+ * rather than computing its own.** That is the whole of R67-10's second sentence: a count in a
+ * header that no file can be checked against is a census with no denominator (§0 position 10a),
+ * one artefact out. Compute them beside the golden instead and a row can be deleted from the file
+ * without moving a number, which is the injected fault this shape closes.
+ *
+ * Pure — it reads `built` and writes nothing, so `report()` can call it before the write decision.
+ */
+function buildRefusals(built) {
+  const refusals = [...built.refusedRows].sort((a, b) =>
+    (a.name < b.name ? -1 : a.name > b.name ? 1 : 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const byReason = { 'bare-name': 0, unreadable: 0, delimiter: 0, 'multi-country': 0 };
+  for (const r of refusals) byReason[r.reason] += 1;
+  return { total: refusals.length, byReason, refusals };
+}
+
+function writeRefusals(built, sha) {
+  const { total, byReason, refusals } = buildRefusals(built);
+  const out = {
+    $generatedBy: 'cairn/tools/gen-gazetteer.mjs',
+    $source: ATTRIBUTION,
+    $sourceSha256: sha,
+    $fetched: FETCHED,
+    $what:
+      'EVERY candidate row the generator REFUSED to ship, by name, with the reason. ARCHITECTURE ' +
+      "\u00a78.4 A-89 Part 3 (QA R67-10): A-83 Part 11 reused this filename for the " +
+      'disagreements, and from then on the refusals were published nowhere but as counts in a ' +
+      'generated header — so "a deliberate hole, countable, nameable and reviewable" stopped ' +
+      'being true of them. reason is drawn from a CLOSED set: bare-name (A-83 Part 9 clause 1 — ' +
+      'no country and no region, so the label would be the name alone), unreadable (clause 2, or ' +
+      'a name that folds to nothing), delimiter (A-83 Part 11 — a payload separator in a field), ' +
+      'multi-country (clause 4, A-89 — cc2 names a country that is neither the row\'s stated ' +
+      'code nor the code we would attribute it to). byReason IS the group sizes of the array ' +
+      'below and the generated header is handed this object, not a second count beside it. ' +
+      'cc2 is allCountries column 10 verbatim, uppercased and sorted; it is NOT validated ' +
+      'against countryInfo.txt (A-89 Part 8 residue 3). NO COORDINATES: a refused row is not a ' +
+      'row the corpus makes a claim about.',
+    total,
+    byReason,
+    refusals,
+  };
+  writeFileSync(REFUSALS_OUT, `${JSON.stringify(out, null, 2)}\n`);
+  console.log(`wrote fixtures/golden/gazetteer-refusals.json  (${total} rows: ` +
+    `${Object.entries(byReason).map(([k, n]) => `${n} ${k}`).join(', ')})`);
 }
 
 /**

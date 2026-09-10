@@ -1,0 +1,244 @@
+{
+  "$generatedBy": "cairn/tools/gen-gazetteer.mjs",
+  "$source": "GeoNames geographical database (allCountries, alternateNamesV2, admin1CodesASCII, countryInfo), https://www.geonames.org/ — licensed CC BY 4.0, https://creativecommons.org/licenses/by/4.0/. Provided \"as is\", without any representation of accuracy, timeliness or completeness. Country outlines: Natural Earth ne_10m_admin_0_countries v5.1.2, public domain.",
+  "$sourceSha256": "509364760a7a56a00e188736912f20f328cb44f2ba15fbfbbabc4e65ced18ffb",
+  "$fetched": "2026-09-10",
+  "$what": "EVERY candidate row the generator REFUSED to ship, by name, with the reason. ARCHITECTURE §8.4 A-89 Part 3 (QA R67-10): A-83 Part 11 reused this filename for the disagreements, and from then on the refusals were published nowhere but as counts in a generated header — so \"a deliberate hole, countable, nameable and reviewable\" stopped being true of them. reason is drawn from a CLOSED set: bare-name (A-83 Part 9 clause 1 — no country and no region, so the label would be the name alone), unreadable (clause 2, or a name that folds to nothing), delimiter (A-83 Part 11 — a payload separator in a field), multi-country (clause 4, A-89 — cc2 names a country that is neither the row's stated code nor the code we would attribute it to). byReason IS the group sizes of the array below and the generated header is handed this object, not a second count beside it. cc2 is allCountries column 10 verbatim, uppercased and sorted; it is NOT validated against countryInfo.txt (A-89 Part 8 residue 3). NO COORDINATES: a refused row is not a row the corpus makes a claim about.",
+  "total": 18,
+  "byReason": {
+    "bare-name": 18,
+    "unreadable": 0,
+    "delimiter": 0,
+    "multi-country": 0
+  },
+  "refusals": [
+    {
+      "id": "gn:x5yu",
+      "name": "Bantam Village",
+      "statedCode": "CC",
+      "shippedCode": null,
+      "admin1": "",
+      "cc2": [],
+      "population": 500,
+      "reason": "bare-name"
+    },
+    {
+      "id": "gn:1t7j4",
+      "name": "Channel Islands",
+      "statedCode": null,
+      "shippedCode": null,
+      "admin1": "",
+      "cc2": [
+        "GB",
+        "GG",
+        "JE"
+      ],
+      "population": 158000,
+      "reason": "bare-name"
+    },
+    {
+      "id": "gn:x5xw",
+      "name": "Cocos Islands",
+      "statedCode": "CC",
+      "shippedCode": null,
+      "admin1": "",
+      "cc2": [],
+      "population": 0,
+      "reason": "bare-name"
+    },
+    {
+      "id": "gn:24pt6",
+      "name": "French West Indies",
+      "statedCode": null,
+      "shippedCode": null,
+      "admin1": "",
+      "cc2": [
+        "BL",
+        "GP",
+        "MF",
+        "MQ"
+      ],
+      "population": 850000,
+      "reason": "bare-name"
+    },
+    {
+      "id": "gn:24m2t",
+      "name": "Greater Antilles",
+      "statedCode": null,
+      "shippedCode": null,
+      "admin1": "",
+      "cc2": [
+        "CU",
+        "DO",
+        "HT",
+        "JM",
+        "KY",
+        "PR"
+      ],
+      "population": 38000000,
+      "reason": "bare-name"
+    },
+    {
+      "id": "gn:z8ct",
+      "name": "Greater Sunda Islands",
+      "statedCode": null,
+      "shippedCode": null,
+      "admin1": "",
+      "cc2": [
+        "BN",
+        "ID",
+        "MY"
+      ],
+      "population": 0,
+      "reason": "bare-name"
+    },
+    {
+      "id": "gn:x5yj",
+      "name": "Horsburgh Island",
+      "statedCode": "CC",
+      "shippedCode": null,
+      "admin1": "",
+      "cc2": [],
+      "population": 0,
+      "reason": "bare-name"
+    },
+    {
+      "id": "gn:24pis",
+      "name": "Lesser Antilles",
+      "statedCode": null,
+      "shippedCode": null,
+      "admin1": "",
+      "cc2": [
+        "AG",
+        "AW",
+        "BQ",
+        "CW",
+        "DM",
+        "GD",
+        "KN",
+        "LC",
+        "MQ",
+        "MS",
+        "PR",
+        "VC",
+        "VE",
+        "VG",
+        "VI"
+      ],
+      "population": 4000000,
+      "reason": "bare-name"
+    },
+    {
+      "id": "gn:1316n",
+      "name": "Loaita Island",
+      "statedCode": null,
+      "shippedCode": null,
+      "admin1": "",
+      "cc2": [],
+      "population": 0,
+      "reason": "bare-name"
+    },
+    {
+      "id": "gn:6ztkc",
+      "name": "Lucayan Archipelago",
+      "statedCode": null,
+      "shippedCode": null,
+      "admin1": "",
+      "cc2": [
+        "BS",
+        "TC"
+      ],
+      "population": 450000,
+      "reason": "bare-name"
+    },
+    {
+      "id": "gn:1314s",
+      "name": "Robert Island",
+      "statedCode": null,
+      "shippedCode": null,
+      "admin1": "",
+      "cc2": [],
+      "population": 0,
+      "reason": "bare-name"
+    },
+    {
+      "id": "gn:13140",
+      "name": "Sin Cowe Island",
+      "statedCode": null,
+      "shippedCode": null,
+      "admin1": "",
+      "cc2": [],
+      "population": 0,
+      "reason": "bare-name"
+    },
+    {
+      "id": "gn:x5y5",
+      "name": "South Island",
+      "statedCode": "CC",
+      "shippedCode": null,
+      "admin1": "",
+      "cc2": [],
+      "population": 0,
+      "reason": "bare-name"
+    },
+    {
+      "id": "gn:1313l",
+      "name": "Southwest Cay",
+      "statedCode": null,
+      "shippedCode": null,
+      "admin1": "",
+      "cc2": [],
+      "population": 0,
+      "reason": "bare-name"
+    },
+    {
+      "id": "gn:24oa2",
+      "name": "Virgin Islands",
+      "statedCode": null,
+      "shippedCode": null,
+      "admin1": "",
+      "cc2": [
+        "VG",
+        "VI"
+      ],
+      "population": 0,
+      "reason": "bare-name"
+    },
+    {
+      "id": "gn:x5xz",
+      "name": "West Island",
+      "statedCode": "CC",
+      "shippedCode": null,
+      "admin1": "",
+      "cc2": [],
+      "population": 120,
+      "reason": "bare-name"
+    },
+    {
+      "id": "gn:24p07",
+      "name": "Windward Islands",
+      "statedCode": null,
+      "shippedCode": null,
+      "admin1": "",
+      "cc2": [
+        "DM",
+        "GD",
+        "LC",
+        "MQ",
+        "VC"
+      ],
+      "population": 850000,
+      "reason": "bare-name"
+    },
+    {
+      "id": "gn:1312j",
+      "name": "Woody Island",
+      "statedCode": null,
+      "shippedCode": null,
+      "admin1": "",
+      "cc2": [],
+      "population": 1443,
+      "reason": "bare-name"
+    }
+  ]
+}

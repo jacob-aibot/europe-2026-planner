@@ -56,7 +56,15 @@ const SHARD_MAP = join(GEO, 'gazetteerShards.gen.ts');
  * Re-run the generator to move these numbers; do not guess them, and never shave the dataset to
  * fit one.
  */
-const CORPUS_BYTES = 8_749_255;
+/**
+ * **8,749,255 → 8,749,730 at I-29, and every one of the 475 bytes is `meta.json`'s `$what`.**
+ * Zero shard documents changed; the corpus diff the generator prints for that regeneration is
+ * `+0 rows, -0 rows, ~0 changed`, and `$sourceSha256` did not move. §8.4 **A-90** clause 2
+ * requires that string to say the checksum **records** what a build was made from rather than
+ * **pins** bytes anyone can obtain again, and to say plainly that **this corpus cannot be rebuilt
+ * from source by anybody, including us**. That sentence is the whole diff.
+ */
+const CORPUS_BYTES = 8_749_730;
 
 /** A-83 Part 5 ceiling 1: **no single shard document may exceed 96 KiB raw.** */
 const SHARD_BUDGET = 96 * 1024;

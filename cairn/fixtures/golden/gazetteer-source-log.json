@@ -1,0 +1,41 @@
+{
+  "$generatedBy": "cairn/tools/gen-gazetteer.mjs --repin",
+  "$what": "APPEND-ONLY. One entry per source per re-pin: what this corpus was built from, what it was built from before, and the byte length beside the hash so a mismatch can be DIAGNOSED rather than merely detected. ARCHITECTURE §8.4 A-90 clause 3. $sourceSha256 RECORDS a build's inputs; it does NOT pin bytes anyone can obtain again — GeoNames rebuilds every dump daily, retains one day of modifications/deletes and archives nothing, so THIS CORPUS CANNOT BE REBUILT FROM SOURCE by anybody, including us. A re-pin is an explicit --repin run and must publish this file AND a row-level corpus diff in the SAME COMMIT. Never truncate this array; a test walks the previousSha256 chain and reddens if a link is missing.",
+  "entries": [
+    {
+      "fetched": "2026-09-10",
+      "source": "allCountries",
+      "bytes": 421190719,
+      "sha256": "8864727474760039d91b60137fbe81fe203ae399a13289be4cf21afd0ebec826",
+      "previousSha256": null
+    },
+    {
+      "fetched": "2026-09-10",
+      "source": "alternateNames",
+      "bytes": 204011299,
+      "sha256": "14386dea2d574f807d6e69fa269531ea427db2f61ebd59cf9b4d0e19e1aa40cf",
+      "previousSha256": null
+    },
+    {
+      "fetched": "2026-09-10",
+      "source": "admin1",
+      "bytes": 151536,
+      "sha256": "590651498043f674accda2b7f46d21286cda0e290b02f8561c5005eee9a5448c",
+      "previousSha256": null
+    },
+    {
+      "fetched": "2026-09-10",
+      "source": "countryInfo",
+      "bytes": 31678,
+      "sha256": "93bafc525813f22e4711ff9ed6d626343094ce48c26388dc7c49189b3d7d5512",
+      "previousSha256": null
+    },
+    {
+      "fetched": "2026-09-10",
+      "source": "admin0",
+      "bytes": 13287234,
+      "sha256": "239eec57ac17f100a11e2536cffc56752c318b50ae765b0918ff7aab4ce8f255",
+      "previousSha256": null
+    }
+  ]
+}
