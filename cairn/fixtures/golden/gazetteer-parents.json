@@ -4,8 +4,8 @@
   "$sourceSha256": "509364760a7a56a00e188736912f20f328cb44f2ba15fbfbbabc4e65ced18ffb",
   "$fetched": "2026-09-10",
   "$what": "Every shipped row whose SOURCE-STATED country code is not one COUNTRY_INDEX can draw — the empty code included — with the code it ships instead. ARCHITECTURE §8.4 A-84 Part 5 (QA R61-3): A-29 step 4 refused these codes on the stated ground that \"the coordinate attribution already answers the parent\", and for six of the eight codes it names the coordinate answers NOTHING. The parent is instead read from the dataset the index is cut from: the containing feature's ISO_A2_EH in ne_10m_admin_0_countries at v5.1.2. A row whose containing feature has no ISO code (Somaliland, Northern Cyprus) ships shippedCode: null and is NEVER REFUSED — its name and region still label it. NO COORDINATES: ids, names and codes only.",
-  "total": 152,
-  "translated": 149,
+  "total": 151,
+  "translated": 148,
   "shippedNull": 3,
   "codeParent": {
     "AN": "DO",
@@ -41,13 +41,6 @@
       "name": "Anse-Bertrand",
       "statedCode": "GP",
       "shippedCode": "FR",
-      "via": "contained"
-    },
-    {
-      "id": "gn:22u3k",
-      "name": "Antilles",
-      "statedCode": "AN",
-      "shippedCode": "DO",
       "via": "contained"
     },
     {

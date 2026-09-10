@@ -4,7 +4,7 @@
   "$sourceSha256": "509364760a7a56a00e188736912f20f328cb44f2ba15fbfbbabc4e65ced18ffb",
   "$fetched": "2026-09-10",
   "$what": "Every shipped gazetteer row whose country code and countryOf(row.centre, COUNTRY_INDEX) are both non-null and DISAGREE. ARCHITECTURE §8.4 A-82 Part 5 refused such rows outright, which cost Brazzaville (a national capital), Geneva and Jerusalem; A-83 Part 8 RESTATES the invariant as \"no shipped row may SILENTLY contradict the country index\", so every row listed here SHIPS carrying indexSays: \"differs\", and is named here with BOTH answers. A row that would contradict the index without carrying that record is still REFUSED. Most are border towns the shipped index draws on the wrong side of a frontier, because A-26 Part 2 chose a coarse base scale and a coarse ring bulges outward. statedCountry is what the row ships; derivedCountry is what countryOf says. A picked city takes the former (City.pick, §8.4 A-84); a typed one still takes the latter.",
-  "total": 2495,
+  "total": 2494,
   "disagreements": [
     {
       "id": "gn:130cy",
@@ -5297,12 +5297,6 @@
       "name": "Iskrovci",
       "statedCountry": "RS",
       "derivedCountry": "BG"
-    },
-    {
-      "id": "gn:2a6oh",
-      "name": "Isla Grande de Tierra del Fuego",
-      "statedCountry": "AR",
-      "derivedCountry": "CL"
     },
     {
       "id": "gn:26ngq",

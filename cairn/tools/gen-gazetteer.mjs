@@ -245,56 +245,43 @@ const NOT_A_LANGUAGE = new Set([
 const NEAREST_TOLERANCE = 0.05;
 
 /**
- * **A-83 Part 9 CLAUSE 4 IS IMPLEMENTED AND IS NOT ENABLED. ROADMAP `I-29`'s stop-and-report
- * condition 1 fired, and this constant is the report.**
+ * **A-83 Part 9 clause 4's match set, committed BY NAME AND BY GEONAMES ID — §8.4 A-93 Part 2 and
+ * Part 8, ROADMAP `I-31`'s one stop-and-report condition. THE CAP IS ZERO IN EITHER DIRECTION.**
  *
- * The predicate is built exactly as §8.4 **A-89** rules it — refuse when `X \ {S, C}` is non-empty,
- * with `X` the `cc2` codes, `S` the stated code and `C` the code after A-84 Part 5's translation —
- * and **its refusal set is computed and printed on every run** whether or not this is `true`. What
- * is gated is the `continue` that drops the row.
+ * `I-29` gated this clause behind `CLAUSE_4_ENABLED = false` and stopped, because A-89's predicate
+ * — `X \ {S, C}` over every candidate — deletes **`Vatican City`** and 166 other correct rows
+ * (**KD-124**; the stop was upheld and the ruling changed because of it). **The flag is gone with
+ * the ruling that needed it**, and what replaces `I-29`'s *"anything over 100,000 people"*
+ * threshold is this list: **a population threshold cannot see an 829-person capital.**
  *
- * **The condition ROADMAP `I-29` names: *"if clause 4 removes anything over 100,000 people that is
- * not `Antilles` or `Hispaniola`, stop and report"*.** Measured against the committed corpus
- * (149,101 rows) on 2026-09-10, from the cached pinned sources:
+ * The generator **stops and reports, writing nothing**, if the match set differs from these
+ * sixteen rows at all, or if clause 4 ever matches a row of feature class `P` — which is
+ * structurally impossible under A-93 Part 2 clause 1, and that is the point of checking it.
  *
- * | | |
- * |---|---|
- * | rows clause 4 refuses | **169** |
- * | of them over 100,000 people and not `Antilles`/`Hispaniola` | **6** |
- * | rows kept only by the `S` subtraction | **0** — A-89 Part 2's prediction holds |
- *
- * The six: `Borneo` (21.3 M, `cc2=[BN,ID,MY]`), `New Guinea` (11.8 M, `cc2=[ID,PG]`), `Laayoune`
- * (196,331, `cc2=[MA]`), `Santo António` (129,800, `cc2=[MO]`), `Nossa Senhora de Fátima` (126,000,
- * `cc2=[MO]`), `Dakhla` (106,277, `cc2=[MA]`).
- *
- * **And two of A-89's own factual claims do not survive the corpus.**
- *
- *  1. **Part 8 residue 1 says `Borneo`, `New Guinea` and `Tierra del Fuego` are *"multi-country
- *     landmasses GeoNames does not mark in `cc2`"* and therefore survive.** They are marked, and
- *     clause 4 refuses all three. Only `Ireland` (the island) is genuinely `cc2`-empty.
- *  2. **Part 2 states the false-positive cost on the shipped corpus as *"one village"*
- *     (`Trachóni`).** `Trachóni` does not clear A-83 Part 3's selection gates and has never
- *     shipped. The actual false-positive population is 167 rows, and it includes
- *     **`Vatican City`** — which A-82 Part 2 measured by name as resolving correctly, and which
- *     `PROBES` queries, so the `vatican` probe goes from a hit to **NO MATCH** — plus four
- *     capitals (`Tórshavn`, `Saint Helier`, `Douglas`, `Mariehamn`), the Faroes, Jersey, Guernsey,
- *     Åland, the Isle of Man, every Antarctic station and every Western Saharan town.
- *
- * `cc2` turns out to name **any** second jurisdictional claim on a row — a sovereign parent the
- * translation did NOT supply (`VA`→`IT`, `FO`→`DK`, `IM`→`GB`), a territorial dispute (`EH`/`MA`,
- * `PS`/`IL`, `RU`/`JP`), an Antarctic claim — and not only a landmass spanning two countries.
- * Subtracting `C` closes the case where the translation supplied the parent; it cannot close the
- * case where the row already states a code the index draws and `cc2` names its sovereign anyway.
- *
- * **That is a ruling to make, not a threshold to tune, and it is not the builder's to make.** The
- * corpus is therefore UNCHANGED and `Antilles` and `Hispaniola` still ship — **the R67-3 defect is
- * NOT fixed**. Flip this to `true` only with a ruling that says what happens to those 167 rows.
- *
- * **Disclosed in `docs/BUILD-NOTES.md` as KD-124**, which carries the whole measurement, the four
- * populations `cc2` turns out to name, and what a ruling would have to decide. This comment is
- * here so the next person does not enable the flag in five minutes and delete Vatican City.
+ * Every one is a landmass that lies in, or is claimed by, more than one country; not one is a
+ * settlement. Nine are disputes or shared islands rather than the archipelago case A-89 was
+ * written about, and **the mitigation is measured rather than assumed: their settlements ship** —
+ * `Świnoujście` (40,919, on Usedom) and `Yuzhno-Kurilsk` (7,777, on Kunashir) are both in the
+ * corpus under their own names, and a test says so.
  */
-const CLAUSE_4_ENABLED = false;
+const CLAUSE_4_SET = [
+  [3491552, 'Antilles'],
+  [1648148, 'Borneo'],
+  [3504558, 'Hispaniola'],
+  [2082514, 'New Guinea'],
+  [2818108, 'Usedom Island'],
+  [2124018, 'Kunashir Island'],
+  [7284881, 'Hawar Islands'],
+  [292983, 'Abu Musa Island'],
+  [2121299, 'Shikotan Island'],
+  [3834449, 'Isla Grande de Tierra del Fuego'],
+  [3834451, 'Tierra del Fuego'],
+  [1626052, 'Sunda Islands'],
+  [5970356, 'Hans Island'],
+  [8062537, 'Liancourt Rocks'],
+  [2125177, 'Iturup Island'],
+  [4031746, 'Diomede Islands'],
+];
 
 /** A-83 Part 6: **while** a shard's packed payload exceeds this, it is split. 96 KiB. */
 const SHARD_BUDGET = 96 * 1024;
@@ -800,6 +787,13 @@ async function build(cacheDir, { countryOf, index, draws }) {
       // read here, with the rest of the display data, because clause 4 is a SHIPPING condition and
       // a shipping condition needs the row it is about.
       cc2: cc2Of(f[9]),
+      // **`allCountries` column 7 — the GeoNames FEATURE CLASS.** A-93 Part 2 clause 1 scopes
+      // clause 4 to the arm of A-83 Part 3's candidacy rule that has an *extent*: `ISL`/`ISLS`.
+      // A class-`P` row denotes a **point**, and a point lies in one place on the ground — a
+      // second jurisdictional claim on it is a dispute Cairn declines to adjudicate (A-84 Part 5's
+      // `null` arm), not a place it deletes. Carried on the row rather than re-derived from
+      // `candP`, because the refusal is decided here, beside the column it reads.
+      cls: f[6],
       admin1: admin1Names.get(`${cc}.${f[10]}`) ?? '',
       population: +f[14] || 0,
       alt: '',
@@ -910,13 +904,18 @@ async function build(cacheDir, { countryOf, index, draws }) {
   const disagreements = [];
   const census = { agrees: 0, differs: 0, silent: 0 };
   const refusedRows = [];
-  /** A-89 Part 2: rows kept ONLY by the `S` subtraction. Predicted empty; PUBLISHED, not assumed. */
+  /** A-93 Part 3: rows kept ONLY by the `S` subtraction. Predicted empty; PUBLISHED, not assumed. */
   const keptByS = [];
+  /** A-93 Part 3: rows kept ONLY by `P(C)` beyond `P(S)`. Predicted empty; PUBLISHED, not assumed. */
+  const keptByPC = [];
+  /** A-93 Part 3(b): the `c -> P(c)` pairs clause 4 ACTUALLY used on this corpus. 6 predicted. */
+  const sovereignUsed = new Set();
+  /** A-93 Part 3(a): the class-`P` rows the class restriction exempts. 141 predicted. */
+  const classPExempt = [];
   /**
-   * **Every row A-83 Part 9 clause 4 WOULD refuse, collected whether or not the clause is enabled.**
-   * The measurement is the deliverable while the clause is gated — a hole nobody can name is not a
-   * deliberate hole, and a refusal that cannot be shown to fire is a comment. `report()` prints
-   * this set in full on every run, and the stop-and-report gate is evaluated over it.
+   * **Every row A-83 Part 9 clause 4 refuses.** `report()` prints this set in full on every run,
+   * with each row's `cc2`, class and population, and the stop-and-report gate (A-93 Part 8) is
+   * evaluated over it against the sixteen rows the ruling commits by name and by GeoNames id.
    */
   const clause4 = [];
   /**
@@ -934,6 +933,10 @@ async function build(cacheDir, { countryOf, index, draws }) {
       shippedCode: code ?? null,
       admin1: r.admin1,
       cc2: r.cc2,
+      // **A-93 Part 2 clause 1, made checkable from the artefact rather than from a sentence.**
+      // *"No refused row has feature class `P`"* is a claim about this file, and a claim a reader
+      // cannot check in the file it is about is the same defect R67-10 filed against the counts.
+      cls: r.cls,
       population: r.population,
       reason,
     });
@@ -1017,29 +1020,47 @@ async function build(cacheDir, { countryOf, index, draws }) {
 
     // ---------------------------------------------------------------------------------------
     // **A-83 Part 9 CLAUSE 4 — a landmass the source itself says lies in more than one country
-    // is not a city in any of them.** (§8.4 A-89; QA R67-3, MAJOR.)
+    // is not a city in any of them.** (§8.4 **A-93**, which supersedes A-89 Part 2's predicate
+    // and depends on the rest of A-89; QA R67-3, MAJOR; ROADMAP I-31.)
     //
     // With `S` the row's stated code (possibly null), `C` the code it ships after A-84 Part 5's
-    // parent translation (possibly null) and `X` the non-empty codes of `cc2`:
+    // parent translation (possibly null), `X` the non-empty codes of `cc2`, and `P(c)` the
+    // **sovereign** of `c` as `ne_10m_admin_0_countries.geojson` states it at the pinned sha256:
     //
-    //     REFUSE when  X \ {S, C}  is non-empty
+    //     REFUSE when the row's feature class is NOT `P`   AND   X \ {S, C, P(S), P(C)}  is non-empty
     //
-    // — when GeoNames' own row names a country that is neither the country the row states nor
-    // the country we attribute it to. `Hispaniola`'s `cc2` is `HT,DO`: **the source names Haiti
-    // itself.** `Antilles`' names twenty countries. **Every one of the nine rows the translation
-    // rescues from clause 1 leaves the column empty** and is untouched by this.
+    // **Both halves are load-bearing and each has its own injected fault.**
     //
-    // **The question A-83 Part 3 asks is "is this a settlement or an island you can say you went
-    // to", and what disqualifies `Hispaniola` is not its size, its feature code or its
-    // population: it is that saying you went to Hispaniola does not say which country you were
-    // in.** `cc2` is the only field in either source that states that. It is stated by the
-    // publisher rather than derived by us, it is stated per ROW rather than per code, and it
-    // costs no new axis, no threshold and no dial. Four narrower rules were considered and each
-    // failed on its own terms — refuse a retired code (`AN` is still a row of `countryInfo.txt`),
-    // refuse feature code `ISLS` (`Guadeloupe` and `Hispaniola` are `ISL`), refuse an implausible
+    // **(1) The class restriction is A-83 Part 3's own axis, read rather than added.** Candidacy
+    // is already *"feature class `P`, **or** feature code `ISL`/`ISLS`"*, and clause 4 applies to
+    // the second arm. The defect this exists to fix is that **a name fails to say which country
+    // you were in**, and that is a property of a name denoting an **extent**. A settlement's name
+    // denotes a **point**; a point lies in one place, and a second jurisdictional claim on it is a
+    // dispute about who governs it — which A-84 Part 5 already rules on by declining to name a
+    // country rather than deleting the place. **Without this half the rule deletes `Vatican City`**
+    // (`P/PPLC`, `cc=VA`, `cc2=[IT]`, 829 people), `Tórshavn`, `Saint Helier`, `Douglas`,
+    // `Mariehamn`, `Laayoune`, `Dakhla` and 160 more: 169 rows, 167 of them false positives. That
+    // is what `I-29` measured and stopped on (**KD-124**), and it is why A-89's form is not here.
+    //
+    // **(2) The sovereign subtraction closes the gap `C` cannot reach.** Subtracting `C` closes
+    // the sovereign-parent case **only where the translation supplied the parent** — the whole of
+    // what keeps `Longyearbyen` — and cannot close the case where the row already states a code
+    // the index draws and `cc2` names its sovereign anyway. **Without this half the class
+    // restriction alone deletes twelve correct terrain rows**: `Jersey` and `Guernsey` (`GB`),
+    // `Alderney`, `Faroe Islands` (`DK`), `Signilskär` (`FI`), `Norfolk Island` (`AU`) and the six
+    // French Southern islands (`FR`). A traveller who typed *Jersey* and got `NO MATCH` would be
+    // meeting a worse defect than the one this fixes. **The direction of the relation is
+    // load-bearing**: subtract `c` when `c == P(S)` (*"`cc2` names my sovereign"*), never when
+    // `P(c) == S` (*"`cc2` names one of my dependencies"*) — inverted, all twelve are refused
+    // again, because a sovereign has no sovereign.
+    //
+    // `Hispaniola`'s `cc2` is `HT,DO`: **the source names Haiti itself.** `Antilles`' names twenty
+    // countries. **Every one of the nine rows the translation rescues from clause 1 leaves the
+    // column empty** and is untouched by this. Four narrower rules were considered and each failed
+    // on its own terms — refuse a retired code (`AN` is still a row of `countryInfo.txt`), refuse
+    // feature code `ISLS` (`Guadeloupe` and `Hispaniola` are `ISL`), refuse an implausible
     // population (a dial wearing a rule's clothes), and refuse an island whose population exceeds
-    // its country's (**it puts Taiwan inside 3 % of `TW`**, so a population revision at either
-    // end deletes Taiwan from the picker).
+    // its country's (**it puts Taiwan inside 3 % of `TW`**).
     //
     // **CLAUSE 4's POSITION IS LAST AND IT IS DELIBERATE.** Clauses 1–3 and their ordering
     // against A-84 Part 5's translation **do not move** — that ordering is the whole of what
@@ -1047,32 +1068,51 @@ async function build(cacheDir, { countryOf, index, draws }) {
     // as a bare name is published under `'bare-name'`, which is the reason a reviewer needs and
     // the reason A-83 Part 9's seven named archipelagos are recorded under.
     //
-    // **Both subtractions are load-bearing, and they are not symmetric in weight.** Subtracting
-    // `C` is measured: it is the whole of what keeps `Longyearbyen`, `Barentsburg`, `Ny-Ålesund`,
-    // `Olonkinbyen` and `Grand-Case`, whose `cc2` names the parent the translation itself just
-    // supplied. A refusal on *"`cc2` is non-empty"* is a different rule that deletes all five.
-    // Subtracting `S` keeps a row that merely restates its own stated code alongside another from
-    // being refused on the strength of the restatement; **A-89 Part 2 predicts no row is kept by
-    // the `S` subtraction alone on this corpus, and the audit PRINTS that count rather than
-    // assuming it** — a non-zero count is a result to report, and a missing line is the failure.
-    //
     // **What this deliberately does NOT do, at exactly the width of its mechanism.** It catches
-    // only the landmasses GeoNames MARKS. `Ireland`, `Borneo`, `New Guinea` and `Tierra del
-    // Fuego` leave `cc2` empty and survive — the honest test is *"does this feature's polygon
-    // cross a border in the index"*, and **we ship a coordinate, not a polygon**. So: the corpus
-    // refuses every multi-country landmass GeoNames marks as one, and **makes no claim about the
-    // ones it does not mark**. It is not *"no landmass is attributed to one of its countries"*.
-    const foreign = r.cc2.filter((c) => c !== r.stated && c !== code);
-    if (foreign.length > 0) {
-      clause4.push({ ...r, shippedCode: code, foreign });
-      if (CLAUSE_4_ENABLED) {
+    // only the landmasses GeoNames MARKS. **`Timor`** (`cc=ID`, `cc2` empty) still ships as
+    // *"Timor, Indonesia"* although half of it is Timor-Leste, and **`Saint Martin`** (`cc=MF`,
+    // `cc2` empty) still ships as `MF` although half of it is `SX` — the honest test is *"does
+    // this feature's polygon cross a border in the index"*, and **we ship a coordinate, not a
+    // polygon**. A-93 Part 9 residue 1 files both with their trigger; do not reach for a cheap
+    // predicate here. And the class restriction leaves **141** class-`P` attributions this rule
+    // does not defend (`Laayoune` `EH`, the Macau parishes `CN`, the Antarctic stations `AQ`);
+    // they are published, grouped, in the audit below rather than left invisible.
+    // **A-93 Part 2, in four lines.** `P(S)` and `P(C)` come from the layer already loaded above.
+    const pS = admin0.sovereignOf(r.stated);
+    const pC = admin0.sovereignOf(code);
+    const subtract = new Set([r.stated, code, pS, pC].filter((c) => c !== null));
+    const foreign = r.cc2.filter((c) => !subtract.has(c));
+
+    // **A-93 Part 3(a)'s exempt population, published rather than invisible.** These are the
+    // class-`P` rows A-89's form would have refused — `X \ {S, C}` non-empty — and which the class
+    // restriction keeps. 141 predicted, grouped by `cc + foreign codes`. The group is computed on
+    // A-89's predicate deliberately: it is the cost of the class restriction, and the sovereign
+    // subtraction is the *other* half of the rule, priced separately.
+    if (r.cls === 'P') {
+      const a89 = r.cc2.filter((c) => c !== r.stated && c !== code);
+      if (a89.length > 0) classPExempt.push({ name: r.name, key: `${r.stated ?? 'no code'}+${a89.join(',')}` });
+    } else {
+      // Rows kept **only** by one of the subtractions, each measured over clause 4's own
+      // population. A-93 Part 3 predicts **0** for both and **prints them either way**: a non-zero
+      // count is a result to report; a missing line is the failure.
+      if (foreign.length === 0) {
+        const withoutS = r.cc2.filter((c) => c !== code && c !== pS && c !== pC);
+        if (withoutS.length > 0) keptByS.push(r.name);
+        const withoutPC = r.cc2.filter((c) => c !== r.stated && c !== code && c !== pS);
+        if (withoutPC.length > 0) keptByPC.push(r.name);
+      }
+      // The sovereign pairs this corpus's clause 4 **actually used** — a pair is recorded only
+      // where it removed a code the row really carries. 6 predicted; a loaded pair becoming
+      // load-bearing arrives as a new line here and a golden diff, not silently (A-93 Part 3(b)).
+      if (pS !== null && r.cc2.includes(pS)) sovereignUsed.add(`${r.stated}->${pS}`);
+      if (pC !== null && r.cc2.includes(pC)) sovereignUsed.add(`${code}->${pC}`);
+
+      if (foreign.length > 0) {
+        clause4.push({ ...r, shippedCode: code, foreign });
         refuse(r, 'multi-country', code);
         continue;
       }
     }
-    // Kept *only* because `S` was subtracted — `cc2` names something other than `C`, and every
-    // one of those is the row's own stated code. Predicted empty here; published either way.
-    if (r.cc2.some((c) => c !== code)) keptByS.push(r.name);
 
     if (r.lat === 0 && r.lng === 0) atOrigin.push(r.name);
 
@@ -1131,7 +1171,8 @@ async function build(cacheDir, { countryOf, index, draws }) {
 
   return {
     rows: shipped, admin1, admin1At, countryNames,
-    parents, disagreements, census, refusedRows, keptByS, clause4, atOrigin, codeParent,
+    parents, disagreements, census, refusedRows, keptByS, keptByPC, sovereignUsed, classPExempt,
+    clause4, atOrigin, codeParent, sovereignPairs: admin0.sovereignPairs,
     stats: { candidates: n, selected: nSelected, gates, translated, features, altRows, maxNearest },
   };
 }
@@ -1179,6 +1220,40 @@ function readCountryNames(cacheDir, used) {
  */
 function readAdmin0(cacheDir) {
   const geo = JSON.parse(readFileSync(join(cacheDir, SOURCES.admin0.file), 'utf8'));
+
+  // **A-93 Part 2's `P(c)` — the SOVEREIGN of a country code, read from the layer that already
+  // states sovereigns, on the load this generator already does.** A-93: "no new source, no new
+  // fetch, no new pin"; loading this layer a second time would be the defect.
+  //
+  // The join, and the one place the ruling's sentence and the pinned bytes disagree — disclosed in
+  // BUILD-NOTES as KD-125. A-93 words it as *"the `ISO_A2_EH` of the feature whose `ADM0_A3` is
+  // that code's `SOV_A3` and whose `ADMIN` equals its own `SOVEREIGNT`"*. **Taken literally that
+  // join is empty**: at v5.1.2 a dependency's `SOV_A3` is the sovereign's *group* code — `GB1`,
+  // `FR1`, `DN1` — and **no feature carries `ADM0_A3 = 'GB1'`** (the United Kingdom's is `GBR`).
+  // The join that produces the ruling's own measured facts is on `SOV_A3`: the sovereign of `c` is
+  // the feature in `c`'s **own `SOV_A3` group** whose `ADMIN` equals its `SOVEREIGNT` — i.e. the
+  // group's self-governing member. That yields **41** codes with a distinct sovereign, which is
+  // A-93 Part 3(b)'s own number, and `P(JE) = GB`, `P(FO) = DK`, `P(AX) = FI`, `P(NF) = AU`,
+  // `P(TF) = FR`, `P(GG) = GB`, which are its own six load-bearing pairs.
+  //
+  // `null` where the layer names no distinct sovereign — a sovereign has no sovereign, which is
+  // what makes A-93 Part 7 fault 5 (invert the relation) delete all twelve.
+  const isoOf = (p) => (isIso(p.ISO_A2_EH) ? p.ISO_A2_EH : null);
+  const selfGoverning = new Map();
+  for (const f of geo.features) {
+    const p = f.properties;
+    if (p.ADMIN === p.SOVEREIGNT) selfGoverning.set(p.SOV_A3, p);
+  }
+  const sovereign = new Map();
+  for (const f of geo.features) {
+    const p = f.properties;
+    const code = isoOf(p);
+    if (code === null) continue;
+    const head = selfGoverning.get(p.SOV_A3);
+    const parent = head === undefined ? null : isoOf(head);
+    if (parent !== null && parent !== code && !sovereign.has(code)) sovereign.set(code, parent);
+  }
+
   const features = [];
   for (const f of geo.features) {
     const p = f.properties;
@@ -1215,6 +1290,15 @@ function readAdmin0(cacheDir) {
     return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
   };
   return {
+    /**
+     * **A-93 Part 2's `P(c)`.** The sovereign of a country code as this layer states it, or `null`
+     * where it names no distinct sovereign. Measured at the pinned sha256: 41 codes have one.
+     */
+    sovereignOf(code) {
+      return code === null ? null : sovereign.get(code) ?? null;
+    },
+    /** Every `c -> P(c)` the layer names, for the audit's own reporting. */
+    sovereignPairs: sovereign,
     /**
      * Where this point is, in the layer the index is cut from: `{code, via, degrees}`.
      *
@@ -1276,39 +1360,82 @@ function report(built) {
   for (const [reason, n] of Object.entries(refusals.byReason)) {
     console.log(`  ${reason.padEnd(15)} ${String(n).padStart(6)}`);
   }
-  // **The stop-and-report condition, checked here rather than in a reviewer's head** (ROADMAP
-  // I-29): A-89's false-positive claim was measured over 14 country files, not over the corpus.
-  // If clause 4 removes a settlement of real size that the ruling did not name, that is a result
-  // to report, not a number to absorb.
-  const BIG = 100_000;
-  const bigMulti = built.clause4
-    .filter((r) => r.population > BIG && r.name !== 'Antilles' && r.name !== 'Hispaniola');
+  // **A-93 Part 8 — the stop-and-report is a NAMED SET and a CAP OF ZERO, because a population
+  // threshold is what let this through.** `I-29`'s condition was *"anything over 100,000 people
+  // that is not Antilles or Hispaniola"*; it fired correctly and it could not have seen Vatican
+  // City (829). The condition is now A-93 Part 2's sixteen rows, by name and by GeoNames id, in
+  // either direction — an added row or a missing one. A corpus swap that changes the set is a
+  // reviewed golden update with the rows named in the commit message, never an automatic
+  // regeneration.
   console.log('');
   console.log(
-    `  A-83 Part 9 clause 4 (${CLAUSE_4_ENABLED ? 'ENABLED' : 'IMPLEMENTED, NOT ENABLED'}) — ` +
-      `${built.clause4.length} rows match the predicate. Every one, with its cc2 and population:`,
+    `  A-83 Part 9 clause 4 (A-93 Part 2) — ${built.clause4.length} rows refused. ` +
+      'Every one, with its class, cc2 and population:',
   );
   for (const r of built.clause4) {
-    console.log(`    ${r.name} (${r.stated ?? 'no code'} -> ${r.shippedCode ?? 'null'}) cc2=[${r.cc2.join(',')}] pop=${r.population}`);
+    console.log(`    ${r.name} [${r.cls}] (${r.stated ?? 'no code'} -> ${r.shippedCode ?? 'null'}) cc2=[${r.cc2.join(',')}] pop=${r.population}`);
   }
-  // **A-89 Part 2: the `S` subtraction's own reach, PRINTED rather than assumed.** The ruling
-  // predicts zero on this corpus. A non-zero count is a result to report; a MISSING line is the
-  // failure, so this prints unconditionally.
+  // **A-93 Part 3: the two inert subtractions, PRINTED rather than assumed.** Both are predicted
+  // zero on this corpus and both stay in the rule, because the rule's sentence is "neither the
+  // country it states, nor the country we attribute it to, nor the sovereign of either" and a rule
+  // that does not say what it means is the next round's finding. A non-zero count is a result to
+  // report; a MISSING line is the failure, so these print unconditionally.
   console.log(`  clause 4 — rows kept ONLY by the S subtraction: ${built.keptByS.length}` +
-    (built.keptByS.length ? ` — ${built.keptByS.slice(0, 20).join(', ')}` : '  (A-89 Part 2 predicts 0)'));
-  if (bigMulti.length) {
+    (built.keptByS.length ? ` — ${built.keptByS.slice(0, 20).join(', ')}` : '  (A-93 Part 3 predicts 0)'));
+  console.log(`  clause 4 — rows kept ONLY by P(C) beyond P(S): ${built.keptByPC.length}` +
+    (built.keptByPC.length ? ` — ${built.keptByPC.slice(0, 20).join(', ')}` : '  (A-93 Part 3 predicts 0)'));
+  // **A-93 Part 3(b): the sovereign pairs clause 4 actually USED.** The layer names 41; six are
+  // load-bearing here. The politically loaded pairs it also carries — PS->IL, HK->CN, MO->CN,
+  // GI->GB, FK->GB, IO->GB, NC->FR — are measured inert, and one of them becoming load-bearing
+  // arrives as a new name on this line and a golden diff rather than silently.
+  const used = [...built.sovereignUsed].sort();
+  console.log(`  clause 4 — sovereign pairs used: ${used.length} of ${built.sovereignPairs.size} the layer names` +
+    (used.length ? ` — ${used.join(', ')}` : ''));
+  // **A-93 Part 3(a): the population the class restriction exempts, countable and nameable.**
+  // These are the class-`P` rows A-89's form would have refused. Their attribution is not defended
+  // by this ruling; the claim is only that this ruling does not touch it (A-84 Part 5 owns it).
+  const exemptGroups = new Map();
+  for (const r of built.classPExempt) exemptGroups.set(r.key, (exemptGroups.get(r.key) ?? 0) + 1);
+  const biggest = [...exemptGroups].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
+  console.log(`  clause 4 — class-P rows the class restriction exempts: ${built.classPExempt.length}` +
+    ` in ${exemptGroups.size} groups (cc + foreign codes); largest: ` +
+    biggest.slice(0, 4).map(([k, n]) => `${k} ${n}`).join(', '));
+
+  const set = new Map(built.clause4.map((r) => [r.gid, r.name]));
+  const missing = CLAUSE_4_SET.filter(([gid]) => !set.has(gid)).map(([gid, name]) => `${name} (${gid})`);
+  const added = [...set].filter(([gid]) => !CLAUSE_4_SET.some(([g]) => g === gid))
+    .map(([gid, name]) => `${name} (${gid})`);
+  if (missing.length || added.length) {
     console.log('');
-    console.log('  !! ROADMAP I-29 STOP-AND-REPORT CONDITION 1 — clause 4 matches rows over 100,000');
-    console.log('     people that A-89 names neither as a target nor as a false positive:');
-    for (const r of bigMulti) console.log(`       ${r.name} (${r.population}) cc2=[${r.cc2.join(',')}]`);
-    if (CLAUSE_4_ENABLED) {
-      throw new Error(
-        `A-83 Part 9 clause 4 removed ${bigMulti.length} row(s) over ${BIG} people that are neither ` +
-          "Antilles nor Hispaniola. A-89's false-positive claim was measured over 14 country files, " +
-          'not over the corpus. STOP AND REPORT rather than committing a data change nobody reviewed.',
-      );
-    }
-    console.log('     CLAUSE_4_ENABLED is false, so no row is dropped and the corpus is unchanged.');
+    console.log('  !! ROADMAP I-31 / A-93 Part 8 STOP-AND-REPORT — clause 4\'s match set is not the');
+    console.log('     sixteen rows A-93 Part 2 commits by name and by id. The cap is ZERO in either');
+    console.log('     direction, because a threshold is what let Vatican City through.');
+    for (const m of missing) console.log(`       MISSING (committed, not matched): ${m}`);
+    for (const a of added) console.log(`       ADDED   (matched, not committed): ${a}`);
+    throw new Error(
+      `A-83 Part 9 clause 4 matched ${built.clause4.length} rows: ${missing.length} of A-93 Part 2's ` +
+        `sixteen are missing and ${added.length} are new. STOP AND REPORT, writing nothing. A corpus ` +
+        'swap that changes this set is a reviewed golden update with the rows named in the commit ' +
+        'message (§0 position 11, sequencing rule 11), never an automatic regeneration.',
+    );
+  }
+  // **A-93 Part 8 condition 1 — structurally impossible under Part 2, which is the point.** It is
+  // the guard against the predicate being re-widened over the arm that denotes a point.
+  //
+  // **The condition is *"clause 4 matches any row of feature class `P`"*, and it is scoped to
+  // clause 4 rather than to every refusal.** ROADMAP `I-31` states the criterion one notch wider —
+  // *"no refused row of ANY reason has feature class `P`"* — and **that wider sentence is false on
+  // this corpus and was false before this increment**: `Bantam Village` (Cocos (Keeling) Islands,
+  // `P/PPL`) is refused under `'bare-name'`, because `CC` translates to `null` (the layer answers
+  // `null:3 AU:2`) and the row carries no region. It is one of the 18 pre-existing `bare-name`
+  // refusals and nothing here touches it. Disclosed in BUILD-NOTES as KD-126.
+  const classP = built.refusedRows.filter((r) => r.reason === 'multi-country' && r.cls === 'P');
+  if (classP.length) {
+    throw new Error(
+      `${classP.length} clause-4 refusal(s) have feature class P: ` +
+        `${classP.slice(0, 10).map((r) => r.name).join(', ')}. A-93 Part 8 condition 1: clause 4 ` +
+        'is scoped to the ISL/ISLS arm of A-83 Part 3\'s candidacy rule. STOP AND REPORT.',
+    );
   }
   if (built.atOrigin.length) {
     console.log('');

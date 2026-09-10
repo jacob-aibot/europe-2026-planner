@@ -64,7 +64,19 @@ const SHARD_MAP = join(GEO, 'gazetteerShards.gen.ts');
  * **pins** bytes anyone can obtain again, and to say plainly that **this corpus cannot be rebuilt
  * from source by anybody, including us**. That sentence is the whole diff.
  */
-const CORPUS_BYTES = 8_749_730;
+/**
+ * **8,749,730 → 8,748,083 at I-31, and every one of the 1,647 bytes is sixteen rows leaving.**
+ * §8.4 **A-93** re-cut A-83 Part 9 clause 4 against the whole corpus and this increment enabled
+ * it: **149,101 → 149,085 rows** across 25 shard documents, `+0 rows, ~0 changed`. The sixteen are
+ * multi-country landmasses — `Antilles`, `Borneo`, `Hispaniola`, `New Guinea`, `Usedom Island`,
+ * `Kunashir Island`, `Hawar Islands`, `Abu Musa Island`, `Shikotan Island`, both Tierra del
+ * Fuegos, `Sunda Islands`, `Hans Island`, `Liancourt Rocks`, `Iturup Island`, `Diomede Islands` —
+ * committed by name and by GeoNames id in `fixtures/golden/gazetteer-refusals.json` with a cap of
+ * **zero in either direction**. **`$sourceSha256` did not move**: this is a filter change over
+ * unchanged source bytes, so A-90's re-pin path is not entered and the source log gains no entry.
+ * The shard count (962) and the largest shard (`br`, 94,630 bytes) are unchanged.
+ */
+const CORPUS_BYTES = 8_748_083;
 
 /** A-83 Part 5 ceiling 1: **no single shard document may exceed 96 KiB raw.** */
 const SHARD_BUDGET = 96 * 1024;

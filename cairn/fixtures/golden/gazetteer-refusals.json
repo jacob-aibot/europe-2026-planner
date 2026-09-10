@@ -4,14 +4,59 @@
   "$sourceSha256": "509364760a7a56a00e188736912f20f328cb44f2ba15fbfbbabc4e65ced18ffb",
   "$fetched": "2026-09-10",
   "$what": "EVERY candidate row the generator REFUSED to ship, by name, with the reason. ARCHITECTURE §8.4 A-89 Part 3 (QA R67-10): A-83 Part 11 reused this filename for the disagreements, and from then on the refusals were published nowhere but as counts in a generated header — so \"a deliberate hole, countable, nameable and reviewable\" stopped being true of them. reason is drawn from a CLOSED set: bare-name (A-83 Part 9 clause 1 — no country and no region, so the label would be the name alone), unreadable (clause 2, or a name that folds to nothing), delimiter (A-83 Part 11 — a payload separator in a field), multi-country (clause 4, A-89 — cc2 names a country that is neither the row's stated code nor the code we would attribute it to). byReason IS the group sizes of the array below and the generated header is handed this object, not a second count beside it. cc2 is allCountries column 10 verbatim, uppercased and sorted; it is NOT validated against countryInfo.txt (A-89 Part 8 residue 3). NO COORDINATES: a refused row is not a row the corpus makes a claim about.",
-  "total": 18,
+  "total": 34,
   "byReason": {
     "bare-name": 18,
     "unreadable": 0,
     "delimiter": 0,
-    "multi-country": 0
+    "multi-country": 16
   },
   "refusals": [
+    {
+      "id": "gn:6a2f",
+      "name": "Abu Musa Island",
+      "statedCode": "IR",
+      "shippedCode": "IR",
+      "admin1": "Hormozgan",
+      "cc2": [
+        "AE"
+      ],
+      "cls": "T",
+      "population": 2131,
+      "reason": "multi-country"
+    },
+    {
+      "id": "gn:22u3k",
+      "name": "Antilles",
+      "statedCode": "AN",
+      "shippedCode": "DO",
+      "admin1": "",
+      "cc2": [
+        "AG",
+        "AW",
+        "BQ",
+        "CU",
+        "CW",
+        "DM",
+        "DO",
+        "GD",
+        "HT",
+        "JM",
+        "KN",
+        "KY",
+        "LC",
+        "MQ",
+        "MS",
+        "PR",
+        "VC",
+        "VE",
+        "VG",
+        "VI"
+      ],
+      "cls": "T",
+      "population": 42000000,
+      "reason": "multi-country"
+    },
     {
       "id": "gn:x5yu",
       "name": "Bantam Village",
@@ -19,8 +64,24 @@
       "shippedCode": null,
       "admin1": "",
       "cc2": [],
+      "cls": "P",
       "population": 500,
       "reason": "bare-name"
+    },
+    {
+      "id": "gn:zbpw",
+      "name": "Borneo",
+      "statedCode": "ID",
+      "shippedCode": "ID",
+      "admin1": "",
+      "cc2": [
+        "BN",
+        "ID",
+        "MY"
+      ],
+      "cls": "T",
+      "population": 21258000,
+      "reason": "multi-country"
     },
     {
       "id": "gn:1t7j4",
@@ -33,6 +94,7 @@
         "GG",
         "JE"
       ],
+      "cls": "T",
       "population": 158000,
       "reason": "bare-name"
     },
@@ -43,8 +105,23 @@
       "shippedCode": null,
       "admin1": "",
       "cc2": [],
+      "cls": "T",
       "population": 0,
       "reason": "bare-name"
+    },
+    {
+      "id": "gn:2eewy",
+      "name": "Diomede Islands",
+      "statedCode": "RU",
+      "shippedCode": "RU",
+      "admin1": "Chukotka",
+      "cc2": [
+        "RU",
+        "US"
+      ],
+      "cls": "T",
+      "population": 0,
+      "reason": "multi-country"
     },
     {
       "id": "gn:24pt6",
@@ -58,6 +135,7 @@
         "MF",
         "MQ"
       ],
+      "cls": "T",
       "population": 850000,
       "reason": "bare-name"
     },
@@ -75,6 +153,7 @@
         "KY",
         "PR"
       ],
+      "cls": "T",
       "population": 38000000,
       "reason": "bare-name"
     },
@@ -89,8 +168,49 @@
         "ID",
         "MY"
       ],
+      "cls": "T",
       "population": 0,
       "reason": "bare-name"
+    },
+    {
+      "id": "gn:3jyr8",
+      "name": "Hans Island",
+      "statedCode": "CA",
+      "shippedCode": "CA",
+      "admin1": "Nunavut",
+      "cc2": [
+        "GL"
+      ],
+      "cls": "T",
+      "population": 0,
+      "reason": "multi-country"
+    },
+    {
+      "id": "gn:4c51t",
+      "name": "Hawar Islands",
+      "statedCode": "BH",
+      "shippedCode": "BH",
+      "admin1": "",
+      "cc2": [
+        "QA"
+      ],
+      "cls": "T",
+      "population": 3875,
+      "reason": "multi-country"
+    },
+    {
+      "id": "gn:2344u",
+      "name": "Hispaniola",
+      "statedCode": "DO",
+      "shippedCode": "DO",
+      "admin1": "",
+      "cc2": [
+        "DO",
+        "HT"
+      ],
+      "cls": "T",
+      "population": 21107000,
+      "reason": "multi-country"
     },
     {
       "id": "gn:x5yj",
@@ -99,8 +219,49 @@
       "shippedCode": null,
       "admin1": "",
       "cc2": [],
+      "cls": "T",
       "population": 0,
       "reason": "bare-name"
+    },
+    {
+      "id": "gn:2a6oh",
+      "name": "Isla Grande de Tierra del Fuego",
+      "statedCode": "AR",
+      "shippedCode": "AR",
+      "admin1": "",
+      "cc2": [
+        "AR",
+        "CL"
+      ],
+      "cls": "T",
+      "population": 0,
+      "reason": "multi-country"
+    },
+    {
+      "id": "gn:19jsp",
+      "name": "Iturup Island",
+      "statedCode": "RU",
+      "shippedCode": "RU",
+      "admin1": "Sakhalin Oblast",
+      "cc2": [
+        "JP"
+      ],
+      "cls": "T",
+      "population": 0,
+      "reason": "multi-country"
+    },
+    {
+      "id": "gn:19iwi",
+      "name": "Kunashir Island",
+      "statedCode": "RU",
+      "shippedCode": "RU",
+      "admin1": "Sakhalin Oblast",
+      "cc2": [
+        "JP"
+      ],
+      "cls": "T",
+      "population": 7000,
+      "reason": "multi-country"
     },
     {
       "id": "gn:24pis",
@@ -125,8 +286,22 @@
         "VG",
         "VI"
       ],
+      "cls": "T",
       "population": 4000000,
       "reason": "bare-name"
+    },
+    {
+      "id": "gn:4st3d",
+      "name": "Liancourt Rocks",
+      "statedCode": "KR",
+      "shippedCode": "KR",
+      "admin1": "Gyeongsangbuk-do",
+      "cc2": [
+        "JP"
+      ],
+      "cls": "T",
+      "population": 0,
+      "reason": "multi-country"
     },
     {
       "id": "gn:1316n",
@@ -135,6 +310,7 @@
       "shippedCode": null,
       "admin1": "",
       "cc2": [],
+      "cls": "T",
       "population": 0,
       "reason": "bare-name"
     },
@@ -148,8 +324,23 @@
         "BS",
         "TC"
       ],
+      "cls": "T",
       "population": 450000,
       "reason": "bare-name"
+    },
+    {
+      "id": "gn:18mvm",
+      "name": "New Guinea",
+      "statedCode": "ID",
+      "shippedCode": "ID",
+      "admin1": "Highland Papua",
+      "cc2": [
+        "ID",
+        "PG"
+      ],
+      "cls": "T",
+      "population": 11818000,
+      "reason": "multi-country"
     },
     {
       "id": "gn:1314s",
@@ -158,8 +349,22 @@
       "shippedCode": null,
       "admin1": "",
       "cc2": [],
+      "cls": "T",
       "population": 0,
       "reason": "bare-name"
+    },
+    {
+      "id": "gn:19gsz",
+      "name": "Shikotan Island",
+      "statedCode": "RU",
+      "shippedCode": "RU",
+      "admin1": "Sakhalin Oblast",
+      "cc2": [
+        "JP"
+      ],
+      "cls": "T",
+      "population": 2100,
+      "reason": "multi-country"
     },
     {
       "id": "gn:13140",
@@ -168,6 +373,7 @@
       "shippedCode": null,
       "admin1": "",
       "cc2": [],
+      "cls": "T",
       "population": 0,
       "reason": "bare-name"
     },
@@ -178,6 +384,7 @@
       "shippedCode": null,
       "admin1": "",
       "cc2": [],
+      "cls": "T",
       "population": 0,
       "reason": "bare-name"
     },
@@ -188,8 +395,51 @@
       "shippedCode": null,
       "admin1": "",
       "cc2": [],
+      "cls": "T",
       "population": 0,
       "reason": "bare-name"
+    },
+    {
+      "id": "gn:yuo4",
+      "name": "Sunda Islands",
+      "statedCode": "ID",
+      "shippedCode": "ID",
+      "admin1": "",
+      "cc2": [
+        "BN",
+        "MY",
+        "TL"
+      ],
+      "cls": "T",
+      "population": 0,
+      "reason": "multi-country"
+    },
+    {
+      "id": "gn:2a6oj",
+      "name": "Tierra del Fuego",
+      "statedCode": "CL",
+      "shippedCode": "CL",
+      "admin1": "",
+      "cc2": [
+        "AR",
+        "CL"
+      ],
+      "cls": "T",
+      "population": 0,
+      "reason": "multi-country"
+    },
+    {
+      "id": "gn:1oegs",
+      "name": "Usedom Island",
+      "statedCode": "DE",
+      "shippedCode": "DE",
+      "admin1": "Mecklenburg-Vorpommern",
+      "cc2": [
+        "PL"
+      ],
+      "cls": "T",
+      "population": 76500,
+      "reason": "multi-country"
     },
     {
       "id": "gn:24oa2",
@@ -201,6 +451,7 @@
         "VG",
         "VI"
       ],
+      "cls": "T",
       "population": 0,
       "reason": "bare-name"
     },
@@ -211,6 +462,7 @@
       "shippedCode": null,
       "admin1": "",
       "cc2": [],
+      "cls": "T",
       "population": 120,
       "reason": "bare-name"
     },
@@ -227,6 +479,7 @@
         "MQ",
         "VC"
       ],
+      "cls": "T",
       "population": 850000,
       "reason": "bare-name"
     },
@@ -237,6 +490,7 @@
       "shippedCode": null,
       "admin1": "",
       "cc2": [],
+      "cls": "T",
       "population": 1443,
       "reason": "bare-name"
     }
