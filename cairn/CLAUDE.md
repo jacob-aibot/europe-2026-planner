@@ -15,6 +15,27 @@ adding, moving or trusting one.
 
 ## Document cost map
 
+**Every row re-measured at revision 71/74 (2026-09-10)** — `ARCHITECTURE` 567k → **573k** with §8.4's
+**A-93**, its five amendment banners on **A-89**'s heading, **A-89 Parts 2 and 8** and **A-83 Parts 3 and
+9**, and **§0's new position 12** (§8 alone 162k → **168k**; §0 stays 2k); §2, §4, §9 and §10 did not move.
+`ROADMAP` 241k → **245k** with **I-31**, the BUILT-and-STOPPED banner on **I-29**, the supersession of
+`I-29`'s stop-and-report condition 1, **Sequencing rule 12** and the revision-74 ledger entry (Phase 2
+alone 174k → **176k** as `doc-section` reports it). **This revision is ONE ruling and it is a correction to
+the previous revision's own** — `I-29`'s builder built A-89's clause 4 exactly as ruled, measured it
+against the corpus, found it **deletes `Vatican City`**, and honoured the stop-and-report rather than
+enabling it (**KD-124**). He was right. **A-93 is the predicate that ships and it is READ WITH A-89, never
+instead of it**: A-89 supplies Parts 1 and 3–7, A-93 supplies the rule. **A builder or breaker of `I-31`
+reads A-93 whole, then A-89 whole, then A-83 Parts 3 and 9, then A-84 Part 5, then BUILD-NOTES KD-122 and
+KD-124 — and nothing else**; not A-90, not A-91, not A-92, not A-85…A-88, not §2 whole, §4 or §10.
+`I-30`'s read is unchanged **except that A-93 joins the list of rulings it does not read**. **`I-31` is
+routed builder + breaker, and the round it owes is the one `59cad74` already owes** — including the three
+drifted `qa/` probes — not a second one. **`I-31` does not gate `I-30`**, which is still fenced by the
+unresolved visual direction and by nothing else. **Two rows moved with `I-29`'s own commits rather than
+with this revision** (measured here at `77b488f`, because `cairn/CLAUDE.md` is not a file a builder or
+breaker edits): `BUILD-NOTES` 311k → **315k** with the `I-29` addendum and **KD-124**, and
+`CAIRN_VISUAL_ROADMAP` re-measures at **73k**, not the 74k the row below records. `QA-FINDINGS` is unmoved
+at **410k** and `REVIEW` at **52k**: this revision opens no `.tsx`, adds no screen and runs no round.
+
 **Every row re-measured at revision 70/73 (2026-09-10)** — `ARCHITECTURE` 555k → **567k** with §8.4's
 **A-89**, **A-90**, **A-91** and **A-92** and their five amendment banners on **A-82 Part 10**, **A-83
 Parts 2, 3 and 9** and **A-84 Parts 5 and 7** (§8 alone 152k → **162k**), plus **§0's new position 11**
