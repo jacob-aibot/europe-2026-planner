@@ -6,7 +6,7 @@
   "description": "Pure domain model and itinerary engine. Zero runtime dependencies.",
   "exports": {
     ".": "./src/index.ts",
-    "./gazetteer": "./src/geo/gazetteer.gen.ts"
+    "./gazetteer": "./src/geo/gazetteerShards.gen.ts"
   },
   "main": "./src/index.ts"
 }

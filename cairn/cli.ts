@@ -8,7 +8,7 @@
  *   node cli.ts validate             validateTrip issues
  *   node cli.ts stats                lifetime travel statistics, derived (§8.4 A-31)
  *   node cli.ts cities "<query>" [--limit N]
- *                                    search the bundled offline city gazetteer (§8.4 A-82)
+ *                                    search the bundled offline city gazetteer (§8.4 A-83)
  *   node cli.ts photos a.jpg …       what each file's EXIF block actually says (§10.2, A-58)
  *   node cli.ts import               the legacy import report
  *   node cli.ts export [file] [--force]
@@ -469,36 +469,45 @@ function cmdPhotos() {
 }
 
 /**
- * The bundled offline city gazetteer, on the command line — ARCHITECTURE §8.4 **A-82**, Phase 2
- * **I-21**. This is the P1 caller that makes `searchGazetteer` a §2.10 surface symbol, and A-82
- * Part 2 reason 4 is why it exists at all: *"`cli.ts` gets a `cities` command in the same
- * increment, which is what lets a tester exercise this with no browser, no device and no UI."*
+ * The bundled offline city gazetteer, on the command line — ARCHITECTURE §8.4 **A-82**, **A-83**
+ * and **A-84**; ROADMAP Phase 2 **I-21** and **I-23**. This is the P1 caller that makes
+ * `searchGazetteer` a §2.10 surface symbol, and A-82 Part 2 reason 4 is why it exists at all:
+ * *"`cli.ts` gets a `cities` command in the same increment, which is what lets a tester exercise
+ * this with no browser, no device and no UI."*
  *
- * **`GAZETTEER` is reached by the bare subpath `@cairn/core/gazetteer`, dynamically, and never by
- * module path.** That is the whole boundary A-82 Part 9 draws: the dataset is ~380 kB and nothing
- * on a document's write path needs it, so it is a **second declared entry point** rather than a
- * symbol on the index. Importing it here by module path would be a ceiling (1) violation; importing
- * it statically at the top of this file would make every other `cli.ts` command pay for it.
+ * **The subpath now carries `loadGazetteerFor(query)`, not the corpus.** A-83 Part 6 shards the
+ * corpus across ~950 JSON documents behind dynamic imports, so a search fetches **one** of them
+ * (~20 kB gzipped) rather than all 8.6 MB. The boundary is unchanged and is what makes that
+ * possible: `@cairn/core/gazetteer` is a **second declared entry point**, reached by the bare
+ * subpath and never by module path, because nothing on a document's write path needs any of this.
  *
- * **A miss prints `no match: <query>` and is not silence.** An empty successful exit is how a
- * search feature lies about its coverage, and A-82 Part 1 measurement 3 measured that the misses
- * are the *routine* case — Hvar, Hallstatt, Positano, Interlaken are all absent from this layer.
+ * **The attribution is printed on every run, and that is a licence obligation rather than a
+ * courtesy.** GeoNames is **CC BY 4.0** — the first attribution obligation in this repository;
+ * Natural Earth was public domain and needed none. A-83 Part 2: *"any surface that renders a hit
+ * must render the attribution"*, and this command is the surface that makes that testable before
+ * a screen exists.
  *
- * **Every line carries the label `searchGazetteer` computed**, never a bare name: 196 folded names
- * in the shipped rows are carried by more than one row and three of them are called London
- * (A-82 Part 4).
+ * **Three answers, and they are three different things** (A-83 Part 6):
+ *
+ *  - **hits** — rows, each with the label `searchGazetteer` computed, never a bare name;
+ *  - **`no match`** — the corpus was searched and holds nothing. *A miss is a miss and the product
+ *    says so*; an empty successful exit is how a search feature lies about its coverage;
+ *  - **`keep typing`** — the query cannot resolve to one shard yet, so **nothing was searched**.
+ *    *"I have not looked yet" is not a miss*, and printing `no match` for it would be a lie.
  *
  * **Picking is not implemented here and that is deliberate.** A-82 Part 6 forbids matching a typed
  * name to a row without a human choosing it — this command prints candidates, and nothing in this
- * repository turns the top hit into a `City`. §8.4 **A-83** Part 8 makes that fence load-bearing
- * rather than merely stated: a picked row's country now outranks `countryOf`, so a system that
- * picked on a user's behalf would be putting a country on their lifetime map.
+ * repository turns the top hit into a `City`. §8.4 **A-84** makes that fence load-bearing rather
+ * than merely stated: a picked row's country is read off the pick and outranks `countryOf`, so a
+ * system that picked on a user's behalf would be putting a country on their lifetime map.
  */
+const ATTRIBUTION_PROBE = 'zurich';
+
 async function cmdCities() {
   const query = argv.slice(1).find((a) => !a.startsWith('--'));
   if (query === undefined || query.trim() === '') {
     out('usage: node cli.ts cities "<query>" [--limit N]');
-    out('Searches the bundled offline gazetteer (Natural Earth populated places, §8.4 A-82).');
+    out('Searches the bundled offline gazetteer (GeoNames under a notability filter, §8.4 A-83).');
     process.exitCode = 2;
     return;
   }
@@ -510,21 +519,36 @@ async function cmdCities() {
     return;
   }
 
-  const { GAZETTEER } = await import('@cairn/core/gazetteer');
-  const hits = core.searchGazetteer(query, GAZETTEER, { limit });
-  if (hits.length === 0) {
-    out(`no match: ${query}`);
+  const { loadGazetteerFor } = await import('@cairn/core/gazetteer');
+  const gazetteer = await loadGazetteerFor(query);
+  if (gazetteer === null) {
+    // A-83 Part 6: the query's first token cannot resolve to one shard — it is under two
+    // characters, or it is a prefix the corpus split, whose true answer is that prefix's whole
+    // subtree. **Nothing was searched.**
+    out(`keep typing: "${query}" is too short to search one shard`);
+    // The attribution is owed on every run, and the subpath's one symbol is the only way to reach
+    // it — so a query that is known to resolve stands in for the corpus that was not searched.
+    out(`source: ${(await loadGazetteerFor(ATTRIBUTION_PROBE))?.source ?? ''}`);
     return;
   }
-  for (const h of hits) {
-    // **§8.4 A-83 Part 8's marker, and it is why this command is the increment's product proof.**
-    // A row whose stated country and `countryOf(row.centre)` disagree ships carrying that
-    // disagreement rather than being dropped, so the line says so — *no shipped row may SILENTLY
-    // contradict the country index*. A tester sees the whole of I-22 here with no browser and no
-    // UI: `geneva` used to answer `no match`.
-    const mark = h.indexAgrees ? '' : '  ⚑ our country index disagrees — it says this point is elsewhere';
-    out(`${h.label} · ${h.centre.lat},${h.centre.lng} · ${h.countryCode || '—'}${mark}`);
+  const hits = core.searchGazetteer(query, gazetteer, { limit });
+  if (hits.length === 0) {
+    out(`no match: ${query}`);
   }
+  for (const h of hits) {
+    // **§8.4 A-84 Part 6's marker, and it fires on `'differs'` ONLY.** A row whose country and
+    // `countryOf(row.centre)` disagree ships carrying that disagreement rather than being dropped,
+    // so the line says so — *no shipped row may SILENTLY contradict the country index*. The field
+    // this reads used to be a boolean, and **all 436 rows the index was silent about claimed
+    // agreement**; `'silent'` is now its own value and is marked as neither.
+    const mark =
+      h.indexSays === 'differs'
+        ? '  ⚑ our country index disagrees — it says this point is elsewhere'
+        : '';
+    out(`${h.label} · ${h.centre.lat},${h.centre.lng} · ${h.countryCode ?? '—'}${mark}`);
+  }
+  // **The CC BY 4.0 attribution, on every run, hits or not.** A-83 Part 2 clause 1.
+  out(`source: ${gazetteer.source}`);
 }
 
 const commands: Record<string, () => void | Promise<void>> = {

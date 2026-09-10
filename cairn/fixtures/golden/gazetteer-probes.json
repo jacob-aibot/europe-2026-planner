@@ -1,468 +1,1160 @@
 {
   "$generatedBy": "cairn/tools/gen-gazetteer.mjs --audit-only --write",
-  "$source": "nvkelso/natural-earth-vector@v5.1.2/geojson/ne_10m_populated_places.geojson",
-  "$sourceSha256": "9b8e3de09048ef00dfc70357dbb9fa324493f214b5e0ae4daf1aa79a8d10116b",
-  "$what": "The top 5 hits searchGazetteer returns for each of ARCHITECTURE §8.4 A-82 Part 10's probe queries, over the committed GAZETTEER. This pins THE ANSWER, not the mechanism: a fold that stops handling a letter, a comparator whose tie moves, or a coordinate that shifted between source revisions all show up here as a diff. COORDINATES ARE PUBLISHED here deliberately — A-82 Part 10: country-holes.json's NO COORDINATES line has the live planner's own records as its subject, and this file's subject is a public-domain dataset already committed in full.",
+  "$source": "GeoNames geographical database (allCountries, alternateNamesV2, admin1CodesASCII, countryInfo), https://www.geonames.org/ — licensed CC BY 4.0, https://creativecommons.org/licenses/by/4.0/. Provided \"as is\", without any representation of accuracy, timeliness or completeness. Country outlines: Natural Earth ne_10m_admin_0_countries v5.1.2, public domain.",
+  "$sourceSha256": "f484e7ef8d61e993ea4a221418b117ac2f275a13fd47ead706593209a30f9daa",
+  "$fetched": "2026-09-10",
+  "$what": "The top 5 hits searchGazetteer returns for each probe query, over the ONE SHARD loadGazetteerFor resolves that query to — which is what a consumer gets. This pins THE ANSWER, not the mechanism: a fold that stops handling a letter, a comparator whose tie moves, a shard split that moves a row, or a coordinate that shifted between source revisions all show up here as a diff. COORDINATES ARE PUBLISHED here deliberately — A-82 Part 10: country-holes.json's NO COORDINATES line has the live planner's own records as its subject, and this file's subject is a licensed public dataset already committed in full.",
   "probeDepth": 5,
   "probes": [
     {
       "query": "zurich",
+      "shard": "zu",
       "hits": [
         {
-          "id": "ne:j64muf",
+          "id": "gn:1kyug",
           "name": "Zürich",
-          "label": "Zürich, Switzerland",
+          "label": "Zürich, Zurich, Switzerland",
           "countryCode": "CH",
-          "admin1": "Zürich",
+          "admin1": "Zurich",
           "centre": {
-            "lat": 47.3819,
-            "lng": 8.5481
+            "lat": 47.3667,
+            "lng": 8.55
           },
-          "indexAgrees": true
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:2js4b",
+          "name": "Zurich",
+          "label": "Zurich, Kansas, United States",
+          "countryCode": "US",
+          "admin1": "Kansas",
+          "centre": {
+            "lat": 39.2345,
+            "lng": -99.4382
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:3dwlm",
+          "name": "Zurich",
+          "label": "Zurich, Montana, United States",
+          "countryCode": "US",
+          "admin1": "Montana",
+          "centre": {
+            "lat": 48.5844,
+            "lng": -109.0304
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:3qxo3",
+          "name": "Zürich (Kreis 10)",
+          "label": "Zürich (Kreis 10), Zurich, Switzerland",
+          "countryCode": "CH",
+          "admin1": "Zurich",
+          "centre": {
+            "lat": 47.4077,
+            "lng": 8.5005
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:3qxnx",
+          "name": "Zürich (Kreis 11)",
+          "label": "Zürich (Kreis 11), Zurich, Switzerland",
+          "countryCode": "CH",
+          "admin1": "Zurich",
+          "centre": {
+            "lat": 47.4233,
+            "lng": 8.5217
+          },
+          "indexSays": "agrees"
         }
       ]
     },
     {
       "query": "Zürich",
+      "shard": "zu",
       "hits": [
         {
-          "id": "ne:j64muf",
+          "id": "gn:1kyug",
           "name": "Zürich",
-          "label": "Zürich, Switzerland",
+          "label": "Zürich, Zurich, Switzerland",
           "countryCode": "CH",
-          "admin1": "Zürich",
+          "admin1": "Zurich",
           "centre": {
-            "lat": 47.3819,
-            "lng": 8.5481
+            "lat": 47.3667,
+            "lng": 8.55
           },
-          "indexAgrees": true
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:2js4b",
+          "name": "Zurich",
+          "label": "Zurich, Kansas, United States",
+          "countryCode": "US",
+          "admin1": "Kansas",
+          "centre": {
+            "lat": 39.2345,
+            "lng": -99.4382
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:3dwlm",
+          "name": "Zurich",
+          "label": "Zurich, Montana, United States",
+          "countryCode": "US",
+          "admin1": "Montana",
+          "centre": {
+            "lat": 48.5844,
+            "lng": -109.0304
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:3qxo3",
+          "name": "Zürich (Kreis 10)",
+          "label": "Zürich (Kreis 10), Zurich, Switzerland",
+          "countryCode": "CH",
+          "admin1": "Zurich",
+          "centre": {
+            "lat": 47.4077,
+            "lng": 8.5005
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:3qxnx",
+          "name": "Zürich (Kreis 11)",
+          "label": "Zürich (Kreis 11), Zurich, Switzerland",
+          "countryCode": "CH",
+          "admin1": "Zurich",
+          "centre": {
+            "lat": 47.4233,
+            "lng": 8.5217
+          },
+          "indexSays": "agrees"
         }
       ]
     },
     {
       "query": "sao paulo",
+      "shard": "sao",
       "hits": [
         {
-          "id": "ne:j64n45",
+          "id": "gn:21wtz",
           "name": "São Paulo",
           "label": "São Paulo, Brazil",
           "countryCode": "BR",
           "admin1": "São Paulo",
           "centre": {
-            "lat": -23.5567,
-            "lng": -46.627
+            "lat": -23.5475,
+            "lng": -46.6361
           },
-          "indexAgrees": true
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:44w34",
+          "name": "São Paulo",
+          "label": "São Paulo, Lisbon, Portugal",
+          "countryCode": "PT",
+          "admin1": "Lisbon",
+          "centre": {
+            "lat": 38.7125,
+            "lng": -9.1431
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:26ht8",
+          "name": "São Paulo de Olivença",
+          "label": "São Paulo de Olivença, Amazonas, Brazil",
+          "countryCode": "BR",
+          "admin1": "Amazonas",
+          "centre": {
+            "lat": -3.3783,
+            "lng": -68.8725
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:20mdq",
+          "name": "São Paulo do Potengi",
+          "label": "São Paulo do Potengi, Rio Grande do Norte, Brazil",
+          "countryCode": "BR",
+          "admin1": "Rio Grande do Norte",
+          "centre": {
+            "lat": -5.895,
+            "lng": -35.7628
+          },
+          "indexSays": "agrees"
         }
       ]
     },
     {
       "query": "London",
+      "shard": "lo",
       "hits": [
         {
-          "id": "ne:j64n2x",
+          "id": "gn:1knxb",
           "name": "London",
-          "label": "London, Westminster, United Kingdom",
+          "label": "London, England, United Kingdom",
           "countryCode": "GB",
-          "admin1": "Westminster",
+          "admin1": "England",
           "centre": {
-            "lat": 51.5019,
-            "lng": -0.1187
+            "lat": 51.5085,
+            "lng": -0.1257
           },
-          "indexAgrees": true
+          "indexSays": "agrees"
         },
         {
-          "id": "ne:j647kv",
+          "id": "gn:3lutc",
           "name": "London",
           "label": "London, Ontario, Canada",
           "countryCode": "CA",
           "admin1": "Ontario",
           "centre": {
-            "lat": 42.97,
-            "lng": -81.25
+            "lat": 42.9834,
+            "lng": -81.233
           },
-          "indexAgrees": true
+          "indexSays": "agrees"
         },
         {
-          "id": "ne:j642r1",
+          "id": "gn:2otch",
           "name": "London",
-          "label": "London, Kentucky, United States of America",
+          "label": "London, Ohio, United States",
+          "countryCode": "US",
+          "admin1": "Ohio",
+          "centre": {
+            "lat": 39.8865,
+            "lng": -83.4482
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:2k53k",
+          "name": "London",
+          "label": "London, Kentucky, United States",
           "countryCode": "US",
           "admin1": "Kentucky",
           "centre": {
-            "lat": 37.1289,
-            "lng": -84.0834
+            "lat": 37.129,
+            "lng": -84.0833
           },
-          "indexAgrees": true
+          "indexSays": "agrees"
         },
         {
-          "id": "ne:j64acx",
-          "name": "Londonderry/Derry",
-          "label": "Londonderry/Derry, Derry, United Kingdom",
-          "countryCode": "GB",
-          "admin1": "Derry",
+          "id": "gn:2gapt",
+          "name": "London",
+          "label": "London, Arkansas, United States",
+          "countryCode": "US",
+          "admin1": "Arkansas",
           "centre": {
-            "lat": 55.0004,
-            "lng": -7.3333
+            "lat": 35.329,
+            "lng": -93.253
           },
-          "indexAgrees": true
-        },
-        {
-          "id": "ne:j64lhn",
-          "name": "East London",
-          "label": "East London, Eastern Cape, South Africa",
-          "countryCode": "ZA",
-          "admin1": "Eastern Cape",
-          "centre": {
-            "lat": -32.97,
-            "lng": 27.87
-          },
-          "indexAgrees": true
+          "indexSays": "agrees"
         }
       ]
     },
     {
       "query": "Paris",
+      "shard": "par",
       "hits": [
         {
-          "id": "ne:j64n3x",
+          "id": "gn:1s1y3",
           "name": "Paris",
           "label": "Paris, Île-de-France, France",
           "countryCode": "FR",
           "admin1": "Île-de-France",
           "centre": {
-            "lat": 48.8686,
-            "lng": 2.3314
+            "lat": 48.8534,
+            "lng": 2.3488
           },
-          "indexAgrees": true
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:2t43c",
+          "name": "Paris",
+          "label": "Paris, Texas, United States",
+          "countryCode": "US",
+          "admin1": "Texas",
+          "centre": {
+            "lat": 33.6609,
+            "lng": -95.5555
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:44swp",
+          "name": "Paris",
+          "label": "Paris, Ontario, Canada",
+          "countryCode": "CA",
+          "admin1": "Ontario",
+          "centre": {
+            "lat": 43.2,
+            "lng": -80.3833
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:2j0qr",
+          "name": "Paris",
+          "label": "Paris, Illinois, United States",
+          "countryCode": "US",
+          "admin1": "Illinois",
+          "centre": {
+            "lat": 39.6112,
+            "lng": -87.6961
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:2k8oi",
+          "name": "Paris",
+          "label": "Paris, Kentucky, United States",
+          "countryCode": "US",
+          "admin1": "Kentucky",
+          "centre": {
+            "lat": 38.2098,
+            "lng": -84.253
+          },
+          "indexSays": "agrees"
         }
       ]
     },
     {
       "query": "springfield",
+      "shard": "sp",
       "hits": [
         {
-          "id": "ne:j6429p",
+          "id": "gn:2mip4",
           "name": "Springfield",
-          "label": "Springfield, Massachusetts, United States of America",
-          "countryCode": "US",
-          "admin1": "Massachusetts",
-          "centre": {
-            "lat": 42.12,
-            "lng": -72.58
-          },
-          "indexAgrees": true
-        },
-        {
-          "id": "ne:j64juj",
-          "name": "Springfield",
-          "label": "Springfield, Missouri, United States of America",
+          "label": "Springfield, Missouri, United States",
           "countryCode": "US",
           "admin1": "Missouri",
           "centre": {
-            "lat": 37.18,
-            "lng": -93.32
+            "lat": 37.2153,
+            "lng": -93.2982
           },
-          "indexAgrees": true
+          "indexSays": "agrees"
         },
         {
-          "id": "ne:j64izj",
+          "id": "gn:2y4to",
           "name": "Springfield",
-          "label": "Springfield, Illinois, United States of America",
+          "label": "Springfield, Massachusetts, United States",
+          "countryCode": "US",
+          "admin1": "Massachusetts",
+          "centre": {
+            "lat": 42.1015,
+            "lng": -72.5898
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:2j3qm",
+          "name": "Springfield",
+          "label": "Springfield, Illinois, United States",
           "countryCode": "US",
           "admin1": "Illinois",
           "centre": {
-            "lat": 39.82,
-            "lng": -89.65
+            "lat": 39.8017,
+            "lng": -89.6437
           },
-          "indexAgrees": true
+          "indexSays": "agrees"
         },
         {
-          "id": "ne:j642ud",
+          "id": "gn:2ozs9",
           "name": "Springfield",
-          "label": "Springfield, Ohio, United States of America",
+          "label": "Springfield, Ohio, United States",
           "countryCode": "US",
           "admin1": "Ohio",
           "centre": {
-            "lat": 39.92,
-            "lng": -83.8
+            "lat": 39.9242,
+            "lng": -83.8088
           },
-          "indexAgrees": true
+          "indexSays": "agrees"
         },
         {
-          "id": "ne:j641jn",
+          "id": "gn:3fbth",
           "name": "Springfield",
-          "label": "Springfield, Oregon, United States of America",
+          "label": "Springfield, Oregon, United States",
           "countryCode": "US",
           "admin1": "Oregon",
           "centre": {
-            "lat": 44.0519,
-            "lng": -122.978
+            "lat": 44.0462,
+            "lng": -123.022
           },
-          "indexAgrees": true
+          "indexSays": "agrees"
         }
       ]
     },
     {
       "query": "york",
+      "shard": "y",
       "hits": [
         {
-          "id": "ne:j6497z",
+          "id": "gn:1kfwo",
           "name": "York",
-          "label": "York, Pennsylvania, United States of America",
+          "label": "York, England, United Kingdom",
+          "countryCode": "GB",
+          "admin1": "England",
+          "centre": {
+            "lat": 53.9576,
+            "lng": -1.0827
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:2psdj",
+          "name": "York",
+          "label": "York, Pennsylvania, United States",
           "countryCode": "US",
           "admin1": "Pennsylvania",
           "centre": {
-            "lat": 39.9629,
-            "lng": -76.728
+            "lat": 39.9626,
+            "lng": -76.7277
           },
-          "indexAgrees": true
+          "indexSays": "agrees"
         },
         {
-          "id": "ne:j64adb",
+          "id": "gn:2qmp3",
           "name": "York",
-          "label": "York, United Kingdom",
-          "countryCode": "GB",
-          "admin1": "York",
-          "centre": {
-            "lat": 53.9704,
-            "lng": -1.08
-          },
-          "indexAgrees": true
-        },
-        {
-          "id": "ne:j64gyn",
-          "name": "Yorkton",
-          "label": "Yorkton, Saskatchewan, Canada",
-          "countryCode": "CA",
-          "admin1": "Saskatchewan",
-          "centre": {
-            "lat": 51.2171,
-            "lng": -102.4665
-          },
-          "indexAgrees": true
-        },
-        {
-          "id": "ne:j64n2v",
-          "name": "New York",
-          "label": "New York, United States of America",
+          "label": "York, South Carolina, United States",
           "countryCode": "US",
-          "admin1": "New York",
+          "admin1": "South Carolina",
           "centre": {
-            "lat": 40.7519,
-            "lng": -73.982
+            "lat": 34.9943,
+            "lng": -81.242
           },
-          "indexAgrees": true
+          "indexSays": "agrees"
         },
         {
-          "id": "ne:j64j2p",
-          "name": "Leeds",
-          "label": "Leeds, West Yorkshire, United Kingdom",
-          "countryCode": "GB",
-          "admin1": "West Yorkshire",
+          "id": "gn:30xjv",
+          "name": "York",
+          "label": "York, Nebraska, United States",
+          "countryCode": "US",
+          "admin1": "Nebraska",
           "centre": {
-            "lat": 53.832,
-            "lng": -1.582
+            "lat": 40.8681,
+            "lng": -97.592
           },
-          "indexAgrees": true
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:183el",
+          "name": "York",
+          "label": "York, Western Australia, Australia",
+          "countryCode": "AU",
+          "admin1": "Western Australia",
+          "centre": {
+            "lat": -31.8881,
+            "lng": 116.7678
+          },
+          "indexSays": "agrees"
         }
       ]
     },
     {
       "query": "lodz",
+      "shard": "lo",
       "hits": [
         {
-          "id": "ne:j64kht",
+          "id": "gn:1uaod",
           "name": "Łódź",
-          "label": "Łódź, Lódz, Poland",
+          "label": "Łódź, Łódź Voivodeship, Poland",
           "countryCode": "PL",
-          "admin1": "Lódz",
+          "admin1": "Łódź Voivodeship",
           "centre": {
-            "lat": 51.7769,
-            "lng": 19.4494
+            "lat": 51.7706,
+            "lng": 19.4739
           },
-          "indexAgrees": true
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:1uj5w",
+          "name": "Aleksandrów Łódzki",
+          "label": "Aleksandrów Łódzki, Łódź Voivodeship, Poland",
+          "countryCode": "PL",
+          "admin1": "Łódź Voivodeship",
+          "centre": {
+            "lat": 51.8197,
+            "lng": 19.3038
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:1ucbx",
+          "name": "Konstantynów Łódzki",
+          "label": "Konstantynów Łódzki, Łódź Voivodeship, Poland",
+          "countryCode": "PL",
+          "admin1": "Łódź Voivodeship",
+          "centre": {
+            "lat": 51.7478,
+            "lng": 19.3256
+          },
+          "indexSays": "agrees"
         }
       ]
     },
     {
       "query": "istanbul",
+      "shard": "is",
       "hits": [
         {
-          "id": "ne:j64n2z",
+          "id": "gn:fyvo",
           "name": "Istanbul",
           "label": "Istanbul, Turkey",
           "countryCode": "TR",
           "admin1": "Istanbul",
           "centre": {
-            "lat": 41.1069,
-            "lng": 29.0081
+            "lat": 41.0138,
+            "lng": 28.9497
           },
-          "indexAgrees": true
+          "indexSays": "silent"
         }
       ]
     },
     {
       "query": "bac kan",
+      "shard": "bac",
       "hits": [
         {
-          "id": "ne:j63tan",
+          "id": "gn:y41e",
           "name": "Bắc Kạn",
-          "label": "Bắc Kạn, Ðông B?c, Vietnam",
+          "label": "Bắc Kạn, Thai Nguyen, Vietnam",
           "countryCode": "VN",
-          "admin1": "Ðông B?c",
+          "admin1": "Thai Nguyen",
           "centre": {
-            "lat": 22.1333,
-            "lng": 105.8333
+            "lat": 22.147,
+            "lng": 105.8348
           },
-          "indexAgrees": true
+          "indexSays": "agrees"
         }
       ]
     },
     {
       "query": "vatican",
+      "shard": "va",
       "hits": [
         {
-          "id": "ne:j644az",
+          "id": "gn:3zfg7",
           "name": "Vatican City",
-          "label": "Vatican City, Lazio, Vatican",
+          "label": "Vatican City, Vatican",
           "countryCode": "VA",
-          "admin1": "Lazio",
+          "admin1": "",
           "centre": {
-            "lat": 41.9033,
-            "lng": 12.4534
+            "lat": 41.9027,
+            "lng": 12.4541
           },
-          "indexAgrees": true
+          "indexSays": "differs"
         }
       ]
     },
     {
       "query": "nara",
+      "shard": "na",
       "hits": [
         {
-          "id": "ne:j64krt",
+          "id": "gn:1gkt3",
           "name": "Nara",
-          "label": "Nara, Bamako, Mali",
+          "label": "Nara, Koulikoro, Mali",
           "countryCode": "ML",
-          "admin1": "Bamako",
+          "admin1": "Koulikoro",
           "centre": {
-            "lat": 15.18,
-            "lng": -7.28
+            "lat": 15.1693,
+            "lng": -7.2898
           },
-          "indexAgrees": true
+          "indexSays": "agrees"
         },
         {
-          "id": "ne:j64hrf",
+          "id": "gn:13rss",
+          "name": "Nara-shi",
+          "label": "Nara-shi, Nara, Japan",
+          "countryCode": "JP",
+          "admin1": "Nara",
+          "centre": {
+            "lat": 34.685,
+            "lng": 135.8048
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:6ww57",
+          "name": "Narashino",
+          "label": "Narashino, Chiba, Japan",
+          "countryCode": "JP",
+          "admin1": "Chiba",
+          "centre": {
+            "lat": 35.6818,
+            "lng": 140.0415
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:pegz",
           "name": "Narayanganj",
-          "label": "Narayanganj, Dhaka, Bangladesh",
+          "label": "Narayanganj, Dhaka Division, Bangladesh",
           "countryCode": "BD",
-          "admin1": "Dhaka",
+          "admin1": "Dhaka Division",
           "centre": {
-            "lat": 23.6204,
-            "lng": 90.5
+            "lat": 23.6135,
+            "lng": 90.503
           },
-          "indexAgrees": true
+          "indexSays": "agrees"
         },
         {
-          "id": "ne:j64a0b",
-          "name": "Narathiwat",
-          "label": "Narathiwat, Thailand",
-          "countryCode": "TH",
-          "admin1": "Narathiwat",
+          "id": "gn:r1nc",
+          "name": "Narasaraopet",
+          "label": "Narasaraopet, Andhra Pradesh, India",
+          "countryCode": "IN",
+          "admin1": "Andhra Pradesh",
           "centre": {
-            "lat": 6.4318,
-            "lng": 101.8214
+            "lat": 16.2349,
+            "lng": 80.0493
           },
-          "indexAgrees": true
+          "indexSays": "agrees"
         }
       ]
     },
     {
       "query": "hvar",
-      "hits": []
+      "shard": "hv",
+      "hits": [
+        {
+          "id": "gn:1wki4",
+          "name": "Hvar",
+          "label": "Hvar, Split-Dalmatia, Croatia",
+          "countryCode": "HR",
+          "admin1": "Split-Dalmatia",
+          "centre": {
+            "lat": 43.1725,
+            "lng": 16.4428
+          },
+          "indexSays": "silent"
+        },
+        {
+          "id": "gn:1wki1",
+          "name": "Otok Hvar",
+          "label": "Otok Hvar, Split-Dalmatia, Croatia",
+          "countryCode": "HR",
+          "admin1": "Split-Dalmatia",
+          "centre": {
+            "lat": 43.1408,
+            "lng": 16.7283
+          },
+          "indexSays": "silent"
+        },
+        {
+          "id": "gn:f64h",
+          "name": "Hvardiyske",
+          "label": "Hvardiyske, Crimea, Ukraine",
+          "countryCode": "UA",
+          "admin1": "Crimea",
+          "centre": {
+            "lat": 45.1169,
+            "lng": 34.0219
+          },
+          "indexSays": "differs"
+        },
+        {
+          "id": "gn:f64g",
+          "name": "Hvardiiske",
+          "label": "Hvardiiske, Crimea, Ukraine",
+          "countryCode": "UA",
+          "admin1": "Crimea",
+          "centre": {
+            "lat": 45.5869,
+            "lng": 33.9768
+          },
+          "indexSays": "differs"
+        }
+      ]
     },
     {
       "query": "monaco",
+      "shard": "mon",
       "hits": [
         {
-          "id": "ne:j64l5h",
+          "id": "gn:1s5rm",
           "name": "Monaco",
-          "label": "Monaco, Monaco",
+          "label": "Monaco, Municipality of Monaco, Monaco",
           "countryCode": "MC",
-          "admin1": "",
+          "admin1": "Municipality of Monaco",
           "centre": {
-            "lat": 43.7396,
-            "lng": 7.4069
+            "lat": 43.7372,
+            "lng": 7.4215
           },
-          "indexAgrees": true
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:3psv3",
+          "name": "Monaco",
+          "label": "Monaco, Nelson Region, New Zealand",
+          "countryCode": "NZ",
+          "admin1": "Nelson Region",
+          "centre": {
+            "lat": -41.2983,
+            "lng": 173.2102
+          },
+          "indexSays": "agrees"
         }
       ]
     },
     {
       "query": "maastricht",
+      "shard": "maa",
       "hits": [
         {
-          "id": "ne:j63vld",
+          "id": "gn:1mywj",
           "name": "Maastricht",
-          "label": "Maastricht, Limburg, Netherlands",
+          "label": "Maastricht, Limburg, The Netherlands",
           "countryCode": "NL",
           "admin1": "Limburg",
           "centre": {
-            "lat": 50.853,
-            "lng": 5.677
+            "lat": 50.8483,
+            "lng": 5.6889
           },
-          "indexAgrees": false
+          "indexSays": "differs"
         }
       ]
     },
     {
       "query": "geneva",
+      "shard": "ge",
       "hits": [
         {
-          "id": "ne:j64n0x",
+          "id": "gn:1l0yu",
           "name": "Geneva",
-          "label": "Geneva, Genève, Switzerland",
+          "label": "Geneva, Switzerland",
           "countryCode": "CH",
-          "admin1": "Genève",
+          "admin1": "Geneva",
           "centre": {
-            "lat": 46.21,
-            "lng": 6.14
+            "lat": 46.2022,
+            "lng": 6.1457
           },
-          "indexAgrees": false
+          "indexSays": "differs"
+        },
+        {
+          "id": "gn:2wvx3",
+          "name": "Geneva",
+          "label": "Geneva, Illinois, United States",
+          "countryCode": "US",
+          "admin1": "Illinois",
+          "centre": {
+            "lat": 41.8875,
+            "lng": -88.3053
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:31pdq",
+          "name": "Geneva",
+          "label": "Geneva, New York, United States",
+          "countryCode": "US",
+          "admin1": "New York",
+          "centre": {
+            "lat": 42.869,
+            "lng": -76.9777
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:2f3qu",
+          "name": "Geneva",
+          "label": "Geneva, Alabama, United States",
+          "countryCode": "US",
+          "admin1": "Alabama",
+          "centre": {
+            "lat": 31.033,
+            "lng": -85.8638
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:2opwt",
+          "name": "Geneva",
+          "label": "Geneva, Ohio, United States",
+          "countryCode": "US",
+          "admin1": "Ohio",
+          "centre": {
+            "lat": 39.662,
+            "lng": -82.4335
+          },
+          "indexSays": "agrees"
         }
       ]
     },
     {
       "query": "jerusalem",
+      "shard": "je",
       "hits": [
         {
-          "id": "ne:j64msj",
+          "id": "gn:60yo",
           "name": "Jerusalem",
           "label": "Jerusalem, Israel",
           "countryCode": "IL",
           "admin1": "Jerusalem",
           "centre": {
-            "lat": 31.7784,
-            "lng": 35.2066
+            "lat": 31.769,
+            "lng": 35.2163
           },
-          "indexAgrees": false
+          "indexSays": "differs"
+        },
+        {
+          "id": "gn:1axdd",
+          "name": "Jerusalem",
+          "label": "Jerusalem, Manawatu-Wanganui, New Zealand",
+          "countryCode": "NZ",
+          "admin1": "Manawatu-Wanganui",
+          "centre": {
+            "lat": -39.55,
+            "lng": 175.0667
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:2g8c3",
+          "name": "Jerusalem",
+          "label": "Jerusalem, Arkansas, United States",
+          "countryCode": "US",
+          "admin1": "Arkansas",
+          "centre": {
+            "lat": 35.4048,
+            "lng": -92.8168
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:4cjcr",
+          "name": "East Jerusalem",
+          "label": "East Jerusalem, West Bank, Palestinian Territory",
+          "countryCode": "PS",
+          "admin1": "West Bank",
+          "centre": {
+            "lat": 31.7834,
+            "lng": 35.2339
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:4gpog",
+          "name": "West Jerusalem",
+          "label": "West Jerusalem, Jerusalem, Israel",
+          "countryCode": "IL",
+          "admin1": "Jerusalem",
+          "centre": {
+            "lat": 31.782,
+            "lng": 35.2196
+          },
+          "indexSays": "differs"
         }
       ]
     },
     {
       "query": "brazzaville",
+      "shard": "br",
       "hits": [
         {
-          "id": "ne:j64mmp",
+          "id": "gn:1cg8n",
           "name": "Brazzaville",
-          "label": "Brazzaville, Pool, Congo (Brazzaville)",
+          "label": "Brazzaville, Republic of the Congo",
           "countryCode": "CG",
-          "admin1": "Pool",
+          "admin1": "Brazzaville",
           "centre": {
-            "lat": -4.2572,
-            "lng": 15.2827
+            "lat": -4.2661,
+            "lng": 15.2832
           },
-          "indexAgrees": false
+          "indexSays": "differs"
+        }
+      ]
+    },
+    {
+      "query": "hallstatt",
+      "shard": "hal",
+      "hits": [
+        {
+          "id": "gn:1nipb",
+          "name": "Hallstatt",
+          "label": "Hallstatt, Upper Austria, Austria",
+          "countryCode": "AT",
+          "admin1": "Upper Austria",
+          "centre": {
+            "lat": 47.5623,
+            "lng": 13.6491
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:1nmnb",
+          "name": "Bad Goisern",
+          "label": "Bad Goisern, Upper Austria, Austria",
+          "countryCode": "AT",
+          "admin1": "Upper Austria",
+          "centre": {
+            "lat": 47.6425,
+            "lng": 13.6161
+          },
+          "indexSays": "agrees"
+        }
+      ]
+    },
+    {
+      "query": "positano",
+      "shard": "pos",
+      "hits": [
+        {
+          "id": "gn:1vy0z",
+          "name": "Positano",
+          "label": "Positano, Campania, Italy",
+          "countryCode": "IT",
+          "admin1": "Campania",
+          "centre": {
+            "lat": 40.6283,
+            "lng": 14.4843
+          },
+          "indexSays": "silent"
+        }
+      ]
+    },
+    {
+      "query": "zermatt",
+      "shard": "ze",
+      "hits": [
+        {
+          "id": "gn:1kyvc",
+          "name": "Zermatt",
+          "label": "Zermatt, Valais, Switzerland",
+          "countryCode": "CH",
+          "admin1": "Valais",
+          "centre": {
+            "lat": 46.02,
+            "lng": 7.7486
+          },
+          "indexSays": "agrees"
+        }
+      ]
+    },
+    {
+      "query": "sintra",
+      "shard": "si",
+      "hits": [
+        {
+          "id": "gn:1ci2o",
+          "name": "Sintra",
+          "label": "Sintra, Lisbon, Portugal",
+          "countryCode": "PT",
+          "admin1": "Lisbon",
+          "centre": {
+            "lat": 38.801,
+            "lng": -9.3783
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:84h4i",
+          "name": "Sintra-Nema",
+          "label": "Sintra-Nema, Bissau, Guinea-Bissau",
+          "countryCode": "GW",
+          "admin1": "Bissau",
+          "centre": {
+            "lat": 11.8624,
+            "lng": -15.5974
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:20bhh",
+          "name": "Nova Sintra",
+          "label": "Nova Sintra, Brava, Cabo Verde",
+          "countryCode": "CV",
+          "admin1": "Brava",
+          "centre": {
+            "lat": 14.8714,
+            "lng": -24.6956
+          },
+          "indexSays": "agrees"
+        }
+      ]
+    },
+    {
+      "query": "cesky krumlov",
+      "shard": "ce",
+      "hits": [
+        {
+          "id": "gn:1tywx",
+          "name": "Český Krumlov",
+          "label": "Český Krumlov, South Bohemian Region, Czechia",
+          "countryCode": "CZ",
+          "admin1": "South Bohemian Region",
+          "centre": {
+            "lat": 48.8109,
+            "lng": 14.3152
+          },
+          "indexSays": "agrees"
+        }
+      ]
+    },
+    {
+      "query": "matera",
+      "shard": "mat",
+      "hits": [
+        {
+          "id": "gn:1w0ux",
+          "name": "Matera",
+          "label": "Matera, Basilicate, Italy",
+          "countryCode": "IT",
+          "admin1": "Basilicate",
+          "centre": {
+            "lat": 40.666,
+            "lng": 16.6046
+          },
+          "indexSays": "agrees"
+        }
+      ]
+    },
+    {
+      "query": "carcassonne",
+      "shard": "car",
+      "hits": [
+        {
+          "id": "gn:1swwx",
+          "name": "Carcassonne",
+          "label": "Carcassonne, Occitanie, France",
+          "countryCode": "FR",
+          "admin1": "Occitanie",
+          "centre": {
+            "lat": 43.2165,
+            "lng": 2.3486
+          },
+          "indexSays": "agrees"
+        }
+      ]
+    },
+    {
+      "query": "interlaken",
+      "shard": "in",
+      "hits": [
+        {
+          "id": "gn:1l0nx",
+          "name": "Interlaken",
+          "label": "Interlaken, Bern, Switzerland",
+          "countryCode": "CH",
+          "admin1": "Bern",
+          "centre": {
+            "lat": 46.6839,
+            "lng": 7.8664
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:36vh5",
+          "name": "Interlaken",
+          "label": "Interlaken, California, United States",
+          "countryCode": "US",
+          "admin1": "California",
+          "centre": {
+            "lat": 36.9513,
+            "lng": -121.7338
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:1l09f",
+          "name": "Matten",
+          "label": "Matten, Bern, Switzerland",
+          "countryCode": "CH",
+          "admin1": "Bern",
+          "centre": {
+            "lat": 46.6783,
+            "lng": 7.8689
+          },
+          "indexSays": "agrees"
+        }
+      ]
+    },
+    {
+      "query": "obidos",
+      "shard": "ob",
+      "hits": [
+        {
+          "id": "gn:20qnc",
+          "name": "Óbidos",
+          "label": "Óbidos, Pará, Brazil",
+          "countryCode": "BR",
+          "admin1": "Pará",
+          "centre": {
+            "lat": -1.9175,
+            "lng": -55.5181
+          },
+          "indexSays": "agrees"
+        },
+        {
+          "id": "gn:1ck25",
+          "name": "Óbidos",
+          "label": "Óbidos, Leiria, Portugal",
+          "countryCode": "PT",
+          "admin1": "Leiria",
+          "centre": {
+            "lat": 39.3606,
+            "lng": -9.1567
+          },
+          "indexSays": "agrees"
+        }
+      ]
+    },
+    {
+      "query": "fort de france",
+      "shard": "fo",
+      "hits": [
+        {
+          "id": "gn:24j5f",
+          "name": "Fort-de-France",
+          "label": "Fort-de-France, Martinique, France",
+          "countryCode": "FR",
+          "admin1": "Martinique",
+          "centre": {
+            "lat": 14.6037,
+            "lng": -61.0742
+          },
+          "indexSays": "silent"
+        }
+      ]
+    },
+    {
+      "query": "longyearbyen",
+      "shard": "lo",
+      "hits": [
+        {
+          "id": "gn:1mier",
+          "name": "Longyearbyen",
+          "label": "Longyearbyen, Svalbard, Norway",
+          "countryCode": "NO",
+          "admin1": "Svalbard",
+          "centre": {
+            "lat": 78.2233,
+            "lng": 15.6469
+          },
+          "indexSays": "agrees"
+        }
+      ]
+    },
+    {
+      "query": "hargeisa",
+      "shard": "har",
+      "hits": [
+        {
+          "id": "gn:187d",
+          "name": "Hargeysa",
+          "label": "Hargeysa, Woqooyi Galbeed, Somalia",
+          "countryCode": "SO",
+          "admin1": "Woqooyi Galbeed",
+          "centre": {
+            "lat": 9.56,
+            "lng": 44.065
+          },
+          "indexSays": "silent"
         }
       ]
     }

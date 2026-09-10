@@ -20,8 +20,8 @@
  *   4. the mint takes a **row**, so a caller that does not hold one cannot call it (N7).
  *
  * The coordinates below are the shipped gazetteer's own and are **re-derived**, not copied:
- * Geneva `ne:j64n0x` at `{46.21, 6.14}` stating `CH`, where `countryOf` says **`FR`**; Vienna
- * `ne:j64n2j` at `{48.202, 16.3647}` stating `AT`.
+ * Geneva `gn:1l0yu` at `{46.2022, 6.1457}` stating `CH`, where `countryOf` says **`FR`**; Vienna
+ * `gn:1n6op` at `{48.2085, 16.3721}` stating `AT`.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -35,28 +35,32 @@ import type { BuildCtx, City, CityPick, GazetteerRow, Trip, TripSummaryRow } fro
 // **Not on §2.10's surface, deliberately** — the ladder's reporting shape is reached by module
 // path, exactly as `nullCentre.test.ts` already reaches it, so the export count stays at 88.
 import { migrateDocWithReport } from '../src/serialize/migrate.ts';
-import { GAZETTEER } from '../src/geo/gazetteer.gen.ts';
+// **The corpus is sharded at I-23**, so a row is found the way a consumer finds one: through the
+// subpath's one runtime symbol, which resolves the query to a single shard.
+import { loadGazetteerFor } from '../src/geo/gazetteerShards.gen.ts';
 
 const ctx = (p: string): BuildCtx => ({ ids: sequentialIds(`${p}-`), now: '2026-06-15' });
 
 /** The shipped row, found the way a human finds it: by typing a name. */
-function row(query: string): GazetteerRow {
-  const hits = searchGazetteer(query, GAZETTEER, { limit: 5 });
+async function row(query: string): Promise<GazetteerRow> {
+  const gazetteer = await loadGazetteerFor(query);
+  assert.ok(gazetteer, `"${query}" is too short to resolve to one shard`);
+  const hits = searchGazetteer(query, gazetteer, { limit: 5 });
   assert.ok(hits.length > 0, `the shipped gazetteer has no row for "${query}"`);
   return hits[0];
 }
 
-const GENEVA = row('geneva');
-const VIENNA = row('vienna');
+const GENEVA = await row('geneva');
+const VIENNA = await row('vienna');
 
 test('I-22a: the two shipped rows this file rests on are what A-84 says they are', () => {
   assert.deepEqual(
     { id: GENEVA.id, centre: GENEVA.centre, countryCode: GENEVA.countryCode },
-    { id: 'ne:j64n0x', centre: { lat: 46.21, lng: 6.14 }, countryCode: 'CH' },
+    { id: 'gn:1l0yu', centre: { lat: 46.2022, lng: 6.1457 }, countryCode: 'CH' },
   );
   assert.deepEqual(
     { id: VIENNA.id, centre: VIENNA.centre, countryCode: VIENNA.countryCode },
-    { id: 'ne:j64n2j', centre: { lat: 48.202, lng: 16.3647 }, countryCode: 'AT' },
+    { id: 'gn:1n6op', centre: { lat: 48.2085, lng: 16.3721 }, countryCode: 'AT' },
   );
 });
 
@@ -86,8 +90,8 @@ function pickedGeneva(): Trip {
       title: 'Geneva, picked', startDate: '2019-03-01', endDate: '2019-03-04', homeCurrency: 'EUR',
       cities: [{
         key: 'geneva', name: 'Geneva', countryCode: 'HU',
-        centre: { lat: 46.21, lng: 6.14 },
-        pick: { rowId: 'ne:j64n0x', centre: { lat: 46.21, lng: 6.14 }, countryCode: 'CH' },
+        centre: { lat: 46.2022, lng: 6.1457 },
+        pick: { rowId: 'gn:1l0yu', centre: { lat: 46.2022, lng: 6.1457 }, countryCode: 'CH' },
       }],
     },
     ctx('picked'),
@@ -110,7 +114,7 @@ test('I-22a A-84 Part 3 clause 1: a TYPED city\'s code still loses to countryOf,
   const trip = createTrip(
     {
       title: 'Geneva, typed', startDate: '2019-03-01', endDate: '2019-03-04', homeCurrency: 'EUR',
-      cities: [{ key: 'geneva', name: 'Geneva', countryCode: 'CH', centre: { lat: 46.21, lng: 6.14 } }],
+      cities: [{ key: 'geneva', name: 'Geneva', countryCode: 'CH', centre: { lat: 46.2022, lng: 6.1457 } }],
     },
     ctx('typed'),
   );
@@ -150,7 +154,7 @@ test('I-22a A-84 Part 3 clause 3 (N4): moving the city\'s centre makes the pick 
   const trip = pickedGeneva();
   const moved = setTripMeta(
     trip,
-    { cities: trip.cities.map((c): City => ({ ...c, centre: { lat: 48.202, lng: 16.3647 } })) },
+    { cities: trip.cities.map((c): City => ({ ...c, centre: { lat: 48.2085, lng: 16.3721 } })) },
     ctx('n4'),
   );
   const summary = tripSummary(moved, COUNTRY_INDEX);
@@ -191,7 +195,7 @@ function docWithPick(pick: unknown): string {
   const trip = createTrip(
     {
       title: 'Ceiling', startDate: '2019-03-01', endDate: '2019-03-02', homeCurrency: 'EUR',
-      cities: [{ key: 'k', name: 'K', centre: { lat: 46.21, lng: 6.14 } }],
+      cities: [{ key: 'k', name: 'K', centre: { lat: 46.2022, lng: 6.1457 } }],
     },
     ctx('ceil'),
   );
@@ -200,12 +204,12 @@ function docWithPick(pick: unknown): string {
   return JSON.stringify(doc);
 }
 
-const GOOD_PICK = { rowId: 'ne:j64n0x', centre: { lat: 46.21, lng: 6.14 }, countryCode: 'CH' };
+const GOOD_PICK = { rowId: 'gn:1l0yu', centre: { lat: 46.2022, lng: 6.1457 }, countryCode: 'CH' };
 
 /** Every shape the parser must refuse, with the JSON path fragment its reason must name. */
 const REFUSED: ReadonlyArray<{ what: string; pick: unknown; at: string }> = [
   // `pick` itself
-  { what: 'a string rather than an object', pick: 'ne:j64n0x', at: '$.cities[0].pick' },
+  { what: 'a string rather than an object', pick: 'gn:1l0yu', at: '$.cities[0].pick' },
   { what: 'an array', pick: [], at: '$.cities[0].pick' },
   { what: 'a number', pick: 3, at: '$.cities[0].pick' },
   // rowId
@@ -220,7 +224,7 @@ const REFUSED: ReadonlyArray<{ what: string; pick: unknown; at: string }> = [
   { what: 'rowId null', pick: { ...GOOD_PICK, rowId: null }, at: '$.cities[0].pick.rowId' },
   { what: 'rowId absent', pick: { centre: GOOD_PICK.centre, countryCode: 'CH' }, at: '$.cities[0].pick.rowId' },
   // centre — never null, because clause 3 needs it
-  { what: 'centre absent', pick: { rowId: 'ne:j64n0x', countryCode: 'CH' }, at: '$.cities[0].pick.centre' },
+  { what: 'centre absent', pick: { rowId: 'gn:1l0yu', countryCode: 'CH' }, at: '$.cities[0].pick.centre' },
   { what: 'centre null', pick: { ...GOOD_PICK, centre: null }, at: '$.cities[0].pick.centre' },
   { what: "centre {lat:'1'}", pick: { ...GOOD_PICK, centre: { lat: '1', lng: 2 } }, at: '$.cities[0].pick.centre.lat' },
   // countryCode — uppercase exactly, never trimmed
@@ -229,7 +233,7 @@ const REFUSED: ReadonlyArray<{ what: string; pick: unknown; at: string }> = [
   { what: "countryCode 'HUN'", pick: { ...GOOD_PICK, countryCode: 'HUN' }, at: '$.cities[0].pick.countryCode' },
   { what: "countryCode ''", pick: { ...GOOD_PICK, countryCode: '' }, at: '$.cities[0].pick.countryCode' },
   { what: 'countryCode 3', pick: { ...GOOD_PICK, countryCode: 3 }, at: '$.cities[0].pick.countryCode' },
-  { what: 'countryCode absent', pick: { rowId: 'ne:j64n0x', centre: GOOD_PICK.centre }, at: '$.cities[0].pick.countryCode' },
+  { what: 'countryCode absent', pick: { rowId: 'gn:1l0yu', centre: GOOD_PICK.centre }, at: '$.cities[0].pick.countryCode' },
 ];
 
 test('I-22a A-84 Part 3 clause 2 (N5): the pick is refused WHOLE, each at its own named path — a ceiling', () => {
@@ -278,7 +282,7 @@ test('I-22a: `pick` ABSENT is refused by the parser — the migration rung is th
 // N6 — every build door is behind the parser, with no new mechanism.
 // ---------------------------------------------------------------------------
 
-const BAD_PICK = { rowId: ':', centre: { lat: 46.21, lng: 6.14 }, countryCode: 'CH' } as unknown as CityPick;
+const BAD_PICK = { rowId: ':', centre: { lat: 46.2022, lng: 6.1457 }, countryCode: 'CH' } as unknown as CityPick;
 
 /**
  * **The path a door reports is `commit`'s, not `fromJSON`'s, and that is the shipped A-77
@@ -331,7 +335,7 @@ test('I-22a (N6): neither door contains the pick\'s SHAPE RULE — the parser is
 
 test('I-22a A-84 Part 3 clause 4 (N7): `cityPickFromRow` copies the row, and the pick reaches a summary as {CH, picked}', () => {
   const pick = cityPickFromRow(GENEVA);
-  assert.deepEqual(pick, { rowId: 'ne:j64n0x', centre: { lat: 46.21, lng: 6.14 }, countryCode: 'CH' });
+  assert.deepEqual(pick, { rowId: 'gn:1l0yu', centre: { lat: 46.2022, lng: 6.1457 }, countryCode: 'CH' });
   // A fresh object, not the row's own — a summary row that aliased the corpus would let a write
   // to a trip land in the gazetteer (A-56 Part 2 / R43-1, one type over).
   assert.notEqual(pick.centre, GENEVA.centre, 'the mint handed back the ROW\'s centre object');
@@ -444,6 +448,8 @@ test('I-22a (R61-11): the committed v3 fixture pins the 3 → 4 rung too — one
     ['Kyoto'],
     'the rung nulled a coordinate that was not {0,0}',
   );
+  // The fixture's own coordinate, which is a property of the committed v3 document and NOT of the
+  // gazetteer — it does not move when the corpus does.
   assert.deepEqual(after.cities[0].centre, { lat: 46.21, lng: 6.14 });
   assert.deepEqual(after.cities.map((c) => c.pick), [null, null]);
 });

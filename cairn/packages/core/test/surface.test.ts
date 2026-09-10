@@ -138,26 +138,31 @@ test('§2.10 is 88 symbols, and the list in this file is exactly that long', () 
  * **§2.10's FIRST second entry point, asserted by its own set equality** — §8.4 **A-82** Part 9,
  * Phase 2 I-21.
  *
- * `@cairn/core/gazetteer` carries **exactly one runtime symbol**, `GAZETTEER`, and it is *not* part
- * of the 88 above. The subpath exists because unlike `COUNTRY_INDEX` the gazetteer is **not on the
- * write path**, so its ~380 kB is dynamically imported rather than shipped in every consumer's main
- * chunk. It is a **door, not a reach-in**: ceiling (1) still forbids importing `geo/gazetteer.gen.ts`
- * by module path, and this assertion is what keeps the subpath from quietly growing into a back door
- * around §2.10 — a second symbol here would be a widening nobody had to write a line of §2.10 for.
+ * `@cairn/core/gazetteer` carries **exactly one runtime symbol**, and it is *not* part of the 88
+ * above. **At I-23 (§8.4 A-83 Part 7) that symbol is renamed `GAZETTEER` → `loadGazetteerFor`**,
+ * because the corpus is now 966 shard documents and a consumer is handed the **one** its query
+ * resolves to rather than all 8.7 MB. The count is unchanged and so is the reason for it: unlike
+ * `COUNTRY_INDEX` the gazetteer is **not on the write path**, so it is dynamically imported rather
+ * than shipped in every consumer's main chunk. It is a **door, not a reach-in**: ceiling (1) still
+ * forbids importing `geo/gazetteerShards.gen.ts` by module path, and this assertion is what keeps
+ * the subpath from quietly growing into a back door around §2.10 — a second symbol here would be a
+ * widening nobody had to write a line of §2.10 for.
  *
  * A second subpath is an architect's ruling, not a builder's convenience.
  */
-test('the @cairn/core/gazetteer subpath exports exactly one runtime symbol, GAZETTEER', () => {
+test('the @cairn/core/gazetteer subpath exports exactly one runtime symbol, loadGazetteerFor', () => {
   const actual = Object.keys(gazetteerSubpath)
     .filter((k) => typeof (gazetteerSubpath as Record<string, unknown>)[k] !== 'undefined')
     .sort();
-  assert.deepEqual(actual, ['GAZETTEER'], 'the second entry point is not exactly { GAZETTEER }');
-  assert.equal(
-    Object.prototype.hasOwnProperty.call(core, 'GAZETTEER'),
-    false,
-    'GAZETTEER reached the main index: every consumer now pays ~380 kB for a dataset only a city ' +
-      'search needs (A-82 Part 9)',
-  );
+  assert.deepEqual(actual, ['loadGazetteerFor'], 'the second entry point is not exactly { loadGazetteerFor }');
+  for (const name of ['loadGazetteerFor', 'GAZETTEER']) {
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(core, name),
+      false,
+      `${name} reached the main index: every consumer now pays for a corpus only a city search ` +
+        'needs (A-82 Part 9, A-83 Part 5)',
+    );
+  }
 });
 
 test('the index exports exactly §2.10\'s list — set equality, both directions', () => {

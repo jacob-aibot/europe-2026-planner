@@ -309,7 +309,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, sep } from 'node:path';
 
 import { parseTripEnvelope, parseResolution, TripParseError, fromJSON } from '../src/serialize/fromJSON.ts';
 import { toJSON } from '../src/serialize/toJSON.ts';
@@ -365,7 +365,7 @@ import * as DeriveTravelStats from '../src/derive/travelStats.ts';
 import * as GeoCountriesGen from '../src/geo/countries.gen.ts';
 import * as GeoCountryIndex from '../src/geo/countryIndex.ts';
 import * as GeoGazetteer from '../src/geo/gazetteer.ts';
-import * as GeoGazetteerGen from '../src/geo/gazetteer.gen.ts';
+import * as GeoGazetteerShards from '../src/geo/gazetteerShards.gen.ts';
 import * as ImportLegacyDays from '../src/import/legacyDays.ts';
 import * as IndexBarrel from '../src/index.ts';
 import * as MergeTripsMod from '../src/merge/mergeTrips.ts';
@@ -665,7 +665,10 @@ const CENSUS = [
   // A-78 Part 1's census checks its list against a **recursive read of `packages/core/src`** — two
   // new modules redden `npm run typecheck` until they are listed, and that is the census working.
   ['geo/gazetteer.ts', GeoGazetteer],
-  ['geo/gazetteer.gen.ts', GeoGazetteerGen],
+  // **I-23 replaced `geo/gazetteer.gen.ts` with `geo/gazetteerShards.gen.ts`** — the corpus itself
+  // is 966 JSON documents under `geo/gazetteer/`, and the census walks `.ts` and does not see
+  // JSON. Still not a door: `loadGazetteerFor` returns a `Gazetteer`, so `DOORS` does not move.
+  ['geo/gazetteerShards.gen.ts', GeoGazetteerShards],
   ['import/legacyDays.ts', ImportLegacyDays],
   ['index.ts', IndexBarrel],
   ['merge/mergeTrips.ts', MergeTripsMod],
@@ -1426,14 +1429,40 @@ test('A-78 Part 1: every `.ts` file under packages/core/src is censused, and eve
   );
 });
 
-test('A-78 Part 1: there is nothing else under packages/core/src — no `.d.ts`, no non-`.ts` file', () => {
+test('A-78 Part 1: there is nothing else under packages/core/src — no `.d.ts`, no unruled non-`.ts` file', () => {
   // A `.d.ts` cannot be namespace-imported the way `CENSUS` requires and could declare a door over
   // a JS implementation; core is zero-dependency and has neither today.
-  const strays = walk(SRC).filter((f) => !f.endsWith('.ts') || f.endsWith('.d.ts'));
+  //
+  // **The one exemption is ARCHITECTURE §8.4 A-83 Part 5's own, and it is an architect's ruling
+  // rather than a builder's convenience** (ROADMAP I-23; disclosed as **KD-121**): the sharded gazetteer ships as JSON
+  // *"under `packages/core/src/geo/gazetteer/`"*, by name, precisely **because a `.json` file is
+  // not TypeScript** and therefore does not meet the 1,048,576-byte type-stripping ceiling that
+  // the corpus could never fit under. A JSON document cannot declare a door — it has no
+  // declarations — so the reason this guard exists does not reach it.
+  //
+  // The exemption is **not** a hole: it is scoped to one directory, and the assertion below is
+  // positive. Every file in it must be a `.json` document the generated shard map or `meta.json`
+  // names, so nothing can be parked there.
+  const CORPUS = `geo${sep}gazetteer${sep}`;
+  const strays = walk(SRC)
+    .filter((f) => !f.startsWith(CORPUS))
+    .filter((f) => !f.endsWith('.ts') || f.endsWith('.d.ts'));
   assert.deepEqual(
     strays, [],
     'a file under `packages/core/src` is not a namespace-importable `.ts` module. An architect ' +
     'rules on this file; do not exclude it.',
+  );
+
+  const shardMap = readFileSync(resolve(SRC, 'geo', 'gazetteerShards.gen.ts'), 'utf8');
+  const unnamed = walk(SRC)
+    .filter((f) => f.startsWith(CORPUS))
+    .map((f) => f.slice(CORPUS.length))
+    .filter((n) => n !== 'meta.json' || !n.endsWith('.json'))
+    .filter((n) => n !== 'meta.json' && !shardMap.includes(`'./gazetteer/${n}'`));
+  assert.deepEqual(
+    unnamed, [],
+    'a file under `packages/core/src/geo/gazetteer/` is not a shard document the generated map ' +
+    'imports. The exemption above covers the corpus, not a parking space.',
   );
 });
 

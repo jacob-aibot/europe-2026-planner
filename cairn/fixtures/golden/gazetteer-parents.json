@@ -1,0 +1,1090 @@
+{
+  "$generatedBy": "cairn/tools/gen-gazetteer.mjs",
+  "$source": "GeoNames geographical database (allCountries, alternateNamesV2, admin1CodesASCII, countryInfo), https://www.geonames.org/ — licensed CC BY 4.0, https://creativecommons.org/licenses/by/4.0/. Provided \"as is\", without any representation of accuracy, timeliness or completeness. Country outlines: Natural Earth ne_10m_admin_0_countries v5.1.2, public domain.",
+  "$sourceSha256": "f484e7ef8d61e993ea4a221418b117ac2f275a13fd47ead706593209a30f9daa",
+  "$fetched": "2026-09-10",
+  "$what": "Every shipped row whose SOURCE-STATED country code is not one COUNTRY_INDEX can draw — the empty code included — with the code it ships instead. ARCHITECTURE §8.4 A-84 Part 5 (QA R61-3): A-29 step 4 refused these codes on the stated ground that \"the coordinate attribution already answers the parent\", and for six of the eight codes it names the coordinate answers NOTHING. The parent is instead read from the dataset the index is cut from: the containing feature's ISO_A2_EH in ne_10m_admin_0_countries at v5.1.2. A row whose containing feature has no ISO code (Somaliland, Northern Cyprus) ships shippedCode: null and is NEVER REFUSED — its name and region still label it. NO COORDINATES: ids, names and codes only.",
+  "total": 152,
+  "translated": 149,
+  "shippedNull": 3,
+  "codeParent": {
+    "AN": "DO",
+    "BQ": "NL",
+    "BV": "NO",
+    "CC": null,
+    "CX": "AU",
+    "GF": "FR",
+    "GP": "FR",
+    "MQ": "FR",
+    "RE": "FR",
+    "SJ": "NO",
+    "TK": null,
+    "YT": "FR"
+  },
+  "parents": [
+    {
+      "id": "gn:jrfj",
+      "name": "Acoua",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:1mk4b",
+      "name": "Amsterdamøya",
+      "statedCode": "SJ",
+      "shippedCode": "NO",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24q6l",
+      "name": "Anse-Bertrand",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:22u3k",
+      "name": "Antilles",
+      "statedCode": "AN",
+      "shippedCode": "DO",
+      "via": "contained"
+    },
+    {
+      "id": "gn:20hz3",
+      "name": "Apatou",
+      "statedCode": "GF",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:4h85j",
+      "name": "Atafu Village",
+      "statedCode": "TK",
+      "shippedCode": null,
+      "via": "nearest"
+    },
+    {
+      "id": "gn:20hz6",
+      "name": "Awala-Yalimapo",
+      "statedCode": "GF",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24q5z",
+      "name": "Baie-Mahault",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nd53",
+      "name": "Bandraboua",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:ndct",
+      "name": "Bandrele",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:ndae",
+      "name": "Barakani",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:1mk0m",
+      "name": "Barentsburg",
+      "statedCode": "SJ",
+      "shippedCode": "NO",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:d0pz",
+      "name": "Barentsøya",
+      "statedCode": "SJ",
+      "shippedCode": "NO",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24q50",
+      "name": "Basse-Terre",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:24q51",
+      "name": "Basse-Terre",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:1mjx5",
+      "name": "Bjørnøya",
+      "statedCode": "SJ",
+      "shippedCode": "NO",
+      "via": "contained"
+    },
+    {
+      "id": "gn:23bbt",
+      "name": "Bonaire Island",
+      "statedCode": "BQ",
+      "shippedCode": "NL",
+      "via": "contained"
+    },
+    {
+      "id": "gn:2096a",
+      "name": "Bouvetøya",
+      "statedCode": "BV",
+      "shippedCode": "NO",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nder",
+      "name": "Bouéni",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24q13",
+      "name": "Capesterre-de-Marie-Galante",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:20how",
+      "name": "Cayenne",
+      "statedCode": "GF",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:ndaq",
+      "name": "Chiconi",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nddb",
+      "name": "Chirongui",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nd4h",
+      "name": "Chissioua Mtsamboro",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:nde9",
+      "name": "Choungui",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nddu",
+      "name": "Dapani",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:jrct",
+      "name": "Dembeni",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:20hfw",
+      "name": "Devils Island",
+      "statedCode": "GF",
+      "shippedCode": "FR",
+      "via": "none"
+    },
+    {
+      "id": "gn:23b8l",
+      "name": "Dorp Rincon",
+      "statedCode": "BQ",
+      "shippedCode": "NL",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24j8h",
+      "name": "Ducos",
+      "statedCode": "MQ",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:jrcc",
+      "name": "Dzaoudzi",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:jrc7",
+      "name": "Dzumogne",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:d0nr",
+      "name": "Edgeøya",
+      "statedCode": "SJ",
+      "shippedCode": "NO",
+      "via": "contained"
+    },
+    {
+      "id": "gn:2eefa",
+      "name": "Fale old settlement",
+      "statedCode": "TK",
+      "shippedCode": null,
+      "via": "none"
+    },
+    {
+      "id": "gn:18jhr",
+      "name": "Flying Fish Cove",
+      "statedCode": "CX",
+      "shippedCode": "AU",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:24j5f",
+      "name": "Fort-de-France",
+      "statedCode": "MQ",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:24prm",
+      "name": "Grand-Bourg",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:20h7m",
+      "name": "Grand-Santi",
+      "statedCode": "GF",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24pqa",
+      "name": "Grande-Terre",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24poo",
+      "name": "Guadeloupe",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nd57",
+      "name": "Hamjago",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:ndcj",
+      "name": "Hamouro",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:nd4s",
+      "name": "Handréma",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:857kq",
+      "name": "Hornsund",
+      "statedCode": "SJ",
+      "shippedCode": "NO",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:ndbo",
+      "name": "Iloni",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nd7x",
+      "name": "Kangani",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:ndf0",
+      "name": "Kani-Kéli",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nd8g",
+      "name": "Kavani",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:1mipr",
+      "name": "Klovningen",
+      "statedCode": "SJ",
+      "shippedCode": "NO",
+      "via": "none"
+    },
+    {
+      "id": "gn:d0kn",
+      "name": "Kongsøya",
+      "statedCode": "SJ",
+      "shippedCode": "NO",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nd81",
+      "name": "Koungou",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:20h13",
+      "name": "Kourou",
+      "statedCode": "GF",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:23b2z",
+      "name": "Kralendijk",
+      "statedCode": "BQ",
+      "shippedCode": "NL",
+      "via": "contained"
+    },
+    {
+      "id": "gn:d0k7",
+      "name": "Kvitøya",
+      "statedCode": "SJ",
+      "shippedCode": "NO",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:24j0l",
+      "name": "L'Ajoupa-Bouillon",
+      "statedCode": "MQ",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24pm2",
+      "name": "La Désirade",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:3zed2",
+      "name": "La Désirade",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:k207",
+      "name": "La Grande Chaloupe",
+      "statedCode": "RE",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:k201",
+      "name": "La Mare",
+      "statedCode": "RE",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:k1zw",
+      "name": "La Montagne",
+      "statedCode": "RE",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:k1zf",
+      "name": "La Possession",
+      "statedCode": "RE",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24iz2",
+      "name": "La Trinité",
+      "statedCode": "MQ",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nd9f",
+      "name": "Labattoir",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24pk2",
+      "name": "Le Gosier",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:24j2w",
+      "name": "Le Gros-Morne",
+      "statedCode": "MQ",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24iyk",
+      "name": "Le Lamentin",
+      "statedCode": "MQ",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24iyj",
+      "name": "Le Lorrain",
+      "statedCode": "MQ",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24iyi",
+      "name": "Le Marin",
+      "statedCode": "MQ",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:24iyf",
+      "name": "Le Morne-Rouge",
+      "statedCode": "MQ",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24pjr",
+      "name": "Le Moule",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:k1xc",
+      "name": "Le Port",
+      "statedCode": "RE",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24iy4",
+      "name": "Le Robert",
+      "statedCode": "MQ",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:k1we",
+      "name": "Le Tampon",
+      "statedCode": "RE",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24pjj",
+      "name": "Les Abymes",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nd7q",
+      "name": "Longoni",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:1mier",
+      "name": "Longyearbyen",
+      "statedCode": "SJ",
+      "shippedCode": "NO",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:nd69",
+      "name": "M'Tsangamouji",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:nd83",
+      "name": "Majikavo Koropa",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nd85",
+      "name": "Majikavo Lamir",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:jr9z",
+      "name": "Mamoudzou",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:ndap",
+      "name": "Mangajou",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24pgq",
+      "name": "Marie-Galante Island",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:20gsi",
+      "name": "Maripasoula",
+      "statedCode": "GF",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24ivc",
+      "name": "Martinique",
+      "statedCode": "MQ",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:20grp",
+      "name": "Matoury",
+      "statedCode": "GF",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:ndcf",
+      "name": "Miréréni",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:ndeo",
+      "name": "Mouanatrindri",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:ndd8",
+      "name": "Mramadoudou",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nd4n",
+      "name": "Mtsahara",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nd5a",
+      "name": "Mtsamboro",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nddl",
+      "name": "Mtsamoudou",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nd5i",
+      "name": "Mtsangadoua",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nd51",
+      "name": "Mtsangamboua",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nd8i",
+      "name": "Mtsapéré",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:ndel",
+      "name": "Mzouazia",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:d0il",
+      "name": "Nordaustlandet",
+      "statedCode": "SJ",
+      "shippedCode": "NO",
+      "via": "contained"
+    },
+    {
+      "id": "gn:4h85h",
+      "name": "Nukunonu",
+      "statedCode": "TK",
+      "shippedCode": null,
+      "via": "none"
+    },
+    {
+      "id": "gn:4hisb",
+      "name": "Ny-Ålesund",
+      "statedCode": "SJ",
+      "shippedCode": "NO",
+      "via": "contained"
+    },
+    {
+      "id": "gn:ndcy",
+      "name": "Nyambadao",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:1mi28",
+      "name": "Nybyen",
+      "statedCode": "SJ",
+      "shippedCode": "NO",
+      "via": "contained"
+    },
+    {
+      "id": "gn:4hirp",
+      "name": "Olonkinbyen",
+      "statedCode": "SJ",
+      "shippedCode": "NO",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:ndac",
+      "name": "Ongojou",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:23az6",
+      "name": "Oranjestad",
+      "statedCode": "BQ",
+      "shippedCode": "NL",
+      "via": "contained"
+    },
+    {
+      "id": "gn:ndaf",
+      "name": "Ouangani",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:jr6z",
+      "name": "Pamandzi",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:jr6w",
+      "name": "Passamainty",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:24pbu",
+      "name": "Petit-Bourg",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24p2n",
+      "name": "Petites Anses",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:4q0o1",
+      "name": "Piton Saint-Leu",
+      "statedCode": "RE",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24p9j",
+      "name": "Pointe-à-Pitre",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:ndc8",
+      "name": "Poroani",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24p8m",
+      "name": "Pressec",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:1mhw6",
+      "name": "Prins Karls Forland",
+      "statedCode": "SJ",
+      "shippedCode": "NO",
+      "via": "contained"
+    },
+    {
+      "id": "gn:1mhvk",
+      "name": "Pyramiden",
+      "statedCode": "SJ",
+      "shippedCode": "NO",
+      "via": "contained"
+    },
+    {
+      "id": "gn:k1qa",
+      "name": "Quartier Français",
+      "statedCode": "RE",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:k1p0",
+      "name": "Reunion",
+      "statedCode": "RE",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24j90",
+      "name": "Rocher du Diamant",
+      "statedCode": "MQ",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:20gff",
+      "name": "Régina",
+      "statedCode": "GF",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:23aw2",
+      "name": "Saba Island",
+      "statedCode": "BQ",
+      "shippedCode": "NL",
+      "via": "contained"
+    },
+    {
+      "id": "gn:ndb8",
+      "name": "Sada",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:k1no",
+      "name": "Saint-André",
+      "statedCode": "RE",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:k1nn",
+      "name": "Saint-Benoît",
+      "statedCode": "RE",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:k1nk",
+      "name": "Saint-Denis",
+      "statedCode": "RE",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24iy2",
+      "name": "Saint-Esprit",
+      "statedCode": "MQ",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24p55",
+      "name": "Saint-François",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:20gc2",
+      "name": "Saint-Georges",
+      "statedCode": "GF",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24ikb",
+      "name": "Saint-Joseph",
+      "statedCode": "MQ",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:k1mj",
+      "name": "Saint-Joseph",
+      "statedCode": "RE",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:20gbn",
+      "name": "Saint-Laurent-du-Maroni",
+      "statedCode": "GF",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:k1mh",
+      "name": "Saint-Leu",
+      "statedCode": "RE",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:k1mf",
+      "name": "Saint-Louis",
+      "statedCode": "RE",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:k1md",
+      "name": "Saint-Paul",
+      "statedCode": "RE",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24ik3",
+      "name": "Saint-Pierre",
+      "statedCode": "MQ",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:k1m6",
+      "name": "Saint-Pierre",
+      "statedCode": "RE",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:24ikr",
+      "name": "Sainte-Anne",
+      "statedCode": "MQ",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24p5u",
+      "name": "Sainte-Anne",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:24iko",
+      "name": "Sainte-Luce",
+      "statedCode": "MQ",
+      "shippedCode": "FR",
+      "via": "nearest"
+    },
+    {
+      "id": "gn:24ikm",
+      "name": "Sainte-Marie",
+      "statedCode": "MQ",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:k1nb",
+      "name": "Sainte-Marie",
+      "statedCode": "RE",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:24p5b",
+      "name": "Sainte-Rose",
+      "statedCode": "GP",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:k1n4",
+      "name": "Sainte-Suzanne",
+      "statedCode": "RE",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:23ats",
+      "name": "Sint Eustatius",
+      "statedCode": "BQ",
+      "shippedCode": "NL",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nd96",
+      "name": "Sohoa",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:1mhdp",
+      "name": "Spitsbergen",
+      "statedCode": "SJ",
+      "shippedCode": "NO",
+      "via": "contained"
+    },
+    {
+      "id": "gn:d0f0",
+      "name": "Svenskøya",
+      "statedCode": "SJ",
+      "shippedCode": "NO",
+      "via": "contained"
+    },
+    {
+      "id": "gn:23as5",
+      "name": "The Bottom",
+      "statedCode": "BQ",
+      "shippedCode": "NL",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nd7z",
+      "name": "Trévani",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nda8",
+      "name": "Tsararano",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:ndef",
+      "name": "Tsimkoura",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nd6p",
+      "name": "Tsingoni",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:nd8u",
+      "name": "Vahibé",
+      "statedCode": "YT",
+      "shippedCode": "FR",
+      "via": "contained"
+    },
+    {
+      "id": "gn:k1jq",
+      "name": "Vincendo",
+      "statedCode": "RE",
+      "shippedCode": "FR",
+      "via": "nearest"
+    }
+  ]
+}

@@ -362,11 +362,18 @@ test('A-56 Part 5: cli stats prints city DATES and no coordinate of any kind', (
  * rows as `{id, name, countryCode, admin1, centre}`, so a shifted coordinate shows up as a diff.
  *
  * The scan therefore still runs over **every** golden, including any golden added tomorrow, and the
- * exemption is an explicit two-name list that is itself asserted — a third name cannot be added to
- * it without failing this test. **Editing this test was outside ROADMAP I-21's file fence and is
+ * exemption is an explicit list that is itself asserted — a further name cannot be added to it
+ * without failing this test. **Editing this test was outside ROADMAP I-21's file fence and is
  * disclosed as KD-114 rather than treated as a routine edit.**
+ *
+ * **Narrowed again at I-23 — R60-8, and to exactly ONE name.** `gazetteer-disagreements.json`
+ * carries no `centre` by design and must not be exempted from a guard it never trips; the same is
+ * true of I-23's new `gazetteer-parents.json`. A dormant exemption is how a real one gets added
+ * later without anyone noticing. And the exemption is **paired with a positive assertion**: every
+ * `centre` published in the one exempt golden must match a shipped gazetteer row, so the file
+ * cannot become a place a coordinate hides.
  */
-const GAZETTEER_GOLDENS = ['gazetteer-probes.json', 'gazetteer-disagreements.json'];
+const GAZETTEER_GOLDENS = ['gazetteer-probes.json'];
 
 test('A-56 Part 5: `centre` reached no committed golden, and travel-stats.json carries the city DATES', () => {
   const dir = join(CAIRN, 'fixtures', 'golden');
@@ -385,6 +392,28 @@ test('A-56 Part 5: `centre` reached no committed golden, and travel-stats.json c
     if (/"centre"/.test(text)) offenders.push(name);
   }
   assert.deepEqual(offenders, [], `\`centre\` reached a golden: ${offenders.join(', ')}`);
+  // **R60-8's positive half**: every coordinate the exempt golden publishes is a coordinate that
+  // actually ships. An exemption without this is a hole with a comment on it.
+  const probes = JSON.parse(readFileSync(join(dir, 'gazetteer-probes.json'), 'utf8')) as {
+    probes: Array<{ query: string; hits: Array<{ id: string; centre: { lat: number; lng: number } }> }>;
+  };
+  const published = probes.probes.flatMap((p) => p.hits);
+  assert.ok(published.length > 20, `INCONCLUSIVE: only ${published.length} probe hits carry a centre`);
+  const corpusDir = join(CAIRN, 'packages', 'core', 'src', 'geo', 'gazetteer');
+  const meta = JSON.parse(readFileSync(join(corpusDir, 'meta.json'), 'utf8')) as { idPrefix: string };
+  const shipped = new Map<string, string>();
+  for (const file of readdirSync(corpusDir)) {
+    if (file === 'meta.json' || !file.endsWith('.json')) continue;
+    for (const row of (JSON.parse(readFileSync(join(corpusDir, file), 'utf8')) as { r: string[] }).r) {
+      const f = row.split('|');
+      shipped.set(`${meta.idPrefix}:${f[7]}`, `${f[5]}|${f[6]}`);
+    }
+  }
+  const b36 = (v: number) => (v < 0 ? `-${Math.abs(v).toString(36)}` : v.toString(36));
+  const unshipped = published
+    .filter((h) => shipped.get(h.id) !== `${b36(Math.round(h.centre.lat * 1e4))}|${b36(Math.round(h.centre.lng * 1e4))}`)
+    .map((h) => h.id);
+  assert.deepEqual(unshipped, [], 'a centre published in gazetteer-probes.json is not a shipped row\'s');
   // …and the scan is running over a file this increment actually changed, so it is not green
   // because nothing moved. `travel-stats.json` gained `firstVisit`/`lastVisit` per city — dates,
   // which are not coordinates, and which the "NO COORDINATES" header does not forbid.
@@ -535,10 +564,11 @@ test('P13: cli photos prints no coordinate of any kind', () => {
 });
 
 // ---------------------------------------------------------------------------------------------
-// `cli.ts cities` — Phase 2 I-21, ARCHITECTURE §8.4 **A-82** Part 2 reason 4.
+// `cli.ts cities` — Phase 2 I-21 and I-23, ARCHITECTURE §8.4 **A-82** Part 2 reason 4.
 //
 // This command exists so a tester can exercise the whole gazetteer **with no browser, no device
-// and no UI**. It is the P1 caller that makes `searchGazetteer` a §2.10 surface symbol.
+// and no UI**. It is the P1 caller that makes `searchGazetteer` a §2.10 surface symbol, and after
+// I-23 it is also the surface that discharges the **CC BY 4.0 attribution** on every run.
 // ---------------------------------------------------------------------------------------------
 
 test('I-21: `cli cities zurich` returns Zürich, in Switzerland, with a coordinate', () => {
@@ -547,7 +577,63 @@ test('I-21: `cli cities zurich` returns Zürich, in Switzerland, with a coordina
   assert.match(r.out, /Zürich/);
   assert.match(r.out, /Switzerland/);
   // `label · lat,lng · countryCode`
-  assert.match(r.out, /Zürich, Switzerland · 47\.\d+,8\.\d+ · CH/);
+  assert.match(r.out, /Zürich, Zurich, Switzerland · 47\.\d+,8\.\d+ · CH/);
+});
+
+/**
+ * **I-23: the CC BY 4.0 attribution, on every run — a licence obligation, not a courtesy.**
+ *
+ * GeoNames is the first attribution-bearing dataset in this repository; Natural Earth was public
+ * domain. §8.4 A-83 Part 2: *"the attribution rides on the DATA, not on a comment … any surface
+ * that renders a hit must render the attribution"*, and `cli.ts cities` is what makes that
+ * testable before a screen exists.
+ */
+test('I-23: every `cli cities` run prints the CC BY 4.0 attribution, hit or miss', () => {
+  for (const args of [['cities', 'zurich'], ['cities', 'qzzzxwv'], ['cities', 'de']] as const) {
+    const out = cli(...args).out;
+    assert.match(out, /^source: GeoNames/m, `no attribution from \`cli ${args.join(' ')}\``);
+    assert.match(out, /CC BY 4\.0/, `the licence is not named by \`cli ${args.join(' ')}\``);
+    assert.match(out, /creativecommons\.org\/licenses\/by\/4\.0/);
+  }
+});
+
+/**
+ * **I-23, §8.4 A-83 Part 6: "keep typing" is not "no match", and the difference is the product's
+ * honesty about its own coverage.** A query whose first token cannot resolve to one shard has not
+ * been searched at all; printing `no match` for it would be a lie about the corpus.
+ */
+test('I-23: a query too short to resolve says "keep typing", and a real miss still says "no match"', () => {
+  const short = cli('cities', 'de').out;
+  assert.match(short, /^keep typing: /m, `expected a "keep typing" line, got:\n${short}`);
+  assert.equal(/no match/.test(short), false, 'an unsearched query is reported as a miss');
+  const miss = cli('cities', 'qzzzxwv').out;
+  assert.match(miss, /^no match: qzzzxwv$/m, `expected an explicit miss line, got:\n${miss}`);
+});
+
+/**
+ * **I-23's product proof, and it is one command.** These are the places QA round 60 measured as
+ * missing from the population-filtered corpus — the measurement that put the travel hit rate at
+ * 21.5 % and forced the swap to notability.
+ */
+test('I-23: the places round 60 measured as MISSING are now found, each with a real country', () => {
+  for (const [query, expect] of [
+    ['hallstatt', /^Hallstatt, Upper Austria, Austria · 47\.\d+,13\.\d+ · AT/m],
+    ['positano', /^Positano, Campania, Italy · 40\.\d+,14\.\d+ · IT/m],
+    ['zermatt', /^Zermatt, Valais, Switzerland · /m],
+    ['sintra', /^Sintra, Lisbon, Portugal · /m],
+    ['cesky krumlov', /^Český Krumlov, South Bohemian Region, Czechia · /m],
+    ['matera', /^Matera, Basilicate, Italy · /m],
+    ['carcassonne', /^Carcassonne, Occitanie, France · /m],
+    ['interlaken', /^Interlaken, Bern, Switzerland · /m],
+  ] as const) {
+    const out = cli('cities', query).out;
+    assert.match(out, expect, `\`cli cities ${query}\` does not find it:\n${out}`);
+  }
+  // **`obidos` returned Óbidos BRAZIL and nothing else.** Both ship now, with labels a person can
+  // choose between — closed by coverage rather than by a special case.
+  const obidos = cli('cities', 'obidos').out;
+  assert.match(obidos, /^Óbidos, Pará, Brazil · /m);
+  assert.match(obidos, /^Óbidos, Leiria, Portugal · /m);
 });
 
 test('I-21: `cli cities london` returns three Londons in three countries, largest first', () => {
@@ -560,8 +646,11 @@ test('I-21: `cli cities london` returns three Londons in three countries, larges
 });
 
 test('I-21: a query with no match says so explicitly rather than exiting 0 with no output', () => {
-  const r = cli('cities', 'hallstatt');
-  assert.match(r.out, /^no match: hallstatt$/m, `expected an explicit miss line, got:\n${r.out}`);
+  // **`hallstatt` was this assertion's subject and I-23 is why it is not any more** — it was a
+  // miss because the corpus was filtered on population. The miss case is asserted above, over a
+  // string no corpus will ever carry.
+  const r = cli('cities', 'zzqxwvzz');
+  assert.match(r.out, /^no match: zzqxwvzz$/m, `expected an explicit miss line, got:\n${r.out}`);
 });
 
 test('I-21: `cli cities` with no query refuses rather than dumping the dataset', () => {
@@ -571,13 +660,14 @@ test('I-21: `cli cities` with no query refuses rather than dumping the dataset',
 });
 
 test('I-22: --limit truncates, and a DISAGREEING border town is there and is MARKED', () => {
-  assert.equal(cli('cities', 'london', '--limit', '1').out.trim().split('\n').length, 1);
+  // One hit line, plus the attribution line the licence obliges on every run.
+  assert.equal(cli('cities', 'london', '--limit', '1').out.trim().split('\n').length, 2);
   // **§8.4 A-83 Part 8 inverts this assertion and that is the increment.** A-82 Part 5 refused
   // Maastricht at generation time and this test asserted `no match`; the invariant is restated —
   // *no shipped row may SILENTLY contradict the index* — so the row ships carrying the
   // disagreement, and the CLI line says so. A tester sees the whole of I-22 in one command.
   const maastricht = cli('cities', 'maastricht').out;
-  assert.match(maastricht, /^Maastricht, Limburg, Netherlands · /m);
+  assert.match(maastricht, /^Maastricht, Limburg, The Netherlands · /m);
   assert.match(maastricht, /our country index disagrees/);
 });
 
@@ -589,9 +679,9 @@ test('I-22: --limit truncates, and a DISAGREEING border town is there and is MAR
  */
 test('I-22: `cli cities` finds Geneva, Jerusalem and Brazzaville, each marked as a disagreement', () => {
   for (const [query, expect] of [
-    ['geneva', /^Geneva, Genève, Switzerland · /m],
+    ['geneva', /^Geneva, Switzerland · /m],
     ['jerusalem', /^Jerusalem, Israel · /m],
-    ['brazzaville', /^Brazzaville, Pool, Congo \(Brazzaville\) · /m],
+    ['brazzaville', /^Brazzaville, Republic of the Congo · /m],
   ] as const) {
     const out = cli('cities', query).out;
     assert.match(out, expect, `\`cli cities ${query}\` does not find it`);
@@ -599,7 +689,7 @@ test('I-22: `cli cities` finds Geneva, Jerusalem and Brazzaville, each marked as
   }
   // The control: a row the index AGREES with carries no marker, so the marker means something.
   const vienna = cli('cities', 'vienna', '--limit', '1').out;
-  assert.match(vienna, /^Vienna, Wien, Austria · /m);
+  assert.match(vienna, /^Vienna, Austria · /m);
   assert.equal(/disagrees/.test(vienna), false, 'every line carries the marker, so the marker says nothing');
 });
 

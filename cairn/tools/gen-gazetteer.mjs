@@ -1,138 +1,235 @@
 /**
- * gen-gazetteer.mjs — builds `packages/core/src/geo/gazetteer.gen.ts` from Natural Earth's
- * populated-places layer (ARCHITECTURE §8.4 **A-82**, ROADMAP Phase 2 **I-21**).
+ * gen-gazetteer.mjs — builds the sharded offline city gazetteer under
+ * `packages/core/src/geo/gazetteer/` from **GeoNames** (ARCHITECTURE §8.4 **A-83**, with
+ * **A-84** Parts 5 and 6; ROADMAP Phase 2 **I-23**).
  *
  * Run:
- *   node tools/gen-gazetteer.mjs               # fetch, verify, build, write the module + goldens
+ *   node tools/gen-gazetteer.mjs               # fetch, verify, build, write the corpus + goldens
  *   node tools/gen-gazetteer.mjs --dry-run     # measure and audit, write nothing
- *   node tools/gen-gazetteer.mjs --audit-only  # audit the COMMITTED module, fetch nothing
+ *   node tools/gen-gazetteer.mjs --audit-only  # audit the COMMITTED corpus, fetch nothing
  *   node tools/gen-gazetteer.mjs --audit-only --write
  *                                              # …and rewrite fixtures/golden/gazetteer-probes.json
  *
- * **Why this file exists.** Both trip-creation forms collect city *names*, `createTrip` writes
- * `centre: {lat:0, lng:0}` and `countryCode: ''`, so a hand-entered past trip attributes to nothing
- * and puts no country on the lifetime map (BUILD-NOTES **KD-39**). This dataset is the coordinate.
- * Jacob's bar, in his own words: *"For people wanting to put in past trips — how would they do it?
- * The ease of that is key as well since many people will want to upload where they've been.
- * Otherwise it's not a true sign of their travels."* Two requirements: **easy**, and **true**.
+ * `--cache <dir>` (or `CAIRN_GAZETTEER_CACHE`) keeps the five downloaded source files on disk
+ * between runs. **It is not a way around the pin**: a cached file is checksummed on every run
+ * exactly as a fetched one is, and a mismatch reports and refuses to write. It exists because the
+ * ship gate runs this generator twice and re-downloading 625 MB to prove determinism proves
+ * nothing about determinism.
  *
- * **The consistency invariant is the whole point of this generator, and §8.4 A-83 Part 8 RESTATED
- * it rather than weakening it (ROADMAP I-22).** The shipped `COUNTRY_INDEX` and this dataset
- * disagree about **98 named cities** — and QA round 60 measured what A-82 Part 5's original remedy
- * cost: ranked by population the refused set opens **Brazzaville (a national capital, 1.36 M),
- * Geneva (1.24 M) and Jerusalem (a national capital, 1.03 M)**; 19 are above 100,000. Every one is
- * a border town, because §8.4 A-26 Part 2 chose the base scale for being *"the most forgiving of
- * the error that dominates this dataset's use"* rather than for accuracy, and a coarse ring bulges
- * outward. So:
+ * ---------------------------------------------------------------------------------------------
+ * ## Attribution — this repository's FIRST licence obligation
  *
- * > **No shipped row may *silently* contradict the country index.** A row where the derived and
- * > stated countries are both non-null and **differ** ships **only** with `indexAgrees: false`
- * > recorded on the row, published by name with **both** answers in
- * > `fixtures/golden/gazetteer-disagreements.json`, and counted in the generated header. **A row
- * > that would contradict the index without carrying that record is still REFUSED.** Where the
- * > source carries no code (`-99`), the derived answer is used if there is one and `''` is stored
- * > if there is not.
+ * **GeoNames is licensed CC BY 4.0.** Natural Earth, which this generator's predecessor used and
+ * which `tools/gen-countries.mjs` still uses, is public domain and needed none. Verified
+ * 2026-09-09 from the dump's own `readme.txt`:
  *
- * The zero-exception check is unmoved and is now quantified over the rows that claim to agree:
- * for every shipped row with `indexAgrees: true`, `countryOf(row.centre, COUNTRY_INDEX)` is either
- * the row's own code or `null`. That is round 60's own test, carried across unchanged.
+ * > *"This work is licensed under a Creative Commons Attribution 4.0 License … The Data is
+ * > provided 'as is' without warranty or any representation of accuracy, timeliness or
+ * > completeness."*
  *
- * **This is only safe because `City.placeId` exists** (§8.4 A-83 Part 8): `derive/summary.ts` can
- * now tell a gazetteer row a human PICKED from a hand-typed country code, so a picked row's
- * country outranks `countryOf` and a typed one's still does not. Without that field, shipping a
- * disagreeing row would put Maastricht in Belgium on a lifetime map, which is exactly why A-82
- * Part 5 refused it and why restoring it needed a schema migration first.
+ * Two consequences, both binding (A-83 Part 2):
  *
- * **A disagreement count of zero is a FAILURE, not a clean run**: the marking that never fires is
- * the marking that was deleted.
+ *  1. **The attribution rides on the DATA, not on this comment.** `meta.json`'s `$source` carries
+ *     the attribution text and the licence URL, `Gazetteer.source` is that string, and **any
+ *     surface that renders a hit must render the attribution**. `cli.ts cities` prints it once per
+ *     run, which is what makes the obligation testable before a screen exists.
+ *  2. **The "as is, no representation of accuracy" clause is ours to honour, not to repeat.** It
+ *     is why a disagreement between this dataset and the shipped country index stays **visible**
+ *     (`indexSays: 'differs'`) instead of being resolved silently, and why `population` is never
+ *     rendered as a fact about a place.
+ *
+ * ## The pin, and what reproducibility means without a release tag
+ *
+ * **GeoNames has no pinnable ref.** The dumps are regenerated daily — `gen-countries.mjs` pins
+ * Natural Earth at `v5.1.2` and nothing here can do that. A-83 Part 2 rules that the pin still
+ * exists and its meaning changes:
+ *
+ * > The generator pins each source file **by sha256 and by fetch date**, both recorded in the
+ * > generated documents. A fetch that does not match is REPORTED and the run REFUSES TO WRITE, and
+ * > re-pinning is a deliberate, reviewed act: a human updates the constants below, re-runs, and
+ * > reads the diff in the goldens, which are what make the change legible.
+ *
+ * Reproducibility of the **artefact** is preserved in full and is what actually matters: the
+ * generated corpus is committed, `--audit-only` fetches nothing and audits the committed bytes,
+ * and every test runs against those bytes. Reproducibility of the **build from source** is bounded
+ * by GeoNames' own release discipline, and that is stated here rather than discovered by whoever
+ * re-runs this next month.
+ *
+ * ## Why the corpus changed at all
+ *
+ * QA round 60 measured the shipped Natural Earth gazetteer at **21.5 %** against 121 real travel
+ * destinations and **100 %** against 50 large cities. `ne_10m_populated_places` is a
+ * **cartographic** layer: it selects by administrative rank and by `POP_MAX`. Travel destinations
+ * are selected by **notability**. Hallstatt has 779 residents and roughly a million visitors a
+ * year; a same-sized village in Iowa has 779 residents. **The filter was on the wrong axis**, and
+ * no amount of lowering a population threshold fixes an axis error — it only buys the Iowa village
+ * first. A-83 Part 1 published the whole curve so the choice was Jacob's; he took
+ * `l>=4 or (wikipedia and population >= 1,000)`, and refused the ~1 MB-gzipped always-loaded
+ * option, which is why the corpus is **sharded** rather than bigger.
+ *
+ * ## Determinism
+ *
+ * No clock, no randomness, no reliance on source order or on `Map` iteration order. Every emission
+ * order is a total order over the data. Two runs against the same input produce byte-identical
+ * output, and I-23's ship gate runs it twice and diffs.
  *
  * **This runs at generation time, by a human, once. Nothing in the shipped product runs it.**
  * `packages/core`, `packages/client`, `apps/web` and `cli.ts` never fetch anything for this
- * feature, in this phase or any other. §6.1 forbids sending a coordinate to a geocoder in every
- * phase, and a committed generated module is how that is affordable.
- *
- * **Where the bytes come from.** The same repository and the same **pinned tag `v5.1.2`** the
- * country index already uses — `naturalearthdata.com` answers `CONNECT tunnel failed, response
- * 403` through this environment's egress proxy, and `master` carries a moving `5.2.0-pre`. A
- * committed generated module fetched from a moving ref is a measurement nobody can reproduce, and
- * the budget in `packages/core/test/0-gazetteerBudget.test.ts` is precisely such a measurement.
- * A fetch that does not match the pin is **REPORTED and refuses to write**, never absorbed.
- *
- * Public domain: "Everything here is public domain … the primary authors, Tom Patterson and
- * Nathaniel Vaughn Kelso, and all other contributors renounce all financial claim"
- * (nvkelso/natural-earth-vector LICENSE.md at v5.1.2, verified 2026-08-28 for the admin-0 layer
- * and re-read 2026-09-09 for this one — it is one licence over the whole repository).
- *
- * **Determinism.** No clock, no randomness, no reliance on source order or on `Map` iteration
- * order. Emission order is A-82 Part 2's total order: ascending folded name, then descending
- * population, then ascending ISO code, then ascending `NE_ID`. Two runs against the same input
- * produce byte-identical output, and I-21's ship gate runs it twice and diffs.
+ * feature, in this phase or any other.
  */
-import { writeFileSync, readFileSync, mkdirSync, statSync } from 'node:fs';
+import {
+  closeSync,
+  createReadStream,
+  mkdirSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  readSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { createHash } from 'node:crypto';
+import { createInflateRaw } from 'node:zlib';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CAIRN = resolve(HERE, '..');
-const OUT = resolve(CAIRN, 'packages/core/src/geo/gazetteer.gen.ts');
+const CORPUS_DIR = resolve(CAIRN, 'packages/core/src/geo/gazetteer');
+const SHARD_MAP = resolve(CAIRN, 'packages/core/src/geo/gazetteerShards.gen.ts');
 const DISAGREEMENTS_OUT = resolve(CAIRN, 'fixtures/golden/gazetteer-disagreements.json');
+const PARENTS_OUT = resolve(CAIRN, 'fixtures/golden/gazetteer-parents.json');
 const PROBES_OUT = resolve(CAIRN, 'fixtures/golden/gazetteer-probes.json');
 
-const TAG = 'v5.1.2';
-const REPO = 'nvkelso/natural-earth-vector';
-const FILE = 'ne_10m_populated_places.geojson';
-const URL = `https://raw.githubusercontent.com/${REPO}/${TAG}/geojson/${FILE}`;
+// ---------------------------------------------------------------- the pins
+
+/** The date the pinned bytes below were fetched. A constant, never a clock — determinism. */
+const FETCHED = '2026-09-10';
 
 /**
- * The pin. §8.4 **A-82** Part 1 measured all three on 2026-09-09 and this generator refuses to
- * write on a mismatch rather than absorbing one.
+ * **The five source files, each pinned by sha256.** The four GeoNames files carry the
+ * `Last-Modified` the server reported for the pinned bytes; they are regenerated daily and the
+ * checksum is the only pin that means anything. `ne_10m_admin_0_countries.geojson` is pinned by
+ * **tag** as well — it is the same file, the same tag and the same checksum
+ * `tools/gen-countries.mjs` already pins, and it is read for A-84 Part 5's parent translation and
+ * for nothing else.
  */
-const PIN = {
-  bytes: 19_359_003,
-  sha256: '9b8e3de09048ef00dfc70357dbb9fa324493f214b5e0ae4daf1aa79a8d10116b',
-  features: 7342,
-  pinnedBy: 'ARCHITECTURE §8.4 A-82 Part 1',
+const SOURCES = {
+  allCountries: {
+    url: 'https://download.geonames.org/export/dump/allCountries.zip',
+    file: 'allCountries.zip',
+    entry: 'allCountries.txt',
+    bytes: 421_188_852,
+    sha256: '8f5ac3347ebb11b9b0ae06f541c89aa2a317d503b1ecb3d6e0cfbbdab39670bd',
+    lastModified: 'Wed, 09 Sep 2026 01:49:04 GMT',
+    rows: 13_464_089,
+  },
+  alternateNames: {
+    url: 'https://download.geonames.org/export/dump/alternateNamesV2.zip',
+    file: 'alternateNamesV2.zip',
+    entry: 'alternateNamesV2.txt',
+    bytes: 204_010_583,
+    sha256: '8458f088fe1582c095963e31fff1ea1edd0e955eb1b66b7f012bf65b13d9382a',
+    lastModified: 'Wed, 09 Sep 2026 01:54:00 GMT',
+    rows: 19_157_584,
+  },
+  admin1: {
+    url: 'https://download.geonames.org/export/dump/admin1CodesASCII.txt',
+    file: 'admin1CodesASCII.txt',
+    bytes: 151_536,
+    sha256: '590651498043f674accda2b7f46d21286cda0e290b02f8561c5005eee9a5448c',
+  },
+  countryInfo: {
+    url: 'https://download.geonames.org/export/dump/countryInfo.txt',
+    file: 'countryInfo.txt',
+    bytes: 31_678,
+    sha256: '93bafc525813f22e4711ff9ed6d626343094ce48c26388dc7c49189b3d7d5512',
+  },
+  admin0: {
+    url: 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_admin_0_countries.geojson',
+    file: 'ne_10m_admin_0_countries.geojson',
+    bytes: 13_287_234,
+    sha256: '239eec57ac17f100a11e2536cffc56752c318b50ae765b0918ff7aab4ce8f255',
+    tag: 'v5.1.2',
+  },
 };
 
-/** Coordinate decimals kept. 1e-4° ≈ 11 m — far finer than the question "where is this city". */
+/** CC BY 4.0. This string ships in `meta.json` and is what `Gazetteer.source` carries. */
+const ATTRIBUTION =
+  'GeoNames geographical database (allCountries, alternateNamesV2, admin1CodesASCII, ' +
+  'countryInfo), https://www.geonames.org/ — licensed CC BY 4.0, ' +
+  'https://creativecommons.org/licenses/by/4.0/. Provided "as is", without any representation of ' +
+  'accuracy, timeliness or completeness. Country outlines: Natural Earth ' +
+  'ne_10m_admin_0_countries v5.1.2, public domain.';
+
+/** The row-id prefix. `'gn'` is GeoNames; it lives in `meta.json`, not in every row. */
+const ID_PREFIX = 'gn';
+
+/** Coordinate decimals kept. 1e-4° ≈ 11 m — A-83 Part 4: **the floor, and it does not move.** */
 const DECIMALS = 4;
 
 /**
- * The prefix every emitted row id carries — §8.4 **A-83** Part 8. `'ne'` is Natural Earth; I-23
- * swaps the corpus and this becomes `'gn'`. A persisted `City.placeId` is this id verbatim, so it
- * has to name its own dataset.
+ * **A-83 Part 3's selection rule, verbatim.** A candidate is a feature of class `P`, or of feature
+ * code `ISL`/`ISLS`. A candidate is SELECTED if it clears any of three independent gates.
  */
-const ID_PREFIX = 'ne';
+const NOTABILITY = {
+  /** Gate 1: distinct ISO-639 language codes carrying a name for the feature. */
+  languages: 4,
+  /** Gate 2: a Wikipedia link, and this population. */
+  wikiPopulation: 1_000,
+  /** Gate 3: class `P` at this population — the guard rail under the dial, not the dial. */
+  floorPopulation: 20_000,
+};
 
 /**
- * A-82 Part 10's probe list, *"at minimum"* its thirteen queries. These become
- * `fixtures/golden/gazetteer-probes.json`, which pins **the answer, not the mechanism**: a fold
- * that stops handling `ł`, a comparator whose tie moves, or a coordinate that shifted between
- * source revisions all show up here as a diff.
+ * The `alternateNamesV2.isolanguage` values that are **not** language codes and therefore do not
+ * count toward gate 1 (A-83 Part 3). Measured over the pinned dump: 732 distinct values, of which
+ * these seventeen — and only these — fail `^[a-z]{2,3}(-…)?$`.
+ */
+const NOT_A_LANGUAGE = new Set([
+  '', 'wkdt', 'link', 'post', 'unlc', 'lauc', 'iata', 'icao', 'abbr',
+  'uicn', 'fr_1793', 'faac', 'geoid', 'nuts', 'piny', 'phon', 'tcid',
+]);
+
+/**
+ * How far off the pinned 1:10m coastline a settlement coordinate may be and still be located in
+ * the feature it is beside — **A-84 Part 5's parent translation, as this corpus needs it**. 0.05°
+ * is ~5.5 km; the largest fallback the shipped corpus actually uses is reported on every run.
+ */
+const NEAREST_TOLERANCE = 0.05;
+
+/** A-83 Part 6: **while** a shard's packed payload exceeds this, it is split. 96 KiB. */
+const SHARD_BUDGET = 96 * 1024;
+
+/**
+ * A-82 Part 10's probe list, *"at minimum"* its thirteen queries, plus the ones that carry this
+ * increment's own claims. These become `fixtures/golden/gazetteer-probes.json`, which pins **the
+ * answer, not the mechanism**.
  */
 const PROBES = [
   'zurich', 'Zürich', 'sao paulo', 'London', 'Paris', 'springfield', 'york',
   'lodz', 'istanbul', 'bac kan', 'vatican', 'nara', 'hvar',
-  // Two more, because they are the two claims A-82 makes that a reader is most likely to doubt:
-  // the micro-states resolve correctly (Part 1 measurement 2), and — until §8.4 A-83 Part 8 —
-  // a disagreeing border town was gone. `maastricht` now FINDS it, marked, which is the whole
-  // of I-22 visible in one committed line.
+  // The micro-states, and I-22's border town.
   'monaco', 'maastricht',
-  // §8.4 A-83 Part 8's three named costs of the old remedy, pinned as answers rather than as a
-  // count: a national capital, the second city of Switzerland, and a second national capital.
+  // A-83 Part 8's three named costs of the old refusal.
   'geneva', 'jerusalem', 'brazzaville',
+  // **The whole reason this increment exists**: the places round 60 measured as missing.
+  'hallstatt', 'positano', 'zermatt', 'sintra', 'cesky krumlov', 'matera', 'carcassonne',
+  'interlaken', 'obidos',
+  // A-84 Part 5's parent translation, on the four rows the ruling names.
+  'fort de france', 'longyearbyen', 'hargeisa',
 ];
 const PROBE_DEPTH = 5;
 
 const argv = process.argv.slice(2);
 const flag = (name) => argv.includes(`--${name}`);
-
-main().catch((err) => {
-  console.error(`gen-gazetteer: ${err.message}`);
-  process.exit(1);
-});
+const opt = (name, dflt) => {
+  const i = argv.indexOf(`--${name}`);
+  return i >= 0 && argv[i + 1] ? argv[i + 1] : dflt;
+};
 
 // ---------------------------------------------------------------- the fold
 //
@@ -142,12 +239,12 @@ main().catch((err) => {
 // ROADMAP criterion E ceiling (1) forbids anything under `tools/` reaching past
 // `packages/core/src/index.ts`. So the generator cannot import it.
 //
-// Disclosed as **KD-112**. The duplication is made safe by **pinning the output rather than
-// trusting the copy**: every row
-// carries its fold in the emitted module, and `packages/core/test/gazetteer.test.ts` asserts that
-// core's own `foldPlaceName(row.name) === row.fold` for **every shipped row**. Two implementations
-// that are checked against each other over 7,244 real names are a verified pair; one of them
-// silently drifting is what that test exists to prevent.
+// Disclosed as **KD-112**. It used to be made safe by SHIPPING each row's fold and asserting the
+// two implementations agree over every row. **A-83 Part 4 dropped the bytes and kept the
+// guarantee**: the fold is recomputed by `decodeGazetteer`, and each row is written into the shard
+// of every token of *this* copy's fold — so if the two copies ever disagree, a decoded row lands
+// in a shard its own fold does not resolve to, and `packages/core/test/gazetteer.test.ts` says so
+// by name over every shipped row. You do not have to ship a value to verify it.
 
 const SUBSTITUTIONS = {
   'ł': 'l', 'ø': 'o', 'đ': 'd', 'ð': 'd', 'þ': 'th', 'ß': 'ss',
@@ -161,115 +258,229 @@ function foldPlaceName(name) {
   return substituted.normalize('NFD').replace(/\p{Mn}/gu, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 }
 
+/** A-83 Part 6's shard resolution — the same walk `gazetteer.ts` does, on the writing side. */
+function shardKeyFor(token, splits) {
+  let prefix = token.slice(0, 1);
+  while (splits.has(prefix)) {
+    if (token === prefix) return `${prefix}$`;
+    prefix = token.slice(0, prefix.length + 1);
+  }
+  return prefix;
+}
+
+/**
+ * A shard **key** may contain `$` (the terminal marker) and, for a name in a non-Latin script, any
+ * Unicode letter. A shard **file name** may not usefully contain either: `$` is awkward in an
+ * import specifier and a CJK file name is unreadable in a diff. The mapping is total and
+ * injective, and the key itself is carried inside the document, so nothing infers one from the
+ * other.
+ *
+ *  - `[a-z0-9]+`  → itself                (`ha.json`)
+ *  - `[a-z0-9]+$` → the prefix plus `-`   (`ha-.json`; `-` cannot occur in a folded token)
+ *  - anything else → `u-<code points in hex, dash-joined>` (`u-4e2d.json`)
+ */
+function fileNameFor(key) {
+  if (/^[a-z0-9]+$/.test(key)) return key;
+  if (/^[a-z0-9]+\$$/.test(key)) return `${key.slice(0, -1)}-`;
+  const terminal = key.endsWith('$');
+  const body = terminal ? key.slice(0, -1) : key;
+  return `u-${[...body].map((c) => c.codePointAt(0).toString(16)).join('-')}${terminal ? '-' : ''}`;
+}
+
 // ---------------------------------------------------------------- main
 
 async function main() {
   if (flag('audit-only')) {
-    const { GAZETTEER } = await import('@cairn/core/gazetteer');
-    console.log(`auditing the COMMITTED module: ${GAZETTEER.rows.length} rows (${GAZETTEER.source})`);
-    await audit(GAZETTEER, { writeProbes: flag('write') });
+    const corpus = readCommittedCorpus();
+    console.log(`auditing the COMMITTED corpus: ${corpus.rows.length} rows in ${corpus.shards.length} shards`);
+    console.log(`  ${corpus.meta.$source}`);
+    await audit(corpus, { writeProbes: flag('write') });
     return;
   }
 
-  const { buf, sha } = await download();
-  const geo = JSON.parse(buf.toString('utf8'));
-  if (geo.features.length !== PIN.features) {
-    throw new Error(`${geo.features.length} features, pinned at ${PIN.features}`);
-  }
-  console.log(`  ${geo.features.length} features read`);
+  const cacheDir = opt('cache', process.env.CAIRN_GAZETTEER_CACHE ?? join(tmpdir(), 'cairn-gazetteer-src'));
+  mkdirSync(cacheDir, { recursive: true });
+  const shas = {};
+  for (const [name, src] of Object.entries(SOURCES)) shas[name] = await ensureSource(cacheDir, src);
+  const corpusSha = createHash('sha256')
+    .update(Object.keys(SOURCES).sort().map((k) => `${k}:${shas[k]}`).join('\n'))
+    .digest('hex');
+  console.log(`corpus sha256 (over the five pinned source checksums): ${corpusSha}`);
 
   const { countryOf, COUNTRY_INDEX } = await import('../packages/core/src/index.ts');
-  const built = build(geo, countryOf, COUNTRY_INDEX);
+  const draws = new Set(COUNTRY_INDEX.countries.map((c) => c.code));
+  console.log(`the shipped index draws ${draws.size} country codes at scale ${COUNTRY_INDEX.scale}`);
 
-  console.log('');
-  console.log(`A-82 Part 1's census, re-derived against the COMMITTED index (${COUNTRY_INDEX.scale}):`);
-  console.log(`  agrees with ISO_A2      ${String(built.census.agree).padStart(5)}`);
-  console.log(`  countryOf returns null  ${String(built.census.silent).padStart(5)}   (A-26's honest hole)`);
-  console.log(`  a DIFFERENT country     ${String(built.census.disagree).padStart(5)}   SHIPPED, marked indexAgrees:false — border towns`);
-  console.log(`  no ISO_A2 at all (-99)  ${String(built.census.noCode).padStart(5)}`);
-  console.log('');
-  console.log(`rows read      ${geo.features.length}`);
-  console.log(`rows shipped   ${built.rows.length}`);
-  console.log(`rows marked    ${built.disagreements.length}   (indexAgrees: false — countryOf contradicts the source's own ISO code)`);
-  console.log(`admin-1 dict   ${built.admin1.length}`);
-  console.log(`country names  ${Object.keys(built.countryNames).length}`);
-  if (built.derivedOnly.length) {
-    console.log(`  ${built.derivedOnly.length} row(s) shipped on a DERIVED code the source did not state:`);
-    for (const r of built.derivedOnly) console.log(`    ${r.name} (${r.adm0}) -> ${r.code}`);
-  }
-  if (built.unnamed.length) {
-    console.log(`  ${built.unnamed.length} shipped row(s) carry a country code the ADM0NAME table cannot name:`);
-    for (const r of built.unnamed) console.log(`    ${r.name} -> ${r.code}`);
-  }
-  if (built.codeless.length) {
-    console.log(`  ${built.codeless.length} shipped row(s) carry countryCode '' — no stated code and none derivable:`);
-    for (const r of built.codeless) console.log(`    ${r.name} (${r.adm0})`);
-  }
-  console.log('');
-  for (const r of built.disagreements) {
-    console.log(`  marked   ${r.name.padEnd(24)} states ${r.statedCountry}  countryOf says ${r.derivedCountry}`);
-  }
+  const built = await build(cacheDir, { countryOf, index: COUNTRY_INDEX, draws });
+  report(built);
 
-  // **A disagreement count of 0 is itself a failure** (ROADMAP I-22, and it is one of that
-  // increment's two stop-and-report conditions): the marking that never fires is the marking
-  // that was deleted.
-  if (built.disagreements.length === 0) {
+  const docs = shard(built, corpusSha);
+  console.log('');
+  console.log(`shards         ${docs.shards.length}   (${docs.splits.length} split prefixes)`);
+  console.log(`emitted rows   ${docs.emitted}   (duplication factor ${(docs.emitted / built.rows.length).toFixed(3)})`);
+  console.log(`largest shard  ${docs.largest.bytes} bytes  "${docs.largest.key}"`);
+  if (docs.largest.bytes > SHARD_BUDGET) {
     throw new Error(
-      'ZERO disagreements. A-83 Part 8 measured 98 border towns the shipped index contradicts; a ' +
-        'run that marks none has lost its consistency check, not found a clean dataset.',
+      `shard "${docs.largest.key}" is ${docs.largest.bytes} bytes, over the ${SHARD_BUDGET}-byte ` +
+        'budget, and could not be split further. A-83 Part 6: the budget is the invariant.',
     );
   }
 
-  const text = emit(built, sha);
-  roundTrip(text, built);
-  console.log(`  round-trip: the emitted literal re-parses to the same ${built.rows.length} rows`);
+  roundTrip(docs, built);
+  console.log(`  round-trip: every emitted row re-parses, field by field, to the row that built it`);
 
   if (flag('dry-run')) {
-    console.log(`\nemitted bytes: ${Buffer.byteLength(text, 'utf8')}   (dry run — nothing written)`);
-    console.log('  (the audit below runs against the gazetteer just built in memory, not the committed module)');
-    await audit(gazetteerOf(built, sha), { writeProbes: false });
+    const total = docs.shards.reduce((n, s) => n + s.bytes, 0) + docs.metaBytes;
+    console.log(`\ncorpus bytes: ${total}   (dry run — nothing written)`);
+    await audit(inMemoryCorpus(docs, built), { writeProbes: false });
     return;
   }
 
-  mkdirSync(dirname(OUT), { recursive: true });
-  writeFileSync(OUT, text);
-  const written = statSync(OUT).size;
-  console.log(`\nwrote packages/core/src/geo/gazetteer.gen.ts`);
-  console.log(`emitted bytes: ${written}`);
-  console.log(`  ^ this is the number that goes in EMITTED_BYTES in`);
-  console.log(`    packages/core/test/0-gazetteerBudget.test.ts, and in no document.`);
+  write(docs, built);
+  writeDisagreements(built, corpusSha);
+  writeParents(built, corpusSha);
 
-  writeDisagreements(built, sha);
-
-  // Audit the module that was actually written, decoded the way the product decodes it — not the
-  // in-memory build, and in a CHILD PROCESS, because this process has already imported
-  // `packages/core/src/index.ts` and a stale module cache would let the guard read the file it
-  // just replaced. `gen-countries.mjs` learned this the expensive way at I-5a.
+  // Audit the corpus that was actually written, in a CHILD PROCESS, because this process has
+  // already imported `packages/core/src/index.ts` and a stale module cache would let the guard
+  // read the files it just replaced. `gen-countries.mjs` learned this the expensive way at I-5a.
   const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--audit-only', '--write'], {
     stdio: 'inherit',
   });
   if (child.status !== 0) throw new Error(`the post-write audit exited ${child.status}`);
 }
 
-/** Fetches the pinned layer and refuses to continue if the bytes are not the pinned bytes. */
-async function download() {
-  console.log(`fetching ${URL}`);
-  const res = await fetch(URL);
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${URL}`);
-  const buf = Buffer.from(await res.arrayBuffer());
+// ---------------------------------------------------------------- fetching
+
+/**
+ * Fetches a pinned source into the cache directory if it is not already there, and **checksums it
+ * either way**. A cached file is not trusted: it is verified on every run exactly as a fetched one
+ * is, which is what stops the cache from being a way around the pin.
+ */
+async function ensureSource(cacheDir, src) {
+  const path = join(cacheDir, src.file);
+  let buf = null;
+  try {
+    if (statSync(path).size === src.bytes) buf = readFileSync(path);
+  } catch { /* not cached */ }
+  if (buf === null) {
+    console.log(`fetching ${src.url}`);
+    const res = await fetch(src.url);
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${src.url}`);
+    buf = Buffer.from(await res.arrayBuffer());
+    writeFileSync(path, buf);
+  } else {
+    console.log(`cached   ${src.file}`);
+  }
   const sha = createHash('sha256').update(buf).digest('hex');
   console.log(`  ${buf.length} bytes, sha256 ${sha}`);
-  console.log(`  pinned : ${PIN.bytes} bytes, sha256 ${PIN.sha256}  (${PIN.pinnedBy})`);
-  if (sha !== PIN.sha256 || buf.length !== PIN.bytes) {
-    // Reported, not absorbed. A tag that moved is a fact about the world, and the right response
-    // is a ruling on which bytes are canonical, not a quietly different committed module.
+  if (sha !== src.sha256 || buf.length !== src.bytes) {
+    console.error(`  pinned : ${src.bytes} bytes, sha256 ${src.sha256}`);
     console.error(
-      'gen-gazetteer: DOWNLOAD DOES NOT MATCH THE PIN. Not writing. The tag is supposed to be\n' +
-        'immutable; if it genuinely moved, that is an architect decision, not a regeneration.',
+      'gen-gazetteer: DOWNLOAD DOES NOT MATCH THE PIN. Not writing.\n' +
+        '  GeoNames regenerates its dumps daily and has no release tag, so this is EXPECTED to\n' +
+        '  happen eventually and it is NOT something to absorb. Re-pinning is a deliberate,\n' +
+        '  reviewed act: update SOURCES and FETCHED above, re-run, and read the diff in\n' +
+        '  fixtures/golden/gazetteer-*.json — those goldens are what make the change legible.',
     );
     process.exit(3);
   }
-  return { buf, sha };
+  return sha;
+}
+
+// ---------------------------------------------------------------- reading the sources
+
+/** Locates one entry inside a zip by walking the central directory (ZIP64 aware). */
+function zipEntry(path, wanted) {
+  const size = statSync(path).size;
+  const fd = openSync(path, 'r');
+  try {
+    const tailLen = Math.min(size, 65_557);
+    const tail = Buffer.alloc(tailLen);
+    readSync(fd, tail, 0, tailLen, size - tailLen);
+    let eocd = -1;
+    for (let i = tail.length - 22; i >= 0; i -= 1) {
+      if (tail.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
+    }
+    if (eocd < 0) throw new Error(`${path}: no end-of-central-directory record`);
+    let count = tail.readUInt16LE(eocd + 10);
+    let cdSize = tail.readUInt32LE(eocd + 12);
+    let cdOff = tail.readUInt32LE(eocd + 16);
+    if (cdOff === 0xffffffff || cdSize === 0xffffffff || count === 0xffff) {
+      let loc = -1;
+      for (let i = eocd - 20; i >= 0; i -= 1) {
+        if (tail.readUInt32LE(i) === 0x07064b50) { loc = i; break; }
+      }
+      if (loc < 0) throw new Error(`${path}: ZIP64 sizes with no ZIP64 locator`);
+      const z64 = Buffer.alloc(56);
+      readSync(fd, z64, 0, 56, Number(tail.readBigUInt64LE(loc + 8)));
+      if (z64.readUInt32LE(0) !== 0x06064b50) throw new Error(`${path}: bad ZIP64 EOCD`);
+      count = Number(z64.readBigUInt64LE(32));
+      cdSize = Number(z64.readBigUInt64LE(40));
+      cdOff = Number(z64.readBigUInt64LE(48));
+    }
+    const cd = Buffer.alloc(cdSize);
+    readSync(fd, cd, 0, cdSize, cdOff);
+    let at = 0;
+    for (let i = 0; i < count; i += 1) {
+      if (cd.readUInt32LE(at) !== 0x02014b50) throw new Error(`${path}: bad central directory entry`);
+      const method = cd.readUInt16LE(at + 10);
+      let compressed = cd.readUInt32LE(at + 20);
+      let uncompressed = cd.readUInt32LE(at + 24);
+      const nameLen = cd.readUInt16LE(at + 28);
+      const extraLen = cd.readUInt16LE(at + 30);
+      const commentLen = cd.readUInt16LE(at + 32);
+      let localOff = cd.readUInt32LE(at + 42);
+      const name = cd.subarray(at + 46, at + 46 + nameLen).toString('utf8');
+      if (uncompressed === 0xffffffff || compressed === 0xffffffff || localOff === 0xffffffff) {
+        const extra = cd.subarray(at + 46 + nameLen, at + 46 + nameLen + extraLen);
+        let e = 0;
+        while (e + 4 <= extra.length) {
+          const tag = extra.readUInt16LE(e);
+          const len = extra.readUInt16LE(e + 2);
+          if (tag === 0x0001) {
+            let o = e + 4;
+            if (uncompressed === 0xffffffff) { uncompressed = Number(extra.readBigUInt64LE(o)); o += 8; }
+            if (compressed === 0xffffffff) { compressed = Number(extra.readBigUInt64LE(o)); o += 8; }
+            if (localOff === 0xffffffff) { localOff = Number(extra.readBigUInt64LE(o)); o += 8; }
+          }
+          e += 4 + len;
+        }
+      }
+      if (name === wanted) {
+        if (method !== 8) throw new Error(`${path}: ${name} is not deflated (method ${method})`);
+        const lh = Buffer.alloc(30);
+        readSync(fd, lh, 0, 30, localOff);
+        if (lh.readUInt32LE(0) !== 0x04034b50) throw new Error(`${path}: bad local header for ${name}`);
+        return { dataOff: localOff + 30 + lh.readUInt16LE(26) + lh.readUInt16LE(28), compressed };
+      }
+      at += 46 + nameLen + extraLen + commentLen;
+    }
+    throw new Error(`${path}: no entry named ${wanted}`);
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/**
+ * Streams one line at a time out of a zipped source, without ever holding the decompressed file.
+ * `allCountries.txt` is 1.79 GB and `alternateNamesV2.txt` is 783 MB; a generator that buffers
+ * either is a generator that only runs on a big machine.
+ */
+function eachLine(path, entry, onLine) {
+  const { dataOff, compressed } = zipEntry(path, entry);
+  return new Promise((res, rej) => {
+    const s = createReadStream(path, { start: dataOff, end: dataOff + compressed - 1, highWaterMark: 1 << 22 })
+      .pipe(createInflateRaw({ chunkSize: 1 << 22 }));
+    let tail = '';
+    s.setEncoding('utf8');
+    s.on('data', (chunk) => {
+      const lines = (tail + chunk).split('\n');
+      tail = lines.pop();
+      for (const line of lines) if (line !== '') onLine(line);
+    });
+    s.on('end', () => { if (tail !== '') onLine(tail); res(); });
+    s.on('error', rej);
+  });
 }
 
 // ---------------------------------------------------------------- building
@@ -278,308 +489,916 @@ const q = (n) => Math.round(n * 10 ** DECIMALS) / 10 ** DECIMALS;
 const isIso = (c) => typeof c === 'string' && /^[A-Z]{2}$/.test(c);
 /** A folded alternate ships only if it is Latin-script — A-82 Part 3 defers non-Latin to Part 11. */
 const isLatinFold = (s) => /^[a-z0-9 ]+$/.test(s);
+/** A-83 Part 4: `min(35, floor(log2(pop)))`, one base-36 character, decoding to `2 ** b`. */
+const popBucket = (pop) => (pop > 0 ? Math.min(35, Math.floor(Math.log2(pop))) : 0);
 
 /**
- * GeoJSON features → the shipped rows, the disagreements and the census.
+ * The whole pipeline: four streaming passes over the two big dumps, then the country resolution.
  *
- * `countryOf` is evaluated against the **quantised** centre, not the raw one, because the
- * quantised centre is what ships and therefore what the invariant test will ask about. Eleven
- * metres cannot move a city out of its country, but "cannot" is not a thing to assume when the
- * check is free.
+ * Two passes each, rather than one, because the two facts are needed in the opposite order from
+ * the one they arrive in: selection needs the alternate-name signal for **every** candidate, and
+ * the display data is only wanted for the ~149k that are selected. Holding the display data for
+ * all 5.4 million candidates to save a second pass is how this generator would need 8 GB.
  */
-function build(geo, countryOf, index) {
-  const census = { agree: 0, silent: 0, disagree: 0, noCode: 0 };
+async function build(cacheDir, { countryOf, index, draws }) {
+  const allCountries = join(cacheDir, SOURCES.allCountries.file);
+  const altNames = join(cacheDir, SOURCES.alternateNames.file);
+
+  // ---- pass A: candidates (class P, or ISL/ISLS), with population and class ----
+  const ids = [];
+  const pops = [];
+  const classP = [];
+  let features = 0;
+  await eachLine(allCountries, SOURCES.allCountries.entry, (line) => {
+    features += 1;
+    const f = line.split('\t');
+    const cls = f[6];
+    if (cls !== 'P' && f[7] !== 'ISL' && f[7] !== 'ISLS') return;
+    ids.push(+f[0]);
+    pops.push(+f[14] || 0);
+    classP.push(cls === 'P' ? 1 : 0);
+  });
+  if (features !== SOURCES.allCountries.rows) {
+    throw new Error(`${features} features, pinned at ${SOURCES.allCountries.rows}`);
+  }
+  console.log(`  ${features} features read, ${ids.length} candidates (class P, ISL, ISLS)`);
+
+  const n = ids.length;
+  const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => ids[a] - ids[b]);
+  const candId = new Int32Array(n);
+  const candPop = new Int32Array(n);
+  const candP = new Uint8Array(n);
+  for (let i = 0; i < n; i += 1) {
+    const j = order[i];
+    candId[i] = ids[j];
+    candPop[i] = pops[j];
+    candP[i] = classP[j];
+  }
+  const at = (id) => {
+    let lo = 0;
+    let hi = n - 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const v = candId[mid];
+      if (v === id) return mid;
+      if (v < id) lo = mid + 1; else hi = mid - 1;
+    }
+    return -1;
+  };
+
+  // ---- pass B: the notability signal ----
+  //
+  // Distinct languages are counted EXACTLY but stored saturating: gate 1 only asks whether the
+  // count reaches 4, so remembering the first `LANG_CAP` distinct codes per candidate answers it
+  // for a fixed 4 bytes a candidate instead of a Set per row.
+  // Sized off the gate, not guessed: a cap below `NOTABILITY.languages` would saturate the count
+  // and make gate 1 silently unsatisfiable — measured, an injected `languages: 12` against a
+  // hard-coded cap of 8 selected the population floor alone and looked like a much harsher dial
+  // than it is.
+  const LANG_CAP = Math.max(8, NOTABILITY.languages);
+  const seen = new Int32Array(n * LANG_CAP).fill(-1);
+  const nSeen = new Uint8Array(n);
+  const wiki = new Uint8Array(n);
+  const langId = new Map();
+  let altRows = 0;
+  await eachLine(altNames, SOURCES.alternateNames.entry, (line) => {
+    altRows += 1;
+    const t1 = line.indexOf('\t');
+    const t2 = line.indexOf('\t', t1 + 1);
+    const t3 = line.indexOf('\t', t2 + 1);
+    const iso = line.slice(t2 + 1, t3);
+    const i = at(+line.slice(t1 + 1, t2));
+    if (i < 0) return;
+    if (iso === 'link') {
+      const t4 = line.indexOf('\t', t3 + 1);
+      const value = t4 < 0 ? line.slice(t3 + 1) : line.slice(t3 + 1, t4);
+      if (value.includes('wikipedia.org')) wiki[i] = 1;
+      return;
+    }
+    if (NOT_A_LANGUAGE.has(iso)) return;
+    // **A-83 Part 3: distinct ISO-639 codes.** `zh-CN` and `zh` are one ISO-639 code, so the
+    // region suffix is dropped before counting; a (feature, language) pair counts once however
+    // many spellings it has.
+    const dash = iso.indexOf('-');
+    const base = dash < 0 ? iso : iso.slice(0, dash);
+    let lid = langId.get(base);
+    if (lid === undefined) { lid = langId.size; langId.set(base, lid); }
+    const k = nSeen[i];
+    const off = i * LANG_CAP;
+    for (let j = 0; j < k; j += 1) if (seen[off + j] === lid) return;
+    if (k < LANG_CAP) { seen[off + k] = lid; nSeen[i] = k + 1; }
+  });
+  if (altRows !== SOURCES.alternateNames.rows) {
+    throw new Error(`${altRows} alternate-name rows, pinned at ${SOURCES.alternateNames.rows}`);
+  }
+  console.log(`  ${altRows} alternate-name rows read, ${langId.size} distinct ISO-639 codes`);
+
+  // ---- selection ----
+  const selected = new Uint8Array(n);
+  const gates = { languages: 0, wikiPop: 0, floor: 0 };
+  let nSelected = 0;
+  for (let i = 0; i < n; i += 1) {
+    const byLanguage = nSeen[i] >= NOTABILITY.languages;
+    const byWiki = wiki[i] === 1 && candPop[i] >= NOTABILITY.wikiPopulation;
+    const byFloor = candP[i] === 1 && candPop[i] >= NOTABILITY.floorPopulation;
+    if (!byLanguage && !byWiki && !byFloor) continue;
+    selected[i] = 1;
+    nSelected += 1;
+    if (byLanguage) gates.languages += 1;
+    if (byWiki) gates.wikiPop += 1;
+    if (byFloor) gates.floor += 1;
+  }
+  console.log(`  selected ${nSelected} of ${n} candidates`);
+  console.log(`    languages >= ${NOTABILITY.languages}          ${gates.languages}`);
+  console.log(`    wikipedia and pop >= ${NOTABILITY.wikiPopulation}  ${gates.wikiPop}`);
+  console.log(`    class P and pop >= ${NOTABILITY.floorPopulation}   ${gates.floor}   (the guard rail, not the dial)`);
+
+  // ---- pass C: the display data for the selected rows ----
+  const admin1Names = readAdmin1(cacheDir);
   const rows = [];
-  const disagreements = [];
-  const derivedOnly = [];
-  const codeless = [];
-  const adm0Counts = new Map();   // code -> Map(ADM0NAME -> count), stated codes only
-  const derivedAdm0 = new Map();  // code -> ADM0NAME, from rows whose code was DERIVED only
-  let coordMismatch = 0;
+  const byId = new Map();
+  await eachLine(allCountries, SOURCES.allCountries.entry, (line) => {
+    const f = line.split('\t');
+    const id = +f[0];
+    const i = at(id);
+    if (i < 0 || selected[i] !== 1) return;
+    const cc = f[8];
+    const row = {
+      gid: id,
+      name: f[1],
+      lat: q(+f[4]),
+      lng: q(+f[5]),
+      stated: isIso(cc) ? cc : null,
+      admin1: admin1Names.get(`${cc}.${f[10]}`) ?? '',
+      population: +f[14] || 0,
+      alt: '',
+    };
+    rows.push(row);
+    byId.set(id, row);
+  });
+  console.log(`  ${rows.length} selected rows read back with their display data`);
 
-  for (const f of geo.features) {
-    const p = f.properties;
-    const lat = q(p.LATITUDE);
-    const lng = q(p.LONGITUDE);
-    // The layer carries the coordinate twice. If the two ever disagree, that is a fact about the
-    // source worth reporting rather than a preference between two columns.
-    const g = f.geometry?.coordinates;
-    if (!g || q(g[0]) !== lng || q(g[1]) !== lat) coordMismatch += 1;
-
-    const stated = isIso(p.ISO_A2) ? p.ISO_A2 : null;
-    const derived = countryOf({ lat, lng }, index);
-    const id = `${ID_PREFIX}:${(p.NE_ID >>> 0).toString(36)}`;
-
-    let code;
-    // §8.4 **A-83 Part 8**. `true` unless the two answers are both non-null and differ.
-    let indexAgrees = true;
-    if (stated !== null) {
-      if (derived === null) {
-        census.silent += 1;
-        code = stated;
-      } else if (derived === stated) {
-        census.agree += 1;
-        code = stated;
-      } else {
-        // **A-83 Part 8, and this is the clause that changed.** The row SHIPS, carrying the
-        // disagreement, and is published by name with both answers. A-82 Part 5 dropped it here
-        // (`continue`), which cost Brazzaville, Geneva and Jerusalem; the invariant is restated —
-        // *no shipped row may SILENTLY contradict the index* — not relaxed. The row is only safe
-        // to ship because `City.placeId` exists to tell a picked pair from a typed field.
-        census.disagree += 1;
-        code = stated;
-        indexAgrees = false;
-        disagreements.push({ id, name: String(p.NAME), statedCountry: stated, derivedCountry: derived });
-      }
-    } else {
-      census.noCode += 1;
-      code = derived ?? '';
-    }
-
-    const name = String(p.NAME);
-    const fold = foldPlaceName(name);
-    const admin1 = p.ADM1NAME == null ? '' : String(p.ADM1NAME);
-    const adm0 = p.ADM0NAME == null ? '' : String(p.ADM0NAME);
-
-    // Alternates: the layer's own Latin-script name columns, folded, minus the ones the name's own
-    // fold already covers. `NAMEALT` is pipe-separated where it carries more than one.
-    const altSources = [
-      ...String(p.NAMEALT ?? '').split('|'),
-      String(p.NAMEASCII ?? ''),
-      String(p.NAME_EN ?? ''),
+  // ---- pass D: the English alternate, for the selected rows only ----
+  //
+  // Deterministic under ties: preferred beats unpreferred, a plain name beats a colloquial or
+  // historic one, then the shortest, then lexicographic. `Map` iteration order is never relied on.
+  const best = new Map();
+  await eachLine(altNames, SOURCES.alternateNames.entry, (line) => {
+    const f = line.split('\t');
+    if (f[2] !== 'en') return;
+    const id = +f[1];
+    if (!byId.has(id)) return;
+    const value = f[3];
+    if (value === '') return;
+    const rank = [
+      f[4] === '1' ? 0 : 1,
+      f[6] === '1' || f[7] === '1' ? 1 : 0,
+      value.length,
+      value,
     ];
-    const alts = [];
-    for (const a of altSources) {
-      const folded = foldPlaceName(a);
-      if (folded === '' || folded === fold || !isLatinFold(folded)) continue;
-      if (!alts.includes(folded)) alts.push(folded);
-    }
-    alts.sort();
+    const held = best.get(id);
+    if (held === undefined || less(rank, held.rank)) best.set(id, { rank, value });
+  });
+  for (const [id, { value }] of best) byId.get(id).alt = value;
+  console.log(`  ${best.size} of ${rows.length} rows carry an English alternate name`);
 
-    if (stated !== null) {
-      if (!adm0Counts.has(stated)) adm0Counts.set(stated, new Map());
-      const m = adm0Counts.get(stated);
-      m.set(adm0, (m.get(adm0) ?? 0) + 1);
-    } else if (code !== '') {
-      derivedOnly.push({ name, adm0, code });
-      if (!derivedAdm0.has(code)) derivedAdm0.set(code, adm0);
-    } else {
-      codeless.push({ name, adm0 });
+  // ---- the country resolution (A-84 Part 5) and the index verdict (A-84 Part 6) ----
+  const admin0 = readAdmin0(cacheDir);
+
+  // **A-84 Part 5, resolved per CODE rather than per row, and the reason is measured.**
+  //
+  // The ruling reads the parent off *"the containing feature's `ISO_A2_EH`"*, one row at a time.
+  // Done that way over this corpus, **39 of Mayotte's 50 rows ship `FR` and 11 ship `null`** — the
+  // difference being whether a settlement coordinate happens to land inside a 1:10m coastline —
+  // and **Saint-Georges, a French commune on the Oyapock, ships `BR`**, which is the exact
+  // attribution A-84 Part 5 names as wrong. A territory does not have a different sovereign in
+  // each of its villages, and one row's coastline accident may not decide the other forty-nine.
+  //
+  // So the layer is still the only source and nothing is typed: every row carrying an undrawable
+  // code is located, and the code's parent is the **modal** answer over all of them, ties broken
+  // alphabetically so the result is a property of the data and not of the row order. A row with no
+  // stated code at all has no code to take a mode over and keeps its own answer. **Disclosed in
+  // BUILD-NOTES as KD-119** — it is a deviation from the ruling's stated mechanism, taken because
+  // the ruling's own named outcomes (Fort-de-France, Basse-Terre, Dzaoudzi, St.-Benoît and
+  // Longyearbyen drawable; Saint-Georges `FR`, not the coordinate's `BR`) are otherwise
+  // unreachable at this corpus's coordinates.
+  const located = new Map();
+  const perCode = new Map();
+  let maxNearest = 0;
+  for (const r of rows) {
+    // **Only a STATED code is translated, and A-83 Part 9's own measurement is why.** A-84 Part 5
+    // says *"the empty code included"*, and in the corpus it was written against the codeless rows
+    // were **Somaliland and Northern Cyprus towns** — real cities the layer draws with no ISO
+    // code. GeoNames states a drawable code for every one of those (Hargeysa is `SO`), and the
+    // rows it leaves codeless are a different population entirely (**KD-120**): **ocean features
+    // and multi-country archipelagos** — `Lesser Antilles`, `French West Indies`, `Woody Island`,
+    // `Virgin Islands`. Translating those hands `Lesser Antilles` to France and the disputed
+    // Paracels to China, which is A-84 Part 5's own *"Cairn does not adjudicate a sovereignty"*
+    // read backwards — and it resurrects the exact ten rows **A-83 Part 9 clause 1 refuses by
+    // name**. A row that states no country keeps `null` and meets the bare-name refusal.
+    if (r.stated === null || draws.has(r.stated)) continue;
+    const hit = admin0.locate(r.lng, r.lat);
+    located.set(r.gid, hit);
+    if (hit.via === 'nearest' && hit.degrees > maxNearest) maxNearest = hit.degrees;
+    let counts = perCode.get(r.stated);
+    if (counts === undefined) { counts = new Map(); perCode.set(r.stated, counts); }
+    const key = hit.code ?? '';
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const codeParent = {};
+  for (const code of [...perCode.keys()].sort()) {
+    const counts = perCode.get(code);
+    const [best] = [...counts].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
+    codeParent[code] = best[0] !== '' && draws.has(best[0]) ? best[0] : null;
+  }
+  console.log(`  parent of each undrawable code, from the layer's own ISO_A2_EH:`);
+  for (const [code, parent] of Object.entries(codeParent)) {
+    const counts = [...perCode.get(code)].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
+    console.log(`    ${code} -> ${parent ?? 'null'}   ${counts.map(([c, n]) => `${c || 'null'}:${n}`).join(' ')}`);
+  }
+  console.log(`  coastal tolerance actually used: ${maxNearest.toFixed(4)}° of ${NEAREST_TOLERANCE}°`);
+
+  const parents = [];
+  const disagreements = [];
+  const census = { agrees: 0, differs: 0, silent: 0 };
+  const refused = { bareName: 0, unreadable: 0, delimiter: 0, silentContradiction: 0 };
+  const refusedRows = [];
+  const shipped = [];
+  const atOrigin = [];
+  let translated = 0;
+
+  for (const r of rows) {
+    let code = r.stated;
+    let parent = null;
+    if (code !== null && !draws.has(code)) {
+      // **A-84 Part 5.** The parent is a fact the dataset the index is cut from already states,
+      // and it is not a fact anybody has to type. `ISO_A2_EH` is the column `gen-countries.mjs`
+      // already treats as *the* code column — France's own `ISO_A2` at 10m is literally `-99`.
+      const hit = located.get(r.gid);
+      const shippedCode = codeParent[code];
+      parent = {
+        id: `${ID_PREFIX}:${r.gid.toString(36)}`,
+        name: r.name,
+        statedCode: code,
+        shippedCode,
+        via: hit.via,
+      };
+      code = shippedCode;
     }
 
-    rows.push({
-      name, fold, alts, countryCode: code, admin1,
-      population: Math.max(0, Math.round(p.POP_MAX ?? 0)),
-      lat, lng,
-      id,
-      indexAgrees,
-      neId: p.NE_ID,
+    const derived = countryOf({ lat: r.lat, lng: r.lng }, index);
+    let says;
+    if (derived === null || code === null) says = 'silent';
+    else if (derived === code) says = 'agrees';
+    else says = 'differs';
+
+    const fold = foldPlaceName(r.name);
+    const altFold = foldPlaceName(r.alt);
+    const alts = altFold !== '' && altFold !== fold && isLatinFold(altFold) ? [altFold] : [];
+
+    // **A-83 Part 9's two shipping conditions, and A-83 Part 11's delimiter refusal.** A refusal
+    // is a row that never ships; each class is counted and the count is published.
+    const text = [r.name, r.admin1, ...alts];
+    if (text.some((s) => s.includes('�') || s.includes('?'))) {
+      refused.unreadable += 1;
+      refusedRows.push({ why: 'unreadable', name: r.name, admin1: r.admin1 });
+      continue;
+    }
+    if (text.some((s) => s.includes('|') || s.includes('\n') || s.includes('\r'))) {
+      refused.delimiter += 1;
+      refusedRows.push({ why: 'delimiter', name: r.name, admin1: r.admin1 });
+      continue;
+    }
+    if (code === null && r.admin1 === '') {
+      refused.bareName += 1;
+      refusedRows.push({ why: 'bare name', name: r.name, admin1: r.admin1 });
+      continue;
+    }
+    if (fold === '') {
+      refused.unreadable += 1;
+      refusedRows.push({ why: 'folds to nothing', name: r.name, admin1: r.admin1 });
+      continue;
+    }
+
+    if (r.lat === 0 && r.lng === 0) atOrigin.push(r.name);
+
+    // **Every published count is over SHIPPED rows.** A refused row is not a row the corpus makes
+    // a claim about, so it may not appear in the census, in the parents golden or in the
+    // disagreements golden — a golden that names a row nobody can find is a golden that sends a
+    // reviewer looking for it.
+    census[says] += 1;
+    if (parent !== null) {
+      parents.push(parent);
+      if (parent.shippedCode !== null) translated += 1;
+    }
+    if (says === 'differs') {
+      disagreements.push({
+        id: `${ID_PREFIX}:${r.gid.toString(36)}`,
+        name: r.name,
+        statedCountry: code,
+        derivedCountry: derived,
+      });
+    }
+
+    shipped.push({
+      gid: r.gid,
+      name: r.name,
+      fold,
+      alts,
+      countryCode: code,
+      admin1: r.admin1,
+      bucket: popBucket(r.population),
+      lat: r.lat,
+      lng: r.lng,
+      says,
+      id: r.gid.toString(36),
     });
   }
 
-  if (coordMismatch) console.log(`  NOTE: ${coordMismatch} feature(s) whose LATITUDE/LONGITUDE differ from their geometry`);
-
-  // **A-82 Part 2's total order, and it IS the artefact**: ascending folded name, descending
-  // population, ascending ISO code, ascending NE_ID. Every key is needed and only the first two
-  // decide anything a reader would notice; the last two exist so a regeneration cannot reshuffle.
-  rows.sort((a, b) =>
-    a.fold < b.fold ? -1 : a.fold > b.fold ? 1 :
-    b.population - a.population ||
-    (a.countryCode < b.countryCode ? -1 : a.countryCode > b.countryCode ? 1 : a.neId - b.neId));
+  // **A-82 Part 2's total order, and it IS the artefact**: ascending folded name, then descending
+  // population bucket (A-83 Part 4's substitution for population), then ascending country code,
+  // then ascending id. Every key is needed and only the first two decide anything a reader would
+  // notice; the last two exist so a regeneration cannot reshuffle.
+  // The last key is the **emitted id string**, not the numeric GeoNames id, because that is what
+  // `searchGazetteer`'s own comparator compares — base-36 `'z'` is numerically 35 and lexically
+  // after `'10'`, so sorting the artefact numerically would put it in an order the shipped
+  // comparator disagrees with, and the order is supposed to BE the artefact.
+  shipped.sort((a, b) =>
+    (a.fold < b.fold ? -1 : a.fold > b.fold ? 1 : 0) ||
+    b.bucket - a.bucket ||
+    ((a.countryCode ?? '') < (b.countryCode ?? '') ? -1 : (a.countryCode ?? '') > (b.countryCode ?? '') ? 1 : 0) ||
+    (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   disagreements.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : a.id < b.id ? -1 : 1));
+  parents.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : a.id < b.id ? -1 : 1));
 
-  // The admin-1 dictionary: distinct names, sorted, so its indices are a property of the data and
-  // not of the order the features happened to arrive in.
-  const admin1 = [...new Set(rows.map((r) => r.admin1).filter((s) => s !== ''))].sort();
+  const admin1 = [...new Set(shipped.map((r) => r.admin1).filter((s) => s !== ''))].sort();
   const admin1At = new Map(admin1.map((s, i) => [s, i]));
-
-  // A-82 Part 4's code→name table, from the source's own ADM0NAME column. Built from **stated**
-  // codes only: a Northern Cyprus row whose code was *derived* as `CY` must not teach the table
-  // that `CY` is called "Northern Cyprus". Ties break on the name, so the table is deterministic.
-  const countryNames = {};
-  for (const [code, counts] of [...adm0Counts].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
-    const best = [...counts].filter(([n]) => n !== '')
-      .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0];
-    if (best) countryNames[code] = best[0];
-  }
-  // **Gap fill, never override.** Three Kosovo rows carry `ISO_A2: -99` and derive `XK`, and no
-  // row *states* `XK`, so the loop above cannot name it and the label would read
-  // `'Pristina, Kosovo, XK'`. A derived-only row's own `ADM0NAME` fills a code the stated rows
-  // left unnamed — and only that: it can never rewrite a name a stated row supplied, which is
-  // what stops a `Northern Cyprus` row that derived `CY` from teaching the table that `CY` is
-  // called Northern Cyprus. Sorted, so the fill is deterministic.
-  for (const [code, adm0] of [...derivedAdm0].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
-    if (countryNames[code] === undefined && adm0 !== '') countryNames[code] = adm0;
-  }
-  const sortedNames = {};
-  for (const code of Object.keys(countryNames).sort()) sortedNames[code] = countryNames[code];
-
-  const unnamed2 = rows
-    .filter((r) => r.countryCode !== '' && sortedNames[r.countryCode] === undefined)
-    .map((r) => ({ name: r.name, code: r.countryCode }));
+  const countryNames = readCountryNames(cacheDir, new Set(shipped.map((r) => r.countryCode).filter((c) => c !== null)));
 
   return {
-    rows, disagreements, census, admin1, admin1At,
-    countryNames: sortedNames, derivedOnly, codeless, unnamed: unnamed2,
+    rows: shipped, admin1, admin1At, countryNames,
+    parents, disagreements, census, refused, refusedRows, atOrigin, codeParent,
+    stats: { candidates: n, selected: nSelected, gates, translated, features, altRows, maxNearest },
   };
 }
 
-/** The packed payload, whose grammar `decodeGazetteer` documents and parses. */
-function pack(built) {
-  const lines = [
-    `${built.admin1.length}|${Object.keys(built.countryNames).length}|${built.rows.length}`,
-    ...built.admin1,
-    ...Object.entries(built.countryNames).map(([c, n]) => `${c} ${n}`),
-    ...built.rows.map((r) => [
-      r.name,
-      r.fold,
-      r.alts.join(','),
-      r.countryCode,
-      r.admin1 === '' ? '' : built.admin1At.get(r.admin1).toString(36),
-      r.population.toString(36),
-      Math.round(r.lat * 1e4).toString(36),
-      Math.round(r.lng * 1e4).toString(36),
-      r.id,
-      // §8.4 A-83 Part 8. One character, written explicitly for both states — see
-      // `decodeGazetteer`'s grammar for why absence may not mean `true` here.
-      r.indexAgrees ? '1' : '0',
-    ].join('|')),
-  ];
-  return lines.join('\n');
+const less = (a, b) => {
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return a[i] < b[i];
+  }
+  return false;
+};
+
+/** `admin1CodesASCII.txt` → `"<CC>.<code>" → region name`. A-83 Part 3: this is where R60-9 died. */
+function readAdmin1(cacheDir) {
+  const out = new Map();
+  const text = readFileSync(join(cacheDir, SOURCES.admin1.file), 'utf8');
+  for (const line of text.split('\n')) {
+    if (line === '') continue;
+    const f = line.split('\t');
+    out.set(f[0], f[1]);
+  }
+  return out;
 }
 
-/** The in-memory equivalent of what the emitted module decodes to, for `--dry-run`'s audit. */
-function gazetteerOf(built, sha) {
+/** `countryInfo.txt` → the code→name table, restricted to the codes the corpus actually ships. */
+function readCountryNames(cacheDir, used) {
+  const text = readFileSync(join(cacheDir, SOURCES.countryInfo.file), 'utf8');
+  const out = {};
+  for (const line of text.split('\n')) {
+    if (line === '' || line.startsWith('#')) continue;
+    const f = line.split('\t');
+    if (used.has(f[0])) out[f[0]] = f[4];
+  }
+  const sorted = {};
+  for (const code of Object.keys(out).sort()) sorted[code] = out[code];
+  return sorted;
+}
+
+/**
+ * The pinned 1:10m admin-0 layer, as a point locator over `ISO_A2_EH` — **A-84 Part 5**.
+ *
+ * This is not the country index and it does not become one: `COUNTRY_INDEX` does not move (A-84
+ * Part 5's own *"what this deliberately does NOT do"*). It is read here only to answer *which
+ * feature contains this row*, at generation time, for the rows whose stated code the shipped index
+ * cannot draw.
+ */
+function readAdmin0(cacheDir) {
+  const geo = JSON.parse(readFileSync(join(cacheDir, SOURCES.admin0.file), 'utf8'));
+  const features = [];
+  for (const f of geo.features) {
+    const p = f.properties;
+    const code = isIso(p.ISO_A2_EH) ? p.ISO_A2_EH : null;
+    const g = f.geometry;
+    if (!g) continue;
+    const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
+    for (const poly of polys) {
+      const rings = poly.map((ring) => ring.map(([lng, lat]) => [lng, lat]));
+      let minLng = Infinity; let minLat = Infinity; let maxLng = -Infinity; let maxLat = -Infinity;
+      for (const [lng, lat] of rings[0]) {
+        if (lng < minLng) minLng = lng;
+        if (lng > maxLng) maxLng = lng;
+        if (lat < minLat) minLat = lat;
+        if (lat > maxLat) maxLat = lat;
+      }
+      features.push({ code, name: p.NAME, rings, box: [minLng, minLat, maxLng, maxLat] });
+    }
+  }
+  const inRing = (ring, x, y) => {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
+      const [xi, yi] = ring[i];
+      const [xj, yj] = ring[j];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  };
+  const toSegment = (px, py, ax, ay, bx, by) => {
+    const dx = bx - ax;
+    const dy = by - ay;
+    const len = dx * dx + dy * dy;
+    const t = len === 0 ? 0 : Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len));
+    return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+  };
   return {
-    source: sourceString(sha),
+    /**
+     * Where this point is, in the layer the index is cut from: `{code, via, degrees}`.
+     *
+     * **`via: 'nearest'` is a coastal tolerance, and it is here because measurement put it here.**
+     * Natural Earth's populated-places layer carried *cartographic label points*, which sit on
+     * drawn land by construction. GeoNames carries *settlement coordinates*, which do not: at
+     * 1:10m, **Longyearbyen sits 400 m out into Adventfjorden, Basse-Terre 1.4 km offshore and
+     * Dzaoudzi 2.2 km off Petite-Terre**, so a containment test alone answers `null` for a capital
+     * whose country the layer draws perfectly well 400 m away. Within `NEAREST_TOLERANCE` the
+     * nearest feature is taken, and the row records that it was — every one is published in
+     * `gazetteer-parents.json` with its `via`, so the fallback is countable rather than invisible.
+     */
+    locate(lng, lat) {
+      for (const f of features) {
+        const [a, b, c, d] = f.box;
+        if (lng < a || lng > c || lat < b || lat > d) continue;
+        if (!inRing(f.rings[0], lng, lat)) continue;
+        let hole = false;
+        for (let i = 1; i < f.rings.length; i += 1) if (inRing(f.rings[i], lng, lat)) { hole = true; break; }
+        if (!hole) return { code: f.code, via: 'contained', degrees: 0 };
+      }
+      let best = null;
+      for (const f of features) {
+        const [a, b, c, d] = f.box;
+        if (lng < a - NEAREST_TOLERANCE || lng > c + NEAREST_TOLERANCE) continue;
+        if (lat < b - NEAREST_TOLERANCE || lat > d + NEAREST_TOLERANCE) continue;
+        for (const ring of f.rings) {
+          for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
+            const dist = toSegment(lng, lat, ring[j][0], ring[j][1], ring[i][0], ring[i][1]);
+            if (best === null || dist < best.degrees) best = { code: f.code, via: 'nearest', degrees: dist };
+          }
+        }
+      }
+      return best !== null && best.degrees <= NEAREST_TOLERANCE
+        ? best
+        : { code: null, via: 'none', degrees: Infinity };
+    },
+  };
+}
+
+function report(built) {
+  const { census, refused, stats } = built;
+  console.log('');
+  console.log(`rows shipped   ${built.rows.length}`);
+  console.log(`admin-1 dict   ${built.admin1.length}`);
+  console.log(`country names  ${Object.keys(built.countryNames).length}`);
+  console.log('');
+  console.log('A-84 Part 6\'s census — what the shipped index says about each row\'s own claim:');
+  console.log(`  agrees   ${String(census.agrees).padStart(6)}`);
+  console.log(`  differs  ${String(census.differs).padStart(6)}   SHIPPED, marked — border towns`);
+  console.log(`  silent   ${String(census.silent).padStart(6)}   the index has no answer, or the row has no code`);
+  console.log('');
+  console.log(`A-84 Part 5 — parent translation: ${built.parents.length} rows whose stated code the index cannot draw`);
+  console.log(`  translated to a drawable parent   ${stats.translated}`);
+  console.log(`  shipped countryCode: null         ${built.parents.length - stats.translated}`);
+  console.log('');
+  console.log('A-83 Part 9 / Part 11 — refusals, each published:');
+  console.log(`  would render as a bare name  ${refused.bareName}`);
+  console.log(`  unreadable name or region    ${refused.unreadable}`);
+  console.log(`  carries a payload delimiter  ${refused.delimiter}`);
+  for (const r of built.refusedRows.slice(0, 40)) {
+    console.log(`    refused (${r.why}) ${JSON.stringify(r.name)} / ${JSON.stringify(r.admin1)}`);
+  }
+  if (built.atOrigin.length) {
+    console.log('');
+    console.log(`  !! ${built.atOrigin.length} row(s) sit at exactly {0,0}: ${built.atOrigin.slice(0, 10).join(', ')}`);
+  }
+}
+
+// ---------------------------------------------------------------- packing and sharding
+
+/** One packed row — A-83 Part 4's field order, minus the fold, which is recomputed on decode. */
+function pack(r, admin1At) {
+  const b36 = (v) => (v < 0 ? `-${Math.abs(v).toString(36)}` : v.toString(36));
+  return [
+    r.name,
+    r.alts.join(','),
+    r.countryCode ?? '',
+    r.admin1 === '' ? '' : admin1At.get(r.admin1).toString(36),
+    r.bucket.toString(36),
+    b36(Math.round(r.lat * 1e4)),
+    b36(Math.round(r.lng * 1e4)),
+    r.id,
+    r.says === 'agrees' ? 'a' : r.says === 'differs' ? 'd' : 's',
+  ].join('|');
+}
+
+/**
+ * **A-83 Part 6: duplication, bounded by measurement, and no index.**
+ *
+ * A row is written into the shard of **every distinct token** of its folded name and of its folded
+ * English alternate; a query is answered from **exactly one** shard, chosen by its first folded
+ * token. That is complete: if the folded query is a prefix of the whole folded name it is a prefix
+ * of its first token, and if it is a prefix of an interior token it is a single token itself.
+ *
+ * **The split is adaptive rather than fixed-width.** A shard starts as one character and splits
+ * while its payload exceeds 96 KiB — *the budget is the invariant; the width is whatever the
+ * budget requires*. Fixed widths were measured and rejected: one character gives a largest shard
+ * of 600 kB–1.3 MB, and two characters still cannot answer an `isla` prefix at 306 kB.
+ */
+function shard(built, corpusSha) {
+  const packed = built.rows.map((r) => pack(r, built.admin1At));
+  const cost = packed.map((s) => Buffer.byteLength(JSON.stringify(s), 'utf8') + 1);
+
+  /** (token, row index) pairs, in row order, so every shard inherits the total order. */
+  const pairs = [];
+  for (let i = 0; i < built.rows.length; i += 1) {
+    const r = built.rows[i];
+    const tokens = new Set([...r.fold.split(' '), ...r.alts.flatMap((a) => a.split(' '))]);
+    for (const token of tokens) if (token !== '') pairs.push([token, i]);
+  }
+  pairs.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] - b[1]));
+
+  const OVERHEAD = 64; // {"v":1,"k":"…","s":"<64 hex>","r":[]}
+  const splits = new Set();
+  const leaves = new Map();
+  const overBudget = [];
+
+  const recurse = (prefix, items) => {
+    const bytes = items.reduce((n, [, i]) => n + cost[i], OVERHEAD + prefix.length + 64);
+    const splittable = items.some(([t]) => t !== prefix);
+    if (bytes <= SHARD_BUDGET || !splittable) {
+      if (bytes > SHARD_BUDGET) overBudget.push({ key: prefix, bytes });
+      leaves.set(prefix, items);
+      return;
+    }
+    splits.add(prefix);
+    const groups = new Map();
+    const terminal = [];
+    for (const item of items) {
+      const [t] = item;
+      if (t === prefix) { terminal.push(item); continue; }
+      const c = t.slice(prefix.length, prefix.length + 1);
+      const g = groups.get(c);
+      if (g === undefined) groups.set(c, [item]); else g.push(item);
+    }
+    if (terminal.length) leaves.set(`${prefix}$`, terminal);
+    for (const c of [...groups.keys()].sort()) recurse(prefix + c, groups.get(c));
+  };
+
+  const first = new Map();
+  for (const item of pairs) {
+    const c = item[0].slice(0, 1);
+    const g = first.get(c);
+    if (g === undefined) first.set(c, [item]); else g.push(item);
+  }
+  for (const c of [...first.keys()].sort()) recurse(c, first.get(c));
+
+  const splitList = [...splits].sort();
+
+  // **A terminal shard holds FIRST tokens only, and this is a correction to A-83 Part 6 that
+  // measurement forced. Disclosed in BUILD-NOTES as KD-118.**
+  //
+  // Part 6's completeness argument — *"a query is answered from exactly one shard, chosen by the
+  // query's first folded token"* — holds only where that token resolves to a leaf. It does not
+  // always: `de` is a **split** prefix here, so the bare query `de` would resolve to `de$` and miss
+  // Delhi, Denver and Detroit, which live in `del`, `den` and `det`. Part 6 already rules that
+  // exact shape for **one character** (*"the correct answer is the terminal shard plus every shard
+  // beneath it, which is a fetch of everything under that letter — this design refuses that"*) and
+  // answers it with `null`, *"keep typing"*, not *"no match"*. The manifest makes the boundary
+  // exact instead of assuming it is always one character.
+  //
+  // A terminal shard is still a real answer, to a query with a **second word**: `san marino` can
+  // only match a row whose whole fold begins `san marino`, so its first token is exactly `san`.
+  // That is the whole population a terminal shard has to hold — **rows whose FIRST token is the
+  // prefix** — and dropping the interior-token copies is what takes `de$` from 104 kB, 6 % over the
+  // budget, to a few hundred bytes: `Rio de Janeiro`'s `de` copy could only ever have answered a
+  // query the loader refuses.
+  const firstTokens = built.rows.map((r) => new Set([
+    r.fold.split(' ')[0],
+    ...r.alts.map((a) => a.split(' ')[0]),
+  ]));
+  const kept = pairs.filter(([token, i]) => !splits.has(token) || firstTokens[i].has(token));
+  const terminal = kept.filter(([token]) => splits.has(token)).length;
+  console.log(`  ${pairs.length - kept.length} unreachable token copies dropped, ${terminal} rows in a terminal shard`);
+
+  const shards = [];
+  let emitted = 0;
+  let largest = { key: '', bytes: 0 };
+  const keptKeys = new Map();
+  for (const item of kept) {
+    const key = shardKeyFor(item[0], splits);
+    const g = keptKeys.get(key);
+    if (g === undefined) keptKeys.set(key, [item]); else g.push(item);
+  }
+  for (const key of [...keptKeys.keys()].sort()) {
+    const items = keptKeys.get(key);
+    // A row that carries two tokens under the same shard is written once, not twice.
+    const rows = [...new Set(items.map(([, i]) => i))].sort((a, b) => a - b);
+    const doc = { v: 1, k: key, s: corpusSha, r: rows.map((i) => packed[i]) };
+    const text = `${JSON.stringify(doc)}\n`;
+    const bytes = Buffer.byteLength(text, 'utf8');
+    emitted += rows.length;
+    if (bytes > largest.bytes) largest = { key, bytes };
+    shards.push({ key, file: `${fileNameFor(key)}.json`, text, bytes, rows });
+  }
+
+  const fileNames = new Set(shards.map((s) => s.file));
+  if (fileNames.size !== shards.length) throw new Error('two shard keys map to one file name');
+
+  const meta = {
+    v: 1,
+    $source: ATTRIBUTION,
+    $sourceSha256: corpusSha,
+    $fetched: FETCHED,
+    $what:
+      'The session-once half of the sharded offline city gazetteer (ARCHITECTURE §8.4 A-83 Part 5). ' +
+      'GENERATED by cairn/tools/gen-gazetteer.mjs — do not edit. Every shard beside this file ' +
+      'carries the same $sourceSha256 and the loader refuses a pair that disagrees.',
+    idPrefix: ID_PREFIX,
+    rows: built.rows.length,
+    shardCount: shards.length,
+    indexSays: built.census,
+    admin1: built.admin1,
     countryNames: built.countryNames,
-    rows: built.rows.map((r) => ({
-      name: r.name, fold: r.fold, alts: r.alts, countryCode: r.countryCode,
-      admin1: r.admin1, population: r.population, centre: { lat: r.lat, lng: r.lng }, id: r.id,
-      indexAgrees: r.indexAgrees,
-    })),
+    splits: splitList,
+    files: Object.fromEntries(shards.map((s) => [s.key, s.file])),
+  };
+  const metaText = `${JSON.stringify(meta)}\n`;
+
+  if (overBudget.length) {
+    for (const o of overBudget) console.log(`  !! shard "${o.key}" is ${o.bytes} bytes and cannot split`);
+  }
+  return {
+    shards, splits: splitList, emitted, largest, meta,
+    metaText, metaBytes: Buffer.byteLength(metaText, 'utf8'), packed, corpusSha,
   };
 }
 
-const sourceString = () => `${REPO}@${TAG}/geojson/${FILE}`;
+/**
+ * **R60-5: the round trip compares STRUCTURES, not strings.** A-82's version compared the emitted
+ * literal to `pack(built)` — two strings — so a `|` inside a name would shift every field of that
+ * row and round-trip clean. It measured green on a row that was broken. This parses what was
+ * written and compares it field by field to what was built.
+ */
+function roundTrip(docs, built) {
+  let checked = 0;
+  for (const s of docs.shards) {
+    const doc = JSON.parse(s.text);
+    if (doc.k !== s.key) throw new Error(`round-trip: shard ${s.key} names itself ${doc.k}`);
+    if (doc.s !== docs.corpusSha) throw new Error(`round-trip: shard ${s.key} carries the wrong source sha`);
+    if (doc.r.length !== s.rows.length) throw new Error(`round-trip: shard ${s.key} has ${doc.r.length} rows, built ${s.rows.length}`);
+    for (let i = 0; i < doc.r.length; i += 1) {
+      const f = doc.r[i].split('|');
+      const r = built.rows[s.rows[i]];
+      if (f.length !== 9) throw new Error(`round-trip: ${r.name} re-parses to ${f.length} fields, not 9`);
+      const want = [
+        r.name,
+        r.alts.join(','),
+        r.countryCode ?? '',
+        r.admin1 === '' ? '' : built.admin1At.get(r.admin1).toString(36),
+        r.bucket.toString(36),
+        (Math.round(r.lat * 1e4) < 0 ? '-' : '') + Math.abs(Math.round(r.lat * 1e4)).toString(36),
+        (Math.round(r.lng * 1e4) < 0 ? '-' : '') + Math.abs(Math.round(r.lng * 1e4)).toString(36),
+        r.id,
+        r.says === 'agrees' ? 'a' : r.says === 'differs' ? 'd' : 's',
+      ];
+      for (let k = 0; k < 9; k += 1) {
+        if (f[k] !== want[k]) {
+          throw new Error(
+            `round-trip: ${JSON.stringify(r.name)} field ${k} re-parses to ${JSON.stringify(f[k])}, built ${JSON.stringify(want[k])}`,
+          );
+        }
+      }
+      // The row must be findable in the shard it was written to — which is what makes the
+      // generator's copy of `foldPlaceName` a checked pair now that the fold is not shipped.
+      const tokens = new Set([...r.fold.split(' '), ...r.alts.flatMap((a) => a.split(' '))]);
+      const keys = new Set([...tokens].filter((t) => t !== '').map((t) => shardKeyFor(t, new Set(docs.splits))));
+      if (!keys.has(s.key)) throw new Error(`round-trip: ${r.name} is in shard ${s.key}, which none of its tokens resolve to`);
+      checked += 1;
+    }
+  }
+  if (checked !== docs.emitted) throw new Error(`round-trip: checked ${checked} of ${docs.emitted} emitted rows`);
+}
 
-function emit(built, sha) {
-  const packed = pack(built);
-  // The payload lives in ONE template literal, newline-separated so a regeneration diff is one row
-  // changing on one key rather than a wall of reordered text (A-82 Part 10). Three sequences would
-  // change its meaning; two of them do not occur in this dataset and are REFUSED rather than
-  // escaped blind, and the third (a backtick, in seven Arabic-transliterated ADM1NAMEs) is escaped.
-  if (packed.includes('\\')) throw new Error('the payload contains a backslash; the literal would misparse');
-  if (packed.includes('${')) throw new Error('the payload contains "${"; the literal would interpolate');
-  const literal = packed.replaceAll('`', '\\`');
+// ---------------------------------------------------------------- writing
 
-  const codes = Object.keys(built.countryNames);
+function write(docs, built) {
+  mkdirSync(CORPUS_DIR, { recursive: true });
+  // A regeneration that shrinks the corpus must not leave last run's shards behind: a stale
+  // `.json` nobody imports is a file the budget test would still count.
+  for (const name of readdirSync(CORPUS_DIR)) {
+    if (name.endsWith('.json')) rmSync(join(CORPUS_DIR, name));
+  }
+  writeFileSync(join(CORPUS_DIR, 'meta.json'), docs.metaText);
+  for (const s of docs.shards) writeFileSync(join(CORPUS_DIR, s.file), s.text);
+
+  const total = docs.shards.reduce((n, s) => n + s.bytes, 0) + docs.metaBytes;
+  writeFileSync(SHARD_MAP, emitShardMap(docs, built, total));
+
+  console.log('');
+  console.log(`wrote packages/core/src/geo/gazetteer/  (${docs.shards.length + 1} documents)`);
+  console.log(`  meta.json      ${docs.metaBytes} bytes`);
+  console.log(`  largest shard  ${docs.largest.bytes} bytes  "${docs.largest.key}"`);
+  console.log(`  total          ${total} bytes`);
+  console.log(`  ^ this is the number that goes in CORPUS_BYTES in`);
+  console.log(`    packages/core/test/0-gazetteerBudget.test.ts, and in no document.`);
+  console.log(`wrote packages/core/src/geo/gazetteerShards.gen.ts  (${statSync(SHARD_MAP).size} bytes)`);
+}
+
+function emitShardMap(docs, built, total) {
+  const { census, refused, stats } = built;
+  const entries = docs.shards
+    .map((s) => `  ${JSON.stringify(s.key)}: () => import('./gazetteer/${s.file}', { with: { type: 'json' } }),`)
+    .join('\n');
   return `/**
  * GENERATED FILE — DO NOT EDIT.
  *
  * Produced by \`node tools/gen-gazetteer.mjs\`. Re-run that to change it; a hand edit here is lost
  * on the next run and untraceable to a source in the meantime.
  *
- * Source : ${sourceString()}
- *          (Natural Earth populated places, public domain — see the generator's header for the
- *          licence citation and why the tag is pinned rather than tracking \`master\`.)
- * sha256 : ${FILE} ${sha}
- * Rows   : ${built.rows.length} shipped · ${built.admin1.length} admin-1 names · ${codes.length} country names
- * Marked : ${built.disagreements.length} rows carry \`indexAgrees: false\` — ARCHITECTURE §8.4 **A-83** Part 8, the
- *          consistency invariant RESTATED: *no shipped row may SILENTLY contradict the country
- *          index*. Those rows are border towns the shipped index draws on the wrong side of a
- *          frontier (Geneva, Jerusalem, Brazzaville, Maastricht, Lugano, Arlon…). A-82 Part 5
- *          refused them outright, which cost a national capital and the second city of
- *          Switzerland; they now SHIP carrying the disagreement, and every one is published with
- *          both answers in \`fixtures/golden/gazetteer-disagreements.json\`. **A row that would
- *          contradict the index without carrying that record is still REFUSED.** Safe only because
- *          \`City.placeId\` exists (ROADMAP I-22): a PICKED row's country outranks \`countryOf\`, and
- *          a hand-typed one's does not.
- * Census : ${built.census.agree} agree with ISO_A2 · ${built.census.silent} countryOf-silent (A-26's honest hole) ·
- *          ${built.census.disagree} contradicted (shipped, marked) · ${built.census.noCode} carry no ISO_A2 at all
- * Order  : ascending folded name, then descending population, then ascending ISO code, then
- *          ascending NE_ID. A **total** order, so a regeneration cannot reshuffle the list, and it
- *          is a property of THIS FILE — \`decodeGazetteer\` preserves it and does not re-derive it.
- * Coords : ${DECIMALS} decimal places (~11 m), stored as base-36 tenth-thousandths. \`countryOf\` was
- *          evaluated against the QUANTISED coordinate, so the invariant holds for the bytes that
- *          ship rather than for the ones that were measured.
- * Ids    : every row id is \`${ID_PREFIX}:<base-36 NE_ID>\`. The prefix names the dataset that minted it,
- *          because this value is what a \`City.placeId\` persists (§8.4 A-83 Part 8).
- * Fold   : A-82 Part 3's five ordered steps. Each row carries its own fold, and
- *          \`packages/core/test/gazetteer.test.ts\` asserts core's \`foldPlaceName(row.name)\`
- *          reproduces it for every row — which is what makes the generator's own copy of that
- *          algorithm a checked pair rather than a second opinion.
- * Budget : \`packages/core/test/0-gazetteerBudget.test.ts\`. This module is NOT reachable from
- *          \`packages/core/src/index.ts\`: it is a **second declared entry point**,
- *          \`@cairn/core/gazetteer\`, dynamically imported, because unlike \`COUNTRY_INDEX\` the
- *          gazetteer is not on the write path (A-82 Part 9).
+ * **The shard map for the offline city gazetteer** — ARCHITECTURE §8.4 **A-83** Parts 5, 6 and 7,
+ * with **A-84** Parts 5 and 6; ROADMAP Phase 2 **I-23**. One lazy import per shard document, which
+ * is the whole mechanism: a search fetches **one** shard, not the corpus.
  *
- * The rows live in ONE template literal — one token to Node's type stripping, which is what keeps
- * \`node --test packages/core\` running the .ts files with no build step — and one row per line, so
- * a moved coordinate is one line of diff on one stable \`NE_ID\`.
+ * Source : GeoNames — allCountries, alternateNamesV2, admin1CodesASCII, countryInfo.
+ *          **Licensed CC BY 4.0** (https://creativecommons.org/licenses/by/4.0/), the first
+ *          attribution obligation in this repository. The attribution rides on the DATA:
+ *          \`gazetteer/meta.json\`'s \`$source\` carries it, \`Gazetteer.source\` is that string, and
+ *          **any surface that renders a hit must render it**. Country outlines for A-84 Part 5's
+ *          parent translation: Natural Earth ne_10m_admin_0_countries v5.1.2, public domain.
+ * Pinned : GeoNames publishes no release tag — the dumps are regenerated daily — so each source
+ *          file is pinned by **sha256 and by fetch date** rather than by a ref, and the generator
+ *          REFUSES TO WRITE on a mismatch. Fetched ${FETCHED}.
+${Object.entries(SOURCES).map(([k, s]) => ` *          ${k.padEnd(15)} ${s.sha256}`).join('\n')}
+ *          corpus sha256   ${docs.corpusSha}
+ *          (the corpus sha is taken over the five source checksums; \`meta.json\` and every shard
+ *          carry it, and the loader refuses a pair that disagrees — A-83 Part 4's skew hazard.)
+ * Filter : **notability, not population** (A-83 Parts 1 and 3). Class \`P\`, or feature code
+ *          \`ISL\`/\`ISLS\`; selected on \`languages >= ${NOTABILITY.languages}\`, or a Wikipedia link with
+ *          population >= ${NOTABILITY.wikiPopulation}, or class P with population >= ${NOTABILITY.floorPopulation}.
+ *          ${stats.candidates} candidates → ${stats.selected} selected → ${built.rows.length} shipped.
+ *          QA round 60 measured the population-filtered predecessor at **21.5 %** of a
+ *          171-destination travel corpus. Hallstatt has 779 residents and a million visitors a
+ *          year; the filter was on the wrong axis.
+ * Shards : ${docs.shards.length} documents, ${docs.splits.length} split prefixes, ${docs.emitted} emitted rows
+ *          (duplication ${(docs.emitted / built.rows.length).toFixed(3)}×, the price of one-search-one-shard).
+ *          Largest ${docs.largest.bytes} bytes ("${docs.largest.key}") against a ${SHARD_BUDGET}-byte budget;
+ *          ${total} bytes committed in total. **The budget is the invariant and the
+ *          width is whatever the budget requires** (A-83 Part 6).
+ * Census : ${census.agrees} agree with countryOf · ${census.differs} differ (shipped, marked) ·
+ *          ${census.silent} silent. **Silence is not agreement** — §8.4 **A-84** Part 6: the field is
+ *          \`indexSays: 'agrees' | 'differs' | 'silent'\`, because the boolean it replaces shipped
+ *          all 436 index-silent rows claiming agreement. Every differing row is published with
+ *          BOTH answers in \`fixtures/golden/gazetteer-disagreements.json\`; a row that would
+ *          contradict the index without carrying that record is still REFUSED.
+ * Parents: ${built.parents.length} rows carry a country code the shipped index cannot draw. Each is resolved
+ *          against ne_10m_admin_0_countries' own \`ISO_A2_EH\` — ${stats.translated} ship the containing
+ *          feature's code, ${built.parents.length - stats.translated} ship \`countryCode: null\`. **No row is refused for
+ *          this**: Cairn does not adjudicate a sovereignty its own map cannot draw (A-84 Part 5).
+ *          Published in \`fixtures/golden/gazetteer-parents.json\`.
+ * Refused: ${refused.bareName} would have rendered as a bare name · ${refused.unreadable} unreadable · ${refused.delimiter} carried a
+ *          payload delimiter (A-83 Part 9, A-83 Part 11).
+ * Order  : ascending folded name, then descending population bucket, then ascending country code,
+ *          then ascending GeoNames id. A **total** order, so a regeneration cannot reshuffle the
+ *          list, and it is a property of these files — \`decodeGazetteer\` preserves it.
+ * Coords : ${DECIMALS} decimal places (~11 m), base-36 tenth-thousandths. \`countryOf\` was evaluated
+ *          against the QUANTISED coordinate, so the invariant holds for the bytes that ship.
+ * Budget : \`packages/core/test/0-gazetteerBudget.test.ts\`. **This module is not reachable from
+ *          \`packages/core/src/index.ts\`**: it is the second declared entry point,
+ *          \`@cairn/core/gazetteer\`, and every shard is behind a dynamic import, because unlike
+ *          \`COUNTRY_INDEX\` the gazetteer is not on the write path (A-82 Part 9).
+ *
+ * The JSON documents are **not** TypeScript, which is why the corpus can be 8 MB while every
+ * generated \`.ts\` file in this family stays far under the 1,048,576-byte type-stripping ceiling.
  */
-import { decodeGazetteer } from './gazetteer.ts';
-import type { Gazetteer } from './gazetteer.ts';
+import { loadGazetteer } from './gazetteer.ts';
+import type { Gazetteer, GazetteerDocuments } from './gazetteer.ts';
 
-const PACKED = \`${literal}\`;
+/** One lazy import per shard document. A search touches exactly one of these. */
+const SHARDS: Readonly<Record<string, () => Promise<{ default: unknown }>>> = {
+${entries}
+};
 
-/** The bundled city gazetteer. Injected into \`searchGazetteer(query, gazetteer, opts?)\`. */
-export const GAZETTEER: Gazetteer = decodeGazetteer({ source: '${sourceString()}' }, PACKED);
+/**
+ * The two documents, bound. Everything that decides *which* shard, decodes it, checks the pair's
+ * checksums and refuses a query too short to resolve lives in the hand-written
+ * \`geo/gazetteer.ts\` — this module is data and two thunks.
+ */
+const DOCUMENTS: GazetteerDocuments = {
+  meta: () => import('./gazetteer/meta.json', { with: { type: 'json' } }),
+  shard: (key) => (key in SHARDS ? SHARDS[key]() : Promise.resolve(null)),
+};
+
+/**
+ * **The one runtime symbol \`@cairn/core/gazetteer\` carries** (A-83 Part 7). Resolves the query to
+ * a single shard, fetches the meta document once, decodes both and returns a \`Gazetteer\` naming
+ * the shard it answers for — or \`null\` for a folded query under two characters, which means
+ * *"keep typing"* and **not** *"no match"*.
+ */
+export const loadGazetteerFor = (query: string): Promise<Gazetteer | null> =>
+  loadGazetteer(query, DOCUMENTS);
 `;
 }
 
+/** The in-memory equivalent of the committed corpus, for `--dry-run`'s audit. */
+function inMemoryCorpus(docs) {
+  return {
+    meta: docs.meta,
+    shards: docs.shards.map((s) => ({ key: s.key, doc: JSON.parse(s.text), bytes: s.bytes })),
+    rows: decodeAll(docs.meta, docs.shards.map((s) => JSON.parse(s.text))),
+  };
+}
+
+/** Reads the committed corpus off disk. `--audit-only` fetches nothing. */
+function readCommittedCorpus() {
+  const meta = JSON.parse(readFileSync(join(CORPUS_DIR, 'meta.json'), 'utf8'));
+  const shards = [];
+  for (const name of readdirSync(CORPUS_DIR).sort()) {
+    if (name === 'meta.json' || !name.endsWith('.json')) continue;
+    const text = readFileSync(join(CORPUS_DIR, name), 'utf8');
+    shards.push({ key: JSON.parse(text).k, doc: JSON.parse(text), bytes: Buffer.byteLength(text, 'utf8'), file: name });
+  }
+  return { meta, shards, rows: decodeAll(meta, shards.map((s) => s.doc)) };
+}
+
 /**
- * Round-trip: the one literal the module carries must re-parse to exactly the rows that went into
- * it. Done here with the generator's own reader rather than by calling core's `decodeGazetteer` —
- * ROADMAP criterion E ceiling (1) says nothing under `tools/` reaches past
- * `packages/core/src/index.ts`, and a decoder is not on §2.10's surface. What the decoder does with
- * these bytes is `packages/core/test/gazetteer.test.ts`'s job, not this file's. (**KD-112**.)
+ * Decodes every shard into one deduplicated row list — the generator's own reader, not core's.
+ * ROADMAP's ceiling (1) under criterion E: nothing under `tools/` reaches past
+ * `packages/core/src/index.ts`, and the decoder is not on §2.10's surface. What core's decoder
+ * does with these bytes is `packages/core/test/gazetteer.test.ts`'s job, not this file's.
  */
-function roundTrip(text, built) {
-  const m = /const PACKED = `([\s\S]*)`;\n/.exec(text);
-  if (!m) throw new Error('round-trip: could not find PACKED in the emitted text');
-  const back = m[1].replaceAll('\\`', '`');
-  if (back !== pack(built)) throw new Error('round-trip: the emitted literal is not the payload that produced it');
-  const lines = back.split('\n');
-  const want = 1 + built.admin1.length + Object.keys(built.countryNames).length + built.rows.length;
-  if (lines.length !== want) throw new Error(`round-trip: ${lines.length} lines, expected ${want}`);
+function decodeAll(meta, docs) {
+  const byId = new Map();
+  for (const doc of docs) {
+    if (doc.s !== meta.$sourceSha256) {
+      throw new Error(`shard ${doc.k} carries $sourceSha256 ${doc.s}, meta.json carries ${meta.$sourceSha256}`);
+    }
+    for (const packed of doc.r) {
+      const f = packed.split('|');
+      const id = `${meta.idPrefix}:${f[7]}`;
+      if (byId.has(id)) continue;
+      byId.set(id, {
+        name: f[0],
+        fold: foldPlaceName(f[0]),
+        alts: f[1] === '' ? [] : f[1].split(','),
+        countryCode: f[2] === '' ? null : f[2],
+        admin1: f[3] === '' ? '' : meta.admin1[parseInt(f[3], 36)],
+        population: 2 ** parseInt(f[4], 36),
+        centre: { lat: parseInt(f[5], 36) / 1e4, lng: parseInt(f[6], 36) / 1e4 },
+        id,
+        indexSays: f[8] === 'a' ? 'agrees' : f[8] === 'd' ? 'differs' : 'silent',
+      });
+    }
+  }
+  return [...byId.values()];
 }
 
 // ---------------------------------------------------------------- the goldens
 
 /**
- * `fixtures/golden/gazetteer-disagreements.json` — **renamed from `gazetteer-refusals.json` at
- * §8.4 A-83 Part 8, and its JOB changed with its name.** It used to publish rows that were
- * DROPPED; it now publishes rows that **SHIP**, each carrying `indexAgrees: false`, with **both**
- * country answers beside it. That is what *"no shipped row may SILENTLY contradict the index"*
- * means in a file: the contradiction is on the record, by name, countable and reviewable, and a
- * count that changes when the country index next changes is a diff a reviewer must look at.
+ * `fixtures/golden/gazetteer-disagreements.json` — the rows that **ship carrying a contradiction**.
  *
- * **Coordinates are NOT in this file and that is still not a redaction** — `{id, name,
- * statedCountry, derivedCountry}` is A-82 Part 10's stated shape for it, and every one of these
- * rows now ships with its coordinate in `GAZETTEER` anyway, so publishing it twice would add
- * nothing. `country-holes.json`'s `NO COORDINATES` line does not transfer to the probes golden,
- * which does carry them (A-82 Part 10: that line's subject is the live planner's own records
- * under §6.6, and this one's is a public-domain dataset already committed in full).
+ * That is what *"no shipped row may SILENTLY contradict the index"* means in a file: the
+ * contradiction is on the record, by name, countable and reviewable, and a count that changes when
+ * the country index next changes is a diff a reviewer must look at.
+ *
+ * **Coordinates are not in this file and that is not a redaction** — `{id, name, statedCountry,
+ * derivedCountry}` is A-82 Part 10's stated shape for it, and every one of these rows ships with
+ * its coordinate in the corpus anyway.
  */
 function writeDisagreements(built, sha) {
   const out = {
     $generatedBy: 'cairn/tools/gen-gazetteer.mjs',
-    $source: sourceString(),
+    $source: ATTRIBUTION,
     $sourceSha256: sha,
+    $fetched: FETCHED,
     $what:
-      'Every row of the pinned populated-places layer whose stated ISO country code and ' +
-      'countryOf(row.centre, COUNTRY_INDEX) are both non-null and DISAGREE. ARCHITECTURE §8.4 ' +
-      "A-82 Part 5 refused these rows outright, which cost Brazzaville (a national capital), " +
-      'Geneva and Jerusalem; §8.4 A-83 Part 8 RESTATES the invariant as "no shipped row may ' +
-      'SILENTLY contradict the country index", so every row listed here SHIPS in ' +
-      'packages/core/src/geo/gazetteer.gen.ts carrying indexAgrees: false, and is named here with ' +
-      'BOTH answers. A row that would contradict the index without carrying that record is still ' +
-      'REFUSED. Every one is a border town the shipped index draws on the wrong side of a ' +
-      'frontier, because A-26 Part 2 chose a coarse base scale and a coarse ring bulges outward. ' +
-      "statedCountry is the source's ISO_A2 and is what the row ships; derivedCountry is what " +
-      'countryOf says. A picked city takes the former (City.placeId, A-83 Part 8); a typed one ' +
-      'still takes the latter.',
+      'Every shipped gazetteer row whose country code and countryOf(row.centre, COUNTRY_INDEX) ' +
+      'are both non-null and DISAGREE. ARCHITECTURE §8.4 A-82 Part 5 refused such rows outright, ' +
+      'which cost Brazzaville (a national capital), Geneva and Jerusalem; A-83 Part 8 RESTATES ' +
+      'the invariant as "no shipped row may SILENTLY contradict the country index", so every row ' +
+      'listed here SHIPS carrying indexSays: "differs", and is named here with BOTH answers. A ' +
+      'row that would contradict the index without carrying that record is still REFUSED. Most ' +
+      'are border towns the shipped index draws on the wrong side of a frontier, because A-26 ' +
+      'Part 2 chose a coarse base scale and a coarse ring bulges outward. statedCountry is what ' +
+      'the row ships; derivedCountry is what countryOf says. A picked city takes the former ' +
+      '(City.pick, §8.4 A-84); a typed one still takes the latter.',
     total: built.disagreements.length,
     disagreements: built.disagreements,
   };
@@ -587,75 +1406,170 @@ function writeDisagreements(built, sha) {
   console.log(`wrote fixtures/golden/gazetteer-disagreements.json  (${built.disagreements.length} rows)`);
 }
 
+/**
+ * `fixtures/golden/gazetteer-parents.json` — **A-84 Part 5**, new at I-23.
+ *
+ * Every row whose stated country code is not one the shipped `COUNTRY_INDEX` can draw, with the
+ * code it ships instead: the containing feature's `ISO_A2_EH` where the index draws it, and `null`
+ * where it does not. `shippedCode: null` is included rather than omitted, because a row that says
+ * nothing about its country is the interesting half of this ruling — Cairn does not adjudicate a
+ * sovereignty its own map cannot draw, and the rows where it declines are the ones to review.
+ */
+function writeParents(built, sha) {
+  const nulls = built.parents.filter((p) => p.shippedCode === null).length;
+  const out = {
+    $generatedBy: 'cairn/tools/gen-gazetteer.mjs',
+    $source: ATTRIBUTION,
+    $sourceSha256: sha,
+    $fetched: FETCHED,
+    $what:
+      'Every shipped row whose SOURCE-STATED country code is not one COUNTRY_INDEX can draw — the ' +
+      'empty code included — with the code it ships instead. ARCHITECTURE §8.4 A-84 Part 5 (QA ' +
+      'R61-3): A-29 step 4 refused these codes on the stated ground that "the coordinate ' +
+      'attribution already answers the parent", and for six of the eight codes it names the ' +
+      'coordinate answers NOTHING. The parent is instead read from the dataset the index is cut ' +
+      'from: the containing feature\'s ISO_A2_EH in ne_10m_admin_0_countries at v5.1.2. A row ' +
+      'whose containing feature has no ISO code (Somaliland, Northern Cyprus) ships ' +
+      'shippedCode: null and is NEVER REFUSED — its name and region still label it. NO ' +
+      'COORDINATES: ids, names and codes only.',
+    total: built.parents.length,
+    translated: built.parents.length - nulls,
+    shippedNull: nulls,
+    codeParent: built.codeParent,
+    parents: built.parents,
+  };
+  writeFileSync(PARENTS_OUT, `${JSON.stringify(out, null, 2)}\n`);
+  console.log(`wrote fixtures/golden/gazetteer-parents.json  (${built.parents.length} rows, ${nulls} shipping null)`);
+}
+
 // ---------------------------------------------------------------- the audit
 
 /**
- * Runs A-82's two measurable claims against a decoded gazetteer — the committed module under
- * `--audit-only`, the in-memory build under `--dry-run` — and writes the probes golden.
- *
- * The invariant is re-derived here **from the artefact**, not from the build's own bookkeeping. A
- * generator that audits its own intermediate value cannot see an emit bug.
+ * Re-derives this increment's measurable claims **from the artefact**, not from the build's own
+ * bookkeeping. A generator that audits its own intermediate value cannot see an emit bug.
  */
-async function audit(gaz, { writeProbes }) {
+async function audit(corpus, { writeProbes }) {
   const { countryOf, COUNTRY_INDEX, searchGazetteer } = await import('../packages/core/src/index.ts');
+  const draws = new Set(COUNTRY_INDEX.countries.map((c) => c.code));
+  const meta = corpus.meta;
 
-  let agree = 0;
+  let agrees = 0;
+  let differs = 0;
   let silent = 0;
-  let marked = 0;
   const violations = [];
-  const misMarked = [];
-  for (const r of gaz.rows) {
+  const undrawable = [];
+  const bare = [];
+  const origin = [];
+  for (const r of corpus.rows) {
     const derived = countryOf(r.centre, COUNTRY_INDEX);
-    const disagrees = derived !== null && derived !== r.countryCode;
-    if (r.indexAgrees === false) {
-      marked += 1;
-      // A row may not claim a disagreement it does not have: the marking is a record of a
-      // measurement, and a marking that fires where the index agrees is a licence, not a record.
-      if (!disagrees) misMarked.push(`${r.name} is marked indexAgrees:false and countryOf says ${derived ?? 'nothing'}`);
-      continue;
+    if (r.countryCode !== null && !draws.has(r.countryCode)) undrawable.push(`${r.name} carries ${r.countryCode}`);
+    if (r.countryCode === null && r.admin1 === '') bare.push(r.name);
+    if (r.centre.lat === 0 && r.centre.lng === 0) origin.push(r.name);
+    if (r.indexSays === 'differs') {
+      differs += 1;
+      if (derived === null || derived === r.countryCode) {
+        violations.push(`${r.name} says "differs" and countryOf says ${derived ?? 'nothing'}`);
+      }
+    } else if (r.indexSays === 'agrees') {
+      agrees += 1;
+      if (derived !== r.countryCode) {
+        violations.push(`${r.name} says "agrees" (${r.countryCode}) and countryOf says ${derived ?? 'nothing'}`);
+      }
+    } else {
+      silent += 1;
+      if (derived !== null && r.countryCode !== null) {
+        violations.push(`${r.name} says "silent" and countryOf says ${derived}`);
+      }
     }
-    if (derived === null) silent += 1;
-    else if (derived === r.countryCode) agree += 1;
-    else violations.push(`${r.name} states ${r.countryCode || "''"}, countryOf says ${derived}`);
   }
-  console.log(`  invariant: ${agree} rows agree with countryOf, ${silent} it is silent on, ${marked} ship MARKED, ${violations.length} contradicted SILENTLY`);
+  console.log(`  indexSays: ${agrees} agree · ${differs} differ · ${silent} silent  (sums to ${agrees + differs + silent} of ${corpus.rows.length})`);
   for (const v of violations.slice(0, 20)) console.log(`    VIOLATION ${v}`);
-  if (violations.length) throw new Error(`${violations.length} shipped rows SILENTLY contradict countryOf`);
-  for (const v of misMarked.slice(0, 20)) console.log(`    MIS-MARKED ${v}`);
-  if (misMarked.length) throw new Error(`${misMarked.length} shipped rows are marked and do not disagree`);
-  // ROADMAP I-22's stop-and-report condition, re-derived from the ARTEFACT rather than from the
-  // build's own bookkeeping: a marking that never fires is a marking that was deleted.
-  if (marked === 0) throw new Error('ZERO rows ship with indexAgrees:false — the marking is gone');
+  if (violations.length) throw new Error(`${violations.length} shipped rows mis-state what the index says`);
+  if (undrawable.length) {
+    for (const u of undrawable.slice(0, 20)) console.log(`    UNDRAWABLE ${u}`);
+    throw new Error(`${undrawable.length} shipped rows carry a code COUNTRY_INDEX cannot draw`);
+  }
+  if (bare.length) throw new Error(`${bare.length} shipped rows would render as a bare name: ${bare.slice(0, 5).join(', ')}`);
+  if (origin.length) {
+    throw new Error(
+      `${origin.length} shipped row(s) sit at exactly {0,0} — STOP AND REPORT (ROADMAP I-23, ` +
+        `§8.4 A-85 Part 5): ${origin.slice(0, 5).join(', ')}`,
+    );
+  }
+  // A marking that never fires is a marking that was deleted (A-83 Part 11).
+  if (differs === 0) throw new Error('ZERO rows ship with indexSays "differs" — the marking is gone');
+  if (agrees + differs + silent !== corpus.rows.length) throw new Error('the census triple does not sum to the row count');
+
+  // **One search, one shard, and the answer is the same as the whole corpus's.** This is the
+  // fault the design is most likely to commit and the one that would silently make the search
+  // incomplete, so the generator measures it too rather than leaving it to the test alone.
+  const splits = new Set(meta.splits);
+  const whole = { source: meta.$source, shard: null, countryNames: meta.countryNames, rows: corpus.rows };
+  const byKey = new Map();
+  for (const s of corpus.shards) byKey.set(s.key, s.doc);
+  const shardFor = (query) => {
+    const token = foldPlaceName(query).split(' ')[0];
+    // What `loadGazetteer` itself refuses: a token too short, or one that IS a split prefix, whose
+    // true answer spans that prefix's whole subtree. `null` is "keep typing", never "no match".
+    const q = foldPlaceName(query);
+    if (token.length < 2 || (q === token && splits.has(token))) return null;
+    const key = shardKeyFor(token, splits);
+    const doc = byKey.get(key);
+    return {
+      source: meta.$source,
+      shard: key,
+      countryNames: meta.countryNames,
+      rows: doc ? decodeAll(meta, [doc]) : [],
+    };
+  };
+  let mismatched = 0;
+  const keepTyping = [];
+  for (const query of [...PROBES, 'york', 'angeles', 'new york', 'saint', 'san', 'de']) {
+    const one = shardFor(query);
+    if (one === null) { keepTyping.push(query); continue; }
+    const a = JSON.stringify(searchGazetteer(query, whole, { limit: 20 }));
+    const b = JSON.stringify(searchGazetteer(query, one, { limit: 20 }));
+    if (a !== b) {
+      mismatched += 1;
+      console.log(`    CROSS-SHARD ${query}: the shard answers differently from the whole corpus`);
+    }
+  }
+  if (keepTyping.length) console.log(`  "keep typing" (the token is a split prefix): ${keepTyping.join(', ')}`);
+  if (mismatched) throw new Error(`${mismatched} queries answer differently from one shard than from the corpus`);
+  console.log('  one-search-one-shard: every probe answers identically from its shard and from the whole corpus');
 
   const ambiguous = new Map();
-  for (const r of gaz.rows) ambiguous.set(r.fold, (ambiguous.get(r.fold) ?? 0) + 1);
+  for (const r of corpus.rows) ambiguous.set(r.fold, (ambiguous.get(r.fold) ?? 0) + 1);
   console.log(`  ${[...ambiguous.values()].filter((n) => n > 1).length} folded names are carried by more than one row`);
 
-  const probes = PROBES.map((query) => ({
+  const probes = PROBES.filter((query) => shardFor(query) !== null).map((query) => ({
     query,
-    hits: searchGazetteer(query, gaz, { limit: PROBE_DEPTH }).map((h) => ({
+    shard: shardFor(query).shard,
+    hits: searchGazetteer(query, shardFor(query), { limit: PROBE_DEPTH }).map((h) => ({
       id: h.id, name: h.name, label: h.label, countryCode: h.countryCode,
-      admin1: h.admin1, centre: h.centre, indexAgrees: h.indexAgrees,
+      admin1: h.admin1, centre: h.centre, indexSays: h.indexSays,
     })),
   }));
   console.log('  probes:');
   for (const p of probes) {
     const top = p.hits[0];
-    console.log(`    ${p.query.padEnd(12)} ${p.hits.length} hit(s)  ${top ? top.label : 'NO MATCH'}`);
+    console.log(`    ${p.query.padEnd(16)} ${String(p.hits.length).padStart(2)} hit(s)  ${top ? top.label : 'NO MATCH'}`);
   }
 
   const out = {
     $generatedBy: 'cairn/tools/gen-gazetteer.mjs --audit-only --write',
-    $source: gaz.source,
-    $sourceSha256: shaFromModule(),
+    $source: meta.$source,
+    $sourceSha256: meta.$sourceSha256,
+    $fetched: meta.$fetched,
     $what:
-      'The top ' + PROBE_DEPTH + ' hits searchGazetteer returns for each of ARCHITECTURE §8.4 A-82 ' +
-      "Part 10's probe queries, over the committed GAZETTEER. This pins THE ANSWER, not the " +
-      'mechanism: a fold that stops handling a letter, a comparator whose tie moves, or a coordinate ' +
-      'that shifted between source revisions all show up here as a diff. COORDINATES ARE PUBLISHED ' +
-      "here deliberately — A-82 Part 10: country-holes.json's NO COORDINATES line has the live " +
-      "planner's own records as its subject, and this file's subject is a public-domain dataset " +
-      'already committed in full.',
+      'The top ' + PROBE_DEPTH + " hits searchGazetteer returns for each probe query, over the " +
+      'ONE SHARD loadGazetteerFor resolves that query to — which is what a consumer gets. This ' +
+      'pins THE ANSWER, not the mechanism: a fold that stops handling a letter, a comparator ' +
+      'whose tie moves, a shard split that moves a row, or a coordinate that shifted between ' +
+      'source revisions all show up here as a diff. COORDINATES ARE PUBLISHED here deliberately — ' +
+      "A-82 Part 10: country-holes.json's NO COORDINATES line has the live planner's own records " +
+      "as its subject, and this file's subject is a licensed public dataset already committed in " +
+      'full.',
     probeDepth: PROBE_DEPTH,
     probes,
   };
@@ -674,12 +1588,9 @@ async function audit(gaz, { writeProbes }) {
   }
 }
 
-/** The sha the committed module records, read back out of its own header. */
-function shaFromModule() {
-  try {
-    const m = /sha256 : \S+ ([0-9a-f]{64})/.exec(readFileSync(OUT, 'utf8').slice(0, 4000));
-    return m ? m[1] : PIN.sha256;
-  } catch {
-    return PIN.sha256;
-  }
-}
+// Entry point, LAST in the file rather than first: `--audit-only` reaches `foldPlaceName` before
+// its first `await`, and a `const` declared below a top-level call is in its temporal dead zone.
+main().catch((err) => {
+  console.error(`gen-gazetteer: ${err.message}`);
+  process.exit(1);
+});

@@ -21,7 +21,7 @@
  * coordinate is A-82 Part 7's honest hole, and copying it would redden every typed city.
  *
  * The coordinates are the shipped gazetteer's own and are re-derived here rather than copied:
- * Geneva `ne:j64n0x` at `{46.21, 6.14}` stating `CH`, where `countryOf` says **`FR`**.
+ * Geneva `gn:1l0yu` at `{46.2022, 6.1457}` stating `CH`, where `countryOf` says **`FR`**.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -30,19 +30,23 @@ import {
   tripSummary, validateTrip,
 } from '../src/index.ts';
 import type { BuildCtx, GazetteerRow, Issue, Trip } from '../src/index.ts';
-import { GAZETTEER } from '../src/geo/gazetteer.gen.ts';
+// **The corpus is sharded at I-23**, so a row is found the way a consumer finds one: through the
+// subpath's one runtime symbol, which resolves the query to a single shard.
+import { loadGazetteerFor } from '../src/geo/gazetteerShards.gen.ts';
 import { europe2026 } from './fixture.ts';
 
 const ctx = (p: string): BuildCtx => ({ ids: sequentialIds(`${p}-`), now: '2026-06-15' });
 
 /** The shipped row, found the way a human finds it: by typing a name. */
-function row(query: string): GazetteerRow {
-  const hits = searchGazetteer(query, GAZETTEER, { limit: 5 });
+async function row(query: string): Promise<GazetteerRow> {
+  const gazetteer = await loadGazetteerFor(query);
+  assert.ok(gazetteer, `"${query}" is too short to resolve to one shard`);
+  const hits = searchGazetteer(query, gazetteer, { limit: 5 });
   assert.ok(hits.length > 0, `the shipped gazetteer has no row for "${query}"`);
   return hits[0];
 }
 
-const GENEVA = row('geneva');
+const GENEVA = await row('geneva');
 
 const attribution = (trip: Trip) => {
   const s = tripSummary(trip, COUNTRY_INDEX);
@@ -56,7 +60,7 @@ const attribution = (trip: Trip) => {
 test('I-24: the row this file rests on is what A-85 says it is, and the ring still disagrees with it', () => {
   assert.deepEqual(
     { id: GENEVA.id, centre: GENEVA.centre, countryCode: GENEVA.countryCode },
-    { id: 'ne:j64n0x', centre: { lat: 46.21, lng: 6.14 }, countryCode: 'CH' },
+    { id: 'gn:1l0yu', centre: { lat: 46.2022, lng: 6.1457 }, countryCode: 'CH' },
   );
   assert.equal(
     countryOf(GENEVA.centre, COUNTRY_INDEX), 'FR',
@@ -76,7 +80,7 @@ test('I-24 Part 1 (A-85 Part 2, QA R62-2): a pick with NO `centre` key stands th
     { title: 'T', startDate: '2026-08-07', endDate: '2026-08-08', cities: [{ name: 'Geneva', pick }] },
     ctx('p1'),
   );
-  assert.deepEqual(trip.cities[0].centre, { lat: 46.21, lng: 6.14 });
+  assert.deepEqual(trip.cities[0].centre, { lat: 46.2022, lng: 6.1457 });
   // A COPY, never the pick's own object: the two fields are independently stored and an
   // alias would make a later in-place edit of either silently move the other.
   assert.notEqual(trip.cities[0].centre, trip.cities[0].pick?.centre);
@@ -139,7 +143,7 @@ test('I-24 Part 1: `undefined` written out loud is ABSENT — the door test is p
   );
   // `undefined` is what an INIT means by *take the default* (BUILD-NOTES KD-101's reasoning,
   // one field over): it is not a value the caller supplied. `null` is.
-  assert.deepEqual(trip.cities[0].centre, { lat: 46.21, lng: 6.14 });
+  assert.deepEqual(trip.cities[0].centre, { lat: 46.2022, lng: 6.1457 });
 });
 
 // ===========================================================================
@@ -166,13 +170,13 @@ test('I-24 Part 1: `undefined` written out loud is ABSENT — the door test is p
 
 /** Every malformed pick shape, run through the door both ways round. */
 const MALFORMED: readonly (readonly [string, unknown])[] = [
-  ["a pick with no `centre` — A-84 Part 3 clause 2's own case", { rowId: 'ne:j64n0x', countryCode: 'CH' }],
-  ['a pick whose `centre` is null', { rowId: 'ne:j64n0x', centre: null, countryCode: 'CH' }],
-  ['a pick that is a string', 'ne:j64n0x'],
+  ["a pick with no `centre` — A-84 Part 3 clause 2's own case", { rowId: 'gn:1l0yu', countryCode: 'CH' }],
+  ['a pick whose `centre` is null', { rowId: 'gn:1l0yu', centre: null, countryCode: 'CH' }],
+  ['a pick that is a string', 'gn:1l0yu'],
   ['a pick that is a number', 7],
   ['a pick that is `true`', true],
   ['a pick that is an array', []],
-  ['a pick whose coordinates are strings', { rowId: 'ne:j64n0x', centre: { lat: '46.21', lng: '6.14' }, countryCode: 'CH' }],
+  ['a pick whose coordinates are strings', { rowId: 'gn:1l0yu', centre: { lat: '46.21', lng: '6.14' }, countryCode: 'CH' }],
 ];
 
 const refusal = (fn: () => unknown): Error => {
@@ -209,7 +213,7 @@ test('I-24 Part 1 (QA R63-1): a pick with string coordinates is refused at `$.pi
   const err = refusal(() => createTrip(
     {
       title: 'T', startDate: '2026-08-07', endDate: '2026-08-08',
-      cities: [{ name: 'Geneva', pick: { rowId: 'ne:j64n0x', centre: { lat: '46.21', lng: '6.14' }, countryCode: 'CH' } as never }],
+      cities: [{ name: 'Geneva', pick: { rowId: 'gn:1l0yu', centre: { lat: '46.21', lng: '6.14' }, countryCode: 'CH' } as never }],
     },
     ctx('r63b'),
   ));
@@ -221,7 +225,7 @@ test('I-24 Part 1 (QA R63-2): the door reads `pick.centre` ONCE — a caller-own
   // same thing made observable.
   let reads = 0;
   const shifting = {
-    rowId: 'ne:j64n0x',
+    rowId: 'gn:1l0yu',
     countryCode: 'CH',
     get centre() {
       reads += 1;
@@ -265,7 +269,7 @@ test('I-24 Part 3 (A-85 Part 4, QA R62-8): a city AND its pick at an impossible 
       title: 'T', startDate: '2026-08-07', endDate: '2026-08-08',
       cities: [{
         key: 'geneva', name: 'Geneva', centre: bad,
-        pick: { rowId: 'ne:j64n0x', centre: bad, countryCode: 'CH' },
+        pick: { rowId: 'gn:1l0yu', centre: bad, countryCode: 'CH' },
       }],
     },
     ctx('p6'),
@@ -306,8 +310,8 @@ test('I-24 Part 3: only the offending subject reddens — a legal city carrying 
     {
       title: 'T', startDate: '2026-08-07', endDate: '2026-08-08',
       cities: [{
-        key: 'geneva', name: 'Geneva', centre: { lat: 46.21, lng: 6.14 },
-        pick: { rowId: 'ne:j64n0x', centre: { lat: 91.5, lng: 500.25 }, countryCode: 'CH' },
+        key: 'geneva', name: 'Geneva', centre: { lat: 46.2022, lng: 6.1457 },
+        pick: { rowId: 'gn:1l0yu', centre: { lat: 91.5, lng: 500.25 }, countryCode: 'CH' },
       }],
     },
     ctx('p8'),
@@ -340,7 +344,7 @@ test('I-24 Part 3: the whole committed reference trip reports ZERO city coordina
 //     reached through the door built to prevent it, with nobody writing `null`;
 //   - a `cities` getter returning a shorter array the second time misaligns `wroteCentre`, so a
 //     city the caller **did** locate is silently moved onto its pick's coordinate — `{lat:50,
-//     lng:14}` written, `{46.21, 6.14}` stored — and then attributed `{CH, picked}` with
+//     lng:14}` written, `{46.2022, 6.1457}` stored — and then attributed `{CH, picked}` with
 //     confidence.
 //
 // A-86 Part 2's trigger names the fix in as many words — *bind the value once, write it into

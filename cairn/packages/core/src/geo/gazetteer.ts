@@ -28,50 +28,76 @@
 import type { CountryCode } from '../model/ids.ts';
 import type { CityPick, LatLng } from '../model/types.ts';
 
-/** One settlement, as the gazetteer stores it (A-82 Part 3). */
+/**
+ * What the shipped country index says about a row's own country claim — §8.4 **A-84** Part 6.
+ *
+ * It replaces `indexAgrees: boolean`, which stated something it never checked: **all 436 rows the
+ * index was SILENT about shipped claiming agreement**, and `cli.ts cities` rendered the absence of
+ * its marker as agreement. A-83 Part 8's invariant is *"agrees **or is silent**"* and the boolean
+ * recorded that disjunction as if it were its first arm.
+ *
+ * > **Silence is not agreement.**
+ *
+ *  - `'agrees'`  — `countryOf(centre, COUNTRY_INDEX)` is non-null and **is** the row's own code;
+ *  - `'differs'` — it is non-null and is a **different** country. The row ships anyway, carrying
+ *    the disagreement, published by name in `fixtures/golden/gazetteer-disagreements.json`;
+ *  - `'silent'`  — no comparison was made: the index has no answer at this point, **or** the row
+ *    carries no country code to compare (A-84 Part 5's `countryCode: null`).
+ */
+export type IndexVerdict = 'agrees' | 'differs' | 'silent';
+
+/** One settlement or island, as the gazetteer stores it (A-82 Part 3, A-83 Part 4). */
 export type GazetteerRow = {
   /** Display form, the source's own spelling: `'Zürich'`, `'São Paulo'`. */
   readonly name: string;
-  /** `foldPlaceName(name)` — the matching form: `'zurich'`, `'sao paulo'`. */
+  /**
+   * `foldPlaceName(name)` — the matching form: `'zurich'`, `'sao paulo'`.
+   *
+   * **COMPUTED ON DECODE, not shipped** (A-83 Part 4). KD-112 spent ~12 bytes a row shipping it so
+   * that the generator's second copy of the fold was a *checked pair*; round 60 confirmed the
+   * checking is real, and A-83's answer is that **you do not have to ship a value to verify it**.
+   * The check moved to where checks belong: the generator asserts `foldPlaceName(name)` equals the
+   * fold it sharded the row under, and a test asserts it over the shipped rows by decoding them.
+   */
   readonly fold: string;
-  /** Folded Latin-script alternates. A fold equal to `fold` is not one of them. */
+  /**
+   * At most one: the folded **English** alternate, and only when it folds differently from the
+   * name (A-83 Part 4). A fold equal to `fold` is not one of them.
+   */
   readonly alts: readonly string[];
-  /** `''` is legal and honest — A-82 Part 5: the source carried no code and none was derivable. */
-  readonly countryCode: CountryCode | '';
-  /** `''` when the source has none (city-states). */
+  /**
+   * **A code the shipped `COUNTRY_INDEX` can DRAW, or `null`** — §8.4 **A-84** Part 5. `''` is no
+   * longer one of this field's values.
+   *
+   * A row whose source states a code the index cannot draw (`YT`, `GP`, `RE`, `MQ`, `SJ`, `GF`,
+   * `BQ`, `CC`, `TK`, `BV`, `CX`, and the empty code) is resolved **at generation time** against
+   * the dataset the index is cut from — the containing feature's `ISO_A2_EH` in the pinned
+   * `ne_10m_admin_0_countries.geojson` — and ships with that code where the index draws it. Where
+   * it does not (Somaliland, Northern Cyprus), the row ships with `null` and is **never refused**:
+   * Hargeisa is the capital of Somaliland and Famagusta is a real city, and **Cairn does not
+   * adjudicate a sovereignty its own map cannot draw.** Its name and its region still label it.
+   */
+  readonly countryCode: CountryCode | null;
+  /** `''` when the source has none (city-states). Resolved from the meta document's dictionary. */
   readonly admin1: string;
-  /** `POP_MAX`, **for ranking only**. Never displayed as a fact about a city (A-82 Part 4). */
+  /**
+   * A **coarse bucket**, `2 ** min(35, floor(log2(pop)))`, **for ranking only**. Never displayed
+   * as a fact about a city (A-82 Part 4, A-83 Part 4).
+   */
   readonly population: number;
   readonly centre: LatLng;
   /**
-   * The source's stable row id, **prefixed with the dataset that minted it**: `'ne:<NE_ID base 36>'`
-   * today, `'gn:…'` after I-23 (§8.4 **A-83** Part 8).
+   * The source's stable row id, **prefixed with the dataset that minted it**: `'gn:<base-36
+   * GeoNames id>'`. The prefix lives in the meta document and is prepended on decode.
    *
    * The prefix is not decoration. This value is what a `CityPick.rowId` persists, so a stored
-   * pick has to say **which corpus** it came from — otherwise a regeneration onto a different source
-   * turns every stored id into a collision waiting to be misread. It is also still what makes a
+   * pick has to say **which corpus** it came from — otherwise a regeneration onto a different
+   * source turns every stored id into a collision waiting to be misread. It is also what makes a
    * regeneration diff readable, which is A-82 Part 2's own reason for carrying it.
    */
   readonly id: string;
-  /**
-   * **Whether `countryOf(centre, COUNTRY_INDEX)` agrees with `countryCode`** — §8.4 **A-83**
-   * Part 8, and it is the field that restated A-82 Part 5's invariant rather than weakening it.
-   *
-   * > **No shipped row may *silently* contradict the country index.**
-   *
-   * `true` when the index agrees or is silent. `false` when both answers are non-null and
-   * **differ** — 98 rows today, among them Brazzaville, Geneva, Jerusalem, Maastricht, Lugano
-   * and Arlon, every one of which A-82 Part 5 refused outright. A row that would contradict the
-   * index *without* carrying this record is still **REFUSED**; what changed is that carrying it
-   * is now possible, because `City.pick` lets `derive/summary.ts` tell a picked pair from a
-   * typed field — §8.4 **A-84** Part 3: the pair is carried on the pick itself, so `summary.ts`
-   * reads a different field rather than the same field under a flag.
-   *
-   * A coarse ring bulges outward (A-26 Part 2), so where the two disagree the gazetteer is
-   * generally right and the polygon is generally wrong about a town near a frontier — which is
-   * why a **picked** row's country outranks `countryOf` and a typed one's still does not.
-   */
-  readonly indexAgrees: boolean;
+  /** What the country index says about this row's own claim — §8.4 **A-84** Part 6. */
+  readonly indexSays: IndexVerdict;
 };
 
 /**
@@ -85,10 +111,41 @@ export type GazetteerRow = {
  */
 export type Gazetteer = {
   readonly source: string;
+  /**
+   * **The shard prefix this document answers for, or `null` for a whole corpus** (A-83 Part 7).
+   *
+   * A `Gazetteer` carrying a shard is a *partial* corpus: it holds every row reachable under that
+   * token prefix and no others. `searchGazetteer` **throws** when handed a query that does not
+   * belong to it, because a consumer that fetched the wrong shard would otherwise get a silently
+   * short answer — the same failure class as a wrong country on a map: quiet and wrong.
+   *
+   * `null` is a whole corpus and is always accepted, which is what keeps a hand-built five-row
+   * test fixture working unchanged.
+   */
+  readonly shard: string | null;
   readonly countryNames: Readonly<Record<string, string>>;
   readonly rows: readonly GazetteerRow[];
 };
 
+/**
+ * The session-once document: the attribution, the source checksum every shard is checked against,
+ * the row-id prefix, the **global** admin-1 dictionary, the code→country-name table and the split
+ * manifest (A-83 Parts 4 and 5).
+ *
+ * The dictionary is global rather than per-shard because per-shard copies cost ~1.0 MB of disk
+ * against a 23 kB fetch that happens once — and the one skew hazard that buys is closed by a
+ * check rather than by a duplicate: both documents carry the same `$sourceSha256` and
+ * `loadGazetteer` refuses a pair that disagrees.
+ */
+export type GazetteerMeta = {
+  readonly source: string;
+  readonly sourceSha256: string;
+  readonly idPrefix: string;
+  readonly admin1: readonly string[];
+  readonly countryNames: Readonly<Record<string, string>>;
+  /** The **split** prefixes, ascending. A prefix in this set has children; a prefix not in it is a shard. */
+  readonly splits: readonly string[];
+};
 /**
  * A search result: the row, plus the **label `searchGazetteer` computed itself**.
  *
@@ -154,16 +211,27 @@ const NON_ALNUM = /[^\p{L}\p{N}]+/gu;
  * 5. non-alphanumeric runs → ' '     then trim
  * ```
  *
- * **The ordering is load-bearing, and measurement narrows A-82's own statement of why — KD-113.**
- * The ruling says *"step 1 precedes step 3"* on the ground that `İ` decomposes; measured on this
- * runtime, `'İ'.normalize('NFD') === 'İ'` — U+0130 has **no canonical decomposition**, and the
- * `i` + U+0307 the ruling describes is produced by **step 1**, not step 3. So the dependency that
- * actually holds is **step 1 before step 4**: the combining mark `toLowerCase` mints must still be
- * there when the `Mn` strip runs. **Step 1 before step 2 is load-bearing too** — the table's keys
- * are lowercase, so `Ł` and `Đ` survive a substitution that runs first. **Steps 2–4 are not
- * commutative either** — `ø` must be substituted *before* NFD, because NFD leaves it alone and
- * step 4 would then have nothing to strip. All four claims are pinned by the twelve pairs in
- * `packages/core/test/gazetteer.test.ts`.
+ * **What the ordering actually pins was measured over all 24 permutations — §8.4 A-83 Part 10.**
+ * Six of the 24 fold A-82 Part 3's twelve pairs correctly, so most of the ordering is free. What
+ * the pairs pin is exactly two dependencies and two presences:
+ *
+ *  - **step 1 before step 2** — the substitution table's keys are lowercase, so `Ł` and `Đ`
+ *    survive a substitution that runs first (`Łódź`, `Đông Hà`, and **only** those two);
+ *  - **the combining-mark strip after `normalize('NFD')`**, never before (seven pairs);
+ *  - **`normalize('NFD')` present at all** — 8 of the 12 redden without it;
+ *  - **the substitution table present at all** (`Łódź`, `Tromsø`, `Bærum`, `Ağrı`, `Đông Hà`,
+ *    `Nukuʻalofa`).
+ *
+ * **`normalize('NFD')`'s position relative to `toLowerCase` is pinned by nothing**, and
+ * **`İstanbul` pins nothing about the ordering**: it reddens in no permutation where six other
+ * pairs are already red. Keep the pair — it proves the Turkish dotted capital folds at all — and
+ * do not cite it as evidence for an ordering claim. The sentence this docstring used to carry,
+ * *"U+0130 has no canonical decomposition"* (**KD-113**), is **false**: measured on this runtime,
+ * `String.fromCodePoint(0x0130).normalize('NFD')` is `U+0049 U+0307`, and Unicode's own mapping is
+ * `0130 ; 0049 0307`. **KD-113's own replacement claim — step 1 before step 4 — is withdrawn with
+ * it**, by A-83 Part 10: its fault permutation reddens `Łódź` and `Đông Hà` and leaves
+ * `İstanbul` green, so it is dependency one in a different costume. The conclusion held; both
+ * stated reasons did not.
  *
  * **Module-private** (§2.10 group 1, A-82 Part 9). It is not on `index.ts` and must not become
  * reachable: a caller that can reach both this and `normalizeCityName` will use the wrong one.
@@ -222,18 +290,71 @@ function betterKey(a: MatchKey, b: MatchKey): MatchKey {
  * `[name, admin1 (omitted when '' or equal to name), countryName] joined ', '`.
  *
  * The country name comes from the gazetteer's own `countryNames` table. **When the table cannot
- * name the code, the code itself is used** — `'Hargeysa, Woqooyi Galbeed, SO'` is a worse label
- * than one with a country name in it and a far better one than a bare `'Hargeysa'`, which is the
- * thing this rule exists to make unrenderable. A row with neither a country code nor an admin-1 is
- * the only case that can produce a bare name, and A-82 Part 5 is why such a row is honest rather
- * than broken: nobody could say what country it is in.
+ * name the code, the code itself is used** — a label with a bare code in it is worse than one with
+ * a country name and far better than a bare name, which is the thing this rule exists to make
+ * unrenderable.
+ *
+ * **A row with neither a country code nor an admin-1 would render as a bare name, and no such row
+ * ships** (A-83 Part 9 clause 1): the generator REFUSES it and publishes the count. The
+ * `'Hargeysa, Woqooyi Galbeed, SO'` fallback this docstring used to describe as the codeless case
+ * is a *different* case — a code the table cannot name — and it is still live; what is gone is the
+ * claim that a bare name is a case this function has to handle at all.
  */
 function labelFor(row: GazetteerRow, countryNames: Readonly<Record<string, string>>): string {
   const parts = [row.name];
   if (row.admin1 !== '' && row.admin1 !== row.name) parts.push(row.admin1);
-  const country = countryNames[row.countryCode] ?? row.countryCode;
-  if (country !== '') parts.push(country);
+  const code = row.countryCode;
+  if (code !== null) parts.push(countryNames[code] ?? code);
   return parts.join(', ');
+}
+
+/** Two decimals of a coordinate, for A-83 Part 9 clause 3's disambiguator. */
+const dp2 = (n: number): string => (Math.round(n * 100) / 100).toFixed(2);
+
+/**
+ * **A-83 Part 9 clause 3 — labels are distinct within one result set.**
+ *
+ * Measured at the recommended point, **803 labels are carried by more than one row and 23 of round
+ * 60's 171 queries return a top-20 containing two identical labels**. A list a user cannot choose
+ * from is the exact failure A-82 Part 4 exists to prevent, arriving one level down.
+ *
+ * When two or more hits **in the returned window** would render the same label, every member of
+ * that group gains ` (lat, lng)` at 2 dp. `population` may not be used — A-82 Part 4 forbids
+ * rendering it — and the coordinate is the only other fact we actually have. It costs nothing when
+ * there is no collision, it is total, and it is testable.
+ */
+function distinguish(hits: readonly GazetteerHit[]): GazetteerHit[] {
+  const counts = new Map<string, number>();
+  for (const h of hits) counts.set(h.label, (counts.get(h.label) ?? 0) + 1);
+  return hits.map((h) =>
+    (counts.get(h.label) ?? 0) > 1
+      ? { ...h, label: `${h.label} (${dp2(h.centre.lat)}, ${dp2(h.centre.lng)})` }
+      : h,
+  );
+}
+
+/**
+ * **A-83 Part 6's shard resolution, and it is the same function on both sides** — the generator
+ * writes a row into the shard of every one of its tokens, and a query is answered from the shard
+ * its **first** folded token resolves to. That is complete: if the folded query is a prefix of the
+ * whole folded name it is a prefix of its first token, and if it is a prefix of an interior token
+ * it is a single token itself — either way the row is in the shard the query resolves to.
+ *
+ * `splits` is the manifest of prefixes that were split because their payload exceeded 96 KiB. A
+ * token under a split prefix descends one character; a token that **is** a split prefix lands in
+ * that prefix's terminal `<prefix>$` shard.
+ *
+ * Pure. Throws nothing. Module-private for group 1's reason: a caller needs a gazetteer, not the
+ * ability to mint a shard key.
+ */
+export function shardKeyFor(token: string, splits: readonly string[]): string {
+  const split = new Set(splits);
+  let prefix = token.slice(0, 1);
+  while (split.has(prefix)) {
+    if (token === prefix) return `${prefix}$`;
+    prefix = token.slice(0, prefix.length + 1);
+  }
+  return prefix;
 }
 
 /**
@@ -243,18 +364,19 @@ function labelFor(row: GazetteerRow, countryNames: Readonly<Record<string, strin
  * The query is folded with `foldPlaceName`; a query that folds to `''` returns `[]`. A row matches
  * when the folded query is a prefix of the whole folded name, of any folded alternate, or of any
  * space-delimited token within either. **Never a substring, no fuzzy matching, no edit distance,
- * no phonetics, and no non-Latin scripts in v1** — A-82 Part 3 refuses each by name. The scan is
- * **linear over `gazetteer.rows` and there is no prefix tree**: measured scale is ~7,000 short
- * strings, and a trie is a second data structure to keep correct, to serialize and to test.
+ * no phonetics, and no non-Latin scripts in v1** — A-82 Part 3 refuses each by name and A-83 keeps
+ * every refusal. **A linear scan over `gazetteer.rows` and no prefix tree**: after A-83 Part 6 a
+ * caller holds **one shard** — a few hundred rows — not the whole corpus, so the scan got smaller
+ * rather than larger when the dataset grew twentyfold.
  *
  * **The ranking is a total order** (A-82 Part 4), which is what makes an answer pinnable in a
  * golden: exact fold before prefix; whole-name prefix before token prefix; name before alternate;
- * **descending population**; then ascending `fold`, ascending `countryCode`, ascending `id`. The
- * last three decide no answer a user will ever notice and exist only so that a regeneration cannot
- * reshuffle the list.
+ * **descending population bucket**; then ascending `fold`, ascending `countryCode`, ascending
+ * `id`. The last three decide no answer a user will ever notice and exist only so that a
+ * regeneration cannot reshuffle the list.
  *
- * **`population` is a ranking input and is never surfaced as a fact.** `POP_MAX` is a
- * metropolitan-area figure of uncertain vintage.
+ * **`population` is a ranking input and is never surfaced as a fact** — it is a coarse power-of-two
+ * bucket, and A-83 Part 4 measured that no correct hit falls below rank 5 because of it.
  *
  * **A hit is an offer, not an answer.** A-82 Part 6: a city created from a hit is the user's own
  * *because a human picked it*. Matching a typed name to a row **without** a human choosing — a bulk
@@ -262,16 +384,44 @@ function labelFor(row: GazetteerRow, countryNames: Readonly<Record<string, strin
  * assertion, it is covered by the root `CLAUDE.md` badge rule, and it is **forbidden** without a
  * further ruling. Do not build it as a convenience on top of this function.
  *
- * Pure. Throws nothing.
+ * Pure and synchronous.
+ *
+ * @throws `Error` — a **programmer error** (§2.1), never a domain answer — when `opts.limit` is
+ *   present and not an integer (**R60-6**: `{limit: NaN}` used to return `[]`, which is
+ *   indistinguishable from a genuine miss), or when `gazetteer.shard` is non-null and the query's
+ *   first folded token does not belong to that shard (A-83 Part 7: a consumer that fetched the
+ *   wrong shard gets a silently short answer otherwise).
  */
 export function searchGazetteer(
   query: string,
   gazetteer: Gazetteer,
   opts?: GazetteerSearchOptions,
 ): GazetteerHit[] {
-  const q = foldPlaceName(query);
   const limit = opts?.limit ?? 20;
-  if (q === '' || limit <= 0) return [];
+  if (!Number.isInteger(limit)) {
+    throw new Error(
+      `searchGazetteer: opts.limit must be an integer, got ${JSON.stringify(opts?.limit)}. ` +
+        'A non-integer limit used to return [], which is indistinguishable from a genuine miss.',
+    );
+  }
+  const q = foldPlaceName(query);
+  if (q === '') return [];
+
+  // **A-83 Part 7's pairing check**, before any row is read: a short answer from the wrong shard
+  // is the same failure class as a wrong country on a map — quiet and wrong.
+  const shard = gazetteer.shard;
+  if (shard !== null) {
+    const token = q.split(' ')[0];
+    const terminal = shard.endsWith('$');
+    const prefix = terminal ? shard.slice(0, -1) : shard;
+    if (terminal ? token !== prefix : !token.startsWith(prefix)) {
+      throw new Error(
+        `searchGazetteer: this gazetteer is the "${shard}" shard and "${token}" does not belong ` +
+          'to it. Resolve the query with loadGazetteerFor(query) rather than reusing a shard.',
+      );
+    }
+  }
+  if (limit <= 0) return [];
 
   const matched: Array<{ row: GazetteerRow; key: MatchKey }> = [];
   for (const row of gazetteer.rows) {
@@ -289,86 +439,212 @@ export function searchGazetteer(
     }
     if (a.row.population !== b.row.population) return b.row.population - a.row.population;
     if (a.row.fold !== b.row.fold) return a.row.fold < b.row.fold ? -1 : 1;
-    if (a.row.countryCode !== b.row.countryCode) return a.row.countryCode < b.row.countryCode ? -1 : 1;
+    const ac = a.row.countryCode ?? '';
+    const bc = b.row.countryCode ?? '';
+    if (ac !== bc) return ac < bc ? -1 : 1;
     return a.row.id < b.row.id ? -1 : a.row.id > b.row.id ? 1 : 0;
   });
 
-  return matched
-    .slice(0, limit)
-    .map(({ row }) => ({ ...row, label: labelFor(row, gazetteer.countryNames) }));
+  return distinguish(
+    matched.slice(0, limit).map(({ row }) => ({ ...row, label: labelFor(row, gazetteer.countryNames) })),
+  );
+}
+
+/** A record read out of a JSON document: unknown until every field has been read. */
+type Doc = Readonly<Record<string, unknown>>;
+
+const isDoc = (v: unknown): v is Doc => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/**
+ * Decodes `packages/core/src/geo/gazetteer/meta.json` — the session-once document (A-83 Part 5).
+ *
+ * ```
+ * { v, $source, $sourceSha256, $fetched, idPrefix, admin1[], countryNames{}, splits[] }
+ * ```
+ *
+ * **Internal** — a caller needs to pass a gazetteer, not to mint one (§2.10 group 1,
+ * `decodeCountryIndex`'s reason verbatim).
+ *
+ * Pure. Throws `Error` on a document that is not a meta document — a programmer error (a
+ * hand-edited generated file), which §2.1 says is the one thing core throws on.
+ */
+export function decodeGazetteerMeta(doc: unknown): GazetteerMeta {
+  if (!isDoc(doc)) throw new Error('decodeGazetteerMeta: the meta document is not an object');
+  const source = doc.$source;
+  const sha = doc.$sourceSha256;
+  const idPrefix = doc.idPrefix;
+  const admin1 = doc.admin1;
+  const countryNames = doc.countryNames;
+  const splits = doc.splits;
+  if (
+    typeof source !== 'string' ||
+    typeof sha !== 'string' ||
+    typeof idPrefix !== 'string' ||
+    !Array.isArray(admin1) ||
+    !isDoc(countryNames) ||
+    !Array.isArray(splits)
+  ) {
+    throw new Error('decodeGazetteerMeta: the meta document is missing a required field');
+  }
+  return {
+    source,
+    sourceSha256: sha,
+    idPrefix,
+    admin1: admin1 as readonly string[],
+    countryNames: countryNames as Readonly<Record<string, string>>,
+    splits: splits as readonly string[],
+  };
+}
+
+/** The number of `|`-separated fields one packed row carries. A-83 Part 4's type, in order. */
+const ROW_FIELDS = 9;
+
+/**
+ * Decodes one shard document against the meta document (A-83 Parts 4 and 5).
+ *
+ * ```
+ * { "v": 1, "k": "<shard key>", "s": "<$sourceSha256>", "r": ["<row>", …] }
+ * ```
+ *
+ * A row is one string, `|`-separated, in the order of `GazetteerRow` **minus the fold**:
+ *
+ * ```
+ * name | alts | iso | admin1Index | populationBucket | lat | lng | id | indexSays
+ * ```
+ *
+ * `alts` is comma-joined and already folded, so it can contain neither `|` nor `,`; the generator
+ * **refuses** any row whose name, region or alternate carries the payload's own two delimiters
+ * (`|`, a newline) rather than escaping them blind. `admin1Index`, `populationBucket`, `lat` and
+ * `lng` are **base 36**; `lat` and `lng` are the coordinate times 10⁴ (~11 m), which is the floor
+ * A-83 Part 4 refuses to move. `iso` is `''` for a row that carries no drawable country (A-84
+ * Part 5). `id` is the source's row id in base 36, and the **prefix comes from the meta document**
+ * rather than from every row. `indexSays` is one character: `a`, `d` or `s`.
+ *
+ * **The fold is recomputed here rather than shipped** (A-83 Part 4) — KD-112's guarantee, kept
+ * without KD-112's bytes.
+ *
+ * **Internal**, for `decodeGazetteerMeta`'s reason.
+ *
+ * Pure. Throws `Error` on a malformed document — a programmer error.
+ */
+export function decodeGazetteer(meta: GazetteerMeta, doc: unknown): Gazetteer {
+  if (!isDoc(doc) || typeof doc.k !== 'string' || !Array.isArray(doc.r)) {
+    throw new Error('decodeGazetteer: the shard document is missing "k" or "r"');
+  }
+  const rows: GazetteerRow[] = [];
+  for (const packed of doc.r as readonly string[]) {
+    const f = packed.split('|');
+    if (f.length !== ROW_FIELDS) {
+      throw new Error(
+        `decodeGazetteer: a row of shard "${doc.k}" has ${f.length} fields, expected ${ROW_FIELDS}`,
+      );
+    }
+    const iso = f[2];
+    rows.push({
+      name: f[0],
+      fold: foldPlaceName(f[0]),
+      alts: f[1] === '' ? [] : f[1].split(','),
+      countryCode: iso === '' ? null : (iso as CountryCode),
+      admin1: f[3] === '' ? '' : (meta.admin1[parseInt(f[3], 36)] ?? ''),
+      population: 2 ** parseInt(f[4], 36),
+      centre: { lat: parseInt(f[5], 36) / 1e4, lng: parseInt(f[6], 36) / 1e4 },
+      id: `${meta.idPrefix}:${f[7]}`,
+      indexSays: f[8] === 'a' ? 'agrees' : f[8] === 'd' ? 'differs' : 'silent',
+    });
+  }
+  return { source: meta.source, shard: doc.k, countryNames: meta.countryNames, rows };
 }
 
 /**
- * Decodes the packed payload the generated module carries. **Internal** — a caller needs to pass a
- * gazetteer, not to mint one (§2.10 group 1, `decodeCountryIndex`'s reason verbatim).
+ * The two dynamic imports `loadGazetteer` needs, injected rather than reached for — which is what
+ * keeps this module pure and keeps `packages/core/src/index.ts` off the generated family.
  *
- * The payload is one string literal in the `.ts` file, which is one token to Node's type stripper.
- * Its grammar, newline-separated so that a regeneration diff is one row on one key rather than a
- * wall of reordered text (A-82 Part 10):
- *
- * ```
- * line 0            nAdmin1|nCountries|nRows
- * next nAdmin1      one admin-1 name per line (the dictionary)
- * next nCountries   "CC Country Name"  (A-82 Part 4's code→name table, from ADM0NAME)
- * next nRows        name|fold|alts|iso|admin1Index|population|lat|lng|id|agrees
- * ```
- *
- * `alts` is comma-joined and already folded, so it can contain no `|` and no `,`. `admin1Index`,
- * `population`, `lat` and `lng` are **base 36**; `lat` and `lng` are the coordinate times
- * 10⁴ (~11 m), rounded — two orders of magnitude finer than any question a city centre answers.
- * `id` is the source prefix, a colon and the source's own row id in base 36.
- *
- * **`agrees` is `'1'` or `'0'`** — §8.4 A-83 Part 8's `indexAgrees`, one character per row so a
- * regeneration diff on it is one visible character on one stable id. It is written explicitly
- * rather than by omission: a field whose *absence* means `true` is a field a truncated line turns
- * into a silent claim, and the whole point of this one is that nothing is silent.
- *
- * Pure. Throws `Error` on a payload whose declared counts do not match its lines — that is a
- * programmer error (a hand-edited generated module), which §2.1 says is the one thing core throws
- * on.
+ * `shard` returns `null` for a key nobody wrote: the generated map knows its own keys, so an
+ * absent shard is an honest empty answer and a genuine load failure stays loud.
  */
-export function decodeGazetteer(meta: { source: string }, packed: string): Gazetteer {
-  const lines = packed.split('\n');
-  const header = (lines[0] ?? '').split('|');
-  const nAdmin1 = Number(header[0]);
-  const nCountries = Number(header[1]);
-  const nRows = Number(header[2]);
-  if (!Number.isInteger(nAdmin1) || !Number.isInteger(nCountries) || !Number.isInteger(nRows)) {
-    throw new Error('decodeGazetteer: the payload has no "nAdmin1|nCountries|nRows" header');
+export type GazetteerDocuments = {
+  readonly meta: () => Promise<{ default: unknown }>;
+  readonly shard: (key: string) => Promise<{ default: unknown } | null>;
+};
+
+/**
+ * One meta document per `GazetteerDocuments`, however many searches run — A-83 Part 5's *"fetched
+ * once per session"*. Keyed on the injected object rather than on module scope so a test can hand
+ * in a second corpus and not get the first one's dictionary.
+ */
+const META_ONCE = new WeakMap<GazetteerDocuments, Promise<GazetteerMeta>>();
+
+/**
+ * **Resolves a query to exactly one shard and returns it, decoded** — §8.4 **A-83** Part 7.
+ *
+ * This is the impure half of the gazetteer and the only one: it awaits two dynamic imports.
+ * `searchGazetteer(query, gazetteer, opts?)` stays pure, synchronous and index-injected, exactly
+ * as `countryOf(at, index)` is. `@cairn/core/gazetteer` carries one runtime symbol,
+ * `loadGazetteerFor(query)`, which is this function with the generated documents bound to it.
+ *
+ * **A query that cannot resolve to a single shard returns `null`, and `null` means "keep
+ * typing"** (A-83 Part 6). That is two cases and they are one rule:
+ *
+ *  - a first token under **two characters** — Part 6's own case, stated by length;
+ *  - a **one-token query that IS a split prefix** — the same case, stated by the manifest instead
+ *    of by an assumption about how deep the tree goes. `de` is a split prefix in the shipped
+ *    corpus, so the true answer to `de` spans that prefix's whole subtree — `del`, `den`, `det`
+ *    and the rest — and Part 6's answer to exactly that shape is *"the correct answer is a fetch
+ *    of everything under that prefix; this design refuses that."*
+ *
+ * **A query with a SECOND word is not that case, and the difference is load-bearing.** `san` is a
+ * split prefix, but `san marino` can only match a row whose whole fold begins `san marino`, so its
+ * first token is exactly `san` — and every such row is in the terminal `san$` shard. A terminal
+ * shard is therefore a real answer to a multi-word query and is refused only for the bare prefix.
+ *
+ * The distinction matters because A-82's rule is that *a miss is a miss and the product says so*,
+ * and **"I have not looked yet" is not a miss.**
+ *
+ * > **What this buys, stated as the property a test can hold it to:** for every query this
+ * > function answers with a `Gazetteer`, searching that one shard returns exactly what searching
+ * > the whole corpus would — row for row and in order.
+ *
+ * **The two documents are checked against each other.** The admin-1 dictionary is global, so a
+ * shard built against a different corpus would decode its regions through the wrong table; both
+ * documents carry the same `$sourceSha256` and a pair that disagrees is **refused by name**.
+ *
+ * @throws `Error` when the two documents' checksums disagree, or when either is malformed — both
+ *   programmer errors (§2.1), because both mean a hand-edited or half-regenerated generated file.
+ */
+export async function loadGazetteer(
+  query: string,
+  docs: GazetteerDocuments,
+): Promise<Gazetteer | null> {
+  const q = foldPlaceName(query);
+  const token = q.split(' ')[0];
+  if (token.length < 2) return null;
+
+  let metaOnce = META_ONCE.get(docs);
+  if (metaOnce === undefined) {
+    metaOnce = docs.meta().then((m) => decodeGazetteerMeta(m.default));
+    META_ONCE.set(docs, metaOnce);
   }
-  if (lines.length !== 1 + nAdmin1 + nCountries + nRows) {
+  const meta = await metaOnce;
+
+  // A bare prefix that the corpus split has no single shard: its true answer is the subtree.
+  // A query with a second word does — see the docstring.
+  if (q === token && meta.splits.includes(token)) return null;
+
+  const key = shardKeyFor(token, meta.splits);
+  const mod = await docs.shard(key);
+  if (mod === null) {
+    return { source: meta.source, shard: key, countryNames: meta.countryNames, rows: [] };
+  }
+  const doc = mod.default;
+  const sha = isDoc(doc) ? doc.s : undefined;
+  if (sha !== meta.sourceSha256) {
     throw new Error(
-      `decodeGazetteer: the payload declares ${1 + nAdmin1 + nCountries + nRows} lines and carries ${lines.length}`,
+      `loadGazetteer: shard "${key}" carries $sourceSha256 ${JSON.stringify(sha)} and meta.json ` +
+        `carries ${JSON.stringify(meta.sourceSha256)}. Refusing to decode it: the admin-1 ` +
+        'dictionary is global, so a mismatched pair labels rows with another corpus’s regions.',
     );
   }
-
-  let at = 1;
-  const admin1 = lines.slice(at, at + nAdmin1);
-  at += nAdmin1;
-
-  const countryNames: Record<string, string> = {};
-  for (let i = 0; i < nCountries; i += 1) {
-    const line = lines[at + i];
-    countryNames[line.slice(0, 2)] = line.slice(3);
-  }
-  at += nCountries;
-
-  const rows: GazetteerRow[] = [];
-  for (let i = 0; i < nRows; i += 1) {
-    const f = lines[at + i].split('|');
-    rows.push({
-      name: f[0],
-      fold: f[1],
-      alts: f[2] === '' ? [] : f[2].split(','),
-      countryCode: f[3],
-      admin1: f[4] === '' ? '' : admin1[parseInt(f[4], 36)],
-      population: parseInt(f[5], 36),
-      centre: { lat: parseInt(f[6], 36) / 1e4, lng: parseInt(f[7], 36) / 1e4 },
-      id: f[8],
-      indexAgrees: f[9] !== '0',
-    });
-  }
-  return { source: meta.source, countryNames, rows };
+  return decodeGazetteer(meta, doc);
 }
 
 /**
@@ -385,8 +661,10 @@ export function decodeGazetteer(meta: { source: string }, packed: string): Gazet
  * (never the row's own object — an aliased corpus is a write to a trip landing in the gazetteer),
  * and the row's country code, with any value that is not two uppercase letters mapped to `null`.
  * That last clause is what makes the mint and `parseCityPick` **agree** rather than merely
- * coexist: the corpus carries `''` for a row whose source stated no code, and a pick carrying
- * `''` would be a document this build refuses to open.
+ * coexist. **After §8.4 A-84 Part 5 the corpus itself carries `null` rather than `''`** for a row
+ * whose country the shipped index cannot draw, so the clause has less to do; it stays because a
+ * hand-built row is still a row, and a pick carrying `''` is a document this build refuses to
+ * open.
  *
  * @throws nothing.
  */
@@ -395,6 +673,6 @@ export function cityPickFromRow(row: GazetteerRow): CityPick {
   return {
     rowId: row.id,
     centre: { lat: row.centre.lat, lng: row.centre.lng },
-    countryCode: /^[A-Z]{2}$/.test(code) ? (code as CountryCode) : null,
+    countryCode: code !== null && /^[A-Z]{2}$/.test(code) ? code : null,
   };
 }

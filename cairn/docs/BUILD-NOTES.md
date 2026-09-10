@@ -1,5 +1,33 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — ROADMAP `I-23`: the gazetteer's filter becomes notability, the corpus is sharded,
+> and a search fetches one shard (`ARCHITECTURE.md` §8.4 **A-83** Parts 1–7 and 9–11, **A-84**
+> Parts 5 and 6).** Builds on `d357895`. **Fifteen files plus the generated corpus** — the
+> generator, `geo/gazetteer.ts`, the new `geo/gazetteerShards.gen.ts`, 967 generated JSON
+> documents under `geo/gazetteer/`, `geo/gazetteer.gen.ts` **deleted**, `packages/core/package.json`,
+> `cli.ts`, six test files and three goldens. **Zero `.tsx`, zero `apps/web/`, zero `qa/`, zero
+> `docs/design/`, zero new dependency, zero lockfile change.** No version constant moves:
+> `SCHEMA_VERSION` is 5, `SUMMARY_VERSION` is 8, §2.10 is 88 and the subpath is 1 — **renamed**
+> `GAZETTEER` → `loadGazetteerFor`, not widened.
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact commands** | From `cairn/`: `npm run test:tap` → **1,829 pass / 0 fail** (baseline `d357895`: 1,799 / 0; the +30 are this increment's). `npm run typecheck` → **exit 0 on both projects**. `npm run golden` → **nothing moves** (the three `gazetteer-*.json` are written by `tools/gen-gazetteer.mjs`, not by `gen-golden.mjs`). `npm run web:build` → succeeds, main chunk **1,036.25 kB → 1,037.01 kB, +0.76 kB** against a **2 kB** ceiling, and `grep` for `Hallstatt`/`Positano`/`Zermatt` in `dist/assets/*.js` returns **0** — the corpus is not in the bundle at all, because no `apps/web` file imports the subpath yet. `node cli.ts cities hallstatt` → **`Hallstatt, Upper Austria, Austria · 47.5623,13.6491 · AT`**; `positano`, `zermatt`, `sintra`, `cesky krumlov`, `matera`, `carcassonne`, `interlaken` likewise; `vienna` and `geneva` unregressed, Geneva still marked. |
+> | **The number this increment exists for** | `qa/r60-coverage.mjs`, **unmodified**, re-run against the new corpus: **travel 109/121 = 90.1 %**, **control 50/50 = 100.0 %**, overall 159/171 = 93.0 %, 1 wrong-country (Monteverde → Monteverde, Campania). Round 60 measured **21.5 %** travel on the same corpus with the same scorer. The ruling predicted 90.1 % and that is the measured figure, not a rounded one. **How it was run: `qa/` is fenced, and the harness imports `GAZETTEER` from a subpath that no longer carries it.** It was run **byte-for-byte unmodified** under a scratchpad `module.register` hook that resolves `@cairn/core/gazetteer` to a virtual module assembling the whole corpus from every shard — no repo file changed. **This leaves `qa/r60-coverage.mjs` and `qa/r64-census.mjs` §F unrunnable as committed**; see *What the fence left broken*. |
+> | **Built — the corpus** | GeoNames under A-83 Part 3's rule verbatim (class `P`, or `ISL`/`ISLS`; `languages ≥ 4` **or** wiki + pop ≥ 1,000 **or** class P + pop ≥ 20,000). **13,464,089 features and 19,157,584 alternate-name rows read** (both pinned counts, both matched), **5,401,676 candidates → 149,104 selected → 149,086 shipped** after 18 refusals. 3,665 admin-1 names, 239 country names. Four streaming passes over the two dumps, no decompressed copy on disk, ~95 s end to end; the zip entries are located by walking the central directory (ZIP64-aware) and inflated with `node:zlib`, so no `unzip` and **no new dependency**. |
+> | **Built — sharding** | **966 shard documents + `meta.json`, 41 split prefixes, 202,020 emitted rows (duplication 1.355×), 8,761,994 bytes committed, largest shard 94,630 B against the 96 KiB budget.** Measured fetch per search over round 60's own 171 queries: **mean 19.2 kB gzipped, p95 40.8 kB, max 42.2 kB**, plus `meta.json` at 28.8 kB once per session — against the ruling's predicted 20 / 41 / 44. **Both mechanisms verified, neither assumed**: Node v22.22.2 with no flags resolves `import('./gazetteer/<k>.json', { with: { type: 'json' } })` from a type-stripped `.ts` (the whole suite runs on it), and **this repository's Vite 8.2.2 emits 968 chunks — one per shard plus meta plus the entry** — measured in a scratchpad probe that aliases the subpath, because `apps/web` is fenced. |
+> | **Built — A-84 Part 5 and Part 6** | `GazetteerRow.countryCode: CountryCode \| null`, `''` gone; `indexAgrees: boolean` → **`indexSays: 'agrees' \| 'differs' \| 'silent'`**, one packed character. Census over the shipped rows: **139,641 agrees · 2,495 differs · 6,950 silent**, summing to 149,086 and published in `meta.json` and the generated header. **152 rows carry a code the index cannot draw**; 149 translate to a drawable parent, **3 ship `countryCode: null`** (Tokelau), all published in the new `fixtures/golden/gazetteer-parents.json`. Driven through `cityPickFromRow` → `createTrip` → `tripSummary`: **Fort-de-France `{FR, picked}`, Longyearbyen `{NO, picked}`, Saint-Georges `{FR, picked}` where `countryOf` says `BR`, Nukunonu `{null, null}`.** |
+> | **The `{0,0}` ceiling, measured and not inherited** | **Zero shipped rows sit at exactly `{0,0}`**, asserted over every row in `gazetteer.test.ts` and re-derived by the generator's own audit, which treats a row at the origin as a **stop-and-report**. A-85 Part 5 dismissed R62-5 on the measured fact that no shipped row lay within a degree of the origin — a fact about the corpus this increment replaces, so it is asserted rather than assumed. Measured, the nearest row to the origin in the new corpus is **Dixcove, Western, Ghana at `{4.7951, -1.9469}` — 5.18° away**, so A-85 Part 5's *"no shipped row lies within a whole degree of the origin"* still holds and its dismissal of R62-5 does not reopen. The assertion in the test is on the exact point, which is what the migration ladder treats as a fabrication. |
+> | **The licence obligation, discharged at source and OWED at the surface** | GeoNames is **CC BY 4.0** and this is the repository's first attribution obligation — Natural Earth was public domain and needed none. The attribution **rides on the data**: `meta.json`'s `$source` carries the text and the licence URL, `Gazetteer.source` is that string, the generator header carries it with all five source checksums, and **`cli.ts cities` prints it on every run — hit, miss or "keep typing"** — which is asserted in `test/cli.test.ts`. **The user-visible half is NOT discharged and cannot be here**: the picker screen is a rendered surface and this increment is fenced out of every `.tsx`. **Owed: any screen that renders a gazetteer hit must render `Gazetteer.source`, and that obligation ships with the first `.tsx` that calls `loadGazetteerFor`.** It is written into the ruling, into the generator header, into `meta.json`'s `$what` and here; it is not written into any code that renders. |
+> | **The pin, without a release tag** | GeoNames publishes none — the dumps are regenerated daily — so each of the four GeoNames files is pinned by **sha256 and by a fetch date**, both recorded in `meta.json` and in the generated header, and a mismatch **reports and refuses to write** with the re-pinning procedure printed. `ne_10m_admin_0_countries.geojson` keeps a **tag** pin (`v5.1.2`) because it has one — the same bytes and the same sha256 `gen-countries.mjs` already pins. **All five checksums matched A-83 Part 2's own measurements on this run**, so no re-pin was needed; the artefact is committed, `--audit-only` fetches nothing, and reproducibility of the *artefact* is total while reproducibility of the *build from source* is bounded by GeoNames' release discipline. A `--cache <dir>` / `CAIRN_GAZETTEER_CACHE` option keeps the 625 MB of sources between runs and **checksums a cached file exactly as a fetched one**, so it is not a way around the pin. |
+> | **Determinism** | The generator run **twice**: every emitted file byte-identical (sha over all 967 documents plus the shard map plus the three goldens, diffed). `--audit-only` re-derives the invariant, the census, the cross-shard equality and the probes **from the committed bytes** and fetches nothing; the probes golden matches. The emitted order's last key was corrected from the numeric GeoNames id to the **emitted base-36 id string**, because that is what `searchGazetteer`'s own comparator compares — base-36 `z` is numerically 35 and lexically after `10`. |
+> | **Injected faults, red before green, measured output recorded** | **N1** language threshold 4 → 12 (wiki gate off): travel **71.9 %** — A-83 Part 1's own published figure for that row — below the 85 % floor; control stayed 50/50. **N2** the per-shard ceiling fires naming shards (`an.json is 71077 bytes`, …). **N3** shard by first token only: **9 queries answer differently from one shard than from the corpus**, naming `hallstatt`, `sintra`, `interlaken`, `angeles`. **N4** pairing check deleted: three assertions redden. **N4b** one committed shard's `$sourceSha256` hand-edited: `loadGazetteer: shard "hal" carries $sourceSha256 "bbb…"`. **N5a** `toLowerCase` below the table: **exactly `Łódź` and `Đông Hà` fail and `İstanbul` passes**. **N5b** `normalize('NFD')` deleted: **exactly 8 of the 12**. **N6** one character of `SUBSTITUTIONS` in `gazetteer.ts` only: **196 rows are in a shard their own fold does not reach** — KD-112's guarantee, kept without its bytes. **N6a** translation disabled: **157 undrawable rows**, naming Bandraboua and Barentsburg. **N6b** an undrawable containing code passed through: 8 rows carrying `XX`. **N6c** `silent` collapsed into `agrees`: **6,947 rows mis-state what the index says**. **N7** bare-name refusal disabled: 18 rows named. **N8** disambiguation deleted: two assertions redden. **N9** the shard map re-exported from the barrel: the boundary test **and** both surface set-equalities redden. **N10** a `\|` in a name with the delimiter refusal off: `round-trip: Hall\|statt re-parses to 10 fields, not 9` — **and the string comparison this replaces reported CLEAN on the same run**, which is R60-5 measured both ways. |
+> | **Cost, published as a measurement** | `node --test packages/core` **6.50 / 6.58 / 6.40 s before → 7.90 / 7.85 / 7.88 s after = 1.21×**, under the 1.5× threshold. `npm run web:build` **1.83 s → 1.80 s**, and the chunk count is **unchanged at 7** because no `apps/web` file imports the subpath yet. |
+> | **Four deviations from the contract, each disclosed** | **KD-118** — A-83 Part 6's completeness argument is false for a query that is itself a split prefix (`de` would miss Delhi); fixed by stating Part 6's own one-character rule over the manifest, and terminal shards hold first tokens only. **KD-119** — A-84 Part 5's parent is resolved per **country code** (modal containing feature) rather than per row, because per-row splits Mayotte 39/11 and ships Saint-Georges as Brazil; plus a 0.05° coastal tolerance, because GeoNames settlement coordinates fall in water at 1:10m where Natural Earth's label points did not. **KD-120** — A-84 Part 5's *"the empty code included"* is **not** applied, because GeoNames' codeless rows are the ten multi-country archipelagos A-83 Part 9 refuses by name, not the Somaliland towns the ruling meant. **KD-121** — `storable.test.ts`'s *"nothing else under `packages/core/src`"* guard is scoped to exempt the corpus directory, which ROADMAP I-23 predicted would not be necessary. **All four are architect decisions to bless or correct; none is a silent redesign.** |
+> | **Files the ROADMAP's fence did not name, and why they had to move** | `packages/core/test/cityPick.test.ts` and `pickCentre.test.ts` both imported `GAZETTEER` from the deleted module **and pinned the old corpus's Geneva and Vienna rows by id and coordinate** (`ne:j64n0x` at `{46.21, 6.14}` → `gn:1l0yu` at `{46.2022, 6.1457}`). The v3 migration fixture's own coordinate is **not** a gazetteer fact and was left at `{46.21, 6.14}`. |
+> | **What the fence left broken, and it is a real cost** | **`qa/r60-coverage.mjs` and `qa/r64-census.mjs` §F do not run as committed.** Both reach for a whole-corpus `GAZETTEER` — one through the subpath, one through `geo/gazetteer.gen.ts` by module path — and neither exists after this increment. `qa/` is the breaker's surface and this pass is fenced out of it, so **I did not edit them**; both were run unmodified under the scratchpad loader hook described above and **`r64-census.mjs` reports 0 FAIL with all of §F's I-24 cases holding** (`key absent → CH/picked`, `centre: undefined → CH/picked`, `centre: null → null/null`, inherited both ways, and F9/F10's range counts). **The breaker needs either that hook or a re-cut of the two files' two import lines**; a whole-corpus assembly from `readdirSync` over `geo/gazetteer/` is four lines. |
+> | **What I could not verify** | **That a browser actually fetches one shard.** The Vite probe proves 968 chunks are emitted and the loader is exercised under Node; nothing here loads them over HTTP, because there is no web consumer and adding one is fenced. **The user-visible attribution**, for the same reason — the obligation is stated in four places and rendered in one (`cli.ts`), and no screen renders it because no screen calls this yet. **That the corpus is correct beyond its own invariants**: the coverage number is measured over 171 destinations, the country of every row is checked against the index we ship, and neither is a claim that GeoNames is right about a place. |
+
 > **Addendum — ROADMAP `I-22b`: the map stops opening on the Gulf of Guinea (`ARCHITECTURE.md`
 > revision 68 §8.4 **A-84** Part 7 item 2, QA **R61-10**).** Builds on `fd66fa1`. **Three
 > product-code files** — `packages/core/src/derive/cluster.ts` (a type and one literal),
@@ -5794,6 +5822,141 @@ item 2 pins everywhere else.
 
 My one test that reached this shape (`cities: ['ok']` in the per-row table) was **removed** rather
 than left asserting a throw, because asserting it would pin behaviour A-86 does not rule.
+
+### KD-118 — A-83 Part 6's completeness argument is false for a query that is a SPLIT PREFIX, and the fix is its own one-character rule stated over the manifest
+
+`tools/gen-gazetteer.mjs` (the shard assignment), `packages/core/src/geo/gazetteer.ts`
+(`loadGazetteer`), and A-83 Part 6.
+
+A-83 Part 6 says a query is answered from **exactly one** shard, chosen by its first folded token,
+and calls that complete: *"if the folded query is a prefix of the whole folded name it is a prefix
+of its first token, and if it is a prefix of an interior token it is a single token itself — either
+way the row is in the shard the query resolves to."*
+
+**Measured: it is not complete when the query's own token is a prefix the corpus SPLIT.** The
+shipped corpus has **41 split prefixes**, and `de` and `san` are two of them. Under the rule as
+written, the query `de` resolves to the terminal `de$` shard — and **Delhi, Denver and Detroit live
+in `del`, `den` and `det`**, so the answer would be silently short. Part 6 already rules this exact
+shape for **one character** (*"the correct answer is the terminal shard plus every shard beneath
+it, which is a fetch of everything under that letter. This design refuses that"*) and answers it
+with `null`, **"keep typing"**, explicitly not *"no match"*. The manifest makes that boundary exact
+instead of assuming the tree is always one character deep:
+
+> **`loadGazetteer` returns `null` for a one-token query that IS a split prefix**, exactly as it
+> does for a token under two characters — same rule, same reason, same `null`.
+
+**A query with a second word is not that case and still resolves**, which is what keeps
+`san marino` searchable: it can only match a row whose whole fold begins `san marino`, so that
+row's first token is exactly `san` and every such row is in `san$`. A terminal shard therefore
+holds **rows whose FIRST token is the prefix** and nothing else — dropping the interior-token
+copies is what takes `de$` from **104,150 bytes, 6 % over the 96 KiB budget and unsplittable**, to
+a few hundred, because `Rio de Janeiro`'s `de` copy could only ever have answered a query the
+loader refuses.
+
+**What this costs, stated rather than hidden:** a row whose *only* token is a split prefix — a
+place actually called `San` — ships and is not reachable by search. That is the same cost Part 6
+already accepted for a one-character name, it is countable (the shard is on disk with its name on
+it), and the row is reachable through any other token it has.
+
+**For the architect:** this is a correction to Part 6's stated property, not a new design. The
+property that now holds is testable and is asserted in
+`packages/core/test/gazetteer.test.ts`: *for every query `loadGazetteerFor` answers with a
+`Gazetteer`, searching that one shard returns exactly what searching the whole corpus returns, row
+for row and in order.* Part 6's own sentence should be amended to say so.
+
+### KD-119 — A-84 Part 5's parent is resolved per COUNTRY CODE, not per row, because per-row it splits one territory across two answers and puts a French commune in Brazil
+
+`tools/gen-gazetteer.mjs` (`build`, the `codeParent` map), and A-84 Part 5.
+
+A-84 Part 5 rules that a row whose stated code the shipped index cannot draw is resolved by
+locating **that row's centre** in `ne_10m_admin_0_countries` and reading the containing feature's
+`ISO_A2_EH`. Its named outcomes are *"Fort-de-France, Basse-Terre, Dzaoudzi and St.-Benoît ship
+`FR`; Longyearbyen ships `NO`; Saint-Georges ships `FR`"* — and ROADMAP I-23 makes those a ship
+gate.
+
+**Implemented literally over this corpus, four of the six come out wrong, and the reason is a
+difference between the two datasets rather than a bug.** Natural Earth's populated-places layer
+carried **cartographic label points**, which sit on drawn land by construction; GeoNames carries
+**settlement coordinates**, which do not. Measured at 1:10m: **Longyearbyen is 400 m out into
+Adventfjorden, Basse-Terre 1.4 km offshore, Dzaoudzi 2.2 km off Petite-Terre**, and each is
+therefore contained in **no feature at all**. And **Saint-Georges, a French commune, is contained
+in the Brazil feature** — its GeoNames coordinate is 1.1 km on the Brazilian side of the Oyapock as
+the layer generalises it, which is the exact attribution (*"a French commune attributed to
+Brazil"*) A-84 Part 5 names as wrong.
+
+Worse than any single row: **per-row containment splits one territory across two answers.** 39 of
+Mayotte's 50 rows would ship `FR` and 11 would ship `null`, the difference being whether a village
+happens to land inside a coastline drawn at 1:10m. A territory does not have a different sovereign
+in each of its villages.
+
+**Two changes, both still reading the layer and neither typing a fact:**
+
+1. **A coastal tolerance.** Where a point is contained in no feature, the **nearest** feature within
+   `0.05°` (~5.5 km) is taken and the row records `via: 'nearest'`. The largest fallback the shipped
+   corpus actually uses is reported on every generator run.
+2. **The parent is the MODAL answer over every row carrying that stated code**, ties broken
+   alphabetically. `GF → FR`, `YT → FR`, `RE → FR`, `GP → FR`, `MQ → FR`, `SJ → NO`, `BQ → NL`,
+   `BV → NO`, `CX → AU`, and `TK → null` — Tokelau is drawn by nothing the index carries, so its
+   rows say nothing rather than guessing, which is A-84 Part 5's own *"Cairn does not adjudicate a
+   sovereignty its own map cannot draw."*
+
+Every row is still published in `fixtures/golden/gazetteer-parents.json` with both codes and with
+how it was resolved, and the ruling's six named outcomes all hold.
+
+**For the architect:** Part 5's mechanism sentence needs one clause — *the parent is a property of
+the code, taken as the modal containing feature over the rows that carry it* — or its named
+outcomes need withdrawing. I took the first because the outcomes are what the ruling is *for*.
+
+### KD-120 — A-84 Part 5's *"the empty code included"* is NOT applied, because in this corpus the codeless rows are the ten A-83 Part 9 refuses by name
+
+`tools/gen-gazetteer.mjs` (`build`, the `r.stated === null` skip), A-84 Part 5 and A-83 Part 9
+clause 1.
+
+A-84 Part 5 says the translation runs *"for every row whose stated code is not one `COUNTRY_INDEX`
+draws, **the empty code included**"*. In the corpus that ruling was written against, the codeless
+rows were **Somaliland and Northern Cyprus towns** — real cities the layer draws with no ISO code,
+which is why the ruling's honest `null` arm exists at all.
+
+**GeoNames has no such rows.** It states a drawable code for every one of those places (Hargeysa is
+`SO`, and the row ships `SO` untouched). The rows GeoNames leaves codeless are a different
+population entirely: **ocean features and multi-country archipelagos** — `Lesser Antilles`,
+`French West Indies`, `Greater Antilles`, `Virgin Islands`, `Woody Island`, `Windward Islands`.
+Measured, translating them ships *"Lesser Antilles, France"* and hands the disputed Paracels to
+**China** on a nearest-feature test, which is A-84 Part 5's own sovereignty sentence read backwards
+— and it resurrects **the exact ten rows A-83 Part 9 clause 1 refuses by name**, whose refusal that
+ruling measured and called *"costing nothing real"*.
+
+So a row that states **no** country keeps `countryCode: null` and meets the bare-name refusal. **18
+rows are refused on that ground** in the shipped corpus and every one of A-83 Part 9's seven named
+examples is among them.
+
+**For the architect:** the two rulings compose to a contradiction only because the corpus changed
+underneath the later one. A-84 Part 5's *"the empty code included"* should be scoped to *a row
+whose source states no code but which the layer nonetheless contains*, or A-83 Part 9's refusal
+should be withdrawn. I kept the refusal, because it is the one with a measurement behind it.
+
+### KD-121 — `storable.test.ts`'s *"nothing else under `packages/core/src`"* guard had to be scoped, and ROADMAP I-23 predicted it would not
+
+`packages/core/test/storable.test.ts`, the test *"A-78 Part 1: there is nothing else under
+packages/core/src"*.
+
+ROADMAP I-23 says *"the census walks `.ts` and does not see JSON, and if it reddens for any other
+reason, **STOP and report**."* That is true of `CENSUS` itself — it gained one row and lost one,
+exactly as predicted. It is **not** true of the guard beside it, which walks `packages/core/src`
+whole and refuses any file that is not a namespace-importable `.ts` module, with the comment *"An
+architect rules on this file; do not exclude it."* The 967 corpus documents redden it.
+
+**I did not stop**, and the reason is that the architect has already ruled on these files by name:
+A-83 Part 5 puts the corpus *"under `packages/core/src/geo/gazetteer/`"* **because a `.json` file is
+not TypeScript**, which is the whole mechanism that lets an 8.7 MB corpus exist beside a
+1,048,576-byte type-stripping ceiling. Stopping the increment on a guard whose subject the design
+explicitly settles would be reporting the design back to its author as a defect.
+
+The exemption is **one directory**, and it is paired with a positive assertion added in the same
+edit: every file under `geo/gazetteer/` must be a `.json` document that `meta.json` or the generated
+shard map **names**, so the exemption cannot become a parking space. The guard's own subject — a
+`.d.ts` declaring a door over a JS implementation — is untouched and still refused everywhere.
+
 
 ## 2. How to run it
 
