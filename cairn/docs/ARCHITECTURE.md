@@ -1732,6 +1732,31 @@ deleted rather than tied down, and the general rule is that **a census whose sub
 shape" is a census over declarations, not imports**. `ROADMAP.md` revision 73 carries the ledger entry,
 **I-29**, **I-30** and the `I-23` criterion correction.
 
+**Revision 71, 2026-09-10.** **One ruling, and it is a correction to the previous revision's own.** `I-29`'s
+builder built A-89's clause 4 exactly as ruled, positioned it last, printed its match set — and **honoured
+the increment's stop-and-report rather than enabling it** (BUILD-NOTES **KD-124**). He was right to.
+**A-93** re-rules the predicate against the *corpus* instead of against the 14 country files A-89 sampled:
+`X \ {S, C} ≠ ∅` matches **169** of the 149,101 committed rows, **167** of them false positives —
+**`Vatican City`** (a committed `PROBES` query, so `vatican` would have gone to `NO MATCH`), the capitals
+of the Faroes, Jersey, the Isle of Man and Åland, `Laayoune`, `Dakhla`, two Macau parishes, every Antarctic
+station. The gap is that `cc2` names **any** second jurisdictional claim in four distinct populations, and
+subtracting `C` closes only the one where the *translation* supplied the parent. **A-93 adds the two things
+that separate a landmass from a dependency's capital, both measured: the refusal applies to A-83 Part 3's
+`ISL`/`ISLS` arm only** — a settlement's name denotes a point and a point lies in one place, so a second
+claim on it is a **dispute Cairn declines to adjudicate rather than a place it deletes** — **and it
+subtracts the row's sovereign `P(S)`, `P(C)` as Natural Earth already states it** in the layer A-84 Part 5
+already loads, without which `Jersey`, `Guernsey`, `Faroe Islands`, `Norfolk Island` and eight more are
+deleted. **Sixteen rows are refused, every one a landmass in or claimed by more than one country, zero
+settlements**; `Antilles` and `Hispaniola` are two of them, so **R67-3 is fixed**. The alternative of
+nulling the country code instead of refusing is **rejected on the corpus**: `New Guinea` carries an
+`admin1` and would ship as *"New Guinea, Papua"*. **A-89 Parts 2 and 8 are corrected at their own sites**
+— `Trachóni` never shipped, `Ireland` the island is not in the corpus, and `Borneo`/`New Guinea`/`Tierra
+del Fuego` are all `cc2`-marked and all refused. **§0 gains position 12** — *a rule's cost is measured over
+the population the rule runs on, and a stop-and-report on such a rule is a named set, not a threshold*.
+`ROADMAP.md` revision 74 carries the ledger entry, **I-31**, the BUILT-and-STOPPED banner on **I-29** and
+sequencing rule 12. **No version constant moves**; the corpus goes 149,101 → **149,085** and
+`$sourceSha256` does **not** change, because this is a filter change over unchanged bytes.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -1739,13 +1764,21 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~567k tokens** (re-measured at **revision 70** — **§8 grew 152k → 162k** with §8.4's
-four new rulings and their five amendment banners; **§0 stays 2k** with **position 11**; §2, §4, §9 and §10
-did not move). **The four are separable and only one of them is about the corpus's contents:**
+This document is **~573k tokens** (re-measured at **revision 71** — **§8 grew 162k → 168k** with §8.4's
+**A-93** and its five amendment banners on **A-89**'s heading, **A-89 Parts 2 and 8** and **A-83 Parts 3
+and 9**; **§0 stays 2k** with **position 12**; §2, §4, §9 and §10 did not move. The revision-70 figures
+below are superseded by these).
 
 | ruling | ~size | who reads it, and when |
 |---|---|---|
-| **A-89** | ~4.5k | **The corpus family's newest member.** A builder or breaker of the gazetteer refusals reads **A-89 whole**, then **A-83 Parts 3 and 9** and **A-84 Part 5**, and nothing else — not A-85, not A-86, not A-87, not A-88, not §2 whole, not §4, not §10. |
+| **A-93** | ~5.5k | **The predicate that ships, and it is READ WITH A-89, never instead of it.** A builder or breaker of ROADMAP **`I-31`** reads **A-93 whole, then A-89 whole, then A-83 Parts 3 and 9, then A-84 Part 5, then BUILD-NOTES KD-122 and KD-124 — and nothing else.** Not A-90, not A-91, not A-92, not §2 whole, not §4, not §10. A-89 supplies Parts 1 and 3–7, which A-93 depends on and does not repeat; A-93 supplies the rule. |
+
+**The revision-70 table follows and the A-89 row in it is superseded by the row above. The four rulings of
+revision 70 are separable and only one of them is about the corpus's contents:**
+
+| ruling | ~size | who reads it, and when |
+|---|---|---|
+| **A-89** | ~5k | **⚠ Its Part 2 predicate is superseded by A-93 and its Parts 2 and 8 carry corrections in place.** Still read whole by anyone working on the gazetteer refusals, **with A-93 beside it**, then **A-83 Parts 3 and 9** and **A-84 Part 5**, and nothing else — not A-85, not A-86, not A-87, not A-88, not §2 whole, not §4, not §10. |
 | **A-90** | ~2.5k | **Read by anyone who runs, re-pins or audits the generator, and by nobody else.** It needs **§0 position 11** and **A-83 Part 2**; it needs no other ruling. |
 | **A-91** | ~1k | **Read by the builder of the first `.tsx` that touches the corpus**, with `ROADMAP` `I-30`. It needs nothing else in §8.4. |
 | **A-92** | ~1k | **Read by anyone changing a type that crosses `packages/client`'s port boundary.** It needs **A-84 Part 7 item 2** and nothing else. |
@@ -1977,7 +2010,7 @@ crosses a section boundary. Otherwise this table is the contract.
 
 ---
 
-## 0. Eleven positions, stated up front
+## 0. Twelve positions, stated up front
 
 1. **The brief's two hard constraints hold, and one is worse than the brief says.** They force a native
    shell for pillars 4 and 5 — not a native-first architecture. Jacob has confirmed the end state:
@@ -2061,6 +2094,20 @@ crosses a section boundary. Otherwise this table is the contract.
    fetched bytes ⇒ same output*, and a re-pin is an explicit `--repin` run that publishes a source log and
    a **row-level corpus diff in the same commit**. **Say plainly that the corpus cannot be rebuilt from
    source, rather than implying that it can.** §8.4 **A-90**.
+12. **A rule's cost is measured over the population the rule will run on, and the measurement is what the
+   ruling publishes.** Added at revision 71, after **A-89** priced its own false-positive arm at *"one
+   village"* — a village that has never been in the corpus — from a sweep of **14 country files** standing
+   in for a **149,101-row** corpus whose bytes were already committed. Its predicate would have deleted
+   **Vatican City**, and only a builder's stop-and-report caught it (KD-124). This is the sixth incomplete
+   enumeration in seven rounds, and unlike position 10's it is not a claim outrunning its mechanism: the
+   mechanism was right, the **denominator** was a sample. Three consequences. **(a)** A ruling that filters,
+   refuses or selects over committed data states its match set **exhaustively, by name or by id**, or says
+   why it cannot — a *count* is not a measurement of a refusal, and a *sample* is not a population.
+   **(b)** Where the artefact is committed (position 11), there is no excuse for a sample: measuring costs
+   one script over bytes that are already in the repository, and an architect who rules without running it
+   is guessing at the one thing they were asked to decide. **(c)** A stop-and-report condition on such a
+   rule is a **named set**, not a threshold — a population threshold cannot see an 829-person capital, and
+   that is exactly what it failed to see. §8.4 **A-93**; ROADMAP sequencing rule 12.
 
 ---
 
