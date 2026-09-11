@@ -1941,6 +1941,58 @@ gates `I-30`.** Two increments are scheduled and one criterion is corrected.
   interrupted-write fault. They agree by coincidence at 4 (the seed branch) and nowhere else. **Cite a
   fault by its document and its number, never by its number alone.**
 
+**Revision 77, 2026-09-11.** **A NEW CAPABILITY, and the first entry in this document that is not a QA
+consequence since revision 66.** Jacob asked for *"a chat-style way to ask about a trip — starting with
+'what does my trip look like' style questions, not 'where should I eat'"*, with the second half an explicit
+fence: places need a live API, a paid vendor and a server, and are out of scope. `ARCHITECTURE.md` revision
+77 answers it as a whole new section, **§11**, which is **self-contained at ~7k and read alone**; this file
+schedules it as **`I-35`** and **`I-36`**. **No `.tsx`, no `apps/web` file and no `docs/design/` file in
+either increment, and neither gates `I-30`**, which is still fenced by the unresolved visual direction and
+by nothing else.
+
+- **The ruling that matters, and it is a one-way door: a language model may PARSE a question and may never
+  ANSWER one.** `ask(question, ctx)` takes a value from a closed union and returns an `Answer` whose every
+  clause is rendered from a fact with a **cite** behind it; `matchQuestion(text, trip)` is the only thing
+  that turns text into that value. **The two are not alternatives** — an LLM, whenever one arrives, replaces
+  `matchQuestion` and may not replace `ask`. The stated requirement on an LLM design is *"invent nothing
+  outside the context"*, and **a rule written into a prompt is unenforceable by construction**: nothing
+  downstream can tell an invented booking reference from a real one, because both arrive as text. A rule
+  written as a **type** is enforced by the compiler and by one test. `ARCHITECTURE.md` §0 gains
+  **position 13**.
+- **`I-35` ships design (a) as the WHOLE answer, and (b) is not designed at all.** Three preconditions are
+  unmet — there is no server before Phase 3, `packages/core`/`packages/client` take **zero** runtime
+  dependencies, and **sending a trip to a vendor is an egress decision that is Jacob's**, because a trip
+  carries door PINs, booking references and ticket URLs (§6.6 exists because a build artifact once shipped
+  all three). So (b)'s prompt, request shape, model choice and redaction policy are **deliberately
+  undesigned**; `ARCHITECTURE.md` §7 and §11.2 carry it with all three triggers.
+- **Be honest about the size: this is a fixed-menu answer engine with a text shortcut in front of it.** Free
+  text is matched by a **recogniser**, not a classifier — literal triggers plus the trip's **own** city
+  names, no scoring and no nearest-match — and **two readings is a refusal**, as is a question at the wrong
+  *scope* (*"how many countries have I been to"* is `travelStats` over the library, not this trip) and a
+  recommendation. `askableQuestions(trip)` is the menu and is the answer to every refusal. A menu that is
+  completely correct beats a text box that is mostly right and occasionally invents.
+- **The measurement that decided the hardest rule, taken over the reference trip at `9333eb6`:
+  143 of 143 stops carry `durationMins: null`.** So *"do I have a free evening in Split?"* has **no evidence
+  behind a yes**, and `free_time` is three-valued — `busy` / `open` / `unknown` — with **not one day of this
+  trip returning `open`**. The honest answer is *"I can't tell: nothing is scheduled after 17:15 on Fri
+  14 Aug, but no stop that day says how long it takes."* A rule that could only ever say *yes* about the
+  only real trip we have is a rule nobody could have tested.
+- **One definition of "unbooked", and it is already in the repository.** `unbooked_ticketed` and
+  `missing_lodging` are it; `ask` re-publishes them and never computes a second list (sequencing rule 1).
+  The consequence is stated in the answer rather than hidden: both are **feasibility** rules (§8.2), so a
+  completed trip answers *"nothing — this trip is over"* and not *"nothing is unbooked"*. Measured: **12**
+  unresolved coverage conflicts at `today = 2026-08-01`, **0** at `2026-09-11`.
+- **§2.10 goes 88 → 91** (`ask`, `matchQuestion`, `askableQuestions`); `SCHEMA_VERSION` (5) and
+  `SUMMARY_VERSION` (8) **do not move** — nothing here is stored and `ask` has no write path at all.
+  **Sequencing rule 13** is new and is the routing half of §0 position 13.
+- **⚠ One wording conflict, flagged rather than resolved by guessing** (root `CLAUDE.md`). `BRIEF.md`'s
+  non-goals list *"Chat"* and `PRODUCT-VISION.md` §3 defers *"Chat, payments, recommendation ML, public
+  feed"*. Read in context both mean **person-to-person messaging in a social product** — they sit beside
+  payments and a public feed, in a list about the social layer — and this builds a **single-turn question
+  over your own document, with no second person and no message store**. It is recorded in §11.10 with the
+  conflict named, because it is exactly the sentence a later reader would use to argue this was built
+  against the brief. **If Jacob reads the non-goal the other way, §11 is withdrawn, not reinterpreted.**
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -10199,6 +10251,152 @@ disclosed as *unreachable* for two revisions and is reachable today.*
   gate should know that **R54-1 is open** and that the reachable producer is unchanged (a caller behind a
   cast; no shipped surface and no hostile file reaches it).
 
+#### I-35 — `ask`: a question about your own trip, answered from the document and nothing else (revision 77, `ARCHITECTURE.md` revision 77's **§11**; a NEW CAPABILITY from Jacob's framing of 2026-09-11, not a QA consequence)
+
+**Read `ARCHITECTURE.md` §11 whole. Nothing else in that document** — not §2, not §4, not §8, not §10, and
+no `A-` ruling at all; §11 is self-contained and quotes what it needs. **No `DESIGN.md`**: this increment
+renders nothing.
+
+**Why it exists.** Jacob asked for *"a chat-style way to ask about a trip — starting with 'what does my trip
+look like' style questions, not 'where should I eat'."* Everything he named is already in the document:
+dates, stops, gaps, what is unbooked, how many countries. **The value is that the answer is checkable** —
+every clause traces to a record — and it needs no vendor, no key, no network and no server, which is why it
+is buildable now and backend-only. **It is also the increment that fixes the boundary before a model ever
+exists**: `ask` takes a value from a closed union, `matchQuestion` is the only thing that turns text into
+one, and a language model — whenever one arrives, which is not here — replaces the second and may never
+replace the first (§0 position 13, §11.1).
+
+**Say plainly what size this is: a fixed-menu answer engine with a text shortcut in front of it.** Five
+question kinds, a recogniser that refuses rather than guesses, and `askableQuestions(trip)` as the answer to
+every refusal. A menu that is completely correct beats a text box that is mostly right and occasionally
+invents.
+
+**What it is NOT.** **No `.tsx`, no `apps/web` file of any kind, no `packages/client/src`, no
+`docs/design/`.** No language model, no network call, no `services/` directory, no dependency of any kind —
+§11.2's three preconditions are all unmet and its prompt and API shape are deliberately undesigned. **No
+recommendation of any sort.** **No second definition of "unbooked"** — `unbooked_ticketed` and
+`missing_lodging` are the definition and `ask` re-publishes them (§11.4). **No write path**: `ask` mints no
+record, takes no `IdFactory`, and never proposes an edit. **No stored field, no golden regenerated, no
+corpus byte**; `SCHEMA_VERSION` (5) and `SUMMARY_VERSION` (8) do not move.
+
+- **Built, in four parts.**
+  1. **`packages/core/src/ask/`.** `Question` (five kinds — `trip_overview`, `city_edge`, `unbooked`,
+     `country_count`, `free_time`), `Answer`, `AnswerCite`, `AnswerFact`, `AnswerCaveat`, `MatchOutcome`,
+     `AskCtx`, exactly as §11.3 and §11.5 declare them. `ask(question, ctx)` is total over the union and
+     throws only on programmer error (a missing country index — `tripSummary`'s own rule). `today` and
+     `index` are **injected**; no `Date.now()`, no randomness.
+  2. **`matchQuestion(text, trip)` — a recogniser, not a classifier.** Literal trigger phrases plus the
+     trip's **own** names; no scoring, no nearest-match, no threshold. **Two readings is `ambiguous`**,
+     lifetime-scope wording is `out_of_scope: 'lifetime'` with a pointer to `stats`, recommendation wording
+     is `out_of_scope: 'recommendation'`, and a partial read reports its `unread` words. Plus
+     `askableQuestions(trip)`, the menu instantiated over the trip's real cities.
+  3. **`cli.ts ask "<question>"` and `cli.ts ask --menu`.** The restatement prints **above** the answer, the
+     cites print **below** it, a `partial` answer prints its caveats, and a refusal prints the menu and
+     exits **2** — the CLI's house style for input it will not act on (`cmdExport`, `cmdCities`). Honours
+     `--today` through `todayIsValid()` and `--file` like every other command.
+  4. **§2.10 goes 88 → 91** with `ask`, `matchQuestion` and `askableQuestions`, added to `index.ts` and to
+     `surface.test.ts`'s list **in the same commit** (§8.9's rule). The types are types and do not count.
+- **Verification.** Tagged per **How a criterion is written**; the ceilings are ceilings (rule 4). Every
+  number below is measured at `9333eb6` over the reference trip, with its selector named (rule 8).
+  - **Every answer names what it read** `[stated]`: over every member of `askableQuestions(referenceTrip)`,
+    at `--today 2026-08-01` **and** `--today 2026-09-11`, every `AnswerCite` resolves through the single
+    `resolveCite` — `trip`/`day`/`stop`/`place`/`booking` by id, `city` by key, `conflict` against the set
+    `ask` computed in the same call. **N1, injected: mint `{kind:'stop', id:'no-such-stop'}` in one
+    resolver** → the test reddens **naming the question kind and the cite**. **Fireable**: every one of the
+    five kinds emits at least one cite on this trip.
+  - **"When do I leave Vienna" is right about a two-city day** `[stated]`: the answer is **`2026-08-10`**,
+    the last day whose `cities` include `vienna`; that day's `cities` are `["vienna","dubrovnik"]` and its
+    first stop with `travelRole === 'journey'` is **05:00 "Leave for Vienna Airport (VIE)"**, which is the
+    cited evidence. **N2, injected: take the FIRST day of the city range instead of the last** → this
+    reddens with `2026-08-08`.
+  - **"What's still unbooked" has one definition and states its horizon** `[stated]`: selector
+    `c.kind === 'coverage' && !c.resolution` over `detectConflicts(trip, {today})`. At
+    `--today 2026-08-01` the answer names **12** items (2 `missing_lodging`, 10 `unbooked_ticketed`;
+    unscoped `detectConflicts` returns **17**). At `--today 2026-09-11` it names **0** (unscoped **5**,
+    `lifecycle` is `completed`) **and the sentence says why** — *this trip is over, and Cairn stops asking
+    you to book things for a trip you have already taken* — **not** *"nothing is unbooked"*. **N3,
+    injected: render the empty case as "nothing is unbooked"** → the completed-trip arm reddens.
+  - **"Do I have a free evening in Split" answers `unknown`, and that is the correct answer**
+    `[stated]`: **143 of 143 stops on this trip carry `durationMins: null`** (112 scheduled + 31 pooled),
+    and **0 of 112 scheduled stops carry a null `time`**. Over `2026-08-12…15`, window 18:00–23:59: the
+    12th, 13th and 15th are **`busy`** (20:00; 20:15 and 20:30; 18:00 and 19:30) and the **14th is
+    `unknown`** — nothing starts after 17:15 and that stop states no duration. **Not one day returns
+    `open`**, `coverage` is `partial`, and the sentence says it cannot tell. **N4, injected: give the 14th's
+    stops a `durationMins`** → the day flips to `open`, `coverage` becomes `complete` and the sentence
+    changes. **N5, injected: default a null duration to any constant** → the 14th returns `open` with no
+    fixture change and this reddens.
+  - **A partial answer does not read like a complete one** `[stated]`: for `free_time`, the `partial`
+    `text` is **not byte-equal** to the `complete` `text` for the same `Question`. **N6, injected: render
+    `text` without consulting `coverage`** → reddens. A `coverage` field nothing renders lies by omission.
+  - **Country count carries its denominator and its evidence agrees with it** `[stated]`: **7** countries
+    (`AT, CZ, DE, GB, HR, HU, US`), and the evidence walk's code set **equals**
+    `tripSummary(trip, COUNTRY_INDEX).countryCodes` exactly. The census prints beside it — **95 places, 94
+    located, 91 attributed; 132 located stops, 128 attributed** — so `DE` (a layover) and `US` (departure)
+    are explained by a cited record rather than being a surprise. **N7, injected: drop the pool from the
+    evidence walk** → the set equality reddens.
+  - **A refusal is a refusal** `[stated]`: *"how many countries have I been to"* returns
+    `out_of_scope: 'lifetime'` and **never** the trip-scoped 7; *"where should I eat in Split"* returns
+    `out_of_scope: 'recommendation'`; text matching two intents, or two of this trip's city names, returns
+    `ambiguous` with both readings restated. All four exit **2** from the CLI and print the menu. **N8,
+    injected: make the lifetime pattern fall through to `country_count`** → reddens with `7`.
+  - **Nothing sensitive reaches an answer** `[stated]`: `redactionHits(answer.text)` is **`[]`** for every
+    member of `askableQuestions(referenceTrip)` at both clocks, and no `params` key is `lat`, `lng` or
+    `centre`. **N9, injected: interpolate the stop's booking link into the `unbooked` line** →
+    `redactionHits` returns `['url']` and this reddens. **Fireable by construction**: `unbooked_ticketed`'s
+    predicate requires `stop.links.length > 0 || stop.ticket`, so every stop that answer can name has a link.
+  - **The ceilings hold** `[stated]`: `packages/core` still has **zero** runtime dependencies; `node --test`
+    still runs the package on bare Node with no build step; `ask/` contains no `Date.now()`, no
+    `Math.random()`, no `fetch` and no `fs`; §2.10's runtime count is **91** and `surface.test.ts` asserts
+    set equality in both directions; `SCHEMA_VERSION` is **5** and `SUMMARY_VERSION` is **8**. **No file
+    under `apps/`, `packages/client/`, `docs/design/` or the repo root is opened.**
+- **Dependencies / blockers.** **None.** It shares no file with `I-33`, `I-34` or `I-30`, adds no
+  `.tsx`, and **does not gate `I-30`** — the picker is fenced by the unresolved visual direction and by
+  nothing else, and this increment does not touch that fence in either direction. It is the worked example
+  of sequencing rule 9 in the easy direction: the door is exercised through a CLI before any surface exists.
+- **Route: builder + breaker, mandatory** — a new capability that widens the `packages/core` export surface.
+
+#### I-36 — four more questions, and the proof that the engine widens without the boundary moving (revision 77, `ARCHITECTURE.md` §11; queued behind `I-35`, not routed until it is built)
+
+**Read `ARCHITECTURE.md` §11 whole, and `I-35`'s entry above. Nothing else.**
+
+**Why it exists, and why it is a separate increment.** `I-35` ships the five questions Jacob named. This one
+adds **four more and changes nothing structural**, which is the point: if the second batch needs a change to
+`Answer`, to `AnswerCite`, to `resolveCite` or to the grounding law, then §11's boundary was wrong and the
+finding is the architect's. **A widening that costs one resolver and one template is the design working; a
+widening that costs a type change is the design failing**, and this increment is where that is measured.
+
+- **Built.** Four `Question` kinds, each reading only what already exists (§11.4's ceiling: `ask/` holds no
+  domain arithmetic).
+  1. **`day_plan { date }`** — *"what am I doing on the 13th"*. `trip.days` by date, `computeLegs`,
+     `displayStatus` for the badge, and the same restatement/cite discipline.
+  2. **`city_stay { cityKey }`** — *"when am I in Split"*. `cityRange` and `daysForCity`, which are the two
+     functions that already answer it. **It may not sum city day counts into a trip total** — §8.4 A-56
+     residue 1, measured: the six cities of this trip sum to **20** over a **16**-day trip.
+  3. **`conflicts`** — *"what's wrong with my trip"*. `detectConflicts(trip, {today})` unresolved, all
+     kinds, with severity; `unbooked` stays the `coverage`-scoped subset and the two answers must agree on
+     their overlap.
+  4. **`cost_total`** — *"how much does this cost"*. `rollUpCost(trip, {target: trip.homeCurrency})`,
+     per-currency subtotals, `missingRates` stated in the sentence. **Core refuses to invent a rate** (§7)
+     and so does the answer: *"and CZK 4,200 that Cairn will not convert, because it has no rate table."*
+- **Verification.** `I-35`'s cite-resolution, redaction, coordinate-key, partial-text and ceiling criteria
+  are re-run **unchanged** over the widened `askableQuestions(referenceTrip)` — they are the criteria this
+  increment exists to keep green. Plus: `[stated]` the `conflicts` answer's `coverage`-kind subset is
+  **byte-identical** to the `unbooked` answer's fact list at the same clock (**12** at `2026-08-01`, **0**
+  at `2026-09-11`), which is the two-definitions check; `[stated]` `cost_total` names every currency
+  `rollUpCost` reports as unconvertible and converts none of them — **N1, injected: apply any rate** →
+  reddens. **`[stated]` the boundary did not move**: `Answer`, `AnswerCite`, `AnswerFact`, `AnswerCaveat`
+  and `resolveCite` are unchanged in this commit's diff, and §2.10 stays at **91** — the four kinds are
+  members of an existing union, not new exports. **If that criterion cannot be met, stop and report**: it
+  means §11's boundary is wrong and the fix is a ruling, not a build.
+- **Deferred out of this increment, with its trigger: `next_stop`** (*"what's next"*). It is the first
+  question whose answer depends on the **hour**, and `ClockTime` is wall-clock at the stop's location with
+  no timezone and no UTC instant (§7). *"Next"* is well-defined inside one day and undefined across a border,
+  which is `journey_overrun`'s problem exactly. **Trigger:** §7's timezone work, Phase 4.
+- **Dependencies / blockers.** **`I-35` must be built and adversarially verified first** — this increment's
+  headline criterion is that `I-35`'s boundary did not move, and that is unmeasurable before it exists.
+- **Route: builder only**, unless its stop-and-report fires — no export surface change, no new type, no new
+  invariant. If the boundary moves, it stops and becomes architect work.
+
 ### Exit criteria — the Phase 2 ship gate
 
 Tagged per **How a criterion is written**. The first two are ceilings on Phase 1 and are the ones that fail
@@ -10547,6 +10745,16 @@ ship is the ability to enter or see a participant in the app.** I-10's entry is 
 withdrawn, and carries its own trigger; **it does not block `I-11`**, and I-11's *Dependencies / blockers*
 is where that is adjudicated. This is the same treatment **I-13f** already has, which is the precedent it
 was written against.)*
+
+*(**Revision 77 adds one narrow exclusion beside a new capability.** `I-35` and `I-36` build the
+question-answering engine of `ARCHITECTURE.md` **§11**, entirely in `packages/core` and `cli.ts`. What this
+phase does **not** build: **any language model, network call, API key or `services/` directory**;
+**free-text understanding beyond §11.3's recogniser** — the closed vocabulary and the menu are the product;
+**multi-turn context**; **library-scope questions**, which `travelStats` already answers and which §11.3
+rule 3 refuses by name; **any recommendation of any kind**; **any answer that can act** — `ask` never
+proposes an edit, fixes a conflict or accepts a candidate; and **any screen at all** — no surface is
+scheduled while the visual direction is unselected, which is the same sentence `I-10` and `I-13f` are
+carried under. `ARCHITECTURE.md` §7 and §11.10 carry each with its trigger.)*
 
 **And, added at revision 10: no travel distance or mileage of any kind, in any mode.** `ARCHITECTURE.md`
 §8.10 architects it and schedules it across phases 4, 5b and 7; **nothing about it is built here.** In
@@ -10935,3 +11143,21 @@ built.
    consequence: an increment that elects, votes or takes a plurality over committed data **publishes the
    per-candidate tally the same way position 12 (a) makes it publish its match set**, and a criterion that
    states only the winner is a design defect routed to me.
+13. **A capability that answers in the user's voice cites what it read, refuses what it cannot read, and a
+   model in it parses rather than answers** (revision 77, §0 position 13, `ARCHITECTURE.md` **§11**). This
+   is the routing half, and it binds every future increment that produces a sentence about a user's data —
+   `ask`, a recap, a goal summary, a share-page blurb. **(a)** A surface that states a fact about a
+   document ships the **cites** beside it and a single resolver that proves each one, checked over every
+   answer the surface can produce, at more than one clock. A cite that resolves by coincidence is not a
+   cite: `ask`'s day cites are safe because §2.3 makes a day's id equal its date **by invariant**, not
+   because the reference trip happens to agree. **(b)** A question the system cannot read is **refused with
+   the menu** and never answered approximately, and a question at the wrong *scope* is refused **by name**
+   — one trip and the whole library differ by one word in English and by an entire dataset in this model,
+   and answering the scope we happen to have is being right about the wrong question. **(c)** **A language
+   model is scheduled only as a replacement for the part that reads the question**, never for the part that
+   composes the answer, and an increment proposing otherwise is a design defect routed to me. Its three
+   preconditions are §11.2's and the third is not technical: **what may leave the device is Jacob's
+   decision, in writing, before the call is built.** **(d)** The corollary for routing a *widening*: adding
+   a question to an existing engine is **builder-only** and its headline criterion is that the boundary did
+   **not** move; if it has to move, the increment **stops and reports**, because the boundary moving means
+   the ruling was wrong and the fix is a ruling. `I-36` is the worked example.

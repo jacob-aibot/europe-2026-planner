@@ -1815,11 +1815,29 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~588k tokens** (re-measured with `doc-section` at **revision 73** — **§8 grew 176k →
+This document is **~596k tokens** (re-measured with `doc-section` at **revision 77** — the growth is
+**§11**, new and self-contained at **~7k**, plus **§2 175k → 176k** with §2.10's export widening and
+**§7 1k → 2k** with §11.10's four deferred bullets; **§0, §1, §3–§6, §8, §9 and §10 did not move**. The
+revision-73 figures follow and are superseded by these: the document was ~588k — **§8 grew 176k →
 180k** and **§0 2.7k → 3.1k**, the growth being §8.4's new **A-95** (**2.2k**), revision 73's in-place
 corrections inside **A-90 clause 3 and Part 5 residue 4** and **A-94 Parts 3, 5, 9 and 10**, A-91's
 scheduling banner, and **§0 position 5 (b)**; §1–§7, §9 and §10 did not move. **The revision-72 figures —
 ~582k, §8 176k — and the revision-70/71 figures below are superseded by these.**)
+
+**Revision 77, 2026-09-11 — a NEW CAPABILITY, not a QA consequence, and it adds a whole section rather than
+a §8.4 ruling.** **§11 — *asking a question about a trip*** — is new, **~7k**, and **SELF-CONTAINED**: a builder
+or breaker of ROADMAP **`I-35`** or **`I-36`** reads **§11 whole and nothing else in this document**. Not §2
+whole, not §4, not §8, not §10, and no `A-` ruling at all. §11 quotes what it needs from §2.1, §2.5, §2.7,
+§2.10, §8.1, §8.2, §8.4 and §10.5. **The rest of this revision is three small edits that a reader of §11
+does not need to open**: **§0 gains position 13** (**~3k**, unmoved as `doc-section` rounds it — *a model may parse a question and may never
+answer one*), **§2.10 records the export widening 88 → 91** (§2 175k → 176k) and **§7 gains four deferred
+bullets pointing at §11.10** (1k → **2k**). §8 does **not** move, §4 does not move and
+§10 does not move. **This revision opens no `.tsx`, no `apps/web` file and no `docs/design/` file, and
+nothing in it gates `I-30`**, which is still fenced by the unresolved visual direction and by nothing else.
+
+| section | ~size | who reads it, and when |
+|---|---|---|
+| **§11** | ~7k | **The whole read for a builder or breaker of ROADMAP `I-35` and `I-36`, and it is read ALONE.** Also the read for anyone tempted to put a language model, a network call or a recommendation anywhere near a trip — §11.1 and §11.2 are the ruling and §11.10 is what is refused. It needs **no** §8.4 ruling, no part of §2 and no part of §4. |
 
 | ruling | ~size | who reads it, and when |
 |---|---|---|
@@ -2064,7 +2082,7 @@ crosses a section boundary. Otherwise this table is the contract.
 
 ---
 
-## 0. Twelve positions, stated up front
+## 0. Thirteen positions, stated up front
 
 1. **The brief's two hard constraints hold, and one is worse than the brief says.** They force a native
    shell for pillars 4 and 5 — not a native-first architecture. Jacob has confirmed the end state:
@@ -2187,6 +2205,21 @@ crosses a section boundary. Otherwise this table is the contract.
    produces, measured, in the same sentence** — A-93 stated `41` one paragraph away from a join that
    yields `0`, and nobody executed the sentence until a builder did (**R68-2**, KD-125).
    §8.4 **A-93**, **A-94**; ROADMAP sequencing rule 12.
+13. **Anything that answers a question in the user's own voice names the records it read, and a language
+   model may parse a question but may never answer one.** Added at revision 77, with **§11**. The
+   requirement on a model in the loop is *"invent nothing that is not in the context"*, and **a rule written
+   into a prompt is unenforceable by construction** — nothing downstream can tell an invented booking
+   reference from a real one, because both arrive as text. So the boundary is a **type**: `ask(question,
+   ctx)` takes a value from a closed union and returns an `Answer` whose every clause is rendered from a
+   fact with a **cite** behind it, and the model — whenever one arrives, which is not now — replaces
+   `matchQuestion`, the half that turns text into that value, and never `ask`. Three consequences that are
+   one-way doors. **(a)** An answer that cannot name what it read does not ship; the resolver is one
+   function and a test resolves every cite of every answer. **(b)** A question the system cannot read is
+   **refused with the menu**, never answered approximately — two readings is a refusal, and a question at
+   the wrong *scope* (this trip vs. the whole library) is refused by name rather than answered at the scope
+   we happen to have. **(c)** Sending a trip to a third party is an **egress decision and it is Jacob's**;
+   §6.1's table is the claim this feature would invert, and it is written down before anyone makes the
+   change that feels small. §**11**, §11.1, §11.6.
 
 ---
 
@@ -9700,7 +9733,24 @@ exactly one runtime symbol that is *not* counted here) **and 87 → 88 at Phase 
 (`cityPickFromRow`, §8.4 **A-84** Part 3 clause 4 — a **P2** join today and a **P1** join the moment a
 pick surface exists; it is on the surface because it is the only legal way to mint a `CityPick`, and a
 mint that is not reachable from outside `packages/core` is a fence nobody can obey), each for a stated
-reason.**
+reason. **88 → 91 at ROADMAP `I-35`** (`ask`, `matchQuestion`, `askableQuestions` — **§11**, and §11.9 is
+the join argument).**
+
+**The answer engine's three join at ROADMAP `I-35`, taking the count to 91 — §11.9.** All three join under
+**P2** (§11 names them) and **P1** (`cli.ts ask` calls all three). They are one capability split into three
+symbols on purpose and the split is the ruling: **`ask(question, ctx)` takes a value from a closed union and
+`matchQuestion(text, trip)` is the only thing that turns text into one**, so the half that is fuzzy is
+separable from the half that is answerable — and when a language model ever enters this product it replaces
+`matchQuestion` and may not replace `ask` (§0 position 13). `askableQuestions(trip)` is the menu and is on
+the surface because it is the answer to every refusal: a surface that cannot enumerate what it can be asked
+would have to hard-code the list, which is the second definition this section exists to prevent. **What
+stays internal is group 1's class verbatim** — the trigger tables, the daypart windows, `resolveCite`, the
+per-intent resolvers and the renderer; a caller that can reach the renderer is a caller that will render an
+answer `ask` did not produce, which is exactly what §11.6's grounding law is for. `Question`, `Answer`,
+`AnswerCite`, `AnswerFact`, `AnswerCaveat`, `MatchOutcome`, `AskCtx` and `DayPart` are **types** and are not
+part of the set-equality count. **No second entry point** — `ask/` is code with no dataset behind it, so the
+gazetteer's subpath has no counterpart here — and **`SCHEMA_VERSION` (5) and `SUMMARY_VERSION` (8) do not
+move**, because nothing in §11 is stored and `ask` has no write path.
 
 **The photo four and the participant three, and one correction they carry.** *(The photo four joined
 `index.ts` and `surface.test.ts` at I-13 and this block was not updated in that commit, so §2.10's prose
@@ -9878,6 +9928,8 @@ packages/core/src/index.ts re-exports exactly this and nothing else — 86 runti
   access (7)     canView · canComment · canEdit · canShare · canDelete · can · effectiveRole   // §6.2
   serialize (3)  toJSON · fromJSON · migrateDoc
   import (1)     importLegacyDays
+  ask (3)        ask(question, ctx) · matchQuestion(text, trip) · askableQuestions(trip)        // §11
+                 // the model may parse, never answer — §0 position 13, §11.1
   redact (4)     REDACTION_PATTERNS · REDACTED · redactText · redactionHits                     // §6.6
 
   types          exported freely and NOT part of the set-equality assertion: types are erased at runtime,
@@ -16946,7 +16998,26 @@ bundle, and the dependency-direction test of §3 asserts it.
     beyond the attachment edge.** A photo attaches, or it does not. **Trigger:** a measured complaint about
     the two fixed sizes, not a preference for a slider.
 
-*(§8 adds to this list and, in two places, takes something off it. Read §8.8 with this section.)*
+- **A language model anywhere in the product** — added at revision 77, **§11.2**, and it is the item on this
+  list with the most pressure behind it. `ask` answers from the document with no model, no network and no
+  key; a model would replace only `matchQuestion`, never `ask` (§0 position 13). **Three preconditions, all
+  of them:** a server exists (Phase 3, since an API key cannot live on a device); Jacob has said **in
+  writing** what may be sent, because a trip carries door PINs, booking references and ticket URLs and §6.1's
+  table is the claim this would invert; and the `Question` union a model's output is validated against is
+  §11.3's, unchanged. **Its prompt, request shape, model choice and redaction policy are deliberately not
+  designed** — designing them now would be designing the feature this section refused.
+- **Free-text questions beyond §11.3's closed vocabulary**, and **multi-turn context** (*"…and Prague?"*).
+  Single-turn against the document alone is what makes an answer reproducible and a golden possible.
+  **Trigger:** the same three as above.
+- **Library-scope questions** (*"how many countries have I been to"*). `travelStats` already answers them
+  and §11.3 rule 3 **refuses** them by name rather than answering the trip-scoped version of the wrong
+  question. **Trigger:** a `Question` union that carries scope as a field, which is a ruling of its own.
+- **An answer that can act.** `ask` never proposes an edit, fixes a conflict or accepts a candidate. The
+  moment it can, §2.8's provenance and §2.14's copy rules apply to it and it is a different feature.
+  §11.10.
+
+*(§8 adds to this list and, in two places, takes something off it. Read §8.8 with this section. §11.10 adds
+the four bullets above and refuses two things outright — read it with this section.)*
 
 ---
 
@@ -28561,3 +28632,424 @@ one fraction and one `failures` array** (R45-11's subject, unchanged and correct
 rather than replace). `setBatch` gates on the **document**, not on the batch, so it does not and should not
 separate two batches of the *same* trip. **Trigger:** a requirement to report per-batch rather than
 per-trip, which is a `PhotoSession` shape change and a ruling of its own.
+
+---
+
+## 11. Asking a question about a trip — the closed-world answer engine
+
+**Input: Jacob, 2026-09-11.** *"A chat-style way to ask about a trip — starting with 'what does my trip
+look like' style questions, not 'where should I eat'."* The second half is a fence he set himself and it is
+the more important half: *"where should I eat"* needs a live places API, a paid vendor and a server, and it
+is **explicitly out of scope and not to be designed around.**
+
+**This section is ~7k tokens and it is SELF-CONTAINED. Read it alone.** It quotes what it needs from §2.1,
+§2.5, §2.7, §2.10, §8.1, §8.2, §8.4 and §10.5. A builder or breaker of ROADMAP `I-35` or `I-36` reads
+**§11 whole and nothing else in this document** — not §2 whole, not §4, not §8, not §10.
+
+**One sentence for what it is.** Given a `Trip` the user already owns and a question from a closed set,
+produce a sentence that is **true of that document and traceable to the records that made it true**. No
+network, no vendor, no key, no server, no model. The whole value is that every answer is checkable, and the
+whole design is arranged so that the day a model *is* in the loop, the model cannot touch the answer.
+
+---
+
+### 11.1 The decision: (a) ships whole, and (b) is an upgrade of the PARSER, never of the answerer
+
+Two architectures were on the table. **The ruling is that they are not alternatives**, and that framing them
+as alternatives is what makes the (b) version dangerous.
+
+> **A language model may parse a question. It may never answer one.**
+
+Concretely, and this is the boundary the whole section rests on:
+
+```ts
+// the capability — deterministic, offline, zero dependency, in packages/core
+function ask(question: Question, ctx: AskCtx): Answer;
+
+// the recogniser — deterministic, offline, zero dependency, in packages/core, and REPLACEABLE
+function matchQuestion(text: string, trip: Trip): MatchOutcome;
+```
+
+`ask` takes a **structured** `Question` — a value from a closed discriminated union — and returns an
+`Answer` assembled from fields of the document. `matchQuestion` turns free text into one of those values, or
+refuses. **(b), whenever it arrives, replaces `matchQuestion` and may not replace `ask`.** A model's output
+is a `Question`, validated against the closed union by a total parser before it reaches `ask`; the sentence
+the user reads is still rendered by `ask` from records it read.
+
+**Why that is the ruling and not a preference.** The hard requirement on (b) in Jacob's own framing is *"a
+hard rule against inventing anything not in the provided context — no hallucinated bookings, no invented
+recommendations."* **A rule written into a prompt is unenforceable by construction**: nothing downstream can
+tell an invented booking reference from a real one, because both arrive as text. A rule written as a **type**
+is enforced by the compiler and by one test. The model in this design cannot invent a booking because it
+never emits a sentence about a booking — the widest thing it can emit is `{kind: 'unbooked'}`, and the worst
+it can do with that is answer a question the user did not ask, which the restatement in §11.7 puts on screen
+before the answer.
+
+This also settles the cost question without needing to price anything. The expensive, recurring,
+vendor-coupled part of (b) is the part that would have generated prose about the user's data; what is left
+is intent classification over a closed label set, which is the cheapest thing a model does and which a
+future on-device model could do with no server at all. **The architecture that assumed the model would write
+the answer would have made the vendor permanent.**
+
+### 11.2 Why (b) is not buildable now, and what is therefore NOT designed here
+
+Three reasons, in descending order of how decisive each is. Each is a fact about this repository today, not
+a preference.
+
+1. **There is no server, and there is no phase that adds one before Phase 3.** An API key cannot live on a
+   device (this is `BRIEF.md`'s own reasoning for mailbox OAuth, applied unchanged), so the call lives in a
+   service that does not exist. §3's tree has no home for it; it would be a new `services/ask`.
+2. **`packages/core` and `packages/client` have zero runtime dependencies and that is non-negotiable.** Any
+   HTTP client, any SDK, any JSON-schema validator is a dependency. **If (b) is ever built, its network call
+   lives in a server package and nothing about it enters `packages/core`** — what core would gain is one
+   more total parser over `unknown` (`parseQuestion`), which is `fromJSON`'s shape and is free of all of it.
+3. **Sending a trip to a third party is an egress decision and it is Jacob's, not an architect's.** A trip
+   document holds hotel door PINs, booking references and unauthenticated ticket URLs — that is not a
+   hypothetical, it is §6.6, which exists because a build artifact once shipped all three. §6.1's table says
+   what leaves this device and the answer today is *almost nothing*. **A question-answering feature that
+   posts the trip to a vendor inverts that claim**, and the fact that it would feel like a small change is
+   exactly why it is written down before anyone makes it.
+
+**So (b)'s prompt, its request/response shape, its model choice, its token budget and its redaction policy
+are NOT designed here, and a later revision that designs them starts from three preconditions**: a server
+exists (Phase 3); Jacob has said in writing what may be sent; and the `Question` union `parseQuestion`
+validates against is the one §11.3 defines, unchanged. Anything else is a different feature wearing this
+one's name.
+
+### 11.3 The question model — a recogniser, not a classifier
+
+**Free-text intent classification is not a zero-dependency problem and this section does not pretend it
+is.** What *is* a zero-dependency problem, and the reason this capability is buildable at all, is that
+**both halves of a question about a trip are closed**:
+
+- the **intent** comes from a set this document enumerates, and
+- the **entity** comes from the document's own vocabulary — `trip.cities[].name`, `trip.days[].date`. There
+  is no open-vocabulary place resolution anywhere in this feature. *"Vienna"* is not recognised as a city in
+  the world; it is matched against the six names this trip carries.
+
+So `matchQuestion` is a **recogniser**: an ordered list of literal trigger phrases, plus a lookup of the
+trip's own names. It has no scoring, no ranking, no nearest-match and no confidence threshold. It matches,
+or it refuses.
+
+```ts
+type DayPart = 'morning' | 'afternoon' | 'evening';
+
+type Question =
+  | { kind: 'trip_overview' }
+  | { kind: 'city_edge'; cityKey: CityKey; edge: 'arrive' | 'leave' }
+  | { kind: 'unbooked' }
+  | { kind: 'country_count' }
+  | { kind: 'free_time'; part: DayPart; cityKey: CityKey | null };
+
+type MatchOutcome =
+  | { kind: 'matched'; question: Question; restatement: string; params: Record<string, string | number>;
+      unread: string[] }
+  | { kind: 'ambiguous'; readings: Question[]; restatements: string[] }
+  | { kind: 'out_of_scope'; reason: 'lifetime' | 'recommendation'; pointer: string }
+  | { kind: 'unrecognised' };
+```
+
+**Five rules govern it, and four of them are refusals.**
+
+1. **Two readings is a refusal, never a choice.** Text that matches two intents, or one intent with two of
+   the trip's city names, returns `ambiguous` with both readings restated. Picking the first would be the
+   confident-wrong-answer shape the root `CLAUDE.md` refuses, one layer up from where this project usually
+   meets it.
+2. **`unread` is reported, not discarded.** A match that consumed *"leave"* and *"Vienna"* out of *"when do
+   I leave Vienna for good"* says which words it did not read. A recogniser that silently ignores half the
+   input is a classifier pretending to be a parser.
+3. **The lifetime scope is refused by name.** *"How many countries have I been to"* and *"how many countries
+   am I visiting"* differ by one word and by an entire data set: the first is `travelStats` over the whole
+   library (§8.4), the second is this trip. **v1's vocabulary contains no lifetime pattern, and text
+   carrying one (`ever`, `in total`, `all my trips`, `have I been`, `so far`) returns
+   `out_of_scope: 'lifetime'` with a pointer to `stats`.** Answering the trip-scoped version would be
+   *right about the wrong question*, which is the failure mode this whole section is arranged against.
+4. **A recommendation is refused by name.** *"Where should I eat"*, *"what's good in Split"*, *"any bars
+   near"* return `out_of_scope: 'recommendation'` with the reason stated in one sentence: **Cairn answers
+   from your trip, and your trip does not contain restaurants it has not already recorded.** This is
+   Jacob's own fence made visible rather than left to produce a bad answer, and it costs one pattern list.
+5. **`askableQuestions(trip): Question[]` is the menu**, instantiated over the trip's real cities, and it is
+   the answer to every refusal. **This is what makes the v1 honest about its own size**: the free-text box
+   is a shortcut into a menu that is always reachable, never a promise of open-ended understanding.
+
+**Say it plainly: this is a fixed-menu answer engine with a text shortcut in front of it.** That is the
+smaller thing, and it is deliberately the thing being built. A menu that is completely correct beats a text
+box that is mostly right and occasionally invents, and this product's conventions have never been ambiguous
+about which of those two it wants.
+
+### 11.4 The data surface — the document, never the row
+
+**`ask` reads the `Trip` document. It does not read a `TripSummaryRow`.** Three reasons, and the first is
+already a position in §0:
+
+1. **§0 position 8 draws the line and puts this feature below it.** A summary row carries *"what a surface
+   can draw without opening forty documents, and stops exactly there"*; the answer for anything below that
+   line is clause 4's and has been since revision 9 — **open the document**. A question about one trip is a
+   drill-down by definition.
+2. **§0 position 6: a row is a copy, and a copy goes stale.** A row is rewritten inside the write that
+   carries it and re-derived on a `SUMMARY_VERSION` bump; answering *"what's still unbooked"* from one is
+   answering from a snapshot with no invalidation path of its own.
+3. **The grounding law of §11.6 is unsatisfiable from a row.** A row carries no stop ids, no bookings and no
+   conflicts. An answer that cannot cite what it read is the thing this capability exists to not be.
+
+**`ask` calls `tripSummary(trip, index)` itself**, which is a different statement: the *derivation* is
+reused, the *stored copy* is not. What each intent reads, and every one of these already exists:
+
+| Question | Reads | New derivation needed |
+|---|---|---|
+| `trip_overview` | `trip` scalars, `datePrecision`, `lifecycle(trip, today)`, `tripSummary`, `cityRange`, `orderedCities` | none |
+| `city_edge` | `trip.days` filtered by `cities.includes(key)`, then that day's stops by `travelRole` | none |
+| `unbooked` | `detectConflicts(trip, {today})`, filtered to `kind === 'coverage'` and unresolved | none |
+| `country_count` | `tripSummary(trip, index).countryCodes` and `.attribution`, plus `countryOf`/`stopLatLng` for the evidence list | evidence walk only — §11.6 |
+| `free_time` | `trip.days`, `Stop.placement.time`, `Stop.durationMins` | the three-valued daypart classifier — §11.7 |
+
+**The ceiling on `ask/`, and it is sequencing rule 1 applied at a new door: `packages/core/src/ask/` holds
+no domain arithmetic.** Every number in an answer is either a field of the document or the return value of
+an existing `derive/`, `conflict/` or `validate/` function. **Exactly two computations are `ask/`'s own**,
+both named above, both about *answering* rather than about the trip, and both fenced in §11.6 and §11.7. A
+third is a design defect routed to the architect: the fix is a function in `derive/`, used by both callers.
+
+**`"what's still unbooked" has one definition and it is already in the repository.**
+`conflict/rules/unbookedTicketed.ts` and `conflict/rules/missingLodging.ts` are that definition, they are
+tested, and they carry §8.2's feasibility class. `ask` re-publishes them; it does not compute a second
+"looks unbooked to me" list. **The consequence is a feature, not a limitation, and the answer states it**:
+`unbooked_ticketed` looks `UNBOOKED_HORIZON_DAYS = 60` ahead and both rules are **feasibility** rules, so
+for a trip that has ended the honest answer is *"nothing — this trip is over, and Cairn stops asking you to
+book things for a trip you have already taken"*, and **not** *"nothing is unbooked"*. Measured at
+`9333eb6`, over the reference trip, selector `c.kind === 'coverage' && !c.resolution`: **12** at
+`today = 2026-08-01` (2 `missing_lodging` + 10 `unbooked_ticketed`; unscoped `detectConflicts` returns
+**17**) and **0** at `today = 2026-09-11` (unscoped **5**, and `lifecycle` is `completed`).
+
+**Residue.** A trip more than 60 days out reports nothing unbooked, which is true of the rule and may not be
+what a user means. **Trigger:** Jacob asking about a trip beyond the horizon. **The fix is in `conflict/`,
+where the definition lives** — a scope on the rule, or a horizon the caller passes — and it is never a
+second list inside `ask/`.
+
+### 11.5 What `ask` returns
+
+```ts
+type AnswerCoverage = 'complete' | 'partial' | 'none';
+
+type AnswerCite =
+  | { kind: 'trip'; id: TripId }        | { kind: 'day'; id: DayId }
+  | { kind: 'stop'; id: StopId }        | { kind: 'place'; id: PlaceId }
+  | { kind: 'booking'; id: BookingId }  | { kind: 'city'; key: CityKey }
+  | { kind: 'conflict'; id: ConflictId };
+
+/**
+ * One structured statement the sentence is rendered FROM. `label` and `value` are what a template
+ * interpolates; `cites` is that fact's own evidence and is a subset of the answer's.
+ */
+type AnswerFact = {
+  label: string;                             // e.g. 'departure_day', 'country_code', 'unbooked_item'
+  value: string | number | null;             // `null` is first-class and renders as "not recorded"
+  params: Record<string, string | number>;
+  cites: readonly AnswerCite[];
+};
+
+/**
+ * Why an answer is not `complete`. The set is CLOSED and every member is a hole in the DOCUMENT,
+ * never an error in the engine — an engine error is a throw (§2.1: core throws only on programmer
+ * error). A new caveat is a new member here, never a free-text string.
+ */
+type AnswerCaveatCode =
+  | 'duration_unknown'        // a stop states no `durationMins` — §11.7 rule 3
+  | 'time_unknown'            // a scheduled stop states no `placement.time`
+  | 'no_departure_stop'       // the day carries no `travelRole: 'journey'` stop — §11.7 rule 4
+  | 'unattributed_records'    // records `countryOf` could not place — §11.7 rule 6
+  | 'feasibility_horizon'     // the rule behind the answer is §8.2 feasibility-gated — §11.4
+  | 'no_records';             // the question is well-formed and the document holds nothing for it
+
+type AnswerCaveat = { code: AnswerCaveatCode; message: string; params: Record<string, string | number> };
+
+type Answer = {
+  question: Question;          // what was actually answered — the restatement's subject
+  text: string;                // the rendered sentence
+  params: Record<string, string | number>;   // §2.1: structured data beside every user-facing string
+  facts: readonly AnswerFact[];              // the structured result the text is rendered FROM
+  cites: readonly AnswerCite[];              // every record the answer read
+  coverage: AnswerCoverage;
+  caveats: readonly AnswerCaveat[];
+};
+```
+
+**`text` is rendered from `facts` and `params` and from nothing else.** There is no template that describes
+the trip in prose; every rendered clause corresponds to a fact with a cite behind it. This is what makes the
+§2.1 i18n rule hold for free and what makes §11.6's law checkable.
+
+**`AnswerCite` is deliberately NOT `Ref`, and the reason is §0 position 10 (b) verbatim** — *a predicate with
+more than one consumer is not widened in place; two questions answered by one type are answered by
+coincidence.* `Ref` is **the subject of a finding about a record**: a conflict's subject, a validation
+issue's target, and its `RefKind` is closed at the five record classes a rule may accuse. A cite is **the
+evidence for a statement**, and its alphabet is a different one: it includes a `City` (which has no id, only
+a per-trip `key` — §2.2 A-10) and a `Conflict` (which is derived and is not a record at all). Widening
+`RefKind` to carry both would publish a way for a conflict rule to accuse a city, or to accuse another
+conflict, which is not a thing the model means. **`Ref` does not move and `RefKind` gains no value.**
+
+### 11.6 The grounding law
+
+> **Every answer names the records it read, and every name resolves in the document it claims to be about.**
+
+Mechanically, and this is the one invariant a breaker should attack first:
+
+1. **`resolveCite(trip, cite, conflicts)` is total and is the single resolver.** `trip`/`day`/`stop`/`place`/
+   `booking` resolve by `id`; `city` by `key`; `conflict` against the conflict set `ask` itself computed in
+   the same call. A `day` cite is unambiguous because §2.3 makes a day's id equal its date and
+   `build/days.ts` enforces it — *measured at `9333eb6`: all 16 days of the reference trip satisfy
+   `d.id === d.date`*.
+2. **A test resolves every cite of every answer** produced by `ask` over every member of
+   `askableQuestions(referenceTrip)`, at two clocks. **Injected fault: mint a cite for `stop:no-such-stop`
+   → the test reddens naming the question kind and the cite.**
+3. **`ask` does not copy `Conflict.subjects`.** A re-published conflict is cited as
+   `{kind: 'conflict', id}`, which is the identity the conflicts panel and `cli.ts conflicts` already show
+   and which content-addresses its own contents (§2.7). Copying subjects would make `ask` a second reader of
+   a rule's internal bookkeeping.
+4. **The `country_count` evidence walk is pinned to the number it explains.** The *count* is
+   `tripSummary(trip, index).countryCodes` — always, with no second opinion. The *evidence* is a walk over
+   `trip.places[].at` and `stopLatLng` for every scheduled and pooled stop, through the same exported
+   `countryOf(at, index)`, producing the records behind each code. **A criterion asserts the walk's code set
+   equals `countryCodes` exactly**; where they disagree at runtime the count still wins and the code is
+   listed with empty evidence, because a country dropped from an answer is worse than a country with no
+   receipt. **Residue:** the third caller of a per-record attribution map moves it into `derive/` and
+   `tripSummary` uses it too. **Trigger:** that third caller.
+
+**This is the law (b) inherits and the reason (b) is safe.** A model that emits a `Question` produces no
+cites, so there is nothing for it to fabricate; the cites are minted by the same walk whether the question
+arrived from a menu, from `matchQuestion`, or from a model.
+
+### 11.7 The honesty rules — and the measurement that decides one of them
+
+**Rule 1: a partial answer says so in its own sentence.** `coverage` is not decoration. A criterion asserts
+that a `partial` answer's `text` **differs** from the `complete` one's over the same question — a `coverage`
+field nothing renders is a field that lies by omission.
+
+**Rule 2: the restatement is mandatory and it precedes the answer.** *"I read this as: when you leave
+Vienna."* This is the root `CLAUDE.md` convention — *never present our reading as the user's own* — applied
+at the one place in this product where the system's interpretation of the user stands between them and their
+data.
+
+**Rule 3: nothing is defaulted into existence.** The worked example is `free_time`, and **it is the
+measurement that decides the design rather than a hypothetical**. Measured at `9333eb6` over the reference
+trip: **143 of 143 stops carry `durationMins: null`** (112 scheduled, 31 pooled); **0 of 112 scheduled stops
+carry a null `time`**. The legacy planner recorded when things start and never how long they take.
+
+So *"do I have a free evening in Split?"* has no evidence behind a yes. Three values per day, never two:
+
+| Value | Means |
+|---|---|
+| `busy` | a stop **starts** inside the window |
+| `open` | no stop starts inside the window **and every stop on that day states a `durationMins`** |
+| `unknown` | no stop starts inside the window and at least one stop on that day states no duration |
+
+**A stop with `durationMins: null` occupies its start instant and nothing more, and no default duration is
+invented.** `CAT_DEFAULT_TIME` is §2.10 group 2's class — *a tuning constant a caller must not read or
+reproduce* — and reaching for it here would put a second definition of "how long a stop takes" into an
+answer the user is invited to trust.
+
+**Measured consequence, and it is the `[stated]` oracle for the whole increment.** Split's four days
+(`2026-08-12…15`), window `evening = 18:00–23:59`: **12th `busy`** (20:00), **13th `busy`** (20:15, 20:30),
+**15th `busy`** (18:00, 19:30), **14th `unknown`** — nothing starts after 17:15, and the 17:15 stop is a
+FlixBus back to Split that states no duration. **Not one day returns `open`, and the honest answer is
+`coverage: 'partial'`:** *"I can't tell. Nothing is scheduled after 17:15 on Fri 14 Aug, but no stop that
+day says how long it takes — so I can't say the evening is free."* **Injected fault: give the 14th's stops a
+`durationMins` and the day flips to `open` and the sentence changes.** A rule that could only ever say
+*"yes"* about this trip is a rule nobody could have tested.
+
+**Rule 4: `city_edge` follows the days, and it knows about a two-city day.** *"When do I leave Vienna"* is
+**the last day the city occupies**; where that day carries another city, the evidence is the first stop on
+it with `travelRole === 'journey'`; where it does not, the answer is the date alone with `coverage:
+'partial'` and a caveat that no departure stop is recorded. Measured at `9333eb6`: Vienna's last day is
+**`2026-08-10`**, `cities: ["vienna","dubrovnik"]`, `primaryCity: 'dubrovnik'`, and its first three stops
+are `travelRole: 'journey'` at 05:00, 06:55 and 08:45. This is `BRIEF.md`'s *"a day spanning two cities"*
+lesson arriving at a third door.
+
+**Rule 5: two traps in the reference data, named so a builder does not walk into them.**
+
+- **`StopFlag` `'free'` means free of charge, not free time.** It is the legacy planner's `badge:"free"` and
+  it is on rooftops, beaches and an open-air cinema. Nothing in `free_time` may read it.
+- **City day counts do not sum to the trip.** §8.4 A-56 residue 1: a day spanning two cities contributes to
+  both. Measured: 3 + 3 + 4 + 4 + 4 + 2 = **20** over a **16**-day trip. `trip_overview` prints `dayCount`
+  and the per-city ranges beside each other and **never a total of the ranges.**
+
+**Rule 6: a count is reported with its denominator.** `country_count` reports **7** countries
+(`AT, CZ, DE, GB, HR, HU, US` at `9333eb6`) *and* the census behind it — **95 places of which 94 carry a
+coordinate and 91 resolved to a country; 132 located stops of which 128 resolved** — so a user who wonders
+why Germany is on the list gets the Frankfurt layover cited, and a user whose trip has holes is told there
+are holes. `null` from `countryOf` stays first-class and is never snapped (§8.4 clause 1).
+
+### 11.8 Privacy — what an answer may contain
+
+`ask` is pure, runs on the device, and sends nothing anywhere. Two content rules, both mechanical:
+
+1. **No coordinate reaches an `Answer`, in any form.** `AnswerCite` carries no coordinate, `params` may not
+   carry a `lat`/`lng` key, and no template renders one. This is §10.5's rule and §8.4 A-56 Part 5's rule
+   at a third door, and it is checked by a **key-name** assertion over `params` rather than by a decimal
+   grep, because later intents (cost) legitimately render decimals.
+2. **No credential reaches an `Answer`.** A criterion runs `redactionHits(answer.text)` over every answer to
+   every member of `askableQuestions(referenceTrip)` at both clocks and asserts **`[]`** — one call to
+   machinery §6.6 already ships. **Injected fault: interpolate the stop's booking link into the `unbooked`
+   line → `redactionHits` returns `['url']` and the test reddens.** The fault is **fireable by
+   construction**: `unbooked_ticketed`'s own predicate requires `stop.links.length > 0 || stop.ticket`, so
+   every stop that answer can name has a link to leak.
+
+### 11.9 The export surface
+
+**§2.10 goes 88 → 91**, with the three symbols joining under **P2** (this section names all three) and
+**P1** (`cli.ts ask` calls all three):
+
+- `ask(question, ctx)` — the capability.
+- `matchQuestion(text, trip)` — the recogniser, and the symbol (b) would replace.
+- `askableQuestions(trip)` — the menu, and the answer to every refusal.
+
+**What stays internal, by §2.10's group 1** (*internals of a public function*): the trigger tables, the
+daypart windows, `resolveCite`, the per-intent resolvers and the renderer. A caller that can reach the
+trigger table is a caller that will grow a second one; a caller that can reach the renderer is a caller that
+will render an answer `ask` did not produce, which is the one thing §11.6 exists to make impossible.
+`Question`, `Answer`, `AnswerCite`, `AnswerFact`, `AnswerCaveat`, `MatchOutcome` and `DayPart` are **types**
+and are not part of the runtime set-equality count.
+
+**No second entry point.** `ask/` is pure code with no dataset behind it; the gazetteer's subpath
+(`@cairn/core/gazetteer`) exists because of ~380 kB of corpus and this has no counterpart.
+
+`SCHEMA_VERSION` (5) and `SUMMARY_VERSION` (8) **do not move.** Nothing here is stored, nothing here is
+written, and `ask` has no write path at all: it takes a `Trip` and returns a value. That is also why it
+needs no `IdFactory` — it mints no record — while `today` and the country index are **injected**, per §2.1.
+
+```ts
+type AskCtx = { trip: Trip; today: IsoDate; index: CountryIndex };
+```
+
+**`index` is required and there is deliberately no default** — `tripSummary`'s own ruling (§8.4 clause 3's
+first consequence) verbatim: the only available default is *"answer with no countries"*, an answer that
+claims to be complete and is not.
+
+### 11.10 What §11 defers, and what it refuses
+
+**Deferred, with triggers:**
+
+- **A model in the loop (design (b)).** Three preconditions, §11.2. **Trigger:** all three.
+- **Free text beyond the recogniser's closed vocabulary.** The menu is the product until (b) exists.
+- **Library-scope questions** (*"how many countries have I been to"*). `travelStats` and `cli.ts stats`
+  already answer them; §11.3 rule 3 refuses them by name rather than answering the wrong scope.
+  **Trigger:** a `Question` union that carries scope as a field, which is a ruling of its own.
+- **Multi-turn context** (*"…and Prague?"*). Every question is answered against the document alone, with no
+  conversation state. This is not a limitation to be apologised for: it is what makes an answer reproducible
+  and a golden possible.
+- **Anything that writes.** `ask` never proposes an edit, never fixes a conflict and never accepts a
+  candidate. The moment an answer can act, provenance (§2.8) and the copy rules (§2.14) apply to it, and
+  that is a different feature.
+
+**Refused outright:**
+
+- **Recommendations of any kind** — restaurants, routes, "you should also see". Jacob's own fence, and the
+  first one of these would need a vendor, a key and a server. §11.3 rule 4 makes the refusal a *feature* of
+  the recogniser rather than a gap in it.
+- **A "chat" surface in the `BRIEF.md` non-goal sense.** ⚠ **Flagged rather than silently resolved, per the
+  root `CLAUDE.md`.** `BRIEF.md`'s non-goals list *"Chat"*, and `PRODUCT-VISION.md` §3 classifies *"Chat,
+  payments, recommendation ML, public feed"* as safely deferred. **Read in context, both mean
+  person-to-person messaging inside a social product** — they sit beside payments and a public feed, in a
+  list about the social layer. This section builds a **single-turn question over your own document, with no
+  second person and no message store**, which those lines do not reach. It is recorded here, with the
+  conflict named, because it is exactly the kind of wording a later reader would use to argue this section
+  was built against the brief. **If Jacob reads the non-goal the other way, this section is withdrawn, not
+  reinterpreted.**
