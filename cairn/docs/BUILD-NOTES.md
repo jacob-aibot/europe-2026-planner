@@ -1,5 +1,28 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — ROADMAP `I-35` (ARCHITECTURE **§11**), at `master` = `ee5e313` → this commit.**
+> **`packages/core/src/ask/` — a trip Q&A capability, five question kinds, a recogniser that
+> refuses rather than guesses, and `cli.ts ask` as the whole surface.** **Zero `.tsx`, zero
+> `apps/web/`, zero `packages/client/src/`, zero `docs/design/`, zero `ARCHITECTURE.md`, zero
+> `ROADMAP.md`, zero new dependency, zero lockfile change, zero corpus byte, zero golden byte,
+> zero generated file.** `SCHEMA_VERSION` (5) and `SUMMARY_VERSION` (8) do not move — `ask` is a
+> read-only derivation with no write path, mints no record and takes no `IdFactory`. **§2.10 goes
+> 88 → 91**, verified by running the count, not by citing the doc:
+> `Object.keys(await import('./packages/core/src/index.ts')).length` → **91**.
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact command** | From `cairn/`: `npm run test:tap` → **1,925 tests, 1,925 pass / 0 fail / 0 skipped** (baseline `ee5e313`, measured before I started: **1,894**/1,894/0 — the 31 new tests are `packages/core/test/ask.test.ts` ×27 and `test/cli.test.ts` ×4). `npm run typecheck` → **exit 0 on both projects** (baseline: exit 0). `node cli.ts ask "when do I leave vienna"` and one example per kind, all executed and shown in the report. |
+> | **Part 1 — `packages/core/src/ask/`** | Five files. `types.ts` (the closed `Question` union, `MatchOutcome`, `Answer`/`AnswerFact`/`AnswerCite`/`AnswerCaveat`, `AskCtx` — all exactly as §11.3 and §11.5 declare them, string-literal unions throughout, no enum). `match.ts` (`matchQuestion`, `askableQuestions`, the trigger tables, `restate`). `freeTime.ts` (the three-valued daypart classifier and `DAYPART_WINDOWS`). `resolveCite.ts` (§11.6's single, total resolver). `ask.ts` (the five per-intent resolvers and the renderer). |
+> | **Part 2 — the export surface** | `ask`, `matchQuestion`, `askableQuestions` on `index.ts`, and in `surface.test.ts`'s one list **in the same commit** (§8.9's rule). Three further count pins moved with it, each found by running the suite rather than by grep: `packages/core/test/openingHours.test.ts`, `packages/client/test/generation.test.ts`. The trigger tables, the daypart windows, `resolveCite`, the per-intent resolvers and the renderer stay internal (§11.9). |
+> | **Part 3 — `cli.ts ask`** | `ask "<question>"` and `ask --menu`. Restatement **above**, answer, `coverage` and caveats, then facts, then cites **below**. **Exit 2 on all four refusals** (ambiguous, lifetime, recommendation, unrecognised), each printing the menu. Honours `--today` through `todayIsValid()` and `--file` like every other command. |
+> | **`free_time` returns `unknown`, never `open`** | Executed over all 16 days × 3 dayparts: **zero `open`**. Split's evenings are `busy, busy, unknown, busy` and the 14th's sentence names 17:15. The sweep is a test (`NOT ONE day of this trip returns open`) with N5 shown to fire against it. |
+> | **`unbooked` 12 → 0** | `node cli.ts ask "what is still unbooked" --today 2026-08-01` → 12 (10 ticketed + 2 lodging); `--today 2026-09-11` → 0, and the sentence is *"Nothing — but that is because this trip is over…"*, never *"nothing is unbooked"*. One definition, re-published from `detectConflicts`; no second list. |
+> | **Nine injected faults** | N1, N2, N3, N4, N5, N6, N8 and N9 are each **SHOWN TO FIRE** — the criterion is factored into a local `check`, `check(real)` passes and `assert.throws(() => check(faulty))` runs the same assertion against the fault's own output. **N7 as `I-35` states it is UNFIREABLE and is declared so at its site** (§0 position 5 (b)): the 31 pooled stops resolve to `{AT, CZ, GB, HR, HU}`, every one of which the places and scheduled stops already carry, so dropping the pool **does not change the code set**. The criterion is strengthened to the per-code **record counts** (`AT 35, CZ 60, DE 2, GB 16, HR 59, HU 45, US 2` → `29/52/2/15/55/44/2` without the pool) and the fault fires against that. |
+> | **One divergence, disclosed** | **KD-131** — `city_edge` looks for the edge day's journey stop on **every** edge day, not only on a two-city one. §11.7 rule 4's prose gates it on a two-city day; §11.5's own definition of `no_departure_stop` (*the day carries no `travelRole: 'journey'` stop*) does not, and the literal reading makes Cairn print a falsehood about London's last day. Nothing measured by `I-35`'s own criterion moves either way. Two lines to reverse if the architect means the literal reading. |
+> | **A rule §11 does not state and this build needed** | **The renderer interpolates dates, times, counts, city names and country codes — never a record's free-text NAME.** §11.8 requires `redactionHits(answer.text)` to be `[]`, and §6.6's `alnum_reference` pattern (a 6+ character all-caps token) legitimately fires on **four stop names and one `unbooked_ticketed` summary** on this very trip (`Condor DE2081 → Frankfurt`, `Smartwings QS1083 → Prague`, `DECENTRAL — Sachertorte nightcap`, …). Interpolating an item list into the `unbooked` sentence would have failed §11.8's own criterion on the reference trip. The names are not mangled — they travel in `AnswerFact.value`/`params` and through the cites, and `cli.ts ask` prints the facts. |
+> | **What I could not verify** | **Nothing in `I-35`'s criteria was left unrun**, but two things are worth naming. (1) **`time_unknown` and the `no_records` arms are unfireable on the reference trip** — 0 of 112 scheduled stops carry a null time and all six cities occupy days — so both are fired against hand-built documents in `ask.test.ts` rather than against the fixture, and are declared so at their sites. (2) **No rendered surface exists and none was built** — the fence forbids `.tsx`, so every claim here is a CLI or a test claim. |
+
 > **Addendum — ROADMAP `I-33` (§8.4 **A-91** item 1), at `master` = `71a0fcb` → `fa69023`.**
 > **`searchGazetteer` returns `GazetteerResult = {source, hits}`, and this commit owns every one of
 > the 94 re-cuts — including all 45 in the five `.mjs` `qa/` probes, which break at runtime rather
@@ -6470,6 +6493,33 @@ entry for a source and the digest no longer matches).
 **Fires** at the first `--repin`. The remedy is A-90 clause 3's reviewed act: extend `COMMITTED_LOG`
 in `packages/core/test/gazetteerArtefact.test.ts` in the same commit.
 
+
+### KD-131 — `city_edge` looks for the journey stop on EVERY edge day, not only on a two-city one — §11.7 rule 4's two sentences are not the same rule, and the caveat's own definition decides it
+
+ARCHITECTURE §11.7 rule 4 says: *"where that day carries another city, the evidence is the first
+stop on it with `travelRole === 'journey'`; where it does not, the answer is the date alone with
+`coverage: 'partial'` and a caveat that no departure stop is recorded."* Read literally, the
+two-city test **gates** the search for the journey stop, and a single-city edge day answers
+*"no departure stop is recorded"* even when that day records one.
+
+§11.5's own definition of the caveat says something different and mechanical:
+`no_departure_stop` is *"the day carries no `travelRole: 'journey'` stop — §11.7 rule 4."* That is
+a statement about the absence of a journey stop, not about how many cities the day carries.
+
+**I implemented the mechanical reading**: `answerCityEdge` finds the edge day's first
+`travelRole: 'journey'` stop on every edge day, and the caveat fires exactly when there is none.
+The two readings differ only for a single-city edge day that *does* carry a journey — on the
+reference trip, London's last day (`2026-08-22`, `cities: ["london"]`) is one — and on that day the
+literal reading would have Cairn say *"no stop on that day is recorded as a journey"* about a day
+that records one, which is false of the document. §11's own headline requirement is that every
+clause be **true of the document**, so a reading that makes it print a falsehood loses.
+
+**Nothing measured by `I-35`'s own criterion moves either way**: Vienna's last day is `2026-08-10`,
+it carries `["vienna","dubrovnik"]`, and its first journey stop is 05:00 under both readings.
+
+**If the architect intends the literal reading, the change is two lines** (`const journey =
+others.length > 0 ? edgeDay.stops.find(…) : undefined`) and one test. I did not make that choice
+silently — this entry is the disclosure, and `ask/ask.ts`'s docstring points at it.
 
 ## 2. How to run it
 

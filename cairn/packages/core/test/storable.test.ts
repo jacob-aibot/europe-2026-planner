@@ -326,6 +326,11 @@ import { sequentialIds } from '../src/model/ids.ts';
 // class lived. The `CENSUS` array below pairs each with its path, and both halves read that one
 // array.
 import * as AccessPredicates from '../src/access/predicates.ts';
+import * as AskMod from '../src/ask/ask.ts';
+import * as AskFreeTime from '../src/ask/freeTime.ts';
+import * as AskMatch from '../src/ask/match.ts';
+import * as AskResolveCite from '../src/ask/resolveCite.ts';
+import * as AskTypes from '../src/ask/types.ts';
 import * as Bookings from '../src/build/bookings.ts';
 import * as Candidates from '../src/build/candidates.ts';
 import * as CommitMod from '../src/build/commit.ts';
@@ -622,6 +627,15 @@ test('A-77 Part 3.8: StorableMap has a `resolution` arm', () => {
  */
 const CENSUS = [
   ['access/predicates.ts', AccessPredicates],
+  // §11 / ROADMAP I-35. **`ask/` produces no `Trip` and has no write path at all** — it takes a
+  // document and returns a value — so none of these five is a door, and none needs a behavioural
+  // row. They are censused because A-78 Part 1 has NO exclusions: a file that is invisible to the
+  // census is a file that can grow a door nobody classified.
+  ['ask/ask.ts', AskMod],
+  ['ask/freeTime.ts', AskFreeTime],
+  ['ask/match.ts', AskMatch],
+  ['ask/resolveCite.ts', AskResolveCite],
+  ['ask/types.ts', AskTypes],
   ['build/bookings.ts', Bookings],
   ['build/candidates.ts', Candidates],
   ['build/commit.ts', CommitMod],

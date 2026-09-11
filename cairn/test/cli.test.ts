@@ -18,6 +18,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import * as core from '../packages/core/src/index.ts';
+import { loadEurope2026 } from '../fixtures/loadEurope2026.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CAIRN = resolve(HERE, '..');
@@ -1022,4 +1023,71 @@ test('I-28 (A-88 Part 9, R65-6): the per-row absorbed line CAPS its path list an
   assert.ok(line.length < 200, `the line is ${line.length} characters — it renders the whole list:\n${line}`);
   assert.match(line, /…and 195 more$/, `the line does not say it is capping:\n${line}`);
   assert.match(line, /^ {2}trip r: unreadable stored values at cities\[0]\.name, cities\[1]\.name, cities\[2]\.name, cities\[3]\.name, cities\[4]\.name …and 195 more$/);
+});
+
+// -------------------------------------------------------------------------------------------
+// `cli.ts ask` — ARCHITECTURE §11, ROADMAP I-35.
+//
+// The capability is designed so it needs no screen, and this command is what makes that
+// claim true rather than stated: a tester can attack `ask` end to end with no browser and no
+// UI. The per-answer criteria live in `packages/core/test/ask.test.ts`; what is asserted here
+// is the SHELL — the restatement above the answer, the cites below it, and exit **2** on every
+// refusal, which is this CLI's house style for input it will not act on.
+// -------------------------------------------------------------------------------------------
+
+test('cli ask --menu prints a menu whose every line is valid input to matchQuestion', () => {
+  const r = cli('ask', '--menu');
+  assert.equal(r.code, 0, r.err);
+  const lines = r.out.split('\n').map((l) => l.trim()).filter((l) => l.length > 0 && !l.startsWith('Questions I can answer'));
+  assert.ok(lines.length >= 30, `the menu printed ${lines.length} lines`);
+  const { trip } = loadEurope2026() as { trip: core.Trip };
+  const menu = core.askableQuestions(trip);
+  assert.equal(lines.length, menu.length, 'the printed menu and askableQuestions disagree on length');
+  // **A menu you cannot type is not a way out of a refusal.** Each line goes back through the
+  // recogniser and must land on exactly the question it was rendered from — one reading, not
+  // two. This is what keeps `cli.ts`'s own `questionLine` honest without putting a renderer on
+  // §2.10's surface (§11.9).
+  for (let i = 0; i < lines.length; i++) {
+    const m = core.matchQuestion(lines[i], trip);
+    assert.equal(m.kind, 'matched', `menu line "${lines[i]}" is not matched: ${m.kind}`);
+    if (m.kind !== 'matched') continue;
+    assert.deepEqual(m.question, menu[i], `menu line "${lines[i]}" round-trips to a different question`);
+  }
+});
+
+test('cli ask answers, with the restatement above and the cites below', () => {
+  const r = cli('ask', 'when do I leave vienna');
+  assert.equal(r.code, 0, r.err);
+  const restatement = r.out.indexOf('I read this as: when you leave Vienna.');
+  const answer = r.out.indexOf('You leave Vienna on 2026-08-10');
+  const cites = r.out.indexOf('cites — every record this answer read');
+  assert.ok(restatement >= 0, `no restatement:\n${r.out}`);
+  assert.ok(answer > restatement, 'the restatement does not precede the answer (§11.7 rule 2)');
+  assert.ok(cites > answer, 'the cites do not follow the answer (§11.6)');
+  assert.match(r.out, /stop:stop-\d+/, 'no stop is cited');
+  // §11.8 clause 1: no coordinate reaches an answer, in any form — checked by KEY NAME rather
+  // than by a decimal grep, because later intents (cost) legitimately render decimals.
+  for (const key of ['lat=', 'lng=', 'centre=']) {
+    assert.equal(r.out.includes(key), false, `the answer rendered a coordinate key: ${key}`);
+  }
+});
+
+test('cli ask exits 2 on every refusal and prints the menu as the way out', () => {
+  for (const [text, expect] of [
+    ['how many countries have i been to', /different data set/],
+    ['when do I leave vienna and prague', /two ways/],
+  ] as const) {
+    const r = cli('ask', text);
+    assert.equal(r.code, 2, `"${text}" exited ${r.code}, not 2:\n${r.out}`);
+    assert.match(r.out, expect);
+    assert.match(r.out, /Questions I can answer about this trip/, 'a refusal did not print the menu');
+    // The lifetime refusal may NEVER answer the trip-scoped question instead.
+    assert.equal(/This trip accounts for 7 countries/.test(r.out), false, 'a refusal answered anyway');
+  }
+});
+
+test('cli ask honours --today through todayIsValid, like every other dated command', () => {
+  const bogus = cli('ask', 'what is still unbooked', '--today', '2026-13-45');
+  assert.equal(bogus.code, 2, bogus.out);
+  assert.match(bogus.out, /--today must be a real calendar date/);
 });

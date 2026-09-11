@@ -4110,6 +4110,13 @@ const SOURCE_ALLOW: Record<string, string> = {
   // traveller did, and it is a compile-time property of a `RuleSpec` — it is never written to a
   // document, a summary row or `AppState`. The classifier is deliberately wide enough to catch
   // it, because a classifier narrow enough to miss it would miss `daysVisited` too.
+  // §11 / ROADMAP I-35. An `Answer`'s `params` are the structured data §2.1 requires beside a
+  // user-facing string, on a value that is **returned and never stored**: `ask` has no write
+  // path, mints no record, and neither `SCHEMA_VERSION` nor `SUMMARY_VERSION` moves for it. This
+  // is `travelStats`' own entry verbatim, one derivation over — the classifier is deliberately
+  // wide enough to catch a day count wherever it is declared, which is why the disclosure is
+  // here rather than in a narrower classifier.
+  'packages/core/src/ask/ask.ts::days': 'Answer.params on a derived value — ask stores nothing',
   'packages/core/src/conflict/rules/types.ts::horizonDays': 'RuleSpec look-ahead window — a duration, not a tally',
   'packages/core/src/conflict/detect.ts::horizonDays': 'RuleSpec look-ahead window — a duration, not a tally',
 };

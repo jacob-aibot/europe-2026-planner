@@ -571,7 +571,7 @@ test('G9: nothing leaked into AppState, history, toJSON, core or the export surf
   // one of three §2.10 count pins outside `surface.test.ts` that I-21's file fence did not name). `GAZETTEER` is NOT on
   // this surface — it is the `@cairn/core/gazetteer` subpath, asserted separately in
   // `packages/core/test/surface.test.ts`, because the dataset is not on the write path.
-  assert.equal(Object.keys(core).length, 88, 'core\'s runtime export surface moved');
+  assert.equal(Object.keys(core).length, 91, 'core\'s runtime export surface moved');
 });
 
 // ---------------------------------------------------------------------------------------------

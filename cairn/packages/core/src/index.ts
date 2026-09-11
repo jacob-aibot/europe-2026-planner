@@ -227,6 +227,37 @@ export type {
   ImportOpts, ImportResult, LegacyConstants, LegacyDay, LegacyStop, LegacyPlace, LegacyBookingFixture,
 } from './import/legacyDays.ts';
 
+// ---- ask (3) — §11 ------------------------------------------------------------
+// **§2.10 goes 88 → 91 at ROADMAP I-35**, with all three joining under **P2** (§11.9 names all
+// three) and **P1** (`cli.ts ask` calls all three).
+//
+//   - `ask(question, ctx)` — the capability. Deterministic, offline, zero dependency.
+//   - `matchQuestion(text, trip)` — the recogniser, and **the symbol design (b) would replace**.
+//     A language model may parse a question; it may never answer one (§11.1). A model's output
+//     is a `Question`, validated against the closed union by a total parser before it reaches
+//     `ask`; the sentence the user reads is still rendered by `ask` from records it read.
+//   - `askableQuestions(trip)` — the menu, and the answer to every refusal.
+//
+// **What stays internal, by §2.10's group 1** (*internals of a public function*): the trigger
+// tables, the daypart windows, `resolveCite`, the per-intent resolvers and the renderer. A caller
+// that can reach the trigger table is a caller that will grow a second one; a caller that can
+// reach the renderer is a caller that will render an answer `ask` did not produce, which is the
+// one thing §11.6 exists to make impossible.
+//
+// **No second entry point.** `ask/` is pure code with no dataset behind it; the gazetteer's
+// subpath exists because of ~380 kB of corpus and this has no counterpart. `SCHEMA_VERSION` and
+// `SUMMARY_VERSION` do not move: nothing here is stored and `ask` has no write path at all.
+//
+// `Question`, `Answer`, `AnswerCite`, `AnswerFact`, `AnswerCaveat`, `AnswerCaveatCode`,
+// `AnswerCoverage`, `MatchOutcome`, `AskCtx` and `DayPart` are **types** and are not part of the
+// runtime set-equality count.
+export { ask } from './ask/ask.ts';
+export { matchQuestion, askableQuestions } from './ask/match.ts';
+export type {
+  Question, DayPart, MatchOutcome, Answer, AnswerCite, AnswerFact, AnswerCaveat, AnswerCaveatCode,
+  AnswerCoverage, AskCtx,
+} from './ask/types.ts';
+
 // ---- redact (4) — §6.6 --------------------------------------------------------
 // On the index from revision 5 because `tools/redact.mjs` reached into
 // `packages/core/src/build/redactText.ts` by module path. §6.6 makes redaction a rule with a
