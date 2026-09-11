@@ -4119,6 +4119,10 @@ gazetteer). Four probes, all plain Node, no browser, run from `cairn/`:
 node qa/r60-coverage.mjs             # the coverage hit rate: 171 destinations, 4 buckets
 node qa/r60-coverage.mjs --misses    # …misses only
 node qa/r60-fold-search.mjs          # fold beyond A-82's twelve; the ceilings; totality; labels
+#   ^ MEASURED 2026-09-11: runs, but does NOT finish. Killed at 40m0s inside §E,
+#     having completed §A-§D. It searches the WHOLE corpus per query and the corpus
+#     is 20x what it was written against (7,342 -> 149,090 rows). A longer timeout is
+#     not the fix; the probe needs scoping. Dead at import from I-23 until 5c90117.
 node qa/r60-kd113.mjs                # KD-113's premise, re-derived from the codepoint
 R60_SOURCE=/path/to/ne_10m_populated_places.geojson node qa/r60-invariant.mjs
 ```
