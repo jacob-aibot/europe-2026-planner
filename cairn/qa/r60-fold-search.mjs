@@ -15,7 +15,12 @@
  *
  * Run: node qa/r60-fold-search.mjs        (from cairn/)
  */
-const { GAZETTEER } = await import('@cairn/core/gazetteer');
+// QA round 70: `I-23` renamed the subpath's one symbol `GAZETTEER` -> `loadGazetteerFor(query)`,
+// which left this probe crashing at import. `qa/corpus.mjs`'s `wholeCorpus()` is the re-cut five
+// other probes already use: every committed shard, deduplicated by row id, decoded by the
+// product's own decoder. It answers *is the row in the corpus?*, which is what this file asks.
+const { wholeCorpus } = await import('./corpus.mjs');
+const GAZETTEER = wholeCorpus().gazetteer;
 const core = await import('../packages/core/src/index.ts');
 const { searchGazetteer } = core;
 const { normalizeCityName } = await import('../packages/core/src/model/cityName.ts');

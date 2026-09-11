@@ -46,7 +46,12 @@ console.log(`  features ${geo.features.length}  ${geo.features.length === PIN.fe
 console.log('');
 
 const { countryOf, COUNTRY_INDEX, searchGazetteer } = await import('../packages/core/src/index.ts');
-const { GAZETTEER } = await import('@cairn/core/gazetteer');
+// QA round 70: `I-23` renamed the subpath's one symbol `GAZETTEER` -> `loadGazetteerFor(query)`,
+// which left this probe crashing at import. `qa/corpus.mjs`'s `wholeCorpus()` is the re-cut five
+// other probes already use: every committed shard, deduplicated by row id, decoded by the
+// product's own decoder. It answers *is the row in the corpus?*, which is what this file asks.
+const { wholeCorpus } = await import('./corpus.mjs');
+const GAZETTEER = wholeCorpus().gazetteer;
 
 const DECIMALS = 4;
 const q = (n) => Math.round(n * 10 ** DECIMALS) / 10 ** DECIMALS;
