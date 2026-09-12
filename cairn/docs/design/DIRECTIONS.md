@@ -368,7 +368,7 @@ coarse pointer), desktop is 1440×900 at DPR 2.
 | **A** | `a-mobile-world.png` · `a-mobile-journey.png` · `a-mobile-day.png` · `a-mobile-past-record.png` | `a-desktop-world.png` · `a-desktop-journey.png` · `a-desktop-day.png` · `a-desktop-past-record.png` |
 | **B** | `b-mobile-top.png` · `b-mobile-plate.png` · `b-mobile-memory.png` | `b-desktop-top.png` · `b-desktop-plate.png` · `b-desktop-memory.png` |
 | **C** | `c-mobile-far.png` · `c-mobile-mid.png` · `c-mobile-near.png` | `c-desktop-far.png` · `c-desktop-mid.png` · `c-desktop-near.png` |
-| **D** | `d-mobile-day.png` · `d-mobile-day-late.png` · `d-mobile-trip.png` · `d-mobile-life.png` · `d-mobile-first.png` | `d-desktop-day.png` · `d-desktop-day-late.png` · `d-desktop-trip.png` · `d-desktop-life.png` · `d-desktop-first.png` |
+| **D** | `d-mobile-day.png` · `d-mobile-day-late.png` · `d-mobile-day-city.png` · `d-mobile-trip.png` · `d-mobile-life.png` · `d-mobile-first.png` | `d-desktop-day.png` · `d-desktop-day-late.png` · `d-desktop-day-city.png` · `d-desktop-trip.png` · `d-desktop-life.png` · `d-desktop-first.png` |
 
 Regenerate: `node cairn/docs/design/directions/render.mjs [a|b|c|d]`.
 

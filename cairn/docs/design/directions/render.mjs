@@ -50,6 +50,13 @@ const DIRECTIONS = [
       });
       await p.waitForTimeout(400);
     }],
+    ['day-city', async (p) => {
+      /* Day 11 — Prague Castle, twelve stops, wholly inside one city and therefore the hardest
+         case for a product with no cartography below city scale. This is the state that caught
+         the frame floor stacking every stop on one pixel; it is captured so the next reader
+         checks it rather than takes the fix on trust. */
+      await p.locator('.rib').nth(10).click(); await p.waitForTimeout(600);
+    }],
     ['trip', async (p) => { await p.getByRole('button', { name: /^Trip$/ }).click(); await p.waitForTimeout(600); }],
     ['life', async (p) => { await p.getByRole('button', { name: /^Life$/ }).click(); await p.waitForTimeout(600); }],
     ['first', async (p) => {
