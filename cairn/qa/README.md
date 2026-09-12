@@ -4764,3 +4764,47 @@ with `CAIRN_ADMIN0=/tmp/cairn-gazetteer-src/ne_10m_admin_0_countries.geojson`.
 None of the three round-69 scripts writes to the repo: `r69-corrections.mjs` reads the corpus, the
 goldens and the caches and writes only to `$CAIRN_R68_CACHE`; `r69-gate.sh` works exclusively inside
 a `git worktree` it creates and removes; `r69-repin-noop.mjs` reads two files.
+
+---
+
+**Round 70** is the mandatory adversarial pass over **`I-35`** (`ee5e313` … `43315ef`) — ARCHITECTURE
+**§11**, the closed-world answer engine (`packages/core/src/ask/`, `cli.ts ask`). **One script, and it
+is the one to reach for whenever a question is about what an ANSWER says**, because every section
+drives the shipped `ask` over a real `Trip` rather than re-implementing a rule:
+
+```bash
+node qa/r70-ask.mjs            # every section — offline, ~4 s, writes nothing
+node qa/r70-ask.mjs A C F      # named sections only
+```
+
+Sections **A**–**G** are findings, **H**–**I** are adjudications of what the builder disclosed, and
+**J** is the ceilings. **A** R70-1 (`trip_overview`'s empty arm says *"no days and no cities"* when
+only one is zero, contradicting its own facts); **B** R70-2 (`free_time` renders **"Yes."** at
+`coverage: 'complete'` while carrying a `time_unknown` caveat); **C** R70-3 (a `travelRole: 'journey'`
+stop's `arrival.mins` **is** its own run per §2.12, and `classifyDay` calls it *"states no duration"* —
+21 of 21 journey stops state one, and the 14th's 17:15 FlixBus runs to **18:35**, inside the evening
+window the flagship answer refuses to judge); **D** R70-4 (`trip.title` and `City.name` are
+interpolated into `answer.text` verbatim, so `redactionHits` is not `[]` — with the unmodified fixture
+as a passing control); **E** R70-5 (*"how many countries have I visited"* and five neighbours answered
+against **this** trip instead of refused); **F** R70-6/R70-7 (*"leave **for** Vienna"* picked silently;
+`tokenize` deletes any word with no `[a-z0-9]` run, so `unread` cannot report it); **G**
+R70-8/R70-9/R70-10 (three `free_time` prose defects).
+
+**§H and §I are the ones to reach for before re-deriving anything about `I-35`'s injected faults.**
+§H settles **N7** both ways in one run — the pool's code set really is a subset of the rest's, so the
+**stated** set-equality form cannot fire; and the **strengthened** form's hand-typed faulty object
+(`AT 29, CZ 52, DE 2, GB 15, HR 55, HU 44, US 2`) is byte-for-byte what the real fault produces when
+the pool is dropped from the evidence walk. It also re-measures the two arms declared unfireable on
+the reference trip (**0 of 112** scheduled stops with a null `time`; **0 of 6** cities with no days)
+and the full day × daypart sweep (**48 combinations: 44 `busy`, 4 `unknown`, 0 `open`**). §I measures
+**KD-131** against the data: the literal §11.7 rule 4 reading would print a falsehood on **two** edge
+days, not the one KD-131 names.
+
+One thing round 70 verified that is **not** in the script, because it plants a file in the tree: the
+**A-10 ship gate** really would have caught the negated character class `match.ts:50-62` says it
+avoids. Write `export const probe = (s: string) => s.split(/[^a-z0-9]+/);` to
+`packages/core/src/ask/__r70_plant.ts`, run `node --test packages/core/test/cityKey.test.ts`, and test
+19 goes **RED naming the planted file**; then delete it. The gate is real and the comment is honest.
+
+`r70-ask.mjs` writes nothing: it reads the fixture through `loadEurope2026()` and builds every variant
+document in memory.
