@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Cairn — three visual directions</title>
+<title>Cairn — four visual directions</title>
 <!--
   The picker harness. Its markup, CSS and key wiring are copied VERBATIM from
   `cairn/.claude/skills/prototype/PICKER.md` (emilkowalski/skills @ d23d7f8). The one documented
@@ -11,8 +11,9 @@
   its own page rather than as inline markup. Every direction is also openable on its own:
 
       a-journey-map/index.html   b-plates/index.html   c-spatial/index.html
+      d-travelling-day/index.html
 
-  Keys: 1/2/3 or the arrow keys switch. There is no replay button, because none of the three has
+  Keys: 1/2/3/4 or the arrow keys switch. There is no replay button, because none of the four has
   an entrance animation to re-trigger — which is itself the motion decision (see MOTION-REVIEW).
 -->
 <style>
@@ -60,6 +61,7 @@
   <button class="proto-picker-item" data-active aria-current="true">A · Journey map</button>
   <button class="proto-picker-item">B · Plates</button>
   <button class="proto-picker-item">C · Spatial</button>
+  <button class="proto-picker-item">D · Travelling day</button>
 </nav>
 
 <script>
@@ -67,6 +69,7 @@ const variants = [
   () => '<iframe src="a-journey-map/index.html" title="Direction A"></iframe>',
   () => '<iframe src="b-plates/index.html" title="Direction B"></iframe>',
   () => '<iframe src="c-spatial/index.html" title="Direction C"></iframe>',
+  () => '<iframe src="d-travelling-day/index.html" title="Direction D"></iframe>',
 ];
 const stage = document.getElementById('stage');
 const picker = document.querySelector('.proto-picker');

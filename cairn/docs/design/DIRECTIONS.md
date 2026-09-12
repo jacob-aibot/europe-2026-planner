@@ -1,6 +1,20 @@
-# Three Cairn visual directions — for Jacob's selection
+# Four Cairn visual directions — for Jacob's selection
 
-**Status: AWAITING VISUAL SELECTION. 2026-09-02.** Produced under Jacob's visual-direction ruling
+> **Added 2026-09-12: Direction D — the travelling day.** A, B and C were produced on 2026-09-02
+> and are unchanged below. D was added after Jacob showed a thirteen-screen visual direction
+> produced by Codex and asked what it was worth. The short answer, recorded because the reasoning
+> matters more than the verdict: that board is the first artifact anyone has made that draws the
+> whole product **loop** rather than one surface, and it is warm, premium and alive in exactly the
+> way I-8b was not — but roughly half of it is photography, friends, avatars and network activity
+> the product will not have before Phase 6–7, its organising metaphor is Trips and a social feed
+> rather than the map, and its signature screen is close enough to Polarsteps' home that Jacob's
+> own limit on that reference ("do not copy Polarsteps literally; Cairn needs its own identity")
+> is the thing it breaks. **D takes what that board got right and pays for it honestly**: its
+> signature is the surface the Europe planner already proved and no reference on the board has —
+> a day dense enough to travel from — and it is held to the same rule A, B and C were, which is
+> that a screen may only show what exists.
+
+**Status: AWAITING VISUAL SELECTION. 2026-09-02, extended 2026-09-12.** Produced under Jacob's visual-direction ruling
 (`REFERENCE-BOARD.md` Appendix A). **No winner is chosen here, and none may be.** Production UI is
 untouched; no Builder → Breaker → Manager cycle was dispatched.
 
@@ -8,10 +22,11 @@ untouched; no Builder → Breaker → Manager cycle was dispatched.
 
 | | |
 |---|---|
-| All three behind a picker (keys `1` `2` `3`, or `←` `→`) | `cairn/docs/design/directions/index.html` |
+| All four behind a picker (keys `1` `2` `3` `4`, or `←` `→`) | `cairn/docs/design/directions/index.html` |
 | A — Immersive journey map | `cairn/docs/design/directions/a-journey-map/index.html` |
 | B — Photography and cartography | `cairn/docs/design/directions/b-plates/index.html` |
 | C — Spatial exploration | `cairn/docs/design/directions/c-spatial/index.html` |
+| D — The travelling day | `cairn/docs/design/directions/d-travelling-day/index.html` |
 
 They are static files, but they `fetch()` their data, so they need a server rather than a
 double-click: `node cairn/tools/serve.mjs` will not do it (it serves `apps/web/dist`). Simplest:
@@ -29,14 +44,15 @@ the one time it was skipped.
 
 ---
 
-## 1. What all three share, and why that is not convergence
+## 1. What all four share, and why that is not convergence
 
 Emil's `prototype` skill, hard rule 2: *"Sharing the project's tokens is not convergence. Variants
-should feel native to the product."* So the three agree on everything that is **product truth** and
-differ on everything that is **design**.
+should feel native to the product."* So they agree on everything that is **product truth** and
+differ on everything that is **design**. D was built on the same `model.js`, the same
+`tokens.css` and the same map rule, and adds two rules of its own — §3's Direction D names both.
 
 **Shared — the same data, enforced rather than promised.** `directions/model.js` derives the record
-once and all three import it. Jacob's requirement was *"the same representative Cairn content so I
+once and all four import it. Jacob's requirement was *"the same representative Cairn content so I
 can compare design rather than data differences"*; a shared module is how that is made true instead
 of asserted.
 
@@ -182,16 +198,82 @@ place a prettier mock could have been made, and was not:
   Jacob explicitly ruled Cairn must not become one. C takes Cosmos's *spatial confidence* and applies
   it to geography rather than to a grid of images.
 
+### Direction D — The travelling day
+
+*`d-travelling-day/` · dark map, white sheet · the day is the page*
+
+- **Composition.** A dark map holds the top of the viewport; a white sheet rides on it carrying
+  **one day** — its hours, its stops, Jacob's own note for it at full length, its prices, its
+  tickets, and which of its stops Cairn suggested rather than he chose. The tonal split is
+  Polarsteps'; what rides on it is not.
+- **Interaction model.** **One axis — time — at three grains.** The day ribbon (sixteen real days)
+  moves sideways along it; the grain control moves up and down it, DAY → TRIP → LIFE. A drills in,
+  B scrolls, C zooms; D is a timeline you travel along with geography as its ground.
+- **Desktop recomposition.** Not the phone stretched: the ribbon spans the top, the sheet becomes a
+  permanent left column and the map takes the rest at full height, so the day, the trip and the
+  record are legible at once.
+- **Signature — the daylight bar.** One strip, 05:00 to midnight, whose colour is the day's own
+  light, ramped between four **board-measured** values: `--space` (night), `--space-2` (its
+  atmosphere, so dawn and dusk), `--sand` (the dune, so morning and late afternoon), `--ground`
+  (the paper, so midday). Every stop is a tick on it; each stop's dot in the timeline below is
+  filled with the sky at its own hour. It is data, not decoration — it is the only thing on the
+  screen that shows at a glance that 14 August started in the dark and ended in it — and it spends
+  **neither** `--accent` (reserved for now/selected) **nor** `--gold` (reserved for provenance), so
+  no semantic colour is contested. It is also the control that moves the clock, rather than a
+  gradient stripe with a separate slider under it about the same thing.
+- **Second addition — the locator.** A day map at city scale is, alone, exactly the *"disconnected
+  geographic fragment without a clear world or journey context"* on the anti-pattern list. So the
+  day map always carries one: the region, all its land, the whole trip route, and a ring on the day
+  being read. It is also the control that moves up a grain.
+- **What it borrows from the board.** Polarsteps' dark-map/white-sheet split and its grab handle;
+  Airbnb's premium hierarchy, generous radii and calm chrome; AllTrails/Strava's route-as-artifact
+  and its dark readout over a light map, inverted here; Apple Journal's intimate first-person text
+  — which in Cairn's case is **already written**, in `subtitle`, and no previous direction found
+  anywhere to put it.
+- **What makes it recognisably Cairn.** The day is the thing `europe-2026-itinerary.html` proved and
+  that **no reference on the board does**: Polarsteps records a trip after it happens, Airbnb does
+  not get you on the bus, AllTrails has no ticket. The 08:00 FlixBus, the €14.49, the 90 minutes and
+  the ticket flag are all real and all on screen. Provenance is rendered where it is exercised —
+  21 of the 112 stops are marked SUGGESTED because they genuinely are — and it is a mark plus a
+  word, never a dimming, because `DESIGN.md` P5 forbids opacity carrying a signal channel.
+- **It draws the thin record.** A fourth state, reachable from LIFE, is a **brand-new account**: the
+  globe with all land drawn and not one country lit, and two actions of which the first is *"add a
+  trip you have already taken"* — Jacob's own thesis that a new user does not start empty, made
+  into a screen rather than asserted. No previous direction, and not the Codex board, draws this.
+- **Strongest quality.** It is the only one of the four that answers *what do I do next* — the
+  question the product exists to answer while you are actually travelling — and the only one where
+  a completed trip and a live one are the **same surface**, re-ordered by whether the clock is
+  inside the day.
+- **Principal risk, and it is real.** Below city scale Cairn has no cartography at all: Natural
+  Earth admin-0 is coastlines and borders and nothing else, so a day spent inside Prague is drawn
+  on an empty field. Two things make that honest rather than broken, and both were found by
+  rendering a single-city day rather than by reasoning about one — the **first frame floor shipped
+  in this direction was wrong**, coarse enough that all twelve of day 11's stops landed on a single
+  pixel, which is recorded here because it is exactly the failure the floor exists to prevent,
+  inverted. The fixes: the frame is now floored small, because all 112 stops carry a real
+  coordinate and a city-scale frame therefore claims nothing the record cannot support; and the day
+  map carries a **scale bar**, so an empty ground states its own size instead of implying there was
+  nothing there. What is left is a genuine limit — the shape of a day's walking on a dark field is
+  informative and rather beautiful, but it is not rich, and no amount of design makes it rich
+  before there is imagery. **Open day 11 and day 3 before selecting, not only day 8.**
+- **Second risk.** The ribbon plus the grain control is two navigations on one screen. On a phone
+  that is dense, and if Jacob reads the grain pill as a tab bar then D has quietly become the
+  four-tab app its whole argument is against.
+- **Where it deliberately differs from the references.** Every reference on the board fills its
+  large surfaces with photographs. D reserves exactly one, at genuine scale, on the TRIP grain, and
+  renders it empty and labelled.
+
 ### The axes, so the divergence is checkable
 
-| | A | B | C |
-|---|---|---|---|
-| Ground | dark, immersive | light editorial + dark plates | light, near-achromatic |
-| The page is | a map | a story | a canvas |
-| Navigation | drill in / back | scroll | zoom + pan |
-| Desktop adds | a rail **and** a time ribbon | a sticky plate beside scrolling text | a permanent index beside the canvas |
-| Primary artifact | the globe | the plate | the spatial layout |
-| Motion | **none** | **none** | one transition (zoom) |
+| | A | B | C | D |
+|---|---|---|---|---|
+| Ground | dark, immersive | light editorial + dark plates | light, near-achromatic | dark map, white sheet |
+| The page is | a map | a story | a canvas | **a day** |
+| Navigation | drill in / back | scroll | zoom + pan | **along one time axis: sideways through days, up and down through grains** |
+| Desktop adds | a rail **and** a time ribbon | a sticky plate beside scrolling text | a permanent index beside the canvas | the day, the trip and the record legible at once |
+| Primary artifact | the globe | the plate | the spatial layout | **the daylight bar and the timeline under it** |
+| Motion | **none** | **none** | one transition (zoom) | **none** (state changes only) |
+| Answers "what do I do next" | no | no | no | **yes** |
 
 ---
 
@@ -286,18 +368,26 @@ coarse pointer), desktop is 1440×900 at DPR 2.
 | **A** | `a-mobile-world.png` · `a-mobile-journey.png` · `a-mobile-day.png` · `a-mobile-past-record.png` | `a-desktop-world.png` · `a-desktop-journey.png` · `a-desktop-day.png` · `a-desktop-past-record.png` |
 | **B** | `b-mobile-top.png` · `b-mobile-plate.png` · `b-mobile-memory.png` | `b-desktop-top.png` · `b-desktop-plate.png` · `b-desktop-memory.png` |
 | **C** | `c-mobile-far.png` · `c-mobile-mid.png` · `c-mobile-near.png` | `c-desktop-far.png` · `c-desktop-mid.png` · `c-desktop-near.png` |
+| **D** | `d-mobile-day.png` · `d-mobile-day-late.png` · `d-mobile-trip.png` · `d-mobile-life.png` · `d-mobile-first.png` | `d-desktop-day.png` · `d-desktop-day-late.png` · `d-desktop-trip.png` · `d-desktop-life.png` · `d-desktop-first.png` |
 
-Regenerate: `node cairn/docs/design/directions/render.mjs [a|b|c]`.
+Regenerate: `node cairn/docs/design/directions/render.mjs [a|b|c|d]`.
 
 ---
 
 ## 6. The stopping point
 
+**One shared-harness change D forced, recorded rather than left silent.** `audit.mjs`'s
+*"no element extends past the right edge"* assertion could not tell a broken layout from a
+deliberate horizontal scroller, and D's day ribbon is one. The assertion now skips an element that
+lives inside an ancestor which actually scrolls horizontally — the page-level `scrollWidth` check
+beside it is untouched and still catches real overflow. A, B and C were re-run after the change and
+their results are unchanged. **All four directions pass the audit at both viewports.**
+
 Jacob's ruling: *"After producing the three rendered directions, stop… Present the three directions
 to me and wait for my explicit visual selection. My reaction to the rendered pixels is the next
 gate."*
 
-So: **not** done, and not to be done by any agent before he selects — modify production UI broadly ·
+That ruling is unchanged by there now being a fourth. So: **not** done, and not to be done by any agent before he selects — modify production UI broadly ·
 dispatch Builder → Breaker → Manager · continue into another UI increment · choose the direction on
 his behalf · declare a visual SHIP verdict · treat these passing checks as visual approval.
 

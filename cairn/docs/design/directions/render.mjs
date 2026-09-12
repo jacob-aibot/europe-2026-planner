@@ -40,6 +40,23 @@ const DIRECTIONS = [
     ['mid', async (p) => { await p.getByRole('button', { name: /^Countries$/ }).click(); await p.waitForTimeout(600); }],
     ['near', async (p) => { await p.getByRole('button', { name: /^Places$/ }).click(); await p.waitForTimeout(600); }],
   ]],
+  ['d', 'd-travelling-day', [
+    ['day', async () => {}],
+    ['day-late', async (p) => {
+      /* The preview clock moved to 17:05, so the "next up" band names the FlixBus back to
+         Split and the light rail is read at the other end of the day. */
+      await p.locator('#light input').evaluate((e) => {
+        e.value = '1025'; e.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      await p.waitForTimeout(400);
+    }],
+    ['trip', async (p) => { await p.getByRole('button', { name: /^Trip$/ }).click(); await p.waitForTimeout(600); }],
+    ['life', async (p) => { await p.getByRole('button', { name: /^Life$/ }).click(); await p.waitForTimeout(600); }],
+    ['first', async (p) => {
+      await p.getByRole('button', { name: /^Life$/ }).click(); await p.waitForTimeout(400);
+      await p.getByRole('button', { name: /day one/ }).click(); await p.waitForTimeout(600);
+    }],
+  ]],
 ];
 
 const VIEWPORTS = [

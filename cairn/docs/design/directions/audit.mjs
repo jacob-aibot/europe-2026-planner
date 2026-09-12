@@ -17,7 +17,7 @@ import pw from '/opt/node22/lib/node_modules/playwright/index.js';
 
 const { chromium, devices } = pw;
 const BASE = process.env.CAIRN_PROTO_URL ?? 'http://localhost:4180/cairn/docs/design/directions';
-const DIRS = [['A', 'a-journey-map'], ['B', 'b-plates'], ['C', 'c-spatial']];
+const DIRS = [['A', 'a-journey-map'], ['B', 'b-plates'], ['C', 'c-spatial'], ['D', 'd-travelling-day']];
 const CTX = [
   ['mobile', { ...devices['iPhone 14'] }, true],
   ['desktop', { viewport: { width: 1440, height: 900 } }, false],
@@ -64,6 +64,19 @@ for (const [id, folder] of DIRS) {
         /* Children of an <svg> are clipped by its viewBox; their own bounding boxes are allowed
            to exceed it and say nothing about page overflow. The <svg> itself is still checked. */
         if (el.ownerSVGElement) continue;
+        /* A deliberate horizontal scroller — Direction D's day ribbon is one — has children
+           that extend past the viewport BY DESIGN, and clipping them would be the bug. The
+           assertion is about content pushed off-screen with no way to reach it, so what is
+           actually checked is that the element is reachable: it either fits, or it lives
+           inside an ancestor that scrolls horizontally. The page-level `scrollWidth` check
+           above is unchanged and still catches real overflow. */
+        let sc = el.parentElement, scrollable = false;
+        while (sc && sc !== document.body) {
+          const o = getComputedStyle(sc).overflowX;
+          if ((o === 'auto' || o === 'scroll') && sc.scrollWidth > sc.clientWidth) { scrollable = true; break; }
+          sc = sc.parentElement;
+        }
+        if (scrollable) continue;
         if (r.right > innerWidth + 1) bad.push((el.tagName + '.' + String(el.className)).slice(0, 50));
       }
       return { scrollW: se.scrollWidth, innerW: innerWidth, bad: bad.slice(0, 5) };
