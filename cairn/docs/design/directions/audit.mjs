@@ -18,6 +18,8 @@ import pw from '/opt/node22/lib/node_modules/playwright/index.js';
 const { chromium, devices } = pw;
 const BASE = process.env.CAIRN_PROTO_URL ?? 'http://localhost:4180/cairn/docs/design/directions';
 const DIRS = [['A', 'a-journey-map'], ['B', 'b-plates'], ['C', 'c-spatial'], ['D', 'd-travelling-day']];
+/* Directions permitted to render borrowed photography — see the honesty check below. */
+const PHOTOS_ALLOWED = new Set(['D']);
 const CTX = [
   ['mobile', { ...devices['iPhone 14'] }, true],
   ['desktop', { viewport: { width: 1440, height: 900 } }, false],
@@ -223,14 +225,34 @@ for (const [id, folder] of DIRS) {
     /* --- truthfulness: no fabricated photography ------------------------- */
     const honesty = await page.evaluate(() => ({
       imgs: document.querySelectorAll('img').length,
+      uncredited: [...document.querySelectorAll('img')]
+        .filter((i) => !i.getAttribute('data-credit')).length,
+      creditsShown: document.querySelectorAll('.credit').length,
+      disclosure: !!document.querySelector('#truth'),
       bgImages: [...document.querySelectorAll('body *')].filter((e) => {
         const b = getComputedStyle(e).backgroundImage;
         return b && b !== 'none' && !b.startsWith('linear-gradient') && !b.startsWith('radial-gradient');
       }).length,
       emptySlots: document.querySelectorAll('.photoslot').length,
     }));
-    ok(honesty.imgs === 0 && honesty.bgImages === 0,
-      'zero photographic assets: nothing stands in for a picture Cairn does not have', honesty);
+    /* A, B and C render NO photography at all. Direction D renders real, CC-licensed pictures
+       of the real places, under Jacob's 2026-09-12 ruling that a DIRECTION BOARD may show the
+       target state because his reaction to pixels is the selection gate. The assertion is
+       therefore not "no images" for every direction — it is that nothing is passed off as
+       something it is not. For D that means: every image carries its credit in the markup,
+       credits are RENDERED on screen, and the standing disclosure is present. */
+    if (PHOTOS_ALLOWED.has(id)) {
+      ok(honesty.uncredited === 0,
+        'every photograph carries a credit in the markup', honesty);
+      ok(honesty.creditsShown > 0 && honesty.disclosure,
+        'credits are rendered on screen and the borrowed-photography disclosure is present',
+        honesty);
+      ok(honesty.bgImages === 0,
+        'no image is smuggled in as a CSS background, where no credit can ride with it', honesty);
+    } else {
+      ok(honesty.imgs === 0 && honesty.bgImages === 0,
+        'zero photographic assets: nothing stands in for a picture Cairn does not have', honesty);
+    }
     if (honesty.emptySlots) note(`${honesty.emptySlots} photographic slots rendered explicitly EMPTY and labelled`);
 
     await ctx.close();

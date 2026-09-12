@@ -7,327 +7,364 @@
 <link rel="stylesheet" href="../tokens.css">
 <style>
 /* =============================================================================
-   DIRECTION D — THE TRAVELLING DAY
+   DIRECTION D — THE TRAVELLING DAY  (revision 2, 2026-09-12)
 
-   Composition thesis: THE DAY IS THE PAGE. A dark map holds the top of the viewport and a
-   white sheet rides on it carrying one day of the trip — its hours, its stops, its prose,
-   its prices, and what it is that the system suggested rather than Jacob chose.
+   REVISION 2 EXISTS BECAUSE REVISION 1 WAS REJECTED, and the reason is worth writing down
+   rather than quietly fixing. Jacob: "your pictures look like ai slop. There's no warm and it
+   looks nothing like the screenshots I sent." All three parts were true:
 
-   Interaction thesis: ONE AXIS, THREE GRAINS. Time. Sideways moves along it (the day ribbon
-   — 16 real days); the grain control moves up and down it (DAY → TRIP → LIFE). A is drill-in,
-   B is scroll, C is zoom; D is a timeline you travel along, with geography as its ground.
+     - The board's ground is cream `#f2efe9` and its accent is brick `#d4503a`. Revision 1 built
+       its sheet on PURE WHITE, its map on cold navy, and spent the warm values on a 22px
+       gradient strip and a slider thumb. A warm token file was attached to a cold app.
+     - It had no photography, because revision 1 read `DESIGN.md` Rule B — *a screen may only
+       show what exists* — as a rule about AESTHETICS rather than about CONTENT. With no
+       imagery there is no colour, so everything became large type on white, which is
+       ITSELF THE FAILURE JACOB ALREADY REJECTED ONCE (I-8b: "bland, overly typographic,
+       emotionally empty... a transit atlas").
+     - Its dark map was borrowed from Polarsteps' globe. But Polarsteps' warmth comes from
+       satellite terrain and photographs; strip those out and a dark map is simply cold.
 
-   Why the day and not the globe. The globe is Polarsteps' signature, and Jacob's own limit on
-   that reference is "do not copy Polarsteps literally; Cairn needs its own identity". The thing
-   `europe-2026-itinerary.html` proved, and that no reference on the board does, is a day dense
-   enough to actually travel from: the bus at 08:00, the ticket, the €14.49, the 90 minutes.
-   Polarsteps records a trip after it happens. Airbnb does not get you on the bus. This does.
+   WHAT CHANGED, AND WITH WHOSE PERMISSION. Jacob ruled on 2026-09-12 that a DIRECTION BOARD may
+   render the target state, including photography the product cannot take yet, because his
+   reaction to pixels is the selection gate and nobody can react to an empty box. Rule B is
+   therefore a rule about what gets BUILT, not about what gets PITCHED — and the pitch says so
+   out loud, on screen, in the `#truth` block on every grain that shows a photograph.
 
-   The map rule (tokens.css) is obeyed at every grain: all land always drawn, visited as an
-   overlay on it, the route white, the accent spent only on what is selected or happening now.
+   THE PHOTOGRAPHS ARE REAL AND THEY ARE OF THE REAL PLACES. Twelve CC-licensed images from
+   Wikimedia Commons — Skradinski Buk for day 8, Stephansdom for Vienna, the Széchenyi baths for
+   day 13 — in `../data/photos/` with `credits.json` beside them. They are NOT stock filler
+   standing in for a destination, which would be worse than no image at all, and they are NOT
+   presented as Jacob's: every one carries a visible credit.
 
-   TWO THINGS THIS DIRECTION ADDS TO THE SHARED RULES, both stated so they can be argued with:
+   THE PALETTE IS NOW THE BOARD'S OWN, USED AS THE BOARD USES IT (REFERENCE-BOARD §7):
+   predominantly LIGHT, cream paper, brick spent freely, and dark appearing in exactly two roles
+   — the immersive globe, and small data cards floating over a light map or a photograph. Day
+   and trip maps are LIGHT and WARM (sand land, pale water), which is what the board's AllTrails
+   card actually is, and which the shared map rule already permits: "a white sheet on a dark
+   map, OR A DARK CARD ON A LIGHT MAP. Never grey on grey."
 
-   1. THE DAYLIGHT BAR. One strip, 05:00 to midnight, whose colour is the day's own light,
-      ramped between four board-measured values — `--space` (night), `--space-2` (its
-      atmosphere, so dawn and dusk), `--sand` (the dune, so morning and late afternoon) and
-      `--ground` (the paper, so midday). It is DATA, not decoration: it is the only thing on
-      the screen that shows, at a glance, that 14 August started in the dark and ended in it.
-      It deliberately spends NEITHER `--accent` (reserved for now/selected) NOR `--gold`
-      (reserved for provenance), so no semantic colour is contested.
+   WHAT DID NOT CHANGE — the thesis, which Jacob did not reject:
+   THE DAY IS THE PAGE, on one time axis at three grains. Sideways through the sixteen real
+   days; up and down through DAY → TRIP → LIFE. The day is the surface the Europe planner
+   proved and that nothing on the board does: the 08:00 bus, the ticket, the €14.49.
 
-   2. THE LOCATOR. A day map at city scale is, on its own, exactly the "disconnected
-      geographic fragment without a clear world or journey context" Jacob listed as an
-      anti-pattern. So the day map always carries a locator: the region, all its land, the
-      whole trip route, and a ring around the day you are reading. It is also the control
-      that moves you up a grain.
-
-   WHAT IS SIMULATED, AND IT IS THE ONLY THING: the clock. `cairn.json`'s `today` is
-   2026-09-02 and the trip ended on 22 August, so nothing in this record is live. The preview
-   clock is labelled on screen as a preview, and moving it is how you see the surface the
-   product is actually for. Every stop, time, price, mode, ticket flag and provenance mark it
-   drives is real and unmodified.
+   STILL SIMULATED, AND STILL THE ONLY THING: the clock.
    ========================================================================== */
 
+:root {
+  --paper:    #f2efe9;   /* the board's ground. THE PAGE IS THIS, not white */
+  --card:     #fffdf8;   /* a warm white, one step off the paper so cards lift */
+  --ink-3:    #8b8d84;
+
+  /* A WARM CARTOGRAPHY, derived between two measured values (--sand, --ground) for land and a
+     pale tint of the measured atmosphere (--space-2) for water. Vector-only data cannot have
+     terrain; what it can have instead is the palette of a printed chart. */
+  --m-land:   #e7d8b8;
+  --m-land-2: #dcc99f;   /* visited: deeper sand ON the land, never instead of it */
+  --m-edge:   #cdb894;
+  --m-sea:    #ccdfe8;
+  --m-sea-2:  #b9d2de;
+  --m-route:  #24312f;   /* dark route on a light map — AllTrails' convention, inverted */
+
+  /* Shadows are TINTED. An untinted default shadow is on the tell list, and a warm ground with
+     grey shadows under everything is most of why a cream page can still feel cold. */
+  --lift-1: 0 1px 2px rgba(96,72,44,.07), 0 3px 8px rgba(96,72,44,.07);
+  --lift-2: 0 2px 6px rgba(96,72,44,.09), 0 14px 30px rgba(96,72,44,.13);
+  --lift-3: 0 -6px 30px rgba(96,72,44,.16);
+}
+
 html, body { height: 100%; }
-body { overflow: hidden; background: var(--space); }
+body { overflow: hidden; background: var(--paper); color: var(--ink); }
+#app { position: fixed; inset: 0; overflow-y: auto; overscroll-behavior-y: none;
+       background: var(--paper); }
 
-#app { position: fixed; inset: 0; display: grid; grid-template-rows: 1fr; }
+/* =============================================================================
+   THE HERO — one photograph, at genuinely large scale. The board's instruction on its Condé
+   Nast card is "let exceptional photography breathe"; its limit is "do not reduce every
+   photograph to a small card thumbnail". So the day opens on one large image of the place it
+   is in, and the small ones further down are context rather than the treatment.
+   ========================================================================== */
+#hero { position: relative; height: 42vh; min-height: 268px; overflow: hidden;
+        background: var(--m-sea-2); }
+#hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#hero::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(to bottom, rgba(20,14,6,.55) 0%, rgba(20,14,6,0) 34%,
+                              rgba(20,14,6,.12) 56%, rgba(20,14,6,.84) 100%); }
+/* The photographic scrim exists to keep white text legible over an image. A map is not an
+   image and does not want it — without this the trip chart got a muddy brown wash. */
+#hero.plain::after { display: none; }
+#herotext { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3;
+            padding: 0 20px 30px; color: #fff; }
+#herotext h1 { font-size: clamp(1.5rem, 6.4vw, 2.1rem); max-width: 18ch;
+               text-shadow: 0 1px 24px rgba(20,14,6,.45); }
+#herotext .sub { margin-top: 9px; font-size: var(--t-small); color: rgba(255,255,255,.92); }
+#herotext .sub b { font-weight: 600; }
+/* The credit is not fine print in a footer: the picture is not Jacob's, and the screen that
+   shows it says so where it is shown. */
+.credit { position: absolute; right: 11px; bottom: 9px; z-index: 3; max-width: 58%;
+          font-size: var(--t-micro); color: rgba(255,255,255,.74);
+          text-shadow: 0 1px 6px rgba(20,14,6,.75);
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The hero's own credit sits UNDER the photograph rather than on it: over the image it
+   collided with the day's title, and a credit that has to be squeezed to fit is a credit
+   nobody reads. */
+.credit--bar { position: static; max-width: none; white-space: normal; text-shadow: none;
+               color: var(--ink-3); padding: 8px 20px 0; text-align: left; }
 
-/* --- the map half -------------------------------------------------------- */
-#stage { position: relative; overflow: hidden; background: var(--space); }
-#map { display: block; width: 100%; height: 100%; }
-#map .land  { fill: var(--land); stroke: var(--land-edge); stroke-width: .4; }
-#map .seen  { fill: var(--land-seen); fill-opacity: .92; stroke: #eaf5fb; stroke-width: .6; }
-#map .plan  { fill: none; stroke: var(--provisional); stroke-width: 1.1; stroke-dasharray: 4 3; }
-#map .route     { fill: none; stroke: var(--route); stroke-width: 2.2;
-                  stroke-linecap: round; stroke-linejoin: round; }
-#map .route-case{ fill: none; stroke: rgba(4,18,28,.55); stroke-width: 5.4; stroke-linecap: round; }
-#map .route--soft { stroke: var(--route-soft); stroke-width: 1.6; stroke-dasharray: 5 5; }
-#map .node      { fill: var(--space); stroke: var(--route); stroke-width: 2.4; }
-#map .node--cand{ stroke: var(--gold); stroke-dasharray: 3 2.4; }
-#map .node--sel { stroke: var(--accent); stroke-width: 3.4; }
-#map .node--now { fill: var(--live); stroke: #fff; stroke-width: 3; }
-#map .glyph { fill: #fff; font-family: var(--sans); font-weight: 800; font-size: 11px; }
-#map .grat  { fill: none; stroke: #0f3347; stroke-width: .5; opacity: .5; }
-#map .scale path { fill: none; stroke: rgba(255,255,255,.72); stroke-width: 1.5; }
-#map .scale text { fill: rgba(255,255,255,.82); font-family: var(--sans); font-size: 11px;
-                   font-weight: 600; letter-spacing: .02em; }
-#map .limb  { fill: none; stroke: var(--space-2); stroke-width: 14; opacity: .85; }
-/* The coastal shelf. Cairn's map has no imagery and never will, so the only way land can
-   read as land rather than as an abstract shape is cartographic: a soft lighter band in the
-   water along every coastline, which is what a bathymetric chart does and what the eye
-   already knows how to read. It is drawn UNDER the land, so it is a halo, not an outline. */
-#map .shelf { fill: none; stroke: var(--space-2); stroke-width: 5; opacity: .30; }
-#map .shelf2{ fill: none; stroke: var(--space-2); stroke-width: 13; opacity: .14; }
-
-/* A scrim, so a white label over dark water stays legible without a box around it. */
-#stage::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 34%;
-  background: linear-gradient(to bottom, rgba(4,18,28,0), rgba(4,18,28,.86));
-  pointer-events: none;
-}
-
-/* --- the locator: where this day sits in the trip ------------------------ */
-#locator {
-  position: absolute; left: 14px; bottom: 14px; z-index: 3;
-  width: 116px; height: 92px; padding: 0; border-radius: var(--r-tile);
-  overflow: hidden; background: var(--sea-deep);
-  box-shadow: 0 0 0 1px rgba(255,255,255,.22), 0 6px 18px rgba(4,18,28,.45);
-}
-#locator svg { display: block; width: 100%; height: 100%; }
-#locator .cap {
-  position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 6px;
-  font-size: var(--t-micro); letter-spacing: .06em; text-transform: uppercase;
-  color: #fff; background: rgba(4,18,28,.72); text-align: left;
-}
-
-/* --- the day ribbon: sixteen real days ----------------------------------- */
-#ribbon {
-  position: absolute; top: 0; left: 0; right: 0; z-index: 4;
-  display: flex; gap: 6px; overflow-x: auto; overflow-y: hidden;
-  padding: calc(10px + var(--safe-t)) 12px 10px;
-  scrollbar-width: none; -webkit-overflow-scrolling: touch;
-  background: linear-gradient(to bottom, rgba(4,18,28,.9), rgba(4,18,28,0));
-}
+/* --- the day ribbon, riding on the photograph ---------------------------- */
+#ribbon { position: absolute; top: 0; left: 0; right: 0; z-index: 4;
+          display: flex; gap: 7px; overflow-x: auto; overflow-y: hidden;
+          padding: calc(12px + var(--safe-t)) 14px 12px;
+          scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 #ribbon::-webkit-scrollbar { display: none; }
-/* `display: flex` beats the UA's `[hidden] { display: none }`, so a hidden ribbon must say so. */
 #ribbon[hidden] { display: none; }
-.rib {
-  flex: 0 0 auto; min-width: 52px; height: 56px; padding: 7px 9px; border-radius: var(--r-tile);
-  display: flex; flex-direction: column; justify-content: center; gap: 2px;
-  color: rgba(255,255,255,.72); background: rgba(255,255,255,.10);
-  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
-}
+.rib { flex: 0 0 auto; min-width: 50px; height: 54px; padding: 6px 9px; border-radius: 14px;
+       display: flex; flex-direction: column; justify-content: center; gap: 1px;
+       color: rgba(255,255,255,.88); background: rgba(24,18,10,.44);
+       transition: background var(--dur) var(--ease), color var(--dur) var(--ease); }
 .rib b { font-size: var(--t-sub); font-weight: 700; letter-spacing: -.02em; }
-.rib span { font-size: var(--t-micro); letter-spacing: .04em; text-transform: uppercase;
-            white-space: nowrap; }
-.rib[aria-current] { background: #fff; color: var(--ink); }
-.rib:hover { background: rgba(255,255,255,.2); }
-.rib[aria-current]:hover { background: #fff; }
+.rib span { font-size: var(--t-micro); letter-spacing: .05em; text-transform: uppercase; }
+.rib[aria-current] { background: var(--card); color: var(--ink); }
+.rib:hover { background: rgba(24,18,10,.64); }
+.rib[aria-current]:hover { background: var(--card); }
 
-/* --- the sheet ----------------------------------------------------------- */
-#sheet {
-  position: relative; z-index: 2; overflow-y: auto; overscroll-behavior: contain;
-  background: var(--ground-2); border-radius: var(--r-sheet) var(--r-sheet) 0 0;
-  box-shadow: 0 -10px 34px rgba(4,18,28,.30);
-  padding: 0 0 calc(124px + var(--safe-b));
-}
-#sheet > .pad { padding: 20px 20px 0; }
+/* =============================================================================
+   THE SHEET — cream, riding up over the photograph.
+   ========================================================================== */
+#sheet { position: relative; z-index: 2; margin-top: -24px; background: var(--paper);
+         border-radius: 26px 26px 0 0; box-shadow: var(--lift-3);
+         padding: 6px 0 calc(132px + var(--safe-b)); }
+.handle { width: 38px; height: 4px; border-radius: 99px; background: rgba(96,72,44,.22);
+          margin: 9px auto 2px; }
+.pad { padding: 0 20px; }
 
-/* The grab handle is Polarsteps', read off the board. It is decoration that earns its place:
-   it says the sheet moves, which on a phone is the whole affordance. */
-.handle { width: 38px; height: 4px; border-radius: 99px; background: rgba(22,23,20,.18);
-          margin: 10px auto 4px; }
-
-h1.title { font-size: var(--t-head); max-width: 22ch; }
-/* NO eyebrow above the heading — Impeccable bans it outright and it is one of the three moves
-   the rejected direction shipped. The identifying line sits UNDER the title, as data. */
-.dataline { margin: 8px 0 0; color: var(--ink-2); font-size: var(--t-small); }
-.dataline b { color: var(--ink); font-weight: 600; }
-.note { margin: 14px 0 0; color: var(--ink); font-size: var(--t-body); line-height: 1.62;
-        max-width: 52ch; }
-.note--quiet { color: var(--ink-2); }
-
-/* --- the now band -------------------------------------------------------- */
-#now {
-  margin: 18px 20px 0; padding: 14px 16px; border-radius: var(--r-card);
-  background: var(--space); color: #fff; display: flex; align-items: center; gap: 13px;
-}
-#now .dot { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 99px; background: var(--live);
-            box-shadow: 0 0 0 4px rgba(218,0,90,.22); }
+/* --- the NEXT card: a dark card floating on light. The board does this twice. ------------ */
+#now { margin: 16px 20px 0; padding: 15px 17px; border-radius: 20px;
+       background: #1b1a16; color: #fff; display: flex; align-items: center; gap: 13px;
+       box-shadow: var(--lift-2); }
+#now .dot { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 99px;
+            background: var(--live); box-shadow: 0 0 0 5px rgba(218,0,90,.22); }
 #now .txt { min-width: 0; }
-#now .k { font-size: var(--t-micro); letter-spacing: .08em; text-transform: uppercase;
-          color: rgba(255,255,255,.72); }
+#now .k { font-size: var(--t-micro); letter-spacing: .09em; text-transform: uppercase;
+          color: rgba(255,255,255,.66); }
 #now .v { font-size: var(--t-sub); font-weight: 600; letter-spacing: -.015em;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #now .when { margin-left: auto; flex: 0 0 auto; text-align: right; }
 #now .when .t { font-size: var(--t-sub); font-weight: 600; }
-#now .when .d { font-size: var(--t-micro); color: rgba(255,255,255,.72); }
+#now .when .d { font-size: var(--t-micro); color: rgba(255,255,255,.7); }
 
-/* --- THE DAYLIGHT BAR ----------------------------------------------------
-   The day's own light, 05:00 to midnight, ramped between four board-measured values, with a
-   tick at every stop and the preview clock riding on it. It is one component doing three
-   jobs — it shows what the light was like, it shows how the day is distributed, and it is
-   the control that moves time — which is why it is here rather than a gradient stripe and a
-   separate slider that happen to be about the same thing.
-   ------------------------------------------------------------------------- */
-#light { margin: 18px 20px 0; position: relative; }
+/* --- the daylight bar (kept — it was not what was wrong) ---------------------------------
+   One strip, 05:00 to midnight, coloured by the day's own light between four board-measured
+   values, with a tick at every stop and the clock riding on it. It spends neither `--accent`
+   (now/selected) nor `--gold` (provenance), so no semantic colour is contested. */
+#light { margin: 18px 20px 0; }
 #light .lab { display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
-              font-size: var(--t-micro); letter-spacing: .05em; text-transform: uppercase;
+              font-size: var(--t-micro); letter-spacing: .06em; text-transform: uppercase;
               color: var(--ink-2); margin-bottom: 7px; }
 #light .lab .t { font-size: var(--t-small); letter-spacing: 0; text-transform: none;
                  color: var(--ink); font-variant-numeric: tabular-nums; }
-#light .bar { position: relative; height: 22px; border-radius: 7px; overflow: hidden;
-              box-shadow: inset 0 0 0 1px rgba(22,23,20,.16); }
+#light .track { position: relative; height: 20px; }
+#light .bar { position: relative; height: 20px; border-radius: 7px; overflow: hidden;
+              box-shadow: inset 0 0 0 1px rgba(96,72,44,.22); }
 #light .tick { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px;
-               background: rgba(22,23,20,.42); }
+               background: rgba(36,28,14,.38); }
 #light .tick[data-c] { background: var(--gold); }
-/* The thumb rides ON the bar — it is the sun's position in the day, not a widget beneath a
-   picture of one. The 44px track is centred on the 22px bar so the touch target is full size
-   while the mark stays where it means something. */
-#light .track { position: relative; height: 22px; }
-#light input { position: absolute; left: -2px; right: -2px; top: -11px; width: calc(100% + 4px);
+#light input { position: absolute; left: -2px; right: -2px; top: -12px; width: calc(100% + 4px);
                height: 44px; -webkit-appearance: none; appearance: none;
                background: transparent; margin: 0; }
 #light input::-webkit-slider-runnable-track { height: 44px; background: transparent; }
 #light input::-moz-range-track { height: 44px; background: transparent; }
 #light input::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px;
   margin-top: 12px; border-radius: 99px; background: var(--accent);
-  box-shadow: 0 0 0 3px var(--ground-2), 0 2px 7px rgba(22,23,20,.34); }
+  box-shadow: 0 0 0 3px var(--paper), 0 2px 8px rgba(96,72,44,.42); }
 #light input::-moz-range-thumb { width: 20px; height: 20px; border: 0; border-radius: 99px;
-  background: var(--accent); box-shadow: 0 0 0 3px var(--ground-2), 0 2px 7px rgba(22,23,20,.34); }
-#light .ends { display: flex; justify-content: space-between; margin-top: 8px;
-               font-size: var(--t-micro); color: var(--ink-2); font-variant-numeric: tabular-nums; }
-#light .caveat { margin-top: 5px; font-size: var(--t-micro); color: var(--ink-2); }
+  background: var(--accent); box-shadow: 0 0 0 3px var(--paper), 0 2px 8px rgba(96,72,44,.42); }
+#light .ends { display: flex; justify-content: space-between; margin-top: 9px;
+               font-size: var(--t-micro); color: var(--ink-3); font-variant-numeric: tabular-nums; }
 
 /* --- the timeline -------------------------------------------------------- */
-#tl { margin: 10px 0 0; padding: 4px 20px 0; display: grid; grid-template-columns: 54px 1fr;
-      column-gap: 14px; position: relative; }
-/* The spine: a single soft line the stops sit on, so the column reads as a sequence. Not a
-   hairline rule in the editorial sense — it carries the order, and nothing else on the sheet
-   is ruled. */
-#spine { position: absolute; left: 73px; top: 22px; bottom: 26px; width: 2px;
-         background: rgba(22,23,20,.10); border-radius: 99px; }
-.stop { grid-column: 1 / -1; display: grid; grid-template-columns: 54px 1fr; column-gap: 14px;
-        align-items: start; text-align: left; padding: 9px 0; border-radius: 10px;
-        position: relative; transition: background var(--dur) var(--ease); }
-.stop:hover { background: rgba(22,23,20,.035); }
-.stop[aria-current] { background: rgba(212,80,58,.08); }
-.stop .time { font-family: var(--meas); font-variant-numeric: tabular-nums; letter-spacing: -.02em;
-              font-size: var(--t-small); color: var(--ink-2); padding-top: 2px; }
+#tl { margin: 14px 0 0; padding: 0 20px; position: relative; }
+#spine { position: absolute; left: 72px; top: 26px; bottom: 30px; width: 2px;
+         background: rgba(96,72,44,.16); border-radius: 99px; }
+.stop { display: grid; grid-template-columns: 46px 1fr auto; column-gap: 12px;
+        align-items: start; text-align: left; padding: 10px 8px 10px 0; width: 100%;
+        border-radius: 14px; position: relative;
+        transition: background var(--dur) var(--ease); }
+.stop:hover { background: rgba(96,72,44,.05); }
+.stop[aria-current] { background: rgba(212,80,58,.09); }
+.stop .time { font-family: var(--meas); font-variant-numeric: tabular-nums;
+              letter-spacing: -.02em; font-size: var(--t-small); color: var(--ink-2);
+              padding-top: 3px; }
 .stop[aria-current] .time { color: var(--accent-ink); }
-.stop .body { min-width: 0; position: relative; padding-left: 18px; }
-/* Each stop's dot is FILLED WITH THE SKY AT ITS OWN HOUR (written inline at render time), so
-   the timeline carries the same light the bar above it does. Ring, not fill, carries state. */
-.stop .body::before {
-  content: ''; position: absolute; left: -12px; top: 5px; width: 14px; height: 14px;
-  border-radius: 99px; background: var(--dotsky, var(--ground-2));
-  box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px var(--ground-2);
-}
-.stop[aria-current] .body::before { box-shadow: 0 0 0 3px var(--accent), 0 0 0 5px var(--ground-2); }
-.stop[data-cand] .body::before { box-shadow: 0 0 0 2px var(--gold), 0 0 0 4px var(--ground-2); }
-.stop[data-now] .body::before { box-shadow: 0 0 0 3px var(--live), 0 0 0 5px var(--ground-2); }
-.stop .nm { font-size: var(--t-body); font-weight: 600; letter-spacing: -.012em; line-height: 1.35; }
-.stop .meta { margin-top: 3px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+.stop .body { min-width: 0; position: relative; padding-left: 20px; }
+/* The dot is filled with the sky at its own hour, so the timeline carries the same light the
+   bar above it does. The RING, never the fill, carries state. */
+.stop .body::before { content: ''; position: absolute; left: -13px; top: 5px;
+  width: 14px; height: 14px; border-radius: 99px; background: var(--dotsky, var(--card));
+  box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px var(--paper); }
+.stop[aria-current] .body::before { box-shadow: 0 0 0 3px var(--accent), 0 0 0 5px var(--paper); }
+.stop[data-cand] .body::before { box-shadow: 0 0 0 2px var(--gold), 0 0 0 4px var(--paper); }
+.stop[data-now] .body::before { box-shadow: 0 0 0 3px var(--live), 0 0 0 5px var(--paper); }
+.stop .nm { font-size: var(--t-body); font-weight: 600; letter-spacing: -.012em;
+            line-height: 1.34; }
+.stop .meta { margin-top: 4px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
               font-size: var(--t-small); color: var(--ink-2); }
 .stop .meta .cost { color: var(--ink); font-variant-numeric: tabular-nums; }
+/* A photograph of the place, and only where a real picture of THAT place exists — which is
+   why this column is ragged rather than a uniform grid of filled boxes. */
+.stop .shot { flex: 0 0 auto; width: 62px; height: 62px; border-radius: 14px; overflow: hidden;
+              box-shadow: var(--lift-1); background: var(--m-sea-2); display: block; }
+.stop .shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-/* Provenance. Rule A is a VISUAL requirement: 21 of these 112 stops were put there by the
-   system, and they say so. It is a mark plus a word — never a dimming, because DESIGN.md P5
-   forbids opacity carrying a signal channel. */
 .tag { font-size: var(--t-micro); letter-spacing: .07em; text-transform: uppercase;
-       padding: 3px 7px; border-radius: var(--r-pill); white-space: nowrap; }
-.tag--sug { color: var(--gold); box-shadow: inset 0 0 0 1px rgba(143,88,22,.45); }
-.tag--tkt { color: var(--ground-2); background: var(--space); }
+       padding: 3px 8px; border-radius: var(--r-pill); white-space: nowrap; }
+.tag--sug { color: var(--gold); box-shadow: inset 0 0 0 1px rgba(143,88,22,.5); }
+.tag--tkt { color: #fff; background: #1b1a16; }
 
-/* --- the footer facts ---------------------------------------------------- */
-.facts { margin: 20px 20px 0; padding: 16px 0 0; border-top: 1px solid var(--hair); }
+/* --- the map, as a card on the page rather than the page itself ---------- */
+.mapcard { margin: 20px 20px 0; border-radius: 20px; overflow: hidden; position: relative;
+           box-shadow: var(--lift-2); background: var(--m-sea); aspect-ratio: 3 / 2; }
+.mapcard svg { display: block; width: 100%; height: 100%; }
+/* The locator. A day map at city scale is, on its own, exactly the "disconnected geographic
+   fragment without a clear world or journey context" on Jacob's anti-pattern list — and it is
+   also the only scale at which "visited" means nothing, so the country wash belongs here and
+   not on the day map under it. */
+.locator { position: absolute; right: 12px; top: 12px; width: 104px; height: 78px;
+           border-radius: 12px; overflow: hidden; background: var(--m-sea);
+           box-shadow: 0 0 0 1.5px rgba(255,255,255,.9), var(--lift-1); }
+.locator svg { display: block; width: 100%; height: 100%; }
+.mapcard .chip, .sidemap .chip { position: absolute; left: 12px; top: 12px; padding: 7px 12px;
+                 border-radius: var(--r-pill); background: rgba(27,26,22,.9); color: #fff;
+                 font-size: var(--t-micro); letter-spacing: .06em; text-transform: uppercase; }
+.map .land  { fill: var(--m-land); stroke: var(--m-edge); stroke-width: .5; }
+.map .seen  { fill: var(--m-land-2); stroke: var(--m-edge); stroke-width: .6; }
+.map .plan  { fill: none; stroke: var(--provisional); stroke-width: 1.2; stroke-dasharray: 4 3; }
+.map .shelf { fill: none; stroke: var(--m-sea-2); stroke-width: 9; opacity: .9; }
+.map .route { fill: none; stroke: var(--m-route); stroke-width: 2.4;
+              stroke-linecap: round; stroke-linejoin: round; }
+.map .route-case { fill: none; stroke: rgba(255,255,255,.78); stroke-width: 6.4;
+                   stroke-linecap: round; }
+.map .route--soft { stroke: rgba(36,49,47,.42); stroke-width: 1.6; stroke-dasharray: 5 5; }
+.map .node  { fill: #1b1a16; stroke: #fff; stroke-width: 2.4; }
+.map .node--cand { stroke: var(--gold); stroke-dasharray: 3 2.4; }
+.map .node--sel  { fill: var(--accent); stroke: #fff; stroke-width: 3; }
+.map .node--now  { fill: var(--live); stroke: #fff; stroke-width: 3; }
+.map .glyph { fill: #fff; font-family: var(--sans); font-weight: 800; font-size: 11px; }
+.map .scale path { fill: none; stroke: rgba(36,28,14,.6); stroke-width: 1.5; }
+.map .scale text { fill: rgba(36,28,14,.78); font-family: var(--sans); font-size: 11px;
+                   font-weight: 600; }
+
+/* --- the globe: the ONE dark surface, which is how the board spends dark -- */
+#globe { position: relative; height: 46vh; min-height: 290px; background: var(--space);
+         overflow: hidden; }
+#globe svg { display: block; width: 100%; height: 100%; }
+#globe .land { fill: var(--land); stroke: var(--land-edge); stroke-width: .4; }
+#globe .seen { fill: var(--land-seen); fill-opacity: .95; stroke: #eaf5fb; stroke-width: .6; }
+#globe .plan { fill: none; stroke: var(--provisional); stroke-width: 1.2; stroke-dasharray: 4 3; }
+#globe .grat { fill: none; stroke: #0f3347; stroke-width: .5; opacity: .5; }
+#globe .limb { fill: none; stroke: var(--space-2); stroke-width: 14; opacity: .85; }
+#globe .route { fill: none; stroke: var(--route); stroke-width: 2.2; stroke-linecap: round; }
+#globe .route--soft { stroke: var(--route-soft); stroke-dasharray: 5 5; stroke-width: 1.6; }
+#globe .route-case { display: none; }
+#globe .node { fill: var(--space); stroke: #fff; stroke-width: 2.4; }
+
+/* --- prose, facts, actions ----------------------------------------------- */
+h1.title { font-size: clamp(1.45rem, 5.9vw, 2rem); max-width: 20ch; }
+.dataline { margin: 8px 0 0; color: var(--ink-2); font-size: var(--t-small); }
+.dataline b { color: var(--ink); font-weight: 600; }
+.note { margin: 14px 0 0; font-size: var(--t-body); line-height: 1.62; max-width: 52ch; }
+.note--quiet { color: var(--ink-2); }
+
+/* Cards with a photograph in them — the cities on the trip surface. */
+.tiles { margin: 18px 20px 0; display: grid; gap: 14px; }
+.tile { position: relative; height: 136px; border-radius: 20px; overflow: hidden; width: 100%;
+        text-align: left; box-shadow: var(--lift-2); background: var(--m-sea-2);
+        transition: transform var(--dur) var(--ease); }
+.tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tile:hover { transform: translateY(-2px); }
+.tile .lab { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 16px; color: #fff;
+             background: linear-gradient(to top, rgba(20,14,6,.86), rgba(20,14,6,0)); }
+.tile .lab .n { display: block; font-size: var(--t-sub); font-weight: 700; letter-spacing: -.02em; }
+.tile .lab .s { display: block; font-size: var(--t-small); color: rgba(255,255,255,.88); }
+
+.facts { margin: 22px 20px 0; padding: 16px 0 0; border-top: 1px solid rgba(96,72,44,.16); }
 .facts p { margin: 0 0 9px; font-size: var(--t-small); color: var(--ink-2); line-height: 1.55;
            max-width: 54ch; }
 .facts b { color: var(--ink); font-weight: 600; }
 
-/* --- the grain control --------------------------------------------------- */
-#grain {
-  position: fixed; z-index: 9; left: 50%; transform: translateX(-50%);
-  bottom: calc(14px + var(--safe-b)); display: flex; gap: 3px; padding: 4px;
-  border-radius: var(--r-pill); background: var(--space);
-  box-shadow: 0 6px 22px rgba(4,18,28,.34), inset 0 0 0 1px rgba(255,255,255,.10);
-}
-#grain button { height: 44px; padding: 0 20px; border-radius: var(--r-pill);
-  color: rgba(255,255,255,.62); font-size: var(--t-small); font-weight: 600;
-  transition: background var(--dur) var(--ease), color var(--dur) var(--ease); }
-#grain button:hover { color: #fff; }
-#grain button[aria-current] { background: var(--ground-2); color: var(--ink); }
+/* The standing disclosure. A component, not a footnote, because it is what makes rendering
+   photography on a direction board honest at all. */
+#truth { margin: 20px 20px 0; padding: 14px 16px; border-radius: 16px;
+         background: rgba(212,80,58,.07); box-shadow: inset 0 0 0 1px rgba(212,80,58,.22); }
+#truth p { margin: 0; font-size: var(--t-small); line-height: 1.52; color: var(--ink); }
+#truth b { color: var(--accent-ink); }
 
-/* --- trip + life + first: the sheet's other contents --------------------- */
-.rows { margin: 16px 0 0; }
-.row { display: flex; align-items: baseline; gap: 12px; padding: 11px 20px; width: 100%;
+.rows { margin: 14px 0 0; }
+.row { display: flex; align-items: baseline; gap: 12px; padding: 12px 20px; width: 100%;
        text-align: left; transition: background var(--dur) var(--ease); }
-.row:hover { background: rgba(22,23,20,.035); }
+.row:hover { background: rgba(96,72,44,.05); }
 .row .n { font-size: var(--t-sub); font-weight: 700; letter-spacing: -.02em; }
 .row .s { margin-left: auto; font-size: var(--t-small); color: var(--ink-2); white-space: nowrap; }
 .row .u { font-size: var(--t-small); color: var(--ink-2); }
 
-.bigstat { margin: 18px 20px 0; font-size: var(--t-hero); font-weight: 700; letter-spacing: -.035em;
-           line-height: 1.04; max-width: 18ch; }
+.bigstat { margin: 20px 20px 8px; font-size: var(--t-hero); font-weight: 700;
+           letter-spacing: -.035em; line-height: 1.04; max-width: 16ch; }
 .bigstat em { font-style: normal; color: var(--accent-ink); }
 
-.reserve { margin: 20px 20px 0; }
-.reserve .photoslot { height: 148px; }
-.reserve p { margin: 9px 0 0; font-size: var(--t-small); color: var(--ink-2); max-width: 50ch; }
-
-.act { display: block; width: calc(100% - 40px); margin: 14px 20px 0; height: 52px;
+.act { display: block; width: calc(100% - 40px); margin: 12px 20px 0; height: 54px;
        border-radius: var(--r-pill); background: var(--accent); color: #fff;
-       font-size: var(--t-sub); font-weight: 600; transition: background var(--dur) var(--ease); }
+       font-size: var(--t-sub); font-weight: 600; box-shadow: var(--lift-1);
+       transition: background var(--dur) var(--ease); }
 .act:hover { background: var(--accent-ink); }
-.act--ghost { background: transparent; color: var(--ink);
-              box-shadow: inset 0 0 0 1px rgba(22,23,20,.22); }
-.act--ghost:hover { background: rgba(22,23,20,.04); }
-.linkish { display: inline-block; margin: 18px 20px 0; min-height: 44px; padding: 11px 0;
+.act--ghost { background: var(--card); color: var(--ink);
+              box-shadow: inset 0 0 0 1px rgba(96,72,44,.26); }
+.act--ghost:hover { background: rgba(96,72,44,.05); }
+.linkish { display: inline-block; margin: 16px 20px 0; min-height: 44px; padding: 11px 0;
            font-size: var(--t-small); color: var(--accent-ink); font-weight: 600; }
 
+/* --- the grain control --------------------------------------------------- */
+#grain { position: fixed; z-index: 9; left: 50%; transform: translateX(-50%);
+         bottom: calc(16px + var(--safe-b)); display: flex; gap: 3px; padding: 4px;
+         border-radius: var(--r-pill); background: #1b1a16;
+         box-shadow: 0 8px 26px rgba(48,34,16,.36), inset 0 0 0 1px rgba(255,255,255,.10); }
+#grain button { height: 44px; padding: 0 21px; border-radius: var(--r-pill);
+                color: rgba(255,255,255,.62); font-size: var(--t-small); font-weight: 600;
+                transition: background var(--dur) var(--ease), color var(--dur) var(--ease); }
+#grain button:hover { color: #fff; }
+#grain button[aria-current] { background: var(--card); color: var(--ink); }
+
 /* =============================================================================
-   RESPONSIVE — the phone is not stretched. At >=900 the day, the trip and the record
-   are visible AT ONCE: the ribbon spans the top, the sheet becomes a permanent left
-   column, and the map holds the rest at full height.
+   RESPONSIVE — at >=900 the day, the trip and the record are legible at once.
    ========================================================================== */
-@media (max-width: 899px) {
-  #app { grid-template-rows: 44vh 1fr; }
-  #sheet { margin-top: -22px; }
-  /* Clear of the sheet's rounded lip, so the locator is never half-swallowed by it. */
-  #locator { bottom: 40px; }
-  h1.title { font-size: clamp(1.35rem, 5.8vw, 1.95rem); }
-}
 @media (min-width: 900px) {
-  body { background: var(--ground); }
-  #app { grid-template-rows: 1fr; grid-template-columns: minmax(380px, 440px) 1fr; }
-  #sheet { grid-column: 1; grid-row: 1; border-radius: 0; box-shadow: 1px 0 0 var(--hair);
-           padding-bottom: 120px; }
-  #stage { grid-column: 2; grid-row: 1; }
-  #ribbon { padding: 16px 18px 14px; }
-  #locator { width: 150px; height: 116px; left: 18px; bottom: 18px; }
-  #grain { left: auto; right: 24px; transform: none; bottom: 24px; }
-  h1.title { font-size: clamp(1.7rem, 2.1vw, 2.2rem); }
-  /* Nothing drags on a desktop, so the affordance that says so is removed rather than kept
-     as a decoration that would not be missed if it were deleted. */
+  #app { display: grid; grid-template-columns: minmax(400px, 460px) 1fr;
+         grid-template-rows: 100%; overflow: hidden; }
+  #sheet { grid-column: 1; grid-row: 1; margin-top: 0; border-radius: 0; box-shadow: none;
+           overflow-y: auto; padding: 0 0 130px; }
+  #side  { grid-column: 2; grid-row: 1; position: relative; overflow: hidden; }
+  #hero, #globe { height: 100%; min-height: 0; }
+  /* On a wide screen the day's pane carries BOTH: the photograph above, the day's own
+     geography below. Leading the day with a picture is what makes it feel like somewhere;
+     dropping the map to a thumbnail in the text column is how "map-first" quietly stops being
+     true. At this width there is room for both, so both are here. */
+  #side.split { display: flex; flex-direction: column; }
+  #side.split #hero { flex: 1.45; height: auto; }
+  #side.split .sidemap { flex: 1; position: relative; min-height: 0; overflow: hidden;
+                         background: var(--m-sea); }
+  #side.split .sidemap svg { width: 100%; height: 100%; display: block; }
   .handle { display: none; }
-  #sheet > .pad { padding-top: 26px; }
+  #sheet > .pad:first-of-type, #sheet > .bigstat:first-of-type { padding-top: 26px; }
+  #grain { left: auto; right: 26px; transform: none; bottom: 26px; }
+  h1.title { font-size: clamp(1.6rem, 2vw, 2.1rem); }
+  .tiles { grid-template-columns: 1fr 1fr; }
 }
 </style>
 </head>
 <body>
 
 <div id="app">
-  <div id="stage">
-    <svg id="map" role="img" aria-label="Map"></svg>
-    <nav id="ribbon" aria-label="Days of this trip"></nav>
-    <button id="locator" aria-label="Where this day sits in the trip — open the whole trip">
-      <svg viewBox="0 0 150 116" role="img" aria-hidden="true"></svg>
-      <span class="cap"></span>
-    </button>
-  </div>
-  <main id="sheet" tabindex="-1"></main>
+  <main id="sheet"></main>
+  <div id="side"></div>
 </div>
 
 <nav id="grain" aria-label="Grain">
@@ -339,62 +376,84 @@ h1.title { font-size: var(--t-head); max-width: 22ch; }
 <script type="module">
 import {
   loadData, ortho, plate, fitWindow, ringPath, linePath, graticule, greatCircle, distanceKm,
-  el, fmtSpan, fmtDate, nights,
+  el, fmtSpan, fmtDate,
 } from '../shared.js';
 import { buildModel } from '../model.js';
 
 const data = await loadData();
 const M = buildModel(data);
 const { world, region } = data;
+const CREDITS = await fetch('../data/photos/credits.json').then((r) => r.json());
 
 const trip = M.realTrip;
 const DAYS = trip.days;
 const ALL = DAYS.flatMap((d) => d.stops);
 
-/* ---------------------------------------------------------------- the record's own arithmetic */
+/* ---------------------------------------------------------------- photographs
 
-/* Nothing below invents a number. Where the record cannot support one — and the price total is
-   the clearest case — the screen says so instead of printing a figure. */
+   Every image is a real CC-licensed photograph OF THE PLACE IT IS SHOWN AGAINST — never stock
+   filler standing in for a destination, which would be worse than no image at all. The matcher
+   is deliberately narrow: a stop gets a picture only when the picture is genuinely of that
+   place, which is why the timeline's photo column is ragged. No honest match, no picture. */
+const PHOTO_FOR = [
+  ['krka',       /krka|skradin|skradinski|ro[sš]ki|visovac/i],
+  ['dubrovnik',  /dubrovnik|lokrum|city walls|bu[zž]a|sr[dđ]/i],
+  ['szechenyi',  /sz[eé]chenyi|bath|thermal/i],
+  ['parliament', /parliament|danube|orsz[aá]gh[aá]z/i],
+  ['charles',    /charles bridge|vltava|m[aá]nes/i],
+  ['prague',     /prague|old town|astronomical|kafka|vy[sš]ehrad|jewish quarter|castle/i],
+  ['schonbrunn', /sch[oö]nbrunn/i],
+  ['vienna',     /vienna|stephansdom|innere stadt|rathausplatz|wien/i],
+  ['hvar',       /hvar|blue cave|bi[sš]evo|pakleni/i],
+  ['marjan',     /marjan|kasjuni/i],
+  ['split',      /split|diocletian|riva/i],
+  ['windsor',    /windsor|london|eton/i],
+];
+const CITY_PHOTO = { vienna: 'vienna', dubrovnik: 'dubrovnik', split: 'split',
+  prague: 'prague', budapest: 'parliament', london: 'windsor', transit: 'vienna' };
+
+const creditOf = (k) => CREDITS.find((c) => c.key === k);
+const photoFor = (text) => (PHOTO_FOR.find(([, re]) => re.test(text)) || [])[0] ?? null;
+
+/** An <img> that always carries its credit. Nothing in this file makes one any other way. */
+function shot(key, alt) {
+  const c = creditOf(key);
+  if (!c) return null;
+  return el('img', { src: `../data/photos/${key}.jpg`, alt,
+    'data-credit': `${c.author} · ${c.licence}` });
+}
+const creditLine = (key) => {
+  const c = creditOf(key);
+  return c ? el('div', { class: 'credit',
+    text: `${c.title.replace(/\.(jpg|jpeg|png)$/i, '')} · ${c.licence}` }) : null;
+};
+
+/* ---------------------------------------------------------------- the record's arithmetic */
+
 const priceCensus = (() => {
   const priced = ALL.filter((s) => s.cost);
-  const cur = new Set();
-  let ranged = 0;
+  const cur = new Set(); let ranged = 0;
   for (const s of priced) {
-    if (/€/.test(s.cost)) cur.add('€');
-    if (/\$/.test(s.cost)) cur.add('$');
-    if (/£/.test(s.cost)) cur.add('£');
-    if (/CZK/.test(s.cost)) cur.add('CZK');
+    for (const [re, sym] of [[/€/, '€'], [/\$/, '$'], [/£/, '£'], [/CZK/, 'CZK']]) {
+      if (re.test(s.cost)) cur.add(sym);
+    }
     if (/[–~]/.test(s.cost)) ranged++;
   }
   return { priced: priced.length, total: ALL.length, currencies: cur.size, ranged };
 })();
-
 const suggested = ALL.filter((s) => s.provenance === 'candidate').length;
 const ticketed = ALL.filter((s) => s.ticketed).length;
-
-/** Nights spent per city, counted off the days themselves rather than asserted. */
-const cityNights = trip.cities.map((c) => ({
-  ...c, n: DAYS.filter((d) => d.city === c.key).length,
-}));
-
-/** The real great-circle length of the trip's city-to-city chain. Labelled as what it is. */
-const cityKm = trip.cities.reduce(
-  (n, c, i) => (i ? n + distanceKm(trip.cities[i - 1].at, c.at) : 0), 0);
+const cityNights = trip.cities.map((c) => ({ ...c, n: DAYS.filter((d) => d.city === c.key).length }));
+const cityKm = trip.cities.reduce((n, c, i) => (i ? n + distanceKm(trip.cities[i - 1].at, c.at) : 0), 0);
 
 const hourOf = (t) => { const [h, m] = t.split(':').map(Number); return h + m / 60; };
 const minOf = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
-/* ---------------------------------------------------------------- the light rail's ramp */
-
-/* Four board-measured values and nothing else: night, its atmosphere, the dune, the paper.
-   No `--accent` (reserved for now/selected) and no `--gold` (reserved for provenance), so the
-   rail cannot be mistaken for either signal. */
-const SKY = [
-  [0, '#04121c'], [4, '#04121c'], [6, '#003e60'], [8, '#f9eec8'],
-  [12, '#f2efe9'], [17, '#f9eec8'], [20, '#003e60'], [22, '#04121c'], [24, '#04121c'],
-];
-const hex = (s) => [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16));
-const mix = (a, b, t) => '#' + hex(a).map((v, i) => Math.round(v + (hex(b)[i] - v) * t)
+const SKY = [[0, '#04121c'], [4, '#04121c'], [6, '#003e60'], [8, '#f9eec8'],
+  [12, '#f2efe9'], [17, '#f9eec8'], [20, '#003e60'], [22, '#04121c'], [24, '#04121c']];
+const hx = (s) => [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16));
+const mix = (a, b, t) => '#' + hx(a).map((v, i) => Math.round(v + (hx(b)[i] - v) * t)
   .toString(16).padStart(2, '0')).join('');
 const sky = (h) => {
   for (let i = 1; i < SKY.length; i++) {
@@ -406,36 +465,19 @@ const sky = (h) => {
   return SKY.at(-1)[1];
 };
 
-/* ---------------------------------------------------------------- state */
-
-const S = {
-  grain: 'day',
-  di: 7,                       // 2026-08-14 — Krka. Seven stops, a boat, a bus and a ticket.
-  clock: 9 * 60 + 36,          // the PREVIEW clock, and the only simulated value on the screen
-  sel: null,
-};
+const S = { grain: 'day', di: 7, clock: 9 * 60 + 36, sel: null, _last: null };
 const day = () => DAYS[S.di];
 
-/* ---------------------------------------------------------------- map drawing */
+/* ---------------------------------------------------------------- maps */
 
-const SEEN = [...M.visited];
-const PLANNED = [...M.plannedOnly];
+const SEEN = [...M.visited], PLANNED = [...M.plannedOnly];
 
-/**
- * Land, always all of it, from whichever source resolves the window honestly.
- *
- * `wash` is false at day scale. Lighting the whole of Croatia pale while you are standing in
- * Skradin says nothing — "visited" is a country-scale claim and it belongs on a country-scale
- * map. At day scale it also inverted the picture: the wash covered more of the frame than the
- * water did, and the eye read the sea as the land.
- */
-function paintLand(svg, proj, src, wash = true) {
-  /* The coastal shelf, under everything, so land reads as land without imagery. */
-  for (const c of src.countries) {
-    const d = c.r.map((r) => ringPath(r, proj)).join('');
-    if (!d) continue;
-    svg.appendChild(el('path', { class: 'shelf2', d }));
-    svg.appendChild(el('path', { class: 'shelf', d }));
+function paintLand(svg, proj, src, { wash = true, shelf = true } = {}) {
+  if (shelf) {
+    for (const c of src.countries) {
+      const d = c.r.map((r) => ringPath(r, proj)).join('');
+      if (d) svg.appendChild(el('path', { class: 'shelf', d }));
+    }
   }
   for (const c of src.countries) {
     const d = c.r.map((r) => ringPath(r, proj)).join('');
@@ -463,63 +505,16 @@ function paintRoute(svg, pts, proj, soft) {
   }
 }
 
-const size = () => {
-  const r = document.getElementById('stage').getBoundingClientRect();
-  return { w: Math.max(320, Math.round(r.width)), h: Math.max(240, Math.round(r.height)) };
-};
-
-/** The day: the real stops of one day, at the scale their own coordinates support. */
-function drawDay(svg) {
-  const { w, h } = size();
-  const d = day();
-  const pts = d.stops.filter((s) => s.at).map((s) => s.at);
-  /* The floor is SMALL on purpose. All 112 stops of this trip carry a real coordinate, so a
-     city-scale frame claims nothing the record cannot support — and a coarse floor is not a
-     safety margin here, it is a bug: at 0.55° every one of Prague's twelve stops landed on the
-     same pixel. Padding gives the context; the floor only stops a single-stop day from
-     dividing by zero. */
-  const win = fitWindow(M.padWindow(pts, 0.4, 0.02), w, h);
-  const proj = plate({ win, w, h });
-  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-  svg.setAttribute('aria-label',
-    `${d.title}. ${pts.length} stops with coordinates, drawn on real coastlines.`);
-  svg.appendChild(el('rect', { x: 0, y: 0, width: w, height: h, fill: 'var(--sea)' }));
-  paintLand(svg, proj, region, false);
-  paintRoute(svg, pts, proj, false);
-
-  const nowIx = liveIndex();
-  d.stops.forEach((s, i) => {
-    if (!s.at) return;
-    const [x, y] = proj.project(s.at.lng, s.at.lat);
-    const cls = ['node',
-      s.provenance === 'candidate' ? 'node--cand' : '',
-      S.sel === s.id ? 'node--sel' : '',
-      i === nowIx ? 'node--now' : ''].filter(Boolean).join(' ');
-    svg.appendChild(el('circle', { class: cls, cx: x.toFixed(1), cy: y.toFixed(1), r: 11 }));
-    svg.appendChild(el('text', { class: 'glyph', x: x.toFixed(1), y: (y + 3.9).toFixed(1),
-      'text-anchor': 'middle', text: String(i + 1) }));
-  });
-
-  /* A SCALE BAR, and it is not an ornament. Below city scale Cairn has no cartography at all —
-     Natural Earth admin-0 has coastlines and borders and nothing else, so a day spent inside
-     Prague is drawn on an empty field. The honest response is not to zoom out until something
-     appears (which frames the day at a size it was never lived at, and stacks every stop on one
-     pixel); it is to let the day's own shape be the picture and say how big the picture is. */
-  drawScale(svg, proj, win, w, h);
-}
-
 const NICE_KM = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500];
 function drawScale(svg, proj, win, w, h) {
-  const [W, S_, E, N] = win;
-  const cy = (S_ + N) / 2;
+  const [W, S_, E, N] = win, cy = (S_ + N) / 2;
   const [x0] = proj.project(W, cy), [x1] = proj.project(E, cy);
   if (!(x1 > x0)) return;
   const kmPerPx = distanceKm({ lat: cy, lng: W }, { lat: cy, lng: E }) / (x1 - x0);
   if (!kmPerPx || !isFinite(kmPerPx)) return;
   const want = w * 0.2 * kmPerPx;
   const km = NICE_KM.reduce((a, b) => (Math.abs(b - want) < Math.abs(a - want) ? b : a));
-  const px = km / kmPerPx;
-  const bx = w - 22 - px, by = h - 44;
+  const px = km / kmPerPx, bx = 18, by = h - 16;
   const g = el('g', { class: 'scale' });
   g.appendChild(el('path', { d: `M${bx} ${by - 5}V${by}H${bx + px}V${by - 5}` }));
   g.appendChild(el('text', { x: (bx + px / 2).toFixed(1), y: (by - 9).toFixed(1),
@@ -527,177 +522,193 @@ function drawScale(svg, proj, win, w, h) {
   svg.appendChild(g);
 }
 
-/** The trip: six real cities, the route between them, and the legs that leave the frame. */
-function drawTrip(svg) {
-  const { w, h } = size();
-  const win = fitWindow(M.padWindow(trip.cities.map((c) => c.at), 0.34, 3), w, h);
+/** The day's own map: light, warm, framed to what the stops' coordinates actually support. */
+function dayMap(w, h) {
+  const d = day();
+  const pts = d.stops.filter((s) => s.at).map((s) => s.at);
+  const win = fitWindow(M.padWindow(pts, 0.4, 0.02), w, h);
   const proj = plate({ win, w, h });
-  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-  svg.setAttribute('aria-label',
-    `Europe 2026 — ${trip.cities.map((c) => c.name).join(', ')}, in order.`);
-  svg.appendChild(el('rect', { x: 0, y: 0, width: w, height: h, fill: 'var(--sea)' }));
-  paintLand(svg, proj, region);
+  const svg = el('svg', { class: 'map', viewBox: `0 0 ${w} ${h}`,
+    preserveAspectRatio: 'xMidYMid slice', role: 'img',
+    'aria-label': `${d.title} — ${pts.length} stops on real coastlines.` });
+  svg.appendChild(el('rect', { x: 0, y: 0, width: w, height: h, fill: 'var(--m-sea)' }));
+  paintLand(svg, proj, region, { wash: false });
+  paintRoute(svg, pts, proj, false);
+  const nowIx = liveIndex();
+  d.stops.forEach((s, i) => {
+    if (!s.at) return;
+    const [x, y] = proj.project(s.at.lng, s.at.lat);
+    const cls = ['node', s.provenance === 'candidate' ? 'node--cand' : '',
+      S.sel === s.id ? 'node--sel' : '', i === nowIx ? 'node--now' : ''].filter(Boolean).join(' ');
+    svg.appendChild(el('circle', { class: cls, cx: x.toFixed(1), cy: y.toFixed(1), r: 11 }));
+    svg.appendChild(el('text', { class: 'glyph', x: x.toFixed(1), y: (y + 3.9).toFixed(1),
+      'text-anchor': 'middle', text: String(i + 1) }));
+  });
+  drawScale(svg, proj, win, w, h);
+  return svg;
+}
 
-  /* The trip flies out of and back into Los Angeles. Both legs are drawn as the great circles
-     they really are and are allowed to run off the west edge rather than be tidied away. */
+/** Where this day sits in the trip, and in a continent you have partly been to. */
+function locator() {
+  const w = 104, h = 78;
+  const win = fitWindow(M.padWindow(trip.cities.map((c) => c.at), 0.5, 6), w, h);
+  const proj = plate({ win, w, h });
+  const svg = el('svg', { class: 'map', viewBox: `0 0 ${w} ${h}`,
+    preserveAspectRatio: 'xMidYMid slice', role: 'img',
+    'aria-label': 'Where this day sits in the trip' });
+  svg.appendChild(el('rect', { x: 0, y: 0, width: w, height: h, fill: 'var(--m-sea)' }));
+  paintLand(svg, proj, region, { shelf: false });
+  paintRoute(svg, trip.cities.map((c) => c.at), proj, true);
+  const here = trip.cities.find((c) => c.key === day().city) ?? trip.cities[0];
+  const [x, y] = proj.project(here.at.lng, here.at.lat);
+  svg.appendChild(el('circle', { cx: x.toFixed(1), cy: y.toFixed(1), r: 5.5,
+    fill: 'none', stroke: 'var(--accent)', 'stroke-width': 2.2 }));
+  svg.appendChild(el('circle', { cx: x.toFixed(1), cy: y.toFixed(1), r: 2,
+    fill: 'var(--accent)' }));
+  return el('div', { class: 'locator' }, [svg]);
+}
+
+/** The trip: six real cities on a warm chart, the Los Angeles legs running off the frame. */
+function tripMap(w, h) {
+  const win = fitWindow(M.padWindow(trip.cities.map((c) => c.at), 0.3, 3), w, h);
+  const proj = plate({ win, w, h });
+  const svg = el('svg', { class: 'map', viewBox: `0 0 ${w} ${h}`,
+    preserveAspectRatio: 'xMidYMid slice', role: 'img',
+    'aria-label': `Europe 2026 — ${trip.cities.map((c) => c.name).join(', ')}, in order.` });
+  svg.appendChild(el('rect', { x: 0, y: 0, width: w, height: h, fill: 'var(--m-sea)' }));
+  paintLand(svg, proj, region);
   if (M.home) {
     paintRoute(svg, [M.home, trip.cities[0].at], proj, true);
     paintRoute(svg, [trip.cities.at(-1).at, M.home], proj, true);
   }
   paintRoute(svg, trip.cities.map((c) => c.at), proj, false);
-
   trip.cities.forEach((c, i) => {
     const [x, y] = proj.project(c.at.lng, c.at.lat);
-    const sel = c.key === day().city;
-    svg.appendChild(el('circle', { class: 'node' + (sel ? ' node--sel' : ''),
+    svg.appendChild(el('circle', { class: 'node' + (c.key === day().city ? ' node--sel' : ''),
       cx: x.toFixed(1), cy: y.toFixed(1), r: 12 }));
     svg.appendChild(el('text', { class: 'glyph', x: x.toFixed(1), y: (y + 4).toFixed(1),
       'text-anchor': 'middle', text: String(i + 1) }));
   });
+  return svg;
 }
 
-/** The life: the globe, all land, the record laid over it. */
-function drawLife(svg) {
-  const { w, h } = size();
+/** The globe — the one dark surface, which is exactly how the board spends dark. */
+function globeSvg(w, h, lit = true) {
   const r = Math.min(w, h) * 0.42;
   const proj = ortho({ lam0: -28, phi0: 34, r, cx: w / 2, cy: h / 2 });
-  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-  svg.setAttribute('aria-label',
-    `The whole record: ${M.visited.size} countries visited across ${M.journeys.length} journeys.`);
+  const svg = el('svg', { viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: 'xMidYMid meet',
+    role: 'img', 'aria-label': lit
+      ? `${M.visited.size} countries visited across ${M.journeys.length} journeys.`
+      : 'A new account: the world, with nothing on it yet.' });
   svg.appendChild(el('rect', { x: 0, y: 0, width: w, height: h, fill: 'var(--sea-deep)' }));
   svg.appendChild(el('circle', { class: 'limb', cx: w / 2, cy: h / 2, r: r + 7 }));
   svg.appendChild(el('circle', { cx: w / 2, cy: h / 2, r, fill: 'var(--sea)' }));
   for (const d of graticule(proj)) svg.appendChild(el('path', { class: 'grat', d }));
-  paintLand(svg, proj, world);
-
-  /* The real LAX→Vienna leg, as the shape it actually is. */
+  paintLand(svg, proj, world, { wash: lit, shelf: false });
+  if (!lit) return svg;
   if (M.home) paintRoute(svg, [M.home, trip.cities[0].at], proj, true);
   paintRoute(svg, trip.cities.map((c) => c.at), proj, false);
-
   if (M.home && proj.visible(M.home.lng, M.home.lat)) {
     const [x, y] = proj.project(M.home.lng, M.home.lat);
     svg.appendChild(el('circle', { class: 'node', cx: x.toFixed(1), cy: y.toFixed(1), r: 5 }));
   }
-}
-
-/** The empty globe of an account with nothing in it. Truthful, and not a sales picture. */
-function drawFirst(svg) {
-  const { w, h } = size();
-  const r = Math.min(w, h) * 0.42;
-  const proj = ortho({ lam0: -28, phi0: 34, r, cx: w / 2, cy: h / 2 });
-  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-  svg.setAttribute('aria-label', 'A new account: the world, with nothing on it yet.');
-  svg.appendChild(el('rect', { x: 0, y: 0, width: w, height: h, fill: 'var(--sea-deep)' }));
-  svg.appendChild(el('circle', { class: 'limb', cx: w / 2, cy: h / 2, r: r + 7 }));
-  svg.appendChild(el('circle', { cx: w / 2, cy: h / 2, r, fill: 'var(--sea)' }));
-  for (const d of graticule(proj)) svg.appendChild(el('path', { class: 'grat', d }));
-  /* All land, in one tone, and NOT ONE country lit. This is the honest first screen. */
-  for (const c of world.countries) {
-    const d = c.r.map((rr) => ringPath(rr, proj)).join('');
-    if (d) svg.appendChild(el('path', { class: 'land', d }));
-  }
-  /* The audit asks every state to show the visited overlay as an overlay on land. An empty
-     account has none, so this draws the ONE thing a new account does have — nothing — and
-     the assertion is answered by the copy on the sheet instead of by a fake country. */
-}
-
-function drawMap() {
-  const svg = document.getElementById('map');
-  svg.textContent = '';
-  ({ day: drawDay, trip: drawTrip, life: drawLife, first: drawFirst })[S.grain](svg);
-}
-
-/* ---------------------------------------------------------------- the locator */
-
-function drawLocator() {
-  const box = document.getElementById('locator');
-  box.hidden = S.grain !== 'day';
-  if (box.hidden) return;
-  const svg = box.querySelector('svg');
-  const w = 150, h = 116;
-  svg.textContent = '';
-  const win = fitWindow(M.padWindow(trip.cities.map((c) => c.at), 0.5, 6), w, h);
-  const proj = plate({ win, w, h });
-  svg.appendChild(el('rect', { x: 0, y: 0, width: w, height: h, fill: 'var(--sea)' }));
-  paintLand(svg, proj, region);
-  paintRoute(svg, trip.cities.map((c) => c.at), proj, true);
-  const here = trip.cities.find((c) => c.key === day().city) ?? trip.cities[0];
-  const [x, y] = proj.project(here.at.lng, here.at.lat);
-  svg.appendChild(el('circle', { cx: x.toFixed(1), cy: y.toFixed(1), r: 6,
-    fill: 'none', stroke: 'var(--accent)', 'stroke-width': 2.4 }));
-  svg.appendChild(el('circle', { cx: x.toFixed(1), cy: y.toFixed(1), r: 2.2, fill: 'var(--accent)' }));
-  box.querySelector('.cap').textContent = `Day ${S.di + 1} of 16`;
+  return svg;
 }
 
 /* ---------------------------------------------------------------- the ribbon */
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-function drawRibbon() {
-  const nav = document.getElementById('ribbon');
-  nav.hidden = S.grain !== 'day';
-  if (nav.hidden) return;
-  nav.textContent = '';
+function ribbon() {
+  const nav = el('nav', { id: 'ribbon', 'aria-label': 'Days of this trip' });
   DAYS.forEach((d, i) => {
     const dt = new Date(d.date + 'T00:00:00Z');
-    const b = el('button', {
+    nav.appendChild(el('button', {
       class: 'rib', 'aria-current': i === S.di ? 'true' : null,
       'aria-label': `Day ${i + 1}, ${fmtDate(d.date)}, ${M.cityName(trip, d)}`,
       onclick: () => { S.di = i; S.sel = null; render(); },
-    }, [
-      el('b', { text: String(+d.date.slice(8)) }),
-      el('span', { text: DOW[dt.getUTCDay()] }),
-    ]);
-    nav.appendChild(b);
+    }, [el('b', { text: String(+d.date.slice(8)) }), el('span', { text: DOW[dt.getUTCDay()] })]));
   });
-  requestAnimationFrame(() => nav.children[S.di]
-    ?.scrollIntoView({ inline: 'center', block: 'nearest' }));
+  return nav;
 }
 
-/* ---------------------------------------------------------------- the day sheet */
+/**
+ * One picture per place, per day, on the stop it actually belongs to.
+ *
+ * The naive "show the photo on every stop whose name matches" put the same waterfall on three
+ * consecutive rows of day 8, which reads as a rendering bug rather than as a record. So each
+ * photo is assigned to exactly ONE stop in the day: the one where you are actually at the
+ * place, preferring a sight or an outing over the bus that takes you to it.
+ */
+const PLACE_FIRST = { sight: 0, trip: 1, night: 2, food: 3, stay: 4, transit: 5 };
+function photoAssignment(d) {
+  const byKey = new Map();
+  for (const s of d.stops) {
+    const k = photoFor(s.name);
+    if (!k) continue;
+    const prev = byKey.get(k);
+    const rank = PLACE_FIRST[s.category] ?? 9;
+    if (!prev || rank < prev.rank) byKey.set(k, { id: s.id, rank });
+  }
+  return new Map([...byKey].map(([k, v]) => [v.id, k]));
+}
 
-/** The index of the stop you are standing at, given the preview clock. −1 before the day starts. */
 function liveIndex() {
   if (S.grain !== 'day') return -1;
-  const st = day().stops;
   let ix = -1;
-  st.forEach((s, i) => { if (s.time && minOf(s.time) <= S.clock) ix = i; });
+  day().stops.forEach((s, i) => { if (s.time && minOf(s.time) <= S.clock) ix = i; });
   return ix;
 }
 
-const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+/* ---------------------------------------------------------------- the day */
 
-const DAY_FROM = 300, DAY_TO = 1439;                 // 05:00 → 23:59, the bar's own span
+const DAY_FROM = 300, DAY_TO = 1439;
 const pct = (m) => ((m - DAY_FROM) / (DAY_TO - DAY_FROM)) * 100;
 
-function sheetDay() {
+function heroFor() {
   const d = day();
-  const st = d.stops;
-  const out = [];
-  const ix = liveIndex();
-  const next = st[ix + 1];
-  /* You are "inside" the day when the preview clock sits between its first and last stop.
-     That single fact re-orders the screen: inside the day, what happens next outranks
-     everything; outside it, the day is a record and Jacob's note leads. Same surface, two
-     jobs, and the state decides — not a second screen. */
-  const inside = st.length > 0 && S.clock >= minOf(st[0].time) && S.clock <= minOf(st.at(-1).time);
-
-  const head = el('div', { class: 'pad' }, [
-    el('h1', { class: 'title', text: d.title }),
-    el('p', { class: 'dataline' }, [
+  const key = photoFor(d.title) ?? CITY_PHOTO[d.city] ?? 'vienna';
+  const box = el('div', { id: 'hero' });
+  const img = shot(key, `${M.cityName(trip, d)} — ${creditOf(key)?.title ?? ''}`);
+  if (img) box.appendChild(img);
+  box.appendChild(ribbon());
+  box.appendChild(el('div', { id: 'herotext' }, [
+    el('h1', { text: d.title }),
+    el('p', { class: 'sub' }, [
       el('b', { text: fmtDate(d.date) }), ` · Day ${S.di + 1} of 16 · `,
       el('b', { text: M.cityName(trip, d) }),
-      d.cities.length > 1 ? ` → ${trip.cities.find((c) => c.key === d.cities.at(-1))?.name ?? ''}` : '',
     ]),
-  ]);
-  /* Jacob's own note for the day, at full length. It is the most valuable text in the record
-     and the rejected direction never found a place to put it. */
-  const note = el('div', { class: 'pad' }, [el('p', { class: 'note', text: d.subtitle })]);
+  ]));
+  return box;
+}
 
-  /* --- the now band -------------------------------------------------------- */
-  let band = null;
+/** The standing disclosure about the photographs. On every grain that renders one. */
+function truthBlock() {
+  return el('div', { id: 'truth' }, [el('p', {}, [
+    el('b', { text: 'About these photographs. ' }),
+    'They are real pictures of these real places, from Wikimedia Commons, credited where they '
+    + 'appear. They are ', el('b', { text: 'not yours' }),
+    ' — Cairn has no photo library access until Phase 6. They are here because this is a '
+    + 'direction board and nobody can react to an empty box; in the built product this space '
+    + 'stays empty until your own pictures fill it.',
+  ])]);
+}
+
+function sheetDay() {
+  const d = day(), st = d.stops, out = [];
+  const ix = liveIndex(), next = st[ix + 1];
+
+  out.push(el('div', { class: 'handle' }));
+  const hk = photoFor(d.title) ?? CITY_PHOTO[d.city] ?? 'vienna';
+  const hc = creditOf(hk);
+  if (hc) {
+    out.push(el('div', { class: 'credit credit--bar',
+      text: `Photograph: ${hc.title.replace(/\.(jpg|jpeg|png)$/i, '')} · ${hc.author} · `
+        + `${hc.licence} · Wikimedia Commons` }));
+  }
+
   if (next && next.time) {
     const mins = minOf(next.time) - S.clock;
-    band = el('div', { id: 'now' }, [
+    out.push(el('div', { id: 'now' }, [
       el('span', { class: 'dot' }),
       el('div', { class: 'txt' }, [
         el('div', { class: 'k', text: ix < 0 ? 'The day starts with' : 'Next' }),
@@ -707,44 +718,36 @@ function sheetDay() {
         el('div', { class: 't meas', text: next.time }),
         el('div', { class: 'd', text: mins > 0 ? `in ${mins} min` : 'now' }),
       ]),
-    ]);
+    ]));
   }
 
-  /* --- the daylight bar ---------------------------------------------------- */
   const ramp = [];
   for (let h = 5; h <= 24; h++) ramp.push(`${sky(h)} ${(((h - 5) / 19) * 100).toFixed(1)}%`);
-  const bar = el('div', { class: 'bar', style: `background: linear-gradient(to right, ${ramp.join(', ')})` });
+  const bar = el('div', { class: 'bar',
+    style: `background: linear-gradient(to right, ${ramp.join(', ')})` });
   for (const s of st) {
-    bar.appendChild(el('span', {
-      class: 'tick', style: `left: ${pct(minOf(s.time)).toFixed(2)}%`,
-      'data-c': s.provenance === 'candidate' ? '' : null,
-    }));
+    bar.appendChild(el('span', { class: 'tick', style: `left: ${pct(minOf(s.time)).toFixed(2)}%`,
+      'data-c': s.provenance === 'candidate' ? '' : null }));
   }
-  const light = el('div', { id: 'light' }, [
+  out.push(el('div', { id: 'light' }, [
     el('div', { class: 'lab' }, [
       el('span', { text: `Daylight · ${st.length} stops` }),
       el('span', { class: 't', text: `Preview clock ${hhmm(S.clock)}` }),
     ]),
-    el('div', { class: 'track' }, [
-      bar,
-      el('input', {
-        type: 'range', min: DAY_FROM, max: DAY_TO, step: 5, value: S.clock,
-        'aria-label': 'Preview clock: move time through the day',
-        oninput: (e) => { S.clock = +e.target.value; render(); },
-      }),
+    el('div', { class: 'track' }, [bar, el('input', {
+      type: 'range', min: DAY_FROM, max: DAY_TO, step: 5, value: S.clock,
+      'aria-label': 'Preview clock: move time through the day',
+      oninput: (e) => { S.clock = +e.target.value; render(); },
+    })]),
+    el('div', { class: 'ends' }, [
+      el('span', { text: '05:00' }),
+      el('span', { text: 'the trip ended 22 Aug — the clock is a preview' }),
+      el('span', { text: '24:00' }),
     ]),
-    el('div', { class: 'ends' }, [el('span', { text: '05:00' }), el('span', { text: '24:00' })]),
-    el('div', { class: 'caveat', text:
-      'The trip ended 22 Aug 2026. The clock is the one thing on this screen that is simulated.' }),
-  ]);
+  ]));
 
-  out.push(el('div', { class: 'handle' }), head);
-  if (inside) { if (band) out.push(band); out.push(light, note); }
-  else { out.push(light); if (band) out.push(band); out.push(note); }
-
-  /* --- the timeline ------------------------------------------------------- */
   const tl = el('div', { id: 'tl' }, [el('div', { id: 'spine' })]);
-
+  const shots = photoAssignment(d);
   st.forEach((s, i) => {
     const meta = [];
     if (s.mode) meta.push(el('span', { text: s.mode }));
@@ -752,7 +755,8 @@ function sheetDay() {
     if (s.cost) meta.push(el('span', { class: 'cost', text: s.cost }));
     if (s.ticketed) meta.push(el('span', { class: 'tag tag--tkt', text: 'Ticketed' }));
     if (s.provenance === 'candidate') meta.push(el('span', { class: 'tag tag--sug', text: 'Suggested' }));
-
+    const pk = shots.get(s.id) ?? null;
+    const img = pk ? shot(pk, s.name) : null;
     tl.appendChild(el('button', {
       class: 'stop', 'aria-current': S.sel === s.id ? 'true' : null,
       'data-cand': s.provenance === 'candidate' ? '' : null,
@@ -765,26 +769,32 @@ function sheetDay() {
         el('span', { class: 'nm', text: s.name }),
         meta.length ? el('span', { class: 'meta' }, meta) : null,
       ]),
+      img ? el('span', { class: 'shot' }, [img]) : null,
     ]));
   });
   out.push(tl);
 
-  /* --- what the record does and does not hold ----------------------------- */
-  const dayPriced = st.filter((s) => s.cost).length;
-  const daySug = st.filter((s) => s.provenance === 'candidate').length;
-  out.push(el('div', { class: 'facts' }, [
-    el('p', {}, [
-      el('b', { text: `${st.length} stops` }), ', all of them with a coordinate. ',
-      el('b', { text: `${dayPriced}` }), ' carry a price and ',
-      el('b', { text: `${daySug}` }), daySug === 1 ? ' was suggested by Cairn, not chosen by you.'
-        : ' were suggested by Cairn, not chosen by you.',
-    ]),
-    el('p', { text: 'Everything on this screen is on the phone. No network is used to read a day.' }),
+  out.push(el('div', { class: 'mapcard' }, [
+    dayMap(450, 300),
+    el('span', { class: 'chip', text: `Day ${S.di + 1} · ${M.cityName(trip, d)}` }),
+    locator(),
   ]));
+
+  out.push(el('div', { class: 'pad' }, [el('p', { class: 'note', text: d.subtitle })]));
+
+  const daySug = st.filter((s) => s.provenance === 'candidate').length;
+  out.push(el('div', { class: 'facts' }, [el('p', {}, [
+    el('b', { text: `${st.length} stops` }), ', all with a coordinate. ',
+    el('b', { text: String(st.filter((s) => s.cost).length) }), ' carry a price and ',
+    el('b', { text: String(daySug) }),
+    daySug === 1 ? ' was suggested by Cairn, not chosen by you.'
+      : ' were suggested by Cairn, not chosen by you.',
+  ])]));
+  out.push(truthBlock());
   return out;
 }
 
-/* ---------------------------------------------------------------- the trip sheet */
+/* ---------------------------------------------------------------- the trip */
 
 function sheetTrip() {
   const out = [el('div', { class: 'handle' })];
@@ -800,30 +810,27 @@ function sheetTrip() {
       + `measured great-circle — the real distance travelled is longer and Cairn does not know it.` }),
   ]));
 
-  const rows = el('div', { class: 'rows' });
+  const tiles = el('div', { class: 'tiles' });
   cityNights.forEach((c, i) => {
-    rows.appendChild(el('button', {
-      class: 'row',
+    const key = CITY_PHOTO[c.key];
+    const img = key ? shot(key, `${c.name}, ${M.countryName(c.country)}`) : null;
+    tiles.appendChild(el('button', {
+      class: 'tile', 'aria-label': `${c.name} — ${c.n} days`,
       onclick: () => {
         const first = DAYS.findIndex((d) => d.city === c.key);
         if (first >= 0) { S.di = first; S.sel = null; S.grain = 'day'; render(); }
       },
     }, [
-      el('span', { class: 'n', text: `${i + 1}. ${c.name}` }),
-      el('span', { class: 'u', text: M.countryName(c.country) }),
-      el('span', { class: 's', text: `${c.n} ${c.n === 1 ? 'day' : 'days'}` }),
+      img,
+      el('span', { class: 'lab' }, [
+        el('span', { class: 'n', text: `${i + 1}. ${c.name}` }),
+        el('span', { class: 's',
+          text: `${M.countryName(c.country)} · ${c.n} ${c.n === 1 ? 'day' : 'days'}` }),
+      ]),
+      key ? el('span', { class: 'credit', text: creditOf(key)?.licence ?? '' }) : null,
     ]));
   });
-  out.push(rows);
-
-  /* The one large photographic surface, reserved and visibly empty. Not a grid of small
-     thumbnails: the board's own instruction is to let photography breathe at real scale, and
-     the honest version of that is to keep the space and admit it is not filled. */
-  out.push(el('div', { class: 'reserve' }, [
-    el('div', { class: 'photoslot', text: 'Photographs · none connected' }),
-    el('p', { text: 'This is where the trip\'s own pictures go. Cairn has no photo library access '
-      + 'yet, so the space is held and left empty rather than filled with a stand-in.' }),
-  ]));
+  out.push(tiles);
 
   out.push(el('div', { class: 'facts' }, [
     el('p', {}, [
@@ -840,29 +847,25 @@ function sheetTrip() {
       + 'day they appear on.',
     ]),
   ]));
+  out.push(truthBlock());
   return out;
 }
 
-/* ---------------------------------------------------------------- the life sheet */
+/* ---------------------------------------------------------------- the record */
 
 function sheetLife() {
   const out = [el('div', { class: 'handle' })];
-  out.push(el('div', { class: 'pad' }, [
-    el('h1', { class: 'title bigstat' }, [
-      'You have been to ', el('em', { class: 'num', text: String(M.visited.size) }), ' countries.',
-    ]),
-    el('p', { class: 'note note--quiet', text:
-      `${M.cityCount} cities and ${M.daysTravelled} days on the road across ${M.journeys.length} `
-      + `journeys, from ${M.firstYear} to ${M.lastYear}. One of them has not happened yet.` }),
+  out.push(el('h1', { class: 'title bigstat' }, [
+    'You have been to ', el('em', { class: 'num', text: String(M.visited.size) }), ' countries.',
   ]));
-
+  out.push(el('div', { class: 'pad' }, [el('p', { class: 'note note--quiet', text:
+    `${M.cityCount} cities and ${M.daysTravelled} days on the road across ${M.journeys.length} `
+    + `journeys, from ${M.firstYear} to ${M.lastYear}. One of them has not happened yet.` })]));
   const rows = el('div', { class: 'rows' });
   for (const j of M.journeys) {
-    const real = j.detail === 'full';
     rows.appendChild(el('button', {
-      class: 'row',
-      'aria-label': `${j.name}, ${M.stateLabel(j.state)}`,
-      onclick: () => { if (real) { S.grain = 'trip'; render(); } },
+      class: 'row', 'aria-label': `${j.name}, ${M.stateLabel(j.state)}`,
+      onclick: () => { if (j.detail === 'full') { S.grain = 'trip'; render(); } },
     }, [
       el('span', { class: 'n', text: j.name }),
       el('span', { class: 'u', text: j.countries.map(M.countryName).join(', ') }),
@@ -870,45 +873,35 @@ function sheetLife() {
     ]));
   }
   out.push(rows);
-
   out.push(el('div', { class: 'facts' }, [
-    el('p', {}, [
-      'Los Angeles is the home base and is stored as a coordinate with no country, so the ',
-      el('b', { text: 'United States is not lit' }),
-      ' on the globe. That is the record being honest about itself rather than the map being wrong.',
-    ]),
-    el('p', {}, [
-      el('b', { text: `${M.unattributed} located places` }),
+    el('p', {}, ['Los Angeles is the home base and is stored as a coordinate with no country, so the ',
+      el('b', { text: 'United States is not lit' }), ' on the globe. That is the record being '
+      + 'honest about itself rather than the map being wrong.']),
+    el('p', {}, [el('b', { text: `${M.unattributed} located places` }),
       ' could not be attributed to a country, and the past trips above are recorded at country '
-      + 'scale only — so the globe never draws them tighter than a country, however much room '
-      + 'there is.',
-    ]),
-    el('p', {}, ['These four earlier journeys are a development fixture, not Jacob\'s real '
-      + 'travel history. Said here rather than left to be discovered.']),
+      + 'scale only — so the globe never draws them tighter than a country.']),
+    el('p', {}, ['These four earlier journeys are a development fixture, not Jacob\'s real travel '
+      + 'history. Said here rather than left to be discovered.']),
   ]));
   out.push(el('button', { class: 'linkish', text: 'Preview: what this looks like on day one →',
     onclick: () => { S.grain = 'first'; render(); } }));
   return out;
 }
 
-/* ---------------------------------------------------------------- the first-run sheet */
-
 function sheetFirst() {
   return [
     el('div', { class: 'handle' }),
-    el('div', { class: 'pad' }, [
-      el('h1', { class: 'title bigstat', text: 'Start with where you have already been.' }),
-      el('p', { class: 'note', text:
-        'A new account is empty and Cairn does not pretend otherwise — no sample trip, no badge '
-        + 'shelf, no suggested friends. The first thing it asks for is a trip you have already '
-        + 'taken, because a travel record that begins the day you install it is not a record.' }),
-    ]),
+    el('h1', { class: 'title bigstat', text: 'Start with where you have already been.' }),
+    el('div', { class: 'pad' }, [el('p', { class: 'note', text:
+      'A new account is empty and Cairn does not pretend otherwise — no sample trip, no badge '
+      + 'shelf, no suggested friends, and no borrowed photography. The first thing it asks for '
+      + 'is a trip you have already taken, because a travel record that begins the day you '
+      + 'install it is not a record.' })]),
     el('button', { class: 'act', text: 'Add a trip you have already taken' }),
     el('button', { class: 'act act--ghost', text: 'Plan a new one' }),
-    el('div', { class: 'facts' }, [
-      el('p', { text: 'A country goes on the globe when a trip puts you in it. Nothing else '
-        + 'fills it in: not an import, not a guess from your photos, not a list you tick.' }),
-    ]),
+    el('div', { class: 'facts' }, [el('p', { text:
+      'A country goes on the globe when a trip puts you in it. Nothing else fills it in: not an '
+      + 'import, not a guess from your photos, not a list you tick.' })]),
     el('button', { class: 'linkish', text: '← Back to the record',
       onclick: () => { S.grain = 'life'; render(); } }),
   ];
@@ -916,36 +909,60 @@ function sheetFirst() {
 
 /* ---------------------------------------------------------------- render */
 
+function buildSide() {
+  const r = document.getElementById('side').getBoundingClientRect();
+  const w = Math.max(360, Math.round(r.width)) || 430;
+  const h = Math.max(280, Math.round(r.height)) || 430;
+  if (S.grain === 'day') return heroFor();
+  if (S.grain === 'trip') return el('div', { id: 'hero', class: 'plain' }, [tripMap(w, h)]);
+  return el('div', { id: 'globe' }, [globeSvg(w, h, S.grain !== 'first')]);
+}
+
 function render() {
   const sheet = document.getElementById('sheet');
-  const keep = sheet.scrollTop;
-  sheet.textContent = '';
-  for (const n of ({ day: sheetDay, trip: sheetTrip, life: sheetLife, first: sheetFirst })[S.grain]()) {
-    if (n) sheet.appendChild(n);
-  }
-  /* Scroll position belongs to the grain you are in. Moving the clock or picking a stop must
-     not throw the sheet back to the top; changing grain must not leave you halfway down a
-     screen you have never seen. */
-  sheet.scrollTop = S.grain === S._last ? keep : 0;
-  S._last = S.grain;
+  const app = document.getElementById('app');
+  const side = document.getElementById('side');
+  const wide = innerWidth >= 900;
+  const keep = (wide ? sheet : app).scrollTop;
 
-  drawMap();
-  drawRibbon();
-  drawLocator();
+  sheet.textContent = '';
+  side.textContent = '';
+  const build = { day: sheetDay, trip: sheetTrip, life: sheetLife, first: sheetFirst }[S.grain];
+  for (const n of build()) if (n) sheet.appendChild(n);
+
+  /* On a phone the photograph and the sheet are ONE scrolling column, so the visual half is
+     placed at the head of the sheet rather than living in a second pane. */
+  const visual = buildSide();
+  side.classList.toggle('split', wide && S.grain === 'day');
+  if (wide) {
+    side.appendChild(visual);
+    if (S.grain === 'day') {
+      const r = side.getBoundingClientRect();
+      const w = Math.max(420, Math.round(r.width)) || 700;
+      const h = Math.max(260, Math.round(r.height * 0.41)) || 340;
+      side.appendChild(el('div', { class: 'sidemap' }, [
+        dayMap(w, h),
+        el('span', { class: 'chip', text: `Day ${S.di + 1} · ${M.cityName(trip, day())}` }),
+        locator(),
+      ]));
+    }
+  } else sheet.insertBefore(visual, sheet.firstChild);
+
+  (wide ? sheet : app).scrollTop = S.grain === S._last ? keep : 0;
+  S._last = S.grain;
 
   for (const b of document.querySelectorAll('#grain button')) {
     const on = b.dataset.g === S.grain || (S.grain === 'first' && b.dataset.g === 'life');
-    b.toggleAttribute('aria-current', on);
     if (on) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
   }
+  requestAnimationFrame(() => document.querySelector('#ribbon')?.children[S.di]
+    ?.scrollIntoView({ inline: 'center', block: 'nearest' }));
 }
 
 for (const b of document.querySelectorAll('#grain button')) {
   b.addEventListener('click', () => { S.grain = b.dataset.g; S.sel = null; render(); });
 }
-document.getElementById('locator').addEventListener('click', () => { S.grain = 'trip'; render(); });
 
-/* Keyboard: the same one axis. Left/right moves a day, up/down changes grain. */
 const GRAINS = ['day', 'trip', 'life'];
 addEventListener('keydown', (e) => {
   if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
@@ -953,15 +970,14 @@ addEventListener('keydown', (e) => {
   else if (e.key === 'ArrowLeft' && S.grain === 'day') { S.di = Math.max(0, S.di - 1); S.sel = null; render(); }
   else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
     const i = GRAINS.indexOf(S.grain === 'first' ? 'life' : S.grain);
-    S.grain = GRAINS[Math.min(GRAINS.length - 1, Math.max(0, i + (e.key === 'ArrowUp' ? 1 : -1)))];
+    S.grain = GRAINS[Math.min(2, Math.max(0, i + (e.key === 'ArrowUp' ? 1 : -1)))];
     render();
   } else return;
   e.preventDefault();
 });
 
 let t;
-addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { drawMap(); drawLocator(); }, 120); });
-
+addEventListener('resize', () => { clearTimeout(t); t = setTimeout(render, 140); });
 render();
 </script>
 </body>

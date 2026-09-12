@@ -11,8 +11,31 @@
 > own limit on that reference ("do not copy Polarsteps literally; Cairn needs its own identity")
 > is the thing it breaks. **D takes what that board got right and pays for it honestly**: its
 > signature is the surface the Europe planner already proved and no reference on the board has —
-> a day dense enough to travel from — and it is held to the same rule A, B and C were, which is
-> that a screen may only show what exists.
+> a day dense enough to travel from.
+>
+> **Revision 1 of D was rejected on sight, and revision 2 is what stands.** Jacob: *"your pictures
+> look like ai slop. There's no warm and it looks nothing like the screenshots I sent. This
+> visually doesn't look appealing or app worthy at all."* All of it was correct. Revision 1 built
+> its sheet on **pure white** and its map on **cold navy**, and spent the board's warm values — the
+> cream ground, the brick accent — on a 22px gradient strip and a slider thumb. And it rendered no
+> photography, because it read Rule B (*a screen may only show what exists*) as a rule about
+> **aesthetics** rather than about **content**: with no imagery there is no colour, so everything
+> became large type on white — **which is precisely the failure Jacob had already rejected once**
+> (I-8b, *"bland, overly typographic, emotionally empty… a transit atlas"*). Revision 1 criticised
+> the Codex board for leaning on photography and then demonstrated why it leans on it.
+>
+> **Two rulings from Jacob, 2026-09-12, and they reach further than this one direction:**
+>
+> 1. **A direction board may render the target state, photography included.** His reaction to
+>    rendered pixels is the selection gate, and nobody can react to an empty box. Rule B governs
+>    what gets **built**; it does not govern what gets **pitched**. What makes that honest is put
+>    on screen rather than assumed: every photograph is of the **real place**, is freely licensed,
+>    carries its credit where it appears, and sits under a standing disclosure saying the pictures
+>    are not his and that the built product leaves the space empty until Phase 6. `audit.mjs`
+>    asserts all three.
+> 2. **Rebuild rather than reskin.** The composition was part of what was wrong, so revision 2
+>    keeps only the thesis — the travel day as the signature surface — and rebuilds the visual
+>    language against the board Jacob sent.
 
 **Status: AWAITING VISUAL SELECTION. 2026-09-02, extended 2026-09-12.** Produced under Jacob's visual-direction ruling
 (`REFERENCE-BOARD.md` Appendix A). **No winner is chosen here, and none may be.** Production UI is
