@@ -1993,6 +1993,52 @@ by nothing else.
   conflict named, because it is exactly the sentence a later reader would use to argue this was built
   against the brief. **If Jacob reads the non-goal the other way, §11 is withdrawn, not reinterpreted.**
 
+**Revision 79, 2026-09-12.** **`I-37` is BUILT (`e0fea87`) and QA round 71 sent it back — 0 blockers, 3
+MAJOR, 4 MINOR — so `I-38` is queued as the whole code consequence of `ARCHITECTURE.md` revision 79's
+§11.12 **A-97**.** Round 71 was a confirmation round and it confirmed the thing it was asked to: `I-37`'s
+classifier is exactly right cell by cell (44/0/4 → 46/0/2, **exactly two movers**, both the evenings A-96
+Part 4 names), its `overlap` identity is exact over **858 stop shapes**, and its redaction chokepoint held
+under a sentinel in **every** user-authored string field the model has. **What broke is the prose built on
+top of a correct classifier**, and all three MAJORs are one class: the renderer read something other than
+what the decision was made from. **`I-36` stays blocked behind `I-38`. No `.tsx`, no `apps/web` file and no
+`docs/design/` file, and nothing here gates `I-30`**, which is still fenced by the unresolved visual
+direction and by nothing else.
+
+- **The ruling, and it is `I-37`'s own success turned one line to the right.** `occupiedInterval` clamps a
+  run's end to 23:59 so the daypart predicate can make no claim about the next day — correct — and
+  `free_time` rendered that clamp as a landing time: *"on 2026-08-07 you are on a flight from 16:45 **until
+  23:59**"*, on the default output of `node cli.ts ask "do I have a free evening"`, about a stop whose
+  document says `arrival: {flight, 660}` — **16:45 + 660 = 03:45 the next day**, and `overlap` renders the
+  same run from the same function as **16:45–27:45**. It is invisible because 23:59 is also the end of the
+  window being asked about. **A value computed to DECIDE may never be STATED as a fact unless it is true
+  outside the decision that produced it**: the clamp moves into `intervalIntersects`, `endMin` becomes the
+  document's own arithmetic, and `crossesDay` — added by A-96 and read by **nothing** — gets its first
+  production reader, selecting the phrasing rather than supplying a next-day clock time this model has no
+  right to state.
+- **The same mistake at two lines' distance.** The renderer's run clause is gated on `run.stop.arrival`, a
+  field that merely **correlates** with the classifier's own discriminant, so a stop with a `durationMins`
+  and no `arrival` — the ordinary shape of a Cairn-native stop — makes a day busy and renders **zero
+  evidence**, taking the sentence's own arithmetic with it (*"the other one"* over two remaining days). The
+  bucket becomes `runsInto` else `starts`, total by construction, and the invariant is that the days named
+  equal the days counted.
+- **And the scope refusal stops being an enumeration.** §11.3 rule 3 is a **denylist over an open set** and
+  has now been measured short twice in two rounds — five phrasings, then eight more, including *"how many
+  countries have I **already** been to"*, one adverb from a phrasing that is refused. **`country_count` now
+  answers only where the text carries a trip-scope marker** and refuses otherwise with
+  `out_of_scope: 'scope_unclear'`. The argument is not that the marker list is closed — it is that **an
+  unlisted marker costs a refusal with the menu behind it, and an unlisted totality phrase cost a false
+  statement about the user's life**. The lifetime list stays, asked first, as a **diagnosis**.
+- **Cost:** **no version constant moves**, §2.10 stays at **91**, `core-conflicts.json` stays
+  byte-identical, and the 48 verdicts do not move — **a moved verdict is a stop-and-report**, because this
+  increment renders and does not classify. `MatchOutcome` gains one type-level union member with no
+  storage, no golden and no export behind it.
+- **Two rules come out of it.** *How a criterion is written* gains **rule 10** — a ruling that adds a field
+  to a returned type names its production reader in the same increment, or declares it unread with a
+  trigger; `crossesDay` shipped with none and the flag that would have caught R71-1 was not in anybody's
+  way. **Sequencing rule 13 gains (e)**, the routing half: a false rendered clause whose value comes out of
+  a *shared* derivation is a ruling and not a template fix, and once a default-deny scope gate exists, a new
+  escaping phrasing is builder-only unless it reaches an **answer**.
+
 **Revision 78, 2026-09-12.** **`I-35` is BUILT (`43315ef`) and QA round 70 sent it back — 0 blockers, 5
 MAJOR, 8 MINOR — so `I-37` is queued as the whole code consequence of `ARCHITECTURE.md` revision 78's
 §11.11 **A-96**.** The boundary §11 exists to hold **held, and the breaker could not bend it**: `ask/`
@@ -2066,9 +2112,10 @@ trips has a travel history.
 
 ## How a criterion is written
 
-Nine rules. They apply to every phase in this document, and a criterion that breaks one is a defect
-routed to me, not to whoever failed to meet it. **Rule 9 is revision 76's and it is the newest**; rule 8 is
-revision 70's; rule 7 is revision 69's; rule 6 is revision 53's; the other five are unchanged.
+Ten rules. They apply to every phase in this document, and a criterion that breaks one is a defect
+routed to me, not to whoever failed to meet it. **Rule 10 is revision 79's and it is the newest**; rule 9 is
+revision 76's; rule 8 is revision 70's; rule 7 is revision 69's; rule 6 is revision 53's; the other five are
+unchanged.
 
 **1. Every count carries an outcome clause.** A number is satisfiable while the thing misbehaves. *"12
 blockers"* was true and meant nothing. The clause names what must be true of each counted item, and for
@@ -2166,6 +2213,20 @@ five-entry history and the stop-and-report; for N3 it is the tie-free corpus and
 with a synthetic input** — `tools/elect-parent.mjs`, on the `corpus-write.mjs` precedent — so the fault
 fires against the **mechanism** when the data offers it nothing. **An undeclared unfireable `N` is a design
 defect routed to me**, and it is worse than a missing one, because a missing fault is visible.
+
+**10. A ruling that adds a field to a returned type names the production reader that consumes it, in the
+same increment — or declares the field unread, with a trigger** (revision 79, §0 position 13 (e),
+ARCHITECTURE §11.12 **A-97** Part 4, QA **R71-1**). `OccupiedInterval.crossesDay` was added by A-96 Part 2
+for exactly the right reason — to record that `endMin` had been clamped — and shipped with **zero
+production readers** across `packages/core/src`, `packages/client/src` and `cli.ts`, asserted only in its
+own unit test. One function away, a renderer printed the clamped `endMin` as a landing time and stated it to
+the user as fact. **A field nothing reads is not inert: it is a standing invitation to read the wrong
+neighbour**, because the flag that would have said *"the number beside me is not the whole truth"* is not in
+anybody's way. This is rule 9's shape one level down — rule 9 says a fault that cannot fire is **declared**;
+rule 10 says a field nothing reads is **declared** — and the declaration is cheap: *"`crossesDay` has no
+reader until §7's timezone work; until then `endMin` is clamped and no caller may render it"* would have
+made R71-1 a design question instead of a false statement in the flagship answer. **An undeclared unread
+field is a design defect routed to me.**
 
 ---
 
@@ -10445,6 +10506,15 @@ widening that costs a type change is the design failing**, and this increment is
 
 #### I-37 — the grounding repairs: one definition of how long a stop occupies the clock, and prose that is clean by construction (revision 78, `ARCHITECTURE.md` revision 78's §11.11 **A-96**; QA round 70's consequence, and the increment that closes `I-35`)
 
+> **⚠ BUILT (`e0fea87`) and SENT BACK by QA round 71 — 0 blockers, 3 MAJOR, 4 MINOR. This entry is
+> HISTORY; `I-38` below is the one to build.** Its subject held and the breaker re-derived all three claims
+> it was asked to rather than reading them: the 48-verdict sweep is exactly right cell by cell (44/0/4 →
+> 46/0/2, **exactly two movers**, both the evenings A-96 Part 4 names), the `overlap` identity is exact over
+> **858 stop shapes**, and the redaction chokepoint held under a sentinel in **every** user-authored string
+> field the model has. What broke is the **prose** on top of it: the fix for R70-3 turned two `unknown`
+> cells into `busy`, and the sentence one of them now renders states an end time the document contradicts
+> (**R71-1**). See `ARCHITECTURE.md` §11.12 **A-97**.
+
 **Read `ARCHITECTURE.md` §11.11 A-96 whole FIRST, then §11.4, §11.5, §11.7 and §11.8** (each of the last
 three carries A-96's amendment banner in place), **then `I-35`'s entry above, then QA round 70's findings
 table. Nothing else in `ARCHITECTURE.md`** — not §2, not §4, not §8, not §10. **No `DESIGN.md`**: this
@@ -10531,6 +10601,108 @@ is fenced by the unresolved visual direction and by nothing else.
   round 70 found four answers that were wrong inside it.
 - **Route: builder, and then the confirmation round QA round 70 already owes — not a second one.** It runs
   over `I-37` as one subject, re-cutting `qa/r70-ask.mjs` against the corrected sweep; that re-cut is the
+  breaker's, not the builder's.
+
+#### I-38 — the prose repairs: a clamp stops being a fact, every busy day carries its evidence, and the scope refusal stops being a list (revision 79, `ARCHITECTURE.md` revision 79's §11.12 **A-97**; QA round 71's consequence, and the increment that closes `I-35`/`I-37`)
+
+**Read `ARCHITECTURE.md` §11.12 A-97 whole FIRST, then A-96 Parts 2, 3 and 6, then §11.3, §11.5, §11.7 and
+§11.8** (each of the last four carries A-97's amendment banner in place), **then QA round 71's findings
+table. Nothing else in `ARCHITECTURE.md`** — not §2, not §4, not §8, not §10, and **not A-96 Parts 1, 4, 5
+or 7**, which are `I-37`'s and are history. **No `DESIGN.md`**: this increment renders nothing.
+
+**Why it exists.** QA round 71 confirmed `I-37`'s subject cell by cell — the 48-verdict sweep, the
+`overlap` identity over 858 stop shapes, the redaction chokepoint under a sentinel in every user-authored
+string field the model has — and broke the **sentences** built on top of it. The flagship answer states a
+landing time the document contradicts (**R71-1**, on `node cli.ts ask "do I have a free evening"` with no
+`--file` and no mutation); an ordinary Cairn-native stop makes a day busy and contributes **no clause at
+all** (**R71-7**); and the scope refusal, rewritten as a class one round ago, is defeated by one adverb
+(**R71-3**). **`I-35` and `I-37` are built and neither is shippable until this lands.**
+
+**What it is NOT.** **No `.tsx`, no `apps/web` file of any kind, no `packages/client/src`, no
+`docs/design/`, no `qa/` rewrite** (the breaker owns `qa/r71-i37.mjs` and `qa/r70-ask.mjs`). No new
+`Question` kind — that is `I-36`. No new export: **§2.10 stays at 91.** No stored field, no migration, no
+golden regenerated, no corpus byte; `SCHEMA_VERSION` (5) and `SUMMARY_VERSION` (8) do not move, and
+`fixtures/golden/core-conflicts.json` stays **byte-identical**. No change to `classifyDay`'s three values or
+to any of A-96 Part 4's 48 verdicts. **It does not gate `I-30`**, which is fenced by the unresolved visual
+direction and by nothing else.
+
+- **Built, in four parts. Parts 1, 2 and 3 are ORDERED; part 4 shares no file with them.**
+  1. **`packages/core/src/derive/occupancy.ts` — first, because every sentence below is measured against
+     it** (A-97 Part 3). `OccupiedInterval.endMin` becomes `startMin + mins`, **uncapped**; `crossesDay`
+     becomes `endMin > DAY_END_MIN`; the clamp moves into `intervalIntersects` as one line with its reason
+     on it. **No second field** — `endMinRaw` beside `endMin` is refused by the ruling. `stopOccupancy` is
+     untouched and `conflict/rules/overlap.ts` is not opened at all.
+  2. **`ask/ask.ts`'s `free_time` renderer reads `crossesDay`** (A-97 Part 4) — its first production reader.
+     A run that ends inside the day keeps *"from 17:15 until 18:35"*; a run that outlives it reads *"from
+     16:45 and still on it at midnight"*. **No next-day clock time is rendered anywhere.** The `day_state`
+     fact's `params` gain **`runEndsAt`** (`clockOf(endMin)`, uncapped; `''` where the day has no run).
+  3. **The evidence partition** (A-97 Part 5). The `run.stop.arrival` gate is deleted; the bucket is
+     `runsInto` else `starts`, which is total over busy days by construction; the mode word is gated on
+     `interval.source === 'journey_run'`; a `stated_duration` run renders *"something that starts at …"*
+     with no stop name (inadmissible, A-96 Part 6). **`busyRuns.length + busyStarts.length === busy`.**
+  4. **`ask/match.ts` — the scope gate** (A-97 Part 6). `country_count` answers only on a trip-scope marker
+     and otherwise returns `out_of_scope: 'scope_unclear'`, a new `MatchOutcome` reason whose pointer names
+     both ways forward. The lifetime list stays, is still asked first, and becomes a **diagnosis**: its
+     builder-routed repairs ride here (scan for the participle in a short window rather than at a fixed
+     offset, first-person plural, the `have I not <verb>` frame the comment already claims), and *"have I
+     booked"* must still reach `unbooked`.
+  5. **The remaining builder-routed findings of round 71, as one pass** — **R71-2** (`trip_overview`'s third
+     arm), **R71-4** (`intervalIntersects` tests both ends of a stated run; it is written against the
+     **clamped** end, because the day-closed reading is that predicate's own business), **R71-5**'s missing
+     assertion **and** its `cli.ts` half (A-97 Part 7: where a redacted restatement and a typeable form
+     would share a line, the surface prints the typeable one only), and **R71-6**'s five prose edges. They
+     share files with parts 2–4 and are cheaper as one pass than as five.
+- **Verification.** Every criterion of `I-35` and `I-37` is re-run unchanged; these are additional.
+  - `[stated]` **The flagship sentence is true of the document.** `node cli.ts ask "do I have a free
+    evening"`, no `--file`, unmodified fixture: the `2026-08-07` clause states **no end clock time** and
+    says the flight is still running at midnight. Stated over the whole menu and scoped to the property
+    rather than to a spelling: **no answer `askableQuestions(referenceTrip)` can produce, at either clock,
+    renders an end time for a stop whose `crossesDay` is `true`** — which is the rule, and which a run that
+    genuinely ends at 23:59 would satisfy. **N1, injected: revert `endMin` to the clamped value** → the
+    `2026-08-07` clause reads *"until 23:59"* again and the assertion reddens naming the date.
+  - `[stated]` **One end-of-run instant.** For the `2026-08-07` 16:45 journey stop, `occupiedInterval`'s
+    `endMin` and `overlap`'s `start + mins` are the **same number** (1665), and `clockOf` renders both as
+    `27:45`. `conflict/rules/overlap.ts` is unopened by this increment and
+    `fixtures/golden/core-conflicts.json` is byte-identical.
+  - `[stated]` **The 48 verdicts did not move.** All 16 days × 3 dayparts still classify **46 `busy` / 0
+    `open` / 2 `unknown`**, the two `unknown` being the mornings of `2026-08-07` and `2026-08-08` (A-96
+    Part 4's table). A ceiling, not a floor: **this increment changes prose, and a moved verdict means it
+    changed the classifier, which is a stop-and-report.**
+  - `[stated]` **Every busy day carries a clause.** Over a hand-built document carrying all three shapes —
+    a journey run, a `durationMins` run with no `arrival`, and an in-window start — the number of days named
+    in `answer.text` equals the number of days it counts, and *"the other N"* is arithmetically correct.
+    **N2, injected: restore the `run.stop.arrival` gate** → the `durationMins` day loses its clause and the
+    count assertion reddens. **This fault is fireable only against that document**: the reference trip
+    carries **0** stops with a non-null `durationMins`, which is A-96 Part 5's declaration and criterion
+    rule 9's requirement, and the instrument holding the property meanwhile is `ask.test.ts`'s hand-built
+    `Trip` driven through the real `ask`.
+  - `[stated]` **The scope gate.** *"how many countries have I already been to"*, *"…have I now visited"*,
+    *"…have we visited"*, *"…to date"* and the other five phrasings R71-3 names all refuse — by
+    `'lifetime'` where a totality marker or a past frame is present, by `'scope_unclear'` where neither is —
+    and **none is answered**. *"how many countries am I visiting"*, *"how many countries does this trip
+    visit"* and *"how many countries on this trip"* all still answer. **Every line `askableQuestions` prints
+    still round-trips through `matchQuestion` to the question it was rendered from** (`test/cli.test.ts`'s
+    standing assertion). **N3, injected: delete the marker requirement** → *"how many countries have I
+    already been to"* is answered *"This trip accounts for 7 countries"* and the refusal assertion reddens.
+  - `[stated]` **Redaction covers the restatement.** §11.8 clause 2's criterion as widened by A-97 Part 7,
+    including its second injected fault: **revert `restate()` to the raw `cityName`** → the run reddens on
+    `city_edge` and `free_time` over the mutated document. It does not today, which is R71-5.
+  - `[stated]` **The ceiling held.** `packages/core/src/ask/` still owns exactly two computations of its own
+    (§11.4); `ask/` imports nothing outside `packages/core/src`; `Object.keys(core).length` is **91**; no
+    `Date.now`, no `Math.random`, no `fetch`; 36 menu answers byte-identical across two calls.
+- **Stop-and-report conditions.** Three, and each means the ruling is wrong rather than the build. **(a)**
+  If any of A-96 Part 4's 48 verdicts moves, stop — this increment renders, it does not classify. **(b)** If
+  `fixtures/golden/core-conflicts.json` moves by a byte, stop — A-97 Part 3 says `overlap` is not on this
+  path. **(c)** If any `Answer` type, `AnswerCite`, `AnswerCaveatCode` member or `resolveCite` signature has
+  to change to land this, stop — §11's boundary moved, and that is a ruling (sequencing rule 13 (d)).
+  `MatchOutcome`'s new `reason` is the one union change this increment is authorised to make.
+- **Dependencies / blockers.** `I-37` is built (`e0fea87`). **Part 1 → part 2 → part 3**, in that order:
+  part 3 makes more days render a run clause, so landing it before part 1 would spread R71-1's false end
+  time onto the days part 3 rescues. Part 4 is independent. **`I-36` stays blocked behind this**, not behind
+  `I-37`: its headline criterion is that the boundary did not move, and round 71 found three more answers
+  wrong inside it. **Nothing here gates `I-30`.**
+- **Route: builder, and then the confirmation round QA round 71 already owes — not a second one.** It runs
+  over `I-38` as one subject, re-cutting `qa/r71-i37.mjs` against the corrected renderer; that re-cut is the
   breaker's, not the builder's.
 
 ### Exit criteria — the Phase 2 ship gate
@@ -11297,3 +11469,12 @@ built.
    a question to an existing engine is **builder-only** and its headline criterion is that the boundary did
    **not** move; if it has to move, the increment **stops and reports**, because the boundary moving means
    the ruling was wrong and the fix is a ruling. `I-36` is the worked example.
+   **(e)** *(revision 79, §0 position 13 (e), ARCHITECTURE §11.12 **A-97**, QA **R71-1**/**R71-3**/
+   **R71-7**.)* **Two routing consequences for any surface that composes prose about a user's data.**
+   **A finding that a rendered clause states a value the document contradicts is a MAJOR to the builder —
+   and a ruling to me whenever the value comes out of a SHARED derivation**, because the fix is a location
+   (which consumer narrows the value) and not a template. **And once such a capability has a default-deny
+   scope gate, a newly-found phrasing that reaches a *less specific refusal* is MINOR, builder-only, one
+   line, no architect round; a phrasing that reaches an *answer* is MAJOR and comes back to me, because it
+   means the gate is wrong.** The second half exists to end an arms race this project has now run twice in
+   two rounds on one function: the routing rule is what stops a third phrase list from being written.

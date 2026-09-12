@@ -15,6 +15,31 @@ adding, moving or trusting one.
 
 ## Document cost map
 
+**Every row re-measured at revision 79 (2026-09-12)** — `ARCHITECTURE` 602k → **608k** with §11's new
+**§11.12 A-97** (§11 alone 12k → **18k**; §0 gains position 13 clause (e) and stays ~4k; §2, §4, §8 and §10
+did not move) and `ROADMAP` 264k → **268k** with **I-38**, criterion **rule 10**, sequencing rule **13 (e)**
+and the revision-79 ledger entry (Phase 2 alone 189k → **192k**). **A-97 is ~6k and it is the ENTRY POINT to
+§11 — read it first, then A-96 Parts 2, 3 and 6, then §11.3, §11.5, §11.7 and §11.8, each of which carries
+its amendment banner in place.** A builder or breaker of `I-38` reads **§11 whole and nothing else in
+`ARCHITECTURE.md`**; A-96 Parts 1, 4, 5 and 7 are `I-37`'s and are history. This revision is QA round 71's
+architect half, and it is **one ruling with two faces plus a scope decision**: `I-37`'s classifier is right
+cell for cell, and the prose on top of it **stated a clamp as a fact** — `occupiedInterval` caps a run at
+23:59 so the daypart predicate claims nothing about the next day, and `free_time` printed that cap as the
+landing time of a **660-minute** flight, invisibly, because 23:59 is also the end of the window being asked
+about (**R71-1**, on the default output of `node cli.ts ask "do I have a free evening"`). **A value computed
+to DECIDE may never be STATED as a fact unless it is true outside the decision that produced it**: the clamp
+moves into `intervalIntersects`, `endMin` becomes the document's own arithmetic, and **`crossesDay` — added
+by A-96 and read by nothing — gets its first production reader**. The same mistake one line over gates the
+run clause on `arrival` rather than on the classifier's own discriminant, so an ordinary `durationMins` stop
+makes a day busy and renders **no evidence at all** (**R71-7**). And **`country_count` now requires a
+trip-scope marker** rather than a denylist of lifetime phrasings measured short twice in two rounds
+(**R71-3**) — an unlisted marker costs a refusal with the menu behind it, an unlisted totality phrase cost a
+false statement about the user's life. **No export, no version constant, no golden byte, no `.tsx`, no
+`apps/web`, no corpus — §2.10 stays at 91, `core-conflicts.json` stays byte-identical, the 48 verdicts do
+not move — and nothing here gates `I-30`.** **Two rows moved with round 71's own commit rather than with
+this revision**: `QA-FINDINGS` 425k → **431k** and `BUILD-NOTES` 333k → **335k**. `CAIRN_VISUAL_ROADMAP`
+re-measures at **75k** (this revision opens no rendered surface) and `REVIEW` at **52k**.
+
 **Every row re-measured at revision 78 (2026-09-12)** — `ARCHITECTURE` 596k → **602k** with §11's new
 **§11.11 A-96** (§11 alone 7k → **12k**; §0 gains position 13 clause (d) and stays ~3k; §2, §4, §8 and §10
 did not move) and `ROADMAP` 260k → **264k** with **I-37** and the revision-78 ledger entry (Phase 2 alone
