@@ -2220,6 +2220,17 @@ crosses a section boundary. Otherwise this table is the contract.
    we happen to have. **(c)** Sending a trip to a third party is an **egress decision and it is Jacob's**;
    §6.1's table is the claim this feature would invert, and it is written down before anyone makes the
    change that feels small. §**11**, §11.1, §11.6.
+   **(d)** *Added at revision 78 (§11.11 **A-96**, QA **R70-3**/**R70-4**).* Two clauses, both learned from
+   the increment that wrote (a)–(c). **An answer reads every field the document states the fact in, through
+   ONE function** — `free_time` shipped *"Cairn does not invent a duration for a stop that states none"*
+   while ignoring the run length **21 of 21** journey stops on the reference trip do state, in
+   `arrival.mins`, which a conflict rule in the same package had been reading correctly since Phase 1. A
+   fact carried in two fields is read at one site, in `derive/`, or the two readers drift by construction.
+   **And prose Cairn composes about a user's data is clean by construction, not by fixture** — the renderer
+   emits values it controls plus a **named, guarded** set of user-authored fields (today exactly
+   `City.name`, admissible because the closed `Question` union makes a city the *subject* of a question),
+   and *"the test passes"* is not the same claim as *"the renderer cannot leak"* when the test runs on one
+   document whose strings happen to be innocent.
 
 ---
 
@@ -28642,9 +28653,14 @@ look like' style questions, not 'where should I eat'."* The second half is a fen
 the more important half: *"where should I eat"* needs a live places API, a paid vendor and a server, and it
 is **explicitly out of scope and not to be designed around.**
 
-**This section is ~7k tokens and it is SELF-CONTAINED. Read it alone.** It quotes what it needs from §2.1,
-§2.5, §2.7, §2.10, §8.1, §8.2, §8.4 and §10.5. A builder or breaker of ROADMAP `I-35` or `I-36` reads
-**§11 whole and nothing else in this document** — not §2 whole, not §4, not §8, not §10.
+**This section is ~12k tokens and it is SELF-CONTAINED. Read it alone.** It quotes what it needs from §2.1,
+§2.5, §2.7, §2.10, §8.1, §8.2, §8.4 and §10.5. A builder or breaker of ROADMAP `I-35`, `I-36` or `I-37`
+reads **§11 whole and nothing else in this document** — not §2 whole, not §4, not §8, not §10.
+
+> **Revision 78 adds §11.11 — A-96, at the end of this section, and it is READ FIRST.** It is QA round
+> 70's consequence and it amends §11.4's table, §11.7 rules 3 and 4, and §11.8 clause 2 **in place**; each
+> of those four carries a banner pointing at it. A builder of `I-37` reads **A-96 whole, then §11.4, §11.5,
+> §11.7 and §11.8**, and needs no other section of this document.
 
 **One sentence for what it is.** Given a `Trip` the user already owns and a question from a closed set,
 produce a sentence that is **true of that document and traceable to the records that made it true**. No
@@ -28801,13 +28817,18 @@ reused, the *stored copy* is not. What each intent reads, and every one of these
 | `city_edge` | `trip.days` filtered by `cities.includes(key)`, then that day's stops by `travelRole` | none |
 | `unbooked` | `detectConflicts(trip, {today})`, filtered to `kind === 'coverage'` and unresolved | none |
 | `country_count` | `tripSummary(trip, index).countryCodes` and `.attribution`, plus `countryOf`/`stopLatLng` for the evidence list | evidence walk only — §11.6 |
-| `free_time` | `trip.days`, `Stop.placement.time`, `Stop.durationMins` | the three-valued daypart classifier — §11.7 |
+| `free_time` | `trip.days`, `Stop.placement.time`, and **`occupiedInterval(stop)` from `derive/occupancy.ts`** — *never `Stop.durationMins` directly* (**A-96**) | the three-valued daypart classifier — §11.7 |
 
 **The ceiling on `ask/`, and it is sequencing rule 1 applied at a new door: `packages/core/src/ask/` holds
 no domain arithmetic.** Every number in an answer is either a field of the document or the return value of
 an existing `derive/`, `conflict/` or `validate/` function. **Exactly two computations are `ask/`'s own**,
 both named above, both about *answering* rather than about the trip, and both fenced in §11.6 and §11.7. A
 third is a design defect routed to the architect: the fix is a function in `derive/`, used by both callers.
+
+> **That trigger fired inside the increment that wrote it (QA R70-3), and §11.11 A-96 is the ruling.** *How
+> long a stop occupies the clock* was the third computation, it was already implemented privately in
+> `conflict/rules/overlap.ts`, and `free_time` implemented a second, narrower opinion of it. It moves to
+> `derive/occupancy.ts` and both callers read it. **`ask/` is still at two computations of its own.**
 
 **`"what's still unbooked" has one definition and it is already in the repository.**
 `conflict/rules/unbookedTicketed.ts` and `conflict/rules/missingLodging.ts` are that definition, they are
@@ -28853,7 +28874,7 @@ type AnswerFact = {
  * error). A new caveat is a new member here, never a free-text string.
  */
 type AnswerCaveatCode =
-  | 'duration_unknown'        // a stop states no `durationMins` — §11.7 rule 3
+  | 'duration_unknown'        // a stop states no run length in ANY field — §11.7 rule 3, A-96 Part 3
   | 'time_unknown'            // a scheduled stop states no `placement.time`
   | 'no_departure_stop'       // the day carries no `travelRole: 'journey'` stop — §11.7 rule 4
   | 'unattributed_records'    // records `countryOf` could not place — §11.7 rule 6
@@ -28928,40 +28949,64 @@ Vienna."* This is the root `CLAUDE.md` convention — *never present our reading
 at the one place in this product where the system's interpretation of the user stands between them and their
 data.
 
-**Rule 3: nothing is defaulted into existence.** The worked example is `free_time`, and **it is the
-measurement that decides the design rather than a hypothetical**. Measured at `9333eb6` over the reference
-trip: **143 of 143 stops carry `durationMins: null`** (112 scheduled, 31 pooled); **0 of 112 scheduled stops
-carry a null `time`**. The legacy planner recorded when things start and never how long they take.
+**Rule 3: nothing is defaulted into existence — and nothing the document DOES state is ignored.**
 
-So *"do I have a free evening in Split?"* has no evidence behind a yes. Three values per day, never two:
+> **⚠ Amended by §11.11 A-96 (revision 78, QA R70-3). The second half of that sentence is new and the
+> table below is A-96's, not revision 77's.** Revision 77's rule read `Stop.durationMins` and only
+> `Stop.durationMins`, which made *"this stop states no duration"* false of **21 of 21 journey stops on the
+> reference trip** — for a `travelRole: 'journey'` stop, `arrival.mins` **is** the stop's own run length
+> (§2.12, and `conflict/rules/overlap.ts` has read it that way since Phase 1). Read A-96 Part 2 before
+> this table.
+
+The worked example is `free_time`, and **it is the measurement that decides the design rather than a
+hypothetical**. Measured at `bd24628` over the reference trip: **0 of 143 stops carry a non-null
+`durationMins`** (112 scheduled in days, 31 pooled); **0 of 112 scheduled stops carry a null `time`**; and
+**91 of those 112 state no run length by any field at all**, the other 21 being journeys that state one in
+`arrival.mins`. The legacy planner recorded when things start, and how long a *vehicle* runs, and never how
+long anything else takes.
+
+So *"do I have a free evening in Split?"* still has no evidence behind a yes on most days. Three values per
+day, never two, over **occupied intervals** rather than start instants (A-96 Part 3):
 
 | Value | Means |
 |---|---|
-| `busy` | a stop **starts** inside the window |
-| `open` | no stop starts inside the window **and every stop on that day states a `durationMins`** |
-| `unknown` | no stop starts inside the window and at least one stop on that day states no duration |
+| `busy` | some stop's occupied interval **intersects** the window |
+| `open` | no interval intersects it **and every stop on that day states a run length** (`durationMins`, or `arrival.mins` on a journey) |
+| `unknown` | no interval intersects it and at least one stop on that day states none |
 
-**A stop with `durationMins: null` occupies its start instant and nothing more, and no default duration is
+**A stop that states no run length occupies its start instant and nothing more, and no default duration is
 invented.** `CAT_DEFAULT_TIME` is §2.10 group 2's class — *a tuning constant a caller must not read or
 reproduce* — and reaching for it here would put a second definition of "how long a stop takes" into an
 answer the user is invited to trust.
 
-**Measured consequence, and it is the `[stated]` oracle for the whole increment.** Split's four days
-(`2026-08-12…15`), window `evening = 18:00–23:59`: **12th `busy`** (20:00), **13th `busy`** (20:15, 20:30),
-**15th `busy`** (18:00, 19:30), **14th `unknown`** — nothing starts after 17:15, and the 17:15 stop is a
-FlixBus back to Split that states no duration. **Not one day returns `open`, and the honest answer is
-`coverage: 'partial'`:** *"I can't tell. Nothing is scheduled after 17:15 on Fri 14 Aug, but no stop that
-day says how long it takes — so I can't say the evening is free."* **Injected fault: give the 14th's stops a
-`durationMins` and the day flips to `open` and the sentence changes.** A rule that could only ever say
-*"yes"* about this trip is a rule nobody could have tested.
+**Measured consequence, and it is the `[stated]` oracle for the whole increment** (at `bd24628`; A-96
+Part 4 carries the full sweep). Split's four days (`2026-08-12…15`), window `evening = 18:00–23:59`:
+**12th `busy`** (20:00), **13th `busy`** (20:15, 20:30), **15th `busy`** (18:00, 19:30), **14th `busy`** —
+nothing *starts* after 17:15, but the 17:15 stop is a `travelRole: 'journey'` FlixBus back to Split with
+`arrival: {bus, 80}`, so the document says you are on it until **18:35**, which is inside the window. **No
+day of this trip returns `open`, all four evenings in Split are `busy`, and the honest answer is
+`coverage: 'complete'` and a `No`** that names why: *"No — on the 14th you are on a bus into Split until
+18:35, and the other three evenings have something starting at 20:00, 20:15 and 18:00."* **Injected fault:
+delete the 17:15 stop's `arrival` and the 14th falls back to `unknown`, `coverage` drops to `partial` and
+the sentence changes to "I can't tell".** A rule that could only ever say *"yes"*, or only ever *"I can't
+tell"*, about this trip is a rule nobody could have tested.
 
-**Rule 4: `city_edge` follows the days, and it knows about a two-city day.** *"When do I leave Vienna"* is
-**the last day the city occupies**; where that day carries another city, the evidence is the first stop on
-it with `travelRole === 'journey'`; where it does not, the answer is the date alone with `coverage:
-'partial'` and a caveat that no departure stop is recorded. Measured at `9333eb6`: Vienna's last day is
-**`2026-08-10`**, `cities: ["vienna","dubrovnik"]`, `primaryCity: 'dubrovnik'`, and its first three stops
-are `travelRole: 'journey'` at 05:00, 06:55 and 08:45. This is `BRIEF.md`'s *"a day spanning two cities"*
-lesson arriving at a third door.
+**Rule 4: `city_edge` follows the days, and it reports a two-city day rather than branching on one.**
+
+> **⚠ Corrected in place by §11.11 A-96 Part 7 (revision 78, QA R70-11).** Revision 77's wording gated the
+> journey-stop search on the day carrying a second city. Taken literally that is **wrong on two of this
+> trip's twelve city edges** — it would print *"No stop on that day is recorded as a journey"* about a day
+> that records one, and demote two `complete` answers to `partial`. `I-35`'s builder read it the
+> ungated way (BUILD-NOTES KD-131) and was right; the document was wrong.
+
+*"When do I leave Vienna"* is **the last day the city occupies**. The evidence is that day's first stop
+with `travelRole === 'journey'`, **whether or not the day carries a second city**; where the day carries no
+journey stop at all, the answer is the date alone with `coverage: 'partial'` and the `no_departure_stop`
+caveat §11.5 defines. A second city on that day is reported as its own fact (`day_spans_cities`) and is
+**never a gate on the search** — it changes what the sentence says, not what it looks for. Measured at
+`bd24628`: Vienna's last day is **`2026-08-10`**, `cities: ["vienna","dubrovnik"]`, `primaryCity:
+'dubrovnik'`, and its first three stops are `travelRole: 'journey'` at 05:00, 06:55 and 08:45. This is
+`BRIEF.md`'s *"a day spanning two cities"* lesson arriving at a third door.
 
 **Rule 5: two traps in the reference data, named so a builder does not walk into them.**
 
@@ -28985,12 +29030,29 @@ are holes. `null` from `countryOf` stays first-class and is never snapped (§8.4
    carry a `lat`/`lng` key, and no template renders one. This is §10.5's rule and §8.4 A-56 Part 5's rule
    at a third door, and it is checked by a **key-name** assertion over `params` rather than by a decimal
    grep, because later intents (cost) legitimately render decimals.
-2. **No credential reaches an `Answer`.** A criterion runs `redactionHits(answer.text)` over every answer to
-   every member of `askableQuestions(referenceTrip)` at both clocks and asserts **`[]`** — one call to
-   machinery §6.6 already ships. **Injected fault: interpolate the stop's booking link into the `unbooked`
-   line → `redactionHits` returns `['url']` and the test reddens.** The fault is **fireable by
-   construction**: `unbooked_ticketed`'s own predicate requires `stop.links.length > 0 || stop.ticket`, so
-   every stop that answer can name has a link to leak.
+2. **No credential reaches an `Answer`'s prose, and that is a property of the RENDERER, not of the data.**
+
+   > **⚠ Rewritten in place by §11.11 A-96 Part 6 (revision 78, QA R70-4).** Revision 77's clause asserted
+   > `redactionHits(answer.text) === []` over the reference trip and called it done. That held **only
+   > because the reference trip's own six city names and its title happen to match no pattern**: `title:
+   > "Split flat (door code 4821)"` rendered straight through as `['keyword_token','keyword_digits']` — a
+   > §6.6 credential class in prose — and a city renamed `LONDON` fired on three of the five question kinds.
+   > A test that passes because of the fixture's spelling is not a guarantee.
+
+   The renderer emits into `text` and into every `caveat.message` **exactly three classes of value**:
+   engine-controlled values (dates, times, counts, enum labels, country codes, `CityKey`s, template words);
+   the **admissible user-authored set**, which is **exactly `{City.name}`** and is enumerated in A-96
+   Part 6; and nothing else. Every admissible value passes through **one chokepoint** that applies §6.6's
+   `redactText` before interpolation, so the assertion below is true by construction for any document.
+   `facts[].value` and `params` are the document's own values and carry **no** such guarantee — that is
+   stated so a surface knows the decision is its own (§6.6).
+
+   The criterion: run `redactionHits` over `answer.text` **and every `caveat.message`** for every member of
+   `askableQuestions(trip)` at both clocks, over the reference trip **and over a copy of it whose title and
+   one city name carry one string per §6.6 pattern class**, and assert **`[]`**. **Injected fault: remove
+   the chokepoint from the city-name path → the mutated run reddens on `trip_overview`, `city_edge` and
+   `free_time`.** That fault is fireable; the unmutated fixture alone cannot fire it, which is exactly what
+   R70-4 measured.
 
 ### 11.9 The export surface
 
@@ -29010,6 +29072,10 @@ and are not part of the runtime set-equality count.
 
 **No second entry point.** `ask/` is pure code with no dataset behind it; the gazetteer's subpath
 (`@cairn/core/gazetteer`) exists because of ~380 kB of corpus and this has no counterpart.
+
+**A-96 adds no export and §2.10 stays at 91.** `stopOccupancy`/`occupiedInterval` are module-level exports
+of `derive/occupancy.ts` with two intra-package callers and no consumer outside `packages/core/src`;
+publishing a symbol is a one-way door and the trigger for taking it is the first such consumer.
 
 `SCHEMA_VERSION` (5) and `SUMMARY_VERSION` (8) **do not move.** Nothing here is stored, nothing here is
 written, and `ask` has no write path at all: it takes a `Trip` and returns a value. That is also why it
@@ -29053,3 +29119,196 @@ claims to be complete and is not.
   conflict named, because it is exactly the kind of wording a later reader would use to argue this section
   was built against the brief. **If Jacob reads the non-goal the other way, this section is withdrawn, not
   reinterpreted.**
+
+### 11.11 A-96 — one definition of how long a stop occupies the clock, and prose that is clean by construction
+
+**Revision 78. QA round 70's architect-routed half: R70-3 (MAJOR), R70-4 (MAJOR, the architect's half) and
+R70-11 (MINOR).** It amends §11.4's table, §11.7 rules 3 and 4 and §11.8 clause 2 **in place**; each carries
+a banner. **Read this Part 1 → Part 8 before any of them.** Every number below was measured at `bd24628`,
+offline, over the committed fixture (`fixtures/loadEurope2026.mjs`, against the committed source hash in
+`fixtures/europe2026.sha256`) — no network, no generator run, and re-derivable in one script.
+
+**Part 1 — the defect, in one sentence.** `free_time`'s selling point is *"Cairn does not invent a duration
+for a stop that states none"*; what shipped **also refuses to read a duration the stop DOES state**, when
+that duration lives in a field other than `durationMins`. §2.12's `TravelRole` is explicit that on a
+`travelRole: 'journey'` stop, *`arrival` is the vehicle's own journey and `time` is when it DEPARTS* — so
+`arrival.mins` **is** that stop's run length. Measured: **21 of 21 journey stops on the reference trip carry
+an `arrival`, and all 21 carry `durationMins: null`.** `classifyDay` read one field and called all 21 of
+them silent. The rule this states:
+
+> **A fact the document carries in two different fields is read through one function, not at two call
+> sites.** The user did not write down a field name; they wrote down how long the bus takes.
+
+**Part 2 — where the derivation lives, and why it is not a row field.**
+`packages/core/src/derive/occupancy.ts`, new, module-level exports only:
+
+```ts
+type OccupancySource = 'stated_duration' | 'journey_run';
+
+/** How long the stop occupies the clock, or `null` when the document does not say. Pure. */
+function stopOccupancy(stop: Stop): { mins: number; source: OccupancySource } | null;
+
+type OccupiedInterval = {
+  startMin: number;                 // minutes since midnight, wall-clock at the stop's own location
+  endMin: number;                   // clamped to 1439; equals `startMin` when `source` is null
+  source: OccupancySource | null;   // null = no run length stated; the stop occupies an instant
+  crossesDay: boolean;              // the stated run ends after 23:59 of this day
+};
+
+/** The stop's occupied interval, or `null` when it is not on a day's clock at all. Pure. */
+function occupiedInterval(stop: Stop): OccupiedInterval | null;
+```
+
+Four decisions, each with its reason:
+
+1. **It is a stop-level derivation, not a field on `TripSummaryRow` or `TripSummaryCity`.** §0 position 8:
+   a row carries what a surface can draw without opening forty documents, and *"I stood at these 112
+   points"* is below that line — a per-stop interval is the drill-down by definition. §0 position 6: a row
+   is a copy and a copy goes stale. **`SUMMARY_VERSION` stays 8 and `SCHEMA_VERSION` stays 5.** Nothing is
+   stored; this is computed from the document on every call, exactly like `computeLegs`.
+2. **It replaces a private function that already exists.** `conflict/rules/overlap.ts`'s module-private
+   `occupancy(s)` **is** this computation, with §2.12's authority written on it, shipped since Phase 1 —
+   which is what makes `free_time`'s narrower reading a second opinion rather than an oversight. `overlap`
+   imports `stopOccupancy` and maps `source === 'journey_run'` onto its existing `derived` flag, an exact
+   identity, so **KD-15's timezone carve-out and `overlap`'s zero findings on the reference trip do not
+   move and `fixtures/golden/core-conflicts.json` is byte-identical.** Deleting the private copy is the
+   point: two readers, one definition (sequencing rule 1).
+3. **It is not exported from `packages/core/src/index.ts`.** Two callers, both inside the package, so
+   §2.10 stays at **91**. Publishing a symbol is a one-way door; the trigger for taking it is the first
+   consumer outside `packages/core/src`.
+4. **`ask/` gains no third computation.** §11.4's ceiling holds as written: `freeTime.ts` keeps the daypart
+   windows and the three-valued verdict, and reads intervals instead of a raw field.
+
+**The trap, named so nobody walks into it: an `arrival` on a NON-journey stop is not occupancy.** §2.5 makes
+`Stop.arrival` *the leg INTO this stop* — for `travelRole: 'transfer'` (the default) `time` is when you
+**arrive** and `arrival.mins` is a journey already finished. Measured: **60 of the 112 scheduled stops are
+non-journey stops carrying an `arrival`**, and reading those as occupancy would double-count the whole trip.
+`stopOccupancy` reads `arrival.mins` **only** under `travelRole === 'journey'`; `'unknown'` is not
+`'journey'` and states nothing, per §2.12's own degrade rule.
+
+**Part 3 — what `free_time` does with it: intersection, not start instants.** `busy` becomes *some stop's
+occupied interval intersects the window*, which is the whole reason Part 2 returns an interval rather than a
+number. Three consequences, all of them refusals to invent:
+
+- **The interval is closed inside its own day.** `endMin` is clamped to 23:59 and `crossesDay` records that
+  it was. **The model makes no claim about the next day**, because the run is measured in the *departure*
+  stop's wall clock and core stores no UTC instants and does no timezone maths (§2.1, §7). Measured: **2 of
+  the 21 journey intervals run past 23:59**, the longer being `2026-08-07`'s 16:45 transatlantic leg
+  (`+660`).
+- **A stop that states no run length occupies its start instant**, so a stop starting inside the window
+  still makes the day `busy` exactly as before. The change is strictly additive: every `busy` verdict
+  revision 77 produced is still `busy`.
+- **The `unknown` population is unchanged — every stop on the day that states no run length.** A narrower
+  population (*only a stop that starts before the window can still be running during it*) is tempting, is
+  sound by the arrow of time alone, and is **refused here**, with its measurement, in Part 8 residue 1.
+
+`DayVerdict.withoutDuration` becomes `withoutOccupancy` and the `duration_unknown` caveat's message stops
+naming `durationMins`: the honest sentence is *"a stop on that day states no duration and is not a journey
+that states its run"*. **The `AnswerCaveatCode` union does not move** — `duration_unknown` is still the
+right code for the right hole, and renaming a member of a closed union for prose reasons is churn a golden
+would pay for.
+
+**Part 4 — the measurement, over the whole population rather than the flagship day** (§0 position 12 (b)).
+All 16 days × 3 dayparts = **48** verdicts, before and after:
+
+| | `busy` | `open` | `unknown` |
+|---|---|---|---|
+| revision 77, as shipped | 44 | 0 | 4 |
+| A-96 | **46** | **0** | **2** |
+
+**Exactly two verdicts move, both `unknown` → `busy`, both for the same reason** — a journey whose stated
+run reaches into the window: `2026-08-07` evening (16:45, `+660`) and `2026-08-14` evening (17:15, `+80`,
+ending 18:35). The two that stay `unknown` are the mornings of `2026-08-07` and `2026-08-08`. **Nothing
+moves in the other direction and no verdict becomes `open`.** The sentence's own census moves with the
+verdicts: across Split's four days **20 of 28** stops state no run length, not 28, and across the trip **91
+of 112**, not 112 — which is the clause R70-3 measured as false (*"28 stops … say nothing about how long
+they take"*, when 8 of them do).
+
+**Part 5 — two arms are unfireable against the reference trip, and this is where that is declared**
+(§0 position 5 (b), criterion rule 9).
+
+- **`free_time`'s `open` arm: 0 of 48 before this ruling and 0 of 48 after.** The property that makes it
+  unfireable belongs to the fixture: the legacy planner recorded no durations, so every day carries at
+  least one stop that states none. The instrument holding it meanwhile is the hand-built `Trip` in
+  `ask.test.ts` — a real document driven through the real `ask`, which QA round 70 verified is not weakened
+  — and §11.7 rule 3's injected fault is therefore stated against the fixture in the **other** direction
+  (delete the 17:15 stop's `arrival`, watch a `busy` fall back to `unknown` and the sentence change),
+  because that one does fire.
+- **`city_edge`'s `no_departure_stop` caveat: 0 of 12 city edges.** All twelve carry a journey stop
+  (Part 7); same instrument, same declaration. **A criterion asserting that caveat against the reference
+  trip would report success for doing nothing.**
+
+**Part 6 — R70-4: what may be interpolated into prose at all.** The question routed was whether a
+`City.name` is categorically different from a `trip.title`. **It is not** — both are user free text, both
+can hold a door code, and *"a city name is safe"* is a statement about people's habits, not a mechanism.
+What differs is **admissibility**, and the line is drawn by the closed `Question` union rather than by a
+field's name:
+
+> **A record's free text may be narrated only where the `Question` union makes that record the SUBJECT of
+> the question. Everything else about a record is cited and parametrised, never narrated.**
+
+`Question` carries a `cityKey` and nothing else that names a record, so the admissible set is **exactly
+`{City.name}`** — and it must be admissible, because §11.7 rule 2's restatement (*"I read this as: when you
+leave Vienna"*) is unsatisfiable if the answer cannot say which city. `trip.title`, `Stop.name`,
+`Place.name`, `Booking.operator`, `Booking.reference` and `Stop.note` are **descriptions of records** that
+no question takes as its subject: inadmissible in `text` and in `caveat.message`, and travelling in
+`facts[].params` and `cites`, where they already do. So `trip_overview` opens with the dates and the
+lifecycle stage rather than the title — the answer is about the trip the caller opened, and `cites` carries
+its id.
+
+**Admissible is not trusted.** The one admissible field passes **one chokepoint**, which applies §6.6's
+existing `redactText` before interpolation — one import, no new export, no second pattern set — so §11.8
+clause 2 holds for **any** document rather than for this one. Measured: **0 of the reference trip's 6 city
+names and 0 of its title produce a redaction hit today**, which is precisely why the criterion needs the
+mutated copy §11.8 now requires: on the fixture alone the guard is invisible and so is its absence.
+
+**`facts[].value` and `params` carry no redaction guarantee, and that is deliberate.** They are the
+document's own values, they are what a surface interpolates under its own §6.6 obligations, and stripping
+them would make the structured half of an `Answer` a worse description of the trip than the trip. The
+guarantee is about **prose Cairn composes**, which is the thing that travels into a screenshot, a share
+page or a future model's transcript.
+
+**Part 7 — R70-11: `city_edge`'s two-city gate, re-measured over all twelve edges.** Every city's first and
+last day, at `bd24628`:
+
+- **12 of 12 carry a `travelRole: 'journey'` stop.**
+- **10 of 12 are two-city days.** The exceptions are **Vienna's first day (`2026-08-08`)** and **London's
+  last day (`2026-08-22`)** — one-city days, each carrying a journey stop at 14:30.
+
+Revision 77's gated reading would therefore have printed *"No stop on that day is recorded as a journey"*
+about **two** days that record one, and demoted two `complete` answers to `partial`. §11.5 defines
+`no_departure_stop` as *"the day carries no `travelRole: 'journey'` stop"*, with no gate: **§11.5 was right
+and §11.7 was wrong**, the caveat's own definition is the rule, and rule 4's prose is corrected to match it
+rather than leaving two clauses of one section disagreeing. `I-35`'s builder measured this and took the
+ungated reading (BUILD-NOTES KD-131); **a builder who measures a ruling false is doing the architect's job,
+and the report comes back as a routed finding** — sequencing rule 12 (b), third instance, and he
+under-stated it by one day rather than over-stating it.
+
+**Part 8 — what does not change, and three residues with their triggers.**
+
+Unchanged: `Question`, `Answer`, `AnswerCite`, `AnswerFact`, `AnswerCaveat`, `AnswerCaveatCode`,
+`MatchOutcome`, `AskCtx`, `resolveCite`, the grounding law, `SCHEMA_VERSION` (5), `SUMMARY_VERSION` (8),
+the export count (**91**), every golden byte and every conflict rule's output. **No stored field, no
+migration, no `.tsx`, no `apps/web`, no `docs/design/`, no corpus byte.** **Nothing here gates `I-30`**, the
+city picker, which is fenced by the unresolved visual direction and by nothing else — this capability has
+no screen at all.
+
+1. **The `unknown` population is wider than the arrow of time requires.** A stop that states no run length
+   and starts *after* the window cannot occupy it, so it could be excluded. Measured: doing that alone
+   turns the mornings of `2026-08-07` and `2026-08-08` from `unknown` into **`open`** — and the second is a
+   morning spent over the Atlantic, because the 7th's 16:45 leg runs 660 minutes and lands the next day.
+   **Narrowing the population without cross-day occupancy would make Cairn answer *"yes, that morning is
+   clear"* about a document that says otherwise** — R70-3's own failure mode, one field over. Refused until
+   both can arrive together. **Trigger:** §7's timezone work (Phase 4), which is what makes a cross-day
+   interval expressible at all. **Cost meanwhile:** `free_time` can say *"no"* and *"I can't tell"* about
+   this trip and never *"yes"*, which is Part 5's declaration and is the honest state of the data.
+2. **`redactText` costs a legitimately capitalised city name.** `alnum_reference` matches any 6+ character
+   ALL-CAPS token, so a city stored as `LONDON` renders as `[redacted]` — poor prose, never a false
+   statement, and `params.cityKey` still identifies the subject. **The fix, when it is wanted, is in §6.6's
+   pattern set and is never a per-call exemption inside `ask/`.** **Trigger:** anyone reporting a redacted
+   place name.
+3. **A journey's occupancy is in the departure location's wall clock.** For a leg crossing a timezone,
+   `endMin` is not the local arrival time, so `free_time` may call a window busy that is locally clear, or
+   the reverse. The answer is never false *about the document* — the document says exactly this — but it is
+   imprecise about the world. **Trigger:** the same §7 timezone work; `journey_overrun` is deferred behind
+   it for the identical reason (§2.12).

@@ -1993,6 +1993,52 @@ by nothing else.
   conflict named, because it is exactly the sentence a later reader would use to argue this was built
   against the brief. **If Jacob reads the non-goal the other way, §11 is withdrawn, not reinterpreted.**
 
+**Revision 78, 2026-09-12.** **`I-35` is BUILT (`43315ef`) and QA round 70 sent it back — 0 blockers, 5
+MAJOR, 8 MINOR — so `I-37` is queued as the whole code consequence of `ARCHITECTURE.md` revision 78's
+§11.11 **A-96**.** The boundary §11 exists to hold **held, and the breaker could not bend it**: `ask/`
+imports nothing outside `packages/core/src`, reaches for no clock, no randomness and no network, and every
+menu answer is byte-identical across two calls. What broke is the other half of the same sentence — *every
+clause of every answer is traceable to a cited fact* — and **one of the four false answers is the
+increment's own flagship example**. `I-36` stays blocked behind `I-37`, not behind `I-35`. **No `.tsx`, no
+`apps/web` file and no `docs/design/` file, and nothing here gates `I-30`**, which is still fenced by the
+unresolved visual direction and by nothing else.
+
+- **The ruling, and it is the mirror image of the one revision 77 was proud of.** `free_time` shipped
+  *"Cairn does not invent a duration for a stop that states none"* — and **also refused to read the duration
+  a stop DOES state**, when it is written in a different field. §2.12 says that on a `travelRole: 'journey'`
+  stop `arrival.mins` **is** the vehicle's own run; **21 of 21 journey stops on the reference trip state one
+  that way and all 21 carry `durationMins: null`**, so the classifier called every one of them silent. The
+  flagship answer — *"do I have a free evening in Split?"* — said *"28 stops … say nothing about how long
+  they take"* when **8 of the 28 do**, and the day it could not judge is a day the document says you are on
+  a bus until **18:35**, inside the window.
+- **The fix is a location, not a patch.** The computation already existed, module-private, in
+  `conflict/rules/overlap.ts`, which has read `arrival.mins` correctly since Phase 1 — so `free_time` was a
+  **second opinion**, not an oversight. It moves to `derive/occupancy.ts` as `stopOccupancy` /
+  `occupiedInterval`, both callers read it, and `ask/` still owns exactly the two computations §11.4 allows
+  it. **Not a field on `TripSummaryRow`** (§0 position 8 — a per-stop interval is below the row's line;
+  position 6 — a row is a copy), **not a new package export** (two intra-package callers; §2.10 stays at
+  **91**), and **no version constant moves**.
+- **Measured over the whole population, not the flagship day** (§0 position 12 (b)). All 16 days × 3
+  dayparts: **44 busy / 0 open / 4 unknown → 46 / 0 / 2**. Exactly two verdicts move, both `unknown` →
+  `busy`, both because a journey's stated run reaches into the window. Split's four evenings are now all
+  `busy` and the answer becomes a `complete` **"No"** that names the bus, instead of a `partial` *"I can't
+  tell"* — and `free_time` **still never says "yes" about this trip**, which A-96 Part 5 declares rather
+  than leaves for a criterion to discover (criterion rule 9).
+- **Redaction was a property of the fixture's strings, not of the renderer.** `answer.text` interpolated
+  `trip.title` and `City.name` verbatim; a trip titled *"Split flat (door code 4821)"* rendered a §6.6
+  credential class straight into prose. **The general rule: a record's free text may be narrated only where
+  the closed `Question` union makes that record the SUBJECT of the question** — which admits exactly
+  `City.name` and nothing else, because §11.7 rule 2's restatement cannot name a city otherwise — and the
+  one admissible field still passes one chokepoint through §6.6's existing `redactText`. **A city name is
+  not categorically safer than a trip title; it is differently *admissible*.** §0 position 13 gains
+  clause **(d)**.
+- **One document was wrong and the builder was right.** §11.7 rule 4 gated `city_edge`'s journey search on
+  the day carrying a second city; taken literally that prints *"no stop on that day is recorded as a
+  journey"* about **two** of this trip's twelve edges that record one (Vienna's arrival day, London's last
+  day) and demotes two `complete` answers. The builder read the caveat's own definition off §11.5 and
+  ignored the gate (KD-131). **The prose is corrected; the code is not touched** — sequencing rule 12 (b),
+  third instance, and this time the builder under-stated the fix's necessity rather than over-stating it.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -10396,6 +10442,96 @@ widening that costs a type change is the design failing**, and this increment is
   headline criterion is that `I-35`'s boundary did not move, and that is unmeasurable before it exists.
 - **Route: builder only**, unless its stop-and-report fires — no export surface change, no new type, no new
   invariant. If the boundary moves, it stops and becomes architect work.
+
+#### I-37 — the grounding repairs: one definition of how long a stop occupies the clock, and prose that is clean by construction (revision 78, `ARCHITECTURE.md` revision 78's §11.11 **A-96**; QA round 70's consequence, and the increment that closes `I-35`)
+
+**Read `ARCHITECTURE.md` §11.11 A-96 whole FIRST, then §11.4, §11.5, §11.7 and §11.8** (each of the last
+three carries A-96's amendment banner in place), **then `I-35`'s entry above, then QA round 70's findings
+table. Nothing else in `ARCHITECTURE.md`** — not §2, not §4, not §8, not §10. **No `DESIGN.md`**: this
+increment renders nothing.
+
+**Why it exists.** QA round 70 confirmed the boundary §11 exists to hold — *no model anywhere in the answer
+path* — and could not bend it. What it broke is the other half of the same sentence: **every clause of every
+answer is traceable to a cited fact.** Four of five MAJORs are rendered prose that is false of, or
+unsupported by, the document the answer claims to be about, and one of them is the increment's own flagship
+example. `I-35` is built and **not shippable until this lands**.
+
+**What it is NOT.** **No `.tsx`, no `apps/web` file of any kind, no `packages/client/src`, no
+`docs/design/`, no `qa/` rewrite** (the breaker owns `qa/r70-ask.mjs`). No new `Question` kind — that is
+`I-36`. No new export: **§2.10 stays at 91.** No stored field, no migration, no golden regenerated, no
+corpus byte; `SCHEMA_VERSION` (5) and `SUMMARY_VERSION` (8) do not move. **It does not gate `I-30`**, which
+is fenced by the unresolved visual direction and by nothing else.
+
+- **Built, in four parts, and parts 1 and 2 are ordered.**
+  1. **`packages/core/src/derive/occupancy.ts` — first, because nothing else can be re-verified before it**
+     (A-96 Part 2). `stopOccupancy(stop)` and `occupiedInterval(stop)`, module-level exports, **not added to
+     `packages/core/src/index.ts`**. `conflict/rules/overlap.ts` deletes its module-private `occupancy` and
+     imports `stopOccupancy`, mapping `source === 'journey_run'` onto its existing `derived` flag — an exact
+     identity, so KD-15's carve-out is untouched. **An `arrival` on a non-journey stop is the leg INTO the
+     stop and is not occupancy** (§2.5; **60 of 112** scheduled stops are that shape).
+  2. **`ask/freeTime.ts` reads intervals, and `free_time`'s sentences change with it** (A-96 Part 3, §11.7
+     rule 3). `busy` becomes *an interval intersects the window*; `DayVerdict.withoutDuration` becomes
+     `withoutOccupancy`; the `No` arm stops claiming everything *"starts in"* the window and names the
+     occupying stop's own evidence where it does not (*"you are on a bus into Split until 18:35"*); the
+     `duration_unknown` message stops naming `durationMins`. **`AnswerCaveatCode` does not move.** **R70-2
+     lands here** — an answer carrying an unresolvable hole is not `complete` — and it lands after this
+     part, because this part changes which days have holes.
+  3. **The renderer's one chokepoint** (A-96 Part 6, §11.8 clause 2). `trip.title` leaves `text` for
+     `params`/`facts`; `City.name` is the only user-authored field interpolated into prose or into a
+     `caveat.message`, and it goes through one function that applies §6.6's `redactText` first. **R70-4's
+     builder half is this part.**
+  4. **The remaining builder-routed findings of round 70, as one pass** — **R70-1** (`trip_overview`'s empty
+     arm says *"no days and no cities"* when one of the two is non-zero, and labels a describable document
+     `none`), **R70-5** (the lifetime-scope refusal is a six-phrase literal list; §11.3 rule 3 names the
+     *class* — a past-tense first-person frame — not the phrases), **R70-6**, **R70-7**, and every other row
+     of round 70's table routed to the builder. They share files with parts 2 and 3 and are cheaper as one
+     pass than as five.
+- **NOT built, because the fix was a document.** **R70-11** (§11.7 rule 4's two-city gate) is already
+  correct in the code: the builder read `no_departure_stop` off §11.5 and ignored the gate, and A-96 Part 7
+  confirms he was right and corrects the prose. **If this increment changes `answerCityEdge`'s search, it
+  has misread the ruling.**
+- **Verification.** Every criterion of `I-35` is re-run unchanged; these are additional.
+  - `[stated]` **The 48-verdict sweep.** All 16 days × 3 dayparts of the reference trip classify **46
+    `busy` / 0 `open` / 2 `unknown`**, the two `unknown` being the mornings of `2026-08-07` and
+    `2026-08-08`, and the two that moved since `I-35` being the evenings of `2026-08-07` and `2026-08-14`,
+    both `unknown` → `busy`. A ceiling, not a floor: no other verdict differs from A-96 Part 4's table.
+  - `[stated]` **The flagship answer.** *"Do I have a free evening in Split"* returns `coverage:
+    'complete'`, a `No`, and cites the `2026-08-14` 17:15 journey stop whose `arrival.mins` is **80**. Its
+    census clause says **20 of 28**, not 28. **N1, injected: delete that stop's `arrival`** → the 14th falls
+    back to `unknown`, `coverage` drops to `partial`, and the sentence changes to the *"I can't tell"* arm.
+    **This fault fires; `free_time`'s `open` arm cannot be fired from this fixture at all and is held by the
+    hand-built document in `ask.test.ts`** (A-96 Part 5, criterion rule 9).
+  - `[stated]` **One definition.** `stopOccupancy` is the only place in `packages/core/src` that reads
+    `arrival.mins` as a duration of the stop it sits on, and `conflict/rules/overlap.ts` calls it. **N2,
+    injected: make `stopOccupancy` return `null` for `'journey_run'`** → both the `overlap` suite and the
+    `free_time` sweep redden, which is the property *"two readers, one definition"* asserted rather than
+    asserted about.
+  - `[snapshot + stated]` **`overlap` did not move.** `fixtures/golden/core-conflicts.json` is
+    byte-identical, and `detectConflicts` on the reference trip still returns **0** `overlap` findings at
+    both clocks — the stated value beside the snapshot, per criterion rule 2.
+  - `[stated]` **Redaction is a property of the renderer.** Over `askableQuestions(trip)` at both clocks,
+    for the reference trip **and** for a copy whose `title` and one `City.name` carry one string per §6.6
+    pattern class, `redactionHits(answer.text)` and `redactionHits(caveat.message)` are **`[]`** for every
+    answer. **N3, injected: remove the chokepoint from the city-name path** → the mutated run reddens on
+    `trip_overview`, `city_edge` and `free_time`; the unmutated run stays green, which is what proves the
+    mutated document is the instrument (**0 of 6** city names and the title hit any pattern today).
+  - `[stated]` **`city_edge` did not change.** All **12** city edges of the reference trip answer
+    `coverage: 'complete'` and cite a `travelRole: 'journey'` stop, **10 of 12** on a two-city day. The
+    `no_departure_stop` caveat is **unfireable on this fixture (0 of 12)** and is held by `ask.test.ts`'s
+    hand-built document — declared, per criterion rule 9, not asserted.
+  - `[stated]` **The ceiling held.** `packages/core/src/ask/` still owns exactly two computations of its
+    own (§11.4); `ask/` imports nothing outside `packages/core/src`; `Object.keys(core).length` is **91**.
+- **Stop-and-report conditions.** Two, and both mean the ruling is wrong rather than the build. **(a)** If
+  the 48-verdict sweep differs from A-96 Part 4's table in any cell, stop — the architect measured the
+  committed fixture and one of us is wrong about the document. **(b)** If any `Answer` type, `AnswerCite`,
+  `AnswerCaveatCode` member or `resolveCite` signature has to change to land this, stop — §11's boundary
+  moved, and that is a ruling (sequencing rule 13 (d)).
+- **Dependencies / blockers.** `I-35` is built (`43315ef`). Part 1 precedes part 2. **`I-36` stays blocked
+  behind this**, not behind `I-35` alone: its headline criterion is that `I-35`'s boundary did not move, and
+  round 70 found four answers that were wrong inside it.
+- **Route: builder, and then the confirmation round QA round 70 already owes — not a second one.** It runs
+  over `I-37` as one subject, re-cutting `qa/r70-ask.mjs` against the corrected sweep; that re-cut is the
+  breaker's, not the builder's.
 
 ### Exit criteria — the Phase 2 ship gate
 
