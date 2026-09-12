@@ -18,6 +18,9 @@
  *     written unconditionally — *text carrying a lifetime pattern returns
  *     `out_of_scope: 'lifetime'`* — so it is asked before any intent can consume the sentence.
  *     Answering the trip-scoped version would be **right about the wrong question**.
+ *     **§11.12 A-97 Part 6 makes that list a DIAGNOSIS rather than the safety mechanism**: the
+ *     mechanism is `country_count`'s own trip-scope gate below, which refuses
+ *     `out_of_scope: 'scope_unclear'` where the text proves no scope at all.
  *  2. **Recommendation next** (rule 4). Jacob's own fence, made a feature of the recogniser
  *     rather than left to produce a bad answer.
  *  3. Then the intents. **Two readings is a refusal, never a choice** (rule 1): picking the first
@@ -102,7 +105,36 @@ function firstOf(tokens: readonly string[], phrases: readonly string[]): Span | 
  */
 const LIFETIME_TRIGGERS = [
   'in total', 'total', 'all my trips', 'across all my trips',
-  'every trip', 'so far', 'ever', 'lifetime', 'all time', 'in my life',
+  'every trip', 'so far', 'to date', 'ever', 'lifetime', 'all time', 'in my life',
+];
+
+/**
+ * **§11.3 rule 3 as amended by §11.12 A-97 Part 6 — the ways English refers to THE DOCUMENT IN
+ * HAND**, and the reason `country_count` is default-deny.
+ *
+ * The lifetime list above is a **denylist over an open set** — every English way of saying
+ * *"across everything"* — and this project has measured it short twice in two rounds: five
+ * phrasings at R70-5, eight more at R71-3, including *"how many countries have I **already** been
+ * to"*, one adverb from a phrasing that is refused and the ordinary way to ask. The inverse is a
+ * list over a **bounded** set: the demonstrative, the product's own noun, and first-person present
+ * or future. **A new trip-scope phrasing is a thing a person writes; a new totality phrasing is a
+ * thing English generates.**
+ *
+ * **This list will also be incomplete, and that is the point.** An unlisted marker costs a
+ * refusal with the menu behind it — §11.3 rule 5's own answer to every refusal — and an unlisted
+ * totality phrase cost a **false statement about the user's life, stated as a fact**. Default-deny
+ * does not make the next gap less likely; it puts it on the side of the boundary this capability
+ * can afford. **A phrasing that reaches a refusal with the less specific reason is one line here
+ * and no architect round; a phrasing that reaches an ANSWER means the gate itself is wrong and
+ * comes back as a ruling** (A-97 Part 6 rider 4).
+ */
+const TRIP_SCOPE_MARKERS = [
+  // the demonstrative
+  'this trip', 'this itinerary', 'here',
+  // the product's own noun
+  'my trip', 'the trip', 'my itinerary', 'the itinerary',
+  // first person, present or future
+  'am i', 'are we', 'do i', 'do we', 'will i', 'will we',
 ];
 
 /**
@@ -126,24 +158,46 @@ const PAST_TRAVEL_VERBS = [
 const PAST_TRAVEL_BASES = ['visit', 'see', 'stay', 'go', 'travel', 'tour', 'explore'];
 
 /**
+ * How many words may sit between the auxiliary and the participle — QA R71-3. The frame was
+ * matched on strict token **adjacency**, so one adverb defeated it: *"have I **already** been
+ * to"*, *"…have I **now** visited"*, *"…have I **not** been to"* (the frame this file's own
+ * comment already claimed) all fell through to `country_count` and were answered about this trip.
+ * Three is enough for *"have I ever really been to"* and short enough that the participle is still
+ * the auxiliary's own.
+ */
+const FRAME_WINDOW = 3;
+
+/**
  * Does the sentence carry a past-tense first-person travel frame? Pure.
  *
  * `have i <past participle>`, `had i …`, `did i <base>`, `i have <past participle>` and
- * `i've <past participle>` (which `tokenize` has already folded to `ive`).
+ * `i've <past participle>` (which `tokenize` has already folded to `ive`) — each with up to
+ * `FRAME_WINDOW` words in between, and each in the **plural** as well, because a shared trip is a
+ * first-person-plural document (*"how many countries have we visited"*).
+ *
+ * **The class stays narrow on its verb**: `have i booked` is a trip-scoped question this
+ * recogniser answers, and a rule that read *any* word after `have i` would refuse it.
  */
 function lifetimeFrame(tokens: readonly string[]): boolean {
   const past = (w: string | undefined) => w !== undefined && PAST_TRAVEL_VERBS.includes(w);
   const base = (w: string | undefined) => w !== undefined && PAST_TRAVEL_BASES.includes(w);
+  /** Is one of `verbs` within `FRAME_WINDOW` words after position `from`? */
+  const within = (from: number, verb: (w: string | undefined) => boolean) => {
+    for (let j = from; j < Math.min(tokens.length, from + FRAME_WINDOW + 1); j++) {
+      if (verb(tokens[j])) return true;
+    }
+    return false;
+  };
+  const subject = (w: string | undefined) => w === 'i' || w === 'we';
   for (let i = 0; i < tokens.length; i++) {
-    if (tokens[i] !== 'i') continue;
-    const before = tokens[i - 1];
-    const after = tokens[i + 1];
-    if ((before === 'have' || before === 'had') && past(after)) return true;
-    if (before === 'did' && base(after)) return true;
-    if ((after === 'have' || after === 'had') && past(tokens[i + 2])) return true;
-  }
-  for (let i = 0; i + 1 < tokens.length; i++) {
-    if ((tokens[i] === 'ive' || tokens[i] === 'iv') && past(tokens[i + 1])) return true;
+    const t = tokens[i];
+    // `have I <participle>` / `had we <participle>` / `did I <base>`, adverbs allowed between.
+    if ((t === 'have' || t === 'had' || t === 'has') && subject(tokens[i + 1]) && within(i + 2, past)) return true;
+    if (t === 'did' && subject(tokens[i + 1]) && within(i + 2, base)) return true;
+    // `I have <participle>` / `we had <participle>`.
+    if (subject(t) && (tokens[i + 1] === 'have' || tokens[i + 1] === 'had') && within(i + 2, past)) return true;
+    // `I've <participle>` / `we've <participle>` — `tokenize` has dropped the apostrophe.
+    if ((t === 'ive' || t === 'iv' || t === 'weve') && within(i + 1, past)) return true;
   }
   return false;
 }
@@ -328,7 +382,29 @@ export function matchQuestion(text: string, trip: Trip): MatchOutcome {
   if (unbooked) { candidates.push({ kind: 'unbooked' }); take(unbooked); }
 
   const countries = firstOf(tokens, COUNTRY_TRIGGERS);
-  if (countries) { candidates.push({ kind: 'country_count' }); take(countries); }
+  if (countries) {
+    // **§11.12 A-97 Part 6 — the scope is PROVED, not assumed.** `country_count` is the one intent
+    // whose noun a *different* capability answers over a *different* population (`travelStats`,
+    // §8.4), so it answers only where the text says it is about the document in hand. This is a
+    // **default-deny flip, not a longer list**: the lifetime denylist above still runs first and
+    // still produces the better-worded refusal, but it is a diagnosis and this is the mechanism.
+    // Scoped to this intent alone (rider 3) — `free_time`, `city_edge`, `unbooked` and
+    // `trip_overview` have no library-scope twin, and a gate they do not need is an invented
+    // refusal. **Trigger for the next one: the first new `Question` kind whose noun `travelStats`
+    // or any later library-scope surface also answers — it takes this gate at birth.**
+    if (firstOf(tokens, TRIP_SCOPE_MARKERS) === null) {
+      return {
+        kind: 'out_of_scope',
+        reason: 'scope_unclear',
+        pointer:
+          'I cannot tell whether you mean this trip or every trip you have recorded, and those ' +
+          'are two different data sets. Ask "how many countries am I visiting" for this trip, or ' +
+          '`stats` for your whole library (travelStats, §8.4).',
+      };
+    }
+    candidates.push({ kind: 'country_count' });
+    take(countries);
+  }
 
   // `city_edge` needs BOTH halves. An edge verb with no city of this trip beside it produces no
   // reading at all — and is therefore reported as unread — rather than being guessed at.

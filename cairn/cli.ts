@@ -664,10 +664,23 @@ function cmdAsk() {
     if (m.kind === 'ambiguous') {
       out(`I read "${text}" two ways, and I will not pick one for you:`);
       for (let i = 0; i < m.readings.length; i++) {
-        out(`  ${i + 1}. ${m.restatements[i]}  —  ask it as: ${questionLine(m.readings[i])}`);
+        // **QA R71-5 / §11.12 A-97 Part 7.** This line used to print the redacted restatement and
+        // the **raw** city name side by side (`when you leave [redacted]  —  ask it as: when do I
+        // leave LONDON`), which makes the redaction theatre. A menu line must stay **typeable** —
+        // that is what makes it a way out of a refusal — so the typeable form is the one that
+        // survives, and the readings are already distinguishable as typed questions.
+        out(`  ${i + 1}. ${questionLine(m.readings[i])}`);
       }
     } else if (m.kind === 'out_of_scope') {
-      out(`I will not answer that: ${m.reason === 'lifetime' ? 'it is about a different data set' : 'it is a recommendation'}.`);
+      // Three reasons, three sentences. `scope_unclear` is §11.12 A-97 Part 6's: the question
+      // is well formed and Cairn cannot prove which data set it is about, so it refuses rather
+      // than guessing — and its pointer names both ways forward.
+      const why = m.reason === 'lifetime'
+        ? 'it is about a different data set'
+        : m.reason === 'recommendation'
+          ? 'it is a recommendation'
+          : 'I cannot tell which trip you mean';
+      out(`I will not answer that: ${why}.`);
       out(`  ${m.pointer}`);
     } else {
       out(`I don't recognise "${text}" as a question about this trip.`);

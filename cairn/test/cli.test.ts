@@ -1142,3 +1142,67 @@ test('R70-12: a --file this CLI will not act on refuses with one line and exit 2
     rmSync(broken, { force: true });
   }
 });
+
+/**
+ * **QA R71-3 / §11.12 A-97 Part 6 — the scope gate at the door a user types at.** One adverb
+ * defeated R70-5's adjacency-matched lifetime class (*"how many countries have I **already** been
+ * to"* was answered *"This trip accounts for 7 countries"*), and the list it defeated was a
+ * denylist over an open set. `country_count` now answers only on a positive trip-scope marker.
+ */
+test('R71-3: the eight escapes refuse at the CLI, and a scopeless country question refuses too', () => {
+  for (const text of [
+    'how many countries have I already been to',
+    'how many countries have I now visited',
+    'how many countries have I actually visited',
+    'how many countries have I ever really been to',
+    'how many countries have I not visited',
+    'how many countries have I not been to',
+    'how many countries have we visited',
+    'how many countries to date',
+  ]) {
+    const r = cli('ask', text);
+    assert.equal(r.code, 2, `"${text}" exited ${r.code}, not 2 — it was answered against THIS trip:\n${r.out}`);
+    assert.match(r.out, /different data set/, r.out);
+    assert.equal(/This trip accounts for 7 countries/.test(r.out), false, `"${text}" was answered anyway:\n${r.out}`);
+  }
+  // No marker at all: the less specific refusal, with both ways forward and the menu behind it.
+  const bare = cli('ask', 'how many countries');
+  assert.equal(bare.code, 2, bare.out);
+  assert.match(bare.out, /which trip you mean|cannot tell whether you mean/, bare.out);
+  assert.equal(/it is a recommendation/.test(bare.out), false, `the refusal gives the wrong reason:\n${bare.out}`);
+  assert.match(bare.out, /how many countries am I visiting/, 'the refusal does not name the trip-scoped question');
+  assert.match(bare.out, /Questions I can answer about this trip/, 'a refusal did not print the menu');
+  assert.equal(/This trip accounts for 7 countries/.test(bare.out), false, bare.out);
+  // The control: the menu's own line still answers, at the same door.
+  const scoped = cli('ask', 'how many countries am I visiting');
+  assert.equal(scoped.code, 0, scoped.out);
+  assert.match(scoped.out, /This trip accounts for 7 countries/);
+});
+
+/**
+ * **QA R71-5 / A-97 Part 7 — where a redacted restatement and a typeable form would share a line,
+ * the surface prints the typeable one only.** `questionLine` interpolated the **raw** city name
+ * beside the redacted restatement (`1. when you leave [redacted]  —  ask it as: when do I leave
+ * LONDON`), which makes the redaction theatre. A menu line must stay typeable — that is what makes
+ * it a way out of a refusal — so the raw name is correct there and the fix is not to redact it.
+ */
+test('R71-5: an ambiguous refusal prints the typeable form only, never both on one line', () => {
+  const { trip } = loadEurope2026() as { trip: core.Trip };
+  const loud: core.Trip = { ...trip, cities: trip.cities.map((c) => (c.key === 'london' ? { ...c, name: 'LONDON' } : c)) };
+  const doc = join(CAIRN, 'node_modules', '.cairn-r71-london.json');
+  writeFileSync(doc, core.toJSON(loud));
+  try {
+    const r = cli('ask', 'when do I leave for LONDON', '--file', doc);
+    assert.equal(r.code, 2, `the two readings were not refused:\n${r.out}`);
+    assert.match(r.out, /two ways/, r.out);
+    assert.match(r.out, /when do I leave LONDON/, 'the menu line is no longer typeable');
+    for (const line of r.out.split('\n')) {
+      assert.equal(
+        line.includes('[redacted]') && /LONDON/.test(line), false,
+        `both forms appear on one line, which makes the redaction theatre:\n${line}`,
+      );
+    }
+  } finally {
+    rmSync(doc, { force: true });
+  }
+});

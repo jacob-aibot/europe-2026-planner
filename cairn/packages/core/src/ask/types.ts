@@ -50,8 +50,12 @@ export type Question =
  *  - `ambiguous` is what two readings produce — **never a choice between them**. Picking the
  *    first would be the confident-wrong-answer shape the root `CLAUDE.md` refuses.
  *  - `out_of_scope` is refused **by name**, with a pointer: `'lifetime'` points at `stats`
- *    (`travelStats` over the whole library — a different data set, one word away), and
- *    `'recommendation'` states Jacob's own fence.
+ *    (`travelStats` over the whole library — a different data set, one word away),
+ *    `'recommendation'` states Jacob's own fence, and **`'scope_unclear'`** is §11.12 A-97
+ *    Part 6's: `country_count` answers only where the text carries a **trip-scope marker**, and
+ *    text matching a country trigger without one is refused with a pointer naming **both** ways
+ *    forward. The lifetime list stays and is asked first because when it fires it produces the
+ *    better diagnosis — after A-97 it is a **diagnosis, not the safety mechanism**.
  *  - `unrecognised` is everything else. `askableQuestions(trip)` is the way out of all four.
  */
 export type MatchOutcome =
@@ -63,7 +67,7 @@ export type MatchOutcome =
       unread: string[];
     }
   | { kind: 'ambiguous'; readings: Question[]; restatements: string[] }
-  | { kind: 'out_of_scope'; reason: 'lifetime' | 'recommendation'; pointer: string }
+  | { kind: 'out_of_scope'; reason: 'lifetime' | 'recommendation' | 'scope_unclear'; pointer: string }
   | { kind: 'unrecognised' };
 
 /** How much of the question the document could answer (§11.7 rule 1). */
