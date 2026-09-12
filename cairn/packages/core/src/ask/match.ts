@@ -39,6 +39,7 @@
 import type { Trip } from '../model/types.ts';
 import type { CityKey } from '../model/ids.ts';
 import { orderedCities } from '../derive/summary.ts';
+import { cityProse } from './prose.ts';
 import type { DayPart, MatchOutcome, Question } from './types.ts';
 
 /** A consumed span of the normalised token list, `[from, to)`. */
@@ -60,9 +61,17 @@ type Span = { from: number; to: number };
  * It is also **not** `normalizeCityName` and may not be implemented in terms of it (§8.4 A-82
  * Part 3's rule at a third door): that function answers *"are these two city names the same
  * name"*, and this one answers *"what words did the user type"*.
+ *
+ * **The class is every LETTER and every NUMBER, in any script — QA R70-7.** It used to be
+ * `[a-z0-9]`, which meant a word written in any other script could not appear in `unread` at all:
+ * *"do I have a free evening in Сплит"* was answered **about the whole trip** with the user's own
+ * subject word gone without trace, and §11.3 rule 2 — *a recogniser that silently ignores half
+ * the input is a classifier pretending to be a parser* — was unenforceable for exactly the input
+ * it was written for. The model supports non-Latin city names (`cityKey.test.ts` carries two
+ * Japanese ones), so the recogniser has to be able to *fail* on them legibly.
  */
 function tokenize(text: string): string[] {
-  return text.toLowerCase().replace(/['’]/g, '').match(/[a-z0-9]+/g) ?? [];
+  return text.toLowerCase().replace(/['’]/g, '').match(/[\p{L}\p{N}]+/gu) ?? [];
 }
 
 /** The first contiguous occurrence of `phrase`'s tokens in `tokens`, or `null`. */
@@ -88,14 +97,56 @@ function firstOf(tokens: readonly string[], phrases: readonly string[]): Span | 
 }
 
 /**
- * §11.3 rule 3's vocabulary, verbatim from the ruling: `ever`, `in total`, `all my trips`,
- * `have I been`, `so far`. **v1's vocabulary contains no lifetime pattern**, so any of these
- * refuses with a pointer to `stats` rather than answering this trip's seven.
+ * §11.3 rule 3's vocabulary: `ever`, `in total`, `all my trips`, `so far`. These are **totality
+ * markers** — a word that says "across everything" regardless of what verb carries it.
  */
 const LIFETIME_TRIGGERS = [
-  'have i been', 'have i ever', 'in total', 'all my trips', 'across all my trips',
+  'in total', 'total', 'all my trips', 'across all my trips',
   'every trip', 'so far', 'ever', 'lifetime', 'all time', 'in my life',
 ];
+
+/**
+ * **The other half of §11.3 rule 3, and it is a CLASS rather than a phrase list — QA R70-5.**
+ *
+ * The shipped rule was six literal phrases, so *"how many countries have I visited"*, *"…have I
+ * seen"*, *"…have I stayed in"*, *"which countries have I visited"* and *"how many countries did
+ * I visit"* all fell through to `country_count` and were answered **"This trip accounts for 7
+ * countries"** — *right about the wrong question*, which §11.3 names as the failure mode this
+ * whole section is arranged against. `'have i been'` was on the list because of its **frame**,
+ * not its words: a **past-tense first-person** question about travel is a question about the
+ * library (`travelStats`, §8.4), never about the document in hand.
+ *
+ * The class is deliberately narrow on its verb: `have i booked` is a trip-scoped question this
+ * recogniser answers, and a rule that read *any* word after `have i` would refuse it.
+ */
+const PAST_TRAVEL_VERBS = [
+  'been', 'visited', 'seen', 'stayed', 'gone', 'went', 'travelled', 'traveled', 'toured', 'explored', 'hit',
+];
+/** The same class in the bare-infinitive frame `did I <verb>` / `have I not <verb>`. */
+const PAST_TRAVEL_BASES = ['visit', 'see', 'stay', 'go', 'travel', 'tour', 'explore'];
+
+/**
+ * Does the sentence carry a past-tense first-person travel frame? Pure.
+ *
+ * `have i <past participle>`, `had i …`, `did i <base>`, `i have <past participle>` and
+ * `i've <past participle>` (which `tokenize` has already folded to `ive`).
+ */
+function lifetimeFrame(tokens: readonly string[]): boolean {
+  const past = (w: string | undefined) => w !== undefined && PAST_TRAVEL_VERBS.includes(w);
+  const base = (w: string | undefined) => w !== undefined && PAST_TRAVEL_BASES.includes(w);
+  for (let i = 0; i < tokens.length; i++) {
+    if (tokens[i] !== 'i') continue;
+    const before = tokens[i - 1];
+    const after = tokens[i + 1];
+    if ((before === 'have' || before === 'had') && past(after)) return true;
+    if (before === 'did' && base(after)) return true;
+    if ((after === 'have' || after === 'had') && past(tokens[i + 2])) return true;
+  }
+  for (let i = 0; i + 1 < tokens.length; i++) {
+    if ((tokens[i] === 'ive' || tokens[i] === 'iv') && past(tokens[i + 1])) return true;
+  }
+  return false;
+}
 
 /**
  * §11.3 rule 4. **Refused by name**, with the reason stated in one sentence. A restaurant
@@ -148,7 +199,34 @@ const DAYPART_TRIGGERS: ReadonlyArray<{ part: DayPart; phrases: readonly string[
 
 const DAYPART_ORDER: readonly DayPart[] = ['morning', 'afternoon', 'evening'];
 
-/** The display name of a city key, or the key itself for a key no city carries. */
+/**
+ * The prepositions that invert an edge verb, by edge — QA R70-6. *"leave **for** Vienna"* is an
+ * arrival; *"arrive **from** Split"* is a departure. Only these, and only between the verb and
+ * the city: *"arrive in Vienna"* and *"leave Vienna"* are unambiguous and stay so.
+ */
+const EDGE_FLIPPERS: Record<'arrive' | 'leave', readonly string[]> = {
+  leave: ['for', 'to', 'towards', 'toward'],
+  // Backticks rather than quotes, deliberately: `test/boundaries.test.ts`'s module-specifier
+  // scanner reads the word `from` immediately before a quote as an import, and this one is a
+  // preposition. Spelling it any other way would be hiding it from that scanner rather than
+  // being legible to it.
+  arrive: [`from`],
+};
+
+const other = (edge: 'arrive' | 'leave'): 'arrive' | 'leave' => (edge === 'leave' ? 'arrive' : 'leave');
+
+/** Is the city span separated from the edge verb by exactly a flipping preposition? Pure. */
+function flipsEdge(tokens: readonly string[], verb: Span, city: Span, edge: 'arrive' | 'leave'): boolean {
+  if (city.from < verb.to) return false;
+  const between = tokens.slice(verb.to, city.from);
+  return between.length === 1 && EDGE_FLIPPERS[edge].includes(between[0]);
+}
+
+/**
+ * The display name of a city key, or the key itself for a key no city carries. **For `params`
+ * only** — the structured half of a `MatchOutcome` carries the document's own value, exactly as
+ * an `AnswerFact` does (A-96 Part 6). `restate` narrates through `cityProse` instead.
+ */
 function cityName(trip: Trip, key: CityKey): string {
   return trip.cities.find((c) => c.key === key)?.name ?? key;
 }
@@ -158,6 +236,12 @@ function cityName(trip: Trip, key: CityKey): string {
  * `CLAUDE.md` convention (*never present our reading as the user's own*) applied at the one place
  * in this product where the system's interpretation of the user stands between them and their
  * data. Internal: the CLI prints `I read this as: ${restatement}.`
+ *
+ * **A-96 Part 6 reaches this sentence too.** The restatement is prose Cairn composes, printed at
+ * the same terminal as `answer.text`, and A-96 cites it as the reason `City.name` has to be
+ * admissible at all. *Admissible is not trusted*: the name goes through `prose.ts`'s one
+ * chokepoint here as well, so a trip whose city is stored as `LONDON` restates as `[redacted]`
+ * rather than leaking a §6.6 pattern class one line above an answer that does not.
  */
 export function restate(question: Question, trip: Trip): string {
   switch (question.kind) {
@@ -165,8 +249,8 @@ export function restate(question: Question, trip: Trip): string {
       return 'what your trip looks like';
     case 'city_edge':
       return question.edge === 'leave'
-        ? `when you leave ${cityName(trip, question.cityKey)}`
-        : `when you arrive in ${cityName(trip, question.cityKey)}`;
+        ? `when you leave ${cityProse(trip, question.cityKey)}`
+        : `when you arrive in ${cityProse(trip, question.cityKey)}`;
     case 'unbooked':
       return 'what on this trip is still unbooked';
     case 'country_count':
@@ -174,7 +258,7 @@ export function restate(question: Question, trip: Trip): string {
     case 'free_time':
       return question.cityKey === null
         ? `whether you have a free ${question.part} anywhere on this trip`
-        : `whether you have a free ${question.part} in ${cityName(trip, question.cityKey)}`;
+        : `whether you have a free ${question.part} in ${cityProse(trip, question.cityKey)}`;
   }
 }
 
@@ -203,7 +287,7 @@ export function matchQuestion(text: string, trip: Trip): MatchOutcome {
   if (tokens.length === 0) return { kind: 'unrecognised' };
 
   // 1 & 2 — the two scope refusals, asked before any intent can consume the sentence.
-  if (firstOf(tokens, LIFETIME_TRIGGERS) !== null) {
+  if (firstOf(tokens, LIFETIME_TRIGGERS) !== null || lifetimeFrame(tokens)) {
     return {
       kind: 'out_of_scope',
       reason: 'lifetime',
@@ -252,7 +336,17 @@ export function matchQuestion(text: string, trip: Trip): MatchOutcome {
     const hit = firstOf(tokens, EDGE_TRIGGERS[edge]);
     if (!hit || cityHits.length === 0) continue;
     take(hit);
-    for (const c of cityHits) { candidates.push({ kind: 'city_edge', cityKey: c.key, edge }); take(c.span); }
+    for (const c of cityHits) {
+      candidates.push({ kind: 'city_edge', cityKey: c.key, edge });
+      take(c.span);
+      // **QA R70-6.** *"when do I leave FOR Vienna"* is a question about ARRIVING in Vienna, and
+      // the recogniser had no notion that a consumed edge verb can be negated by an unconsumed
+      // word beside it: it delivered the `leave` reading and put the preposition in `unread`.
+      // Both readings are expressible in the closed union, so §11.3 rule 1 governs — **two
+      // readings is a refusal, never a choice.** The flip is only recognised where the
+      // preposition sits between the verb and the city, which is the only place it can mean this.
+      if (flipsEdge(tokens, hit, c.span, edge)) candidates.push({ kind: 'city_edge', cityKey: c.key, edge: other(edge) });
+    }
   }
 
   const freeTime = firstOf(tokens, FREE_TIME_TRIGGERS);

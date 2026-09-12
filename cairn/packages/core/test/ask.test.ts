@@ -221,30 +221,189 @@ test('N3 (injected, SHOWN TO FIRE): rendering the empty case as "nothing is unbo
 // 4. `free_time` — three-valued, and `unknown` is the honest answer on this trip (§11.7 rule 3)
 // ---------------------------------------------------------------------------------------------
 
-test('the measurement this design rests on: 143 of 143 stops carry durationMins: null', () => {
+test('the measurement this design rests on: 0 of 143 stops state a durationMins, and 91 of 112 state no run length at all', () => {
   const { trip } = europe2026();
   const all = [...trip.days.flatMap((d) => d.stops), ...trip.pool];
   assert.equal(all.length, 143);
   assert.equal(all.filter((s) => s.durationMins === null).length, 143);
+  // A-96 Part 1: the other 21 DO state one, in `arrival.mins`, and reading it is not a default.
+  const scheduled = trip.days.flatMap((d) => d.stops);
+  assert.equal(scheduled.filter((s) => s.travelRole === 'journey' && s.arrival).length, 21);
   assert.equal(
-    trip.days.flatMap((d) => d.stops).filter((s) => s.placement.kind === 'scheduled' && s.placement.time === null).length,
+    scheduled.filter((s) => s.placement.kind === 'scheduled' && s.placement.time === null).length,
     0,
     '0 of 112 scheduled stops carry a null time',
   );
 });
 
-test('"do I have a free evening in Split" answers `unknown`, and that is the correct answer', () => {
+/**
+ * **The flagship answer, and the `[stated]` oracle for `I-37`** (§11.7 rule 3, A-96 Parts 3–4).
+ * Revision 77 answered *"I can't tell … 28 stops … say nothing about how long they take"* over
+ * evidence the document carries: 8 of those 28 are journeys that state their run, and the 14th's
+ * 17:15 bus runs 80 minutes into the evening window. **N1, injected, SHOWN TO FIRE**: delete that
+ * stop's `arrival` and the 14th falls back to `unknown`, `coverage` drops and the sentence
+ * changes to the *"I can't tell"* arm.
+ */
+test('"do I have a free evening in Split" is a confident No, and it names the bus — N1 (injected, SHOWN TO FIRE)', () => {
   const { trip } = europe2026();
-  const a = core.ask({ kind: 'free_time', part: 'evening', cityKey: 'split' }, ctxAt(trip, PLANNED));
-  const state = (date: string) => a.facts.find((f) => f.label === 'day_state' && f.params.date === date)!.value;
-  assert.equal(state('2026-08-12'), 'busy');
-  assert.equal(state('2026-08-13'), 'busy');
-  assert.equal(state('2026-08-14'), 'unknown');
-  assert.equal(state('2026-08-15'), 'busy');
+  const q: Question = { kind: 'free_time', part: 'evening', cityKey: 'split' };
+  const a = core.ask(q, ctxAt(trip, PLANNED));
+  const state = (x: Answer, date: string) => x.facts.find((f) => f.label === 'day_state' && f.params.date === date)!.value;
+  for (const d of ['2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15']) assert.equal(state(a, d), 'busy');
+  assert.equal(a.coverage, 'complete');
+  assert.deepEqual(a.caveats, [], 'a complete answer carries a caveat — §11.5 defines one as why an answer is NOT complete');
+  assert.match(a.text, /^No\./, 'the flagship answer is not the confident No the document supports');
+  assert.ok(a.text.includes('18:35'), 'the sentence does not say how far the journey runs into the evening');
+  assert.ok(a.text.includes('bus'), 'the sentence does not say what the occupying journey is');
+  // The census moves with the verdicts: 20 of 28, not 28 (A-96 Part 4).
+  const census = a.facts.find((f) => f.label === 'stops_without_occupancy')!;
+  assert.deepEqual(census.params, { stops: 20, of: 28, days: 4 });
+  assert.ok(a.text.includes('20 of the 28'), 'the sentence still reports the old, wrong census');
+  // The occupying stop is cited — the 14th's 17:15 journey with `arrival.mins` 80.
+  const bus = trip.days.find((d) => d.id === '2026-08-14')!.stops
+    .find((s) => s.placement.kind === 'scheduled' && s.placement.time === '17:15')!;
+  assert.equal(bus.arrival!.mins, 80);
+  assert.ok(a.cites.some((c) => c.kind === 'stop' && c.id === bus.id), 'the answer does not cite the stop that decided it');
+
+  // N1: the same document with that one `arrival` removed.
+  const blinded: Trip = {
+    ...trip,
+    days: trip.days.map((d) =>
+      d.id === '2026-08-14' ? { ...d, stops: d.stops.map((s) => (s.id === bus.id ? { ...s, arrival: null } : s)) } : d,
+    ),
+  };
+  const fell = core.ask(q, ctxAt(blinded, PLANNED));
+  assert.equal(state(fell, '2026-08-14'), 'unknown', 'the fault did not produce the state it is supposed to produce');
+  assert.equal(fell.coverage, 'partial');
+  assert.match(fell.text, /can'?t tell|cannot tell/i);
+  assert.ok(fell.caveats.some((c) => c.code === 'duration_unknown'));
+  assert.notEqual(fell.text, a.text, 'a partial answer reads exactly like the complete one');
+});
+
+/**
+ * **QA R70-2.** `free_time` rendered the confident **"Yes."** arm at `coverage: 'complete'` while
+ * separately carrying a `time_unknown` caveat whose own message said the untimed stops *"could
+ * not be placed in or out of the window"* — confident and honest disagreeing inside one `Answer`,
+ * with `coverage` wrong in the only direction that matters. A stop that cannot be placed on the
+ * clock is now a hole in the **verdict**, which is the field a surface branches on.
+ */
+test('R70-2: a `time_unknown` caveat never sits beside a complete Yes or No', () => {
+  const { trip } = europe2026();
+  // R70-2's own document: every stop states a duration, and one scheduled stop on the 14th
+  // states no time. Revision 77 answered "Yes." about a day carrying a stop it cannot place.
+  const seeded: Trip = {
+    ...trip,
+    days: trip.days.map((d) =>
+      d.id === '2026-08-14'
+        ? {
+            ...d,
+            stops: d.stops.map((s, i) => {
+              const stated = { ...s, durationMins: 30, arrival: null, travelRole: 'transfer' as const };
+              return i === 0 && stated.placement.kind === 'scheduled'
+                ? { ...stated, placement: { ...stated.placement, time: null } }
+                : stated;
+            }),
+          }
+        : d,
+    ),
+  };
+  const a = core.ask({ kind: 'free_time', part: 'evening', cityKey: 'split' }, ctxAt(seeded, PLANNED));
+  const fourteenth = a.facts.find((f) => f.label === 'day_state' && f.params.date === '2026-08-14')!;
+  assert.equal(fourteenth.value, 'unknown', 'a day carrying a stop that cannot be placed was judged anyway');
   assert.equal(a.coverage, 'partial');
-  assert.ok(a.caveats.some((c) => c.code === 'duration_unknown'));
-  assert.match(a.text, /can'?t tell|cannot tell/i, 'a partial free_time answer does not say it cannot tell');
-  assert.ok(a.text.includes('17:15'), 'the last thing that starts on the 14th is not in the sentence');
+  assert.ok(a.caveats.some((c) => c.code === 'time_unknown'));
+  assert.doesNotMatch(a.text, /^Yes\.|^No\./, 'a confident verdict was rendered over an unresolvable hole');
+
+  // The invariant, over the whole menu of both documents and both clocks.
+  for (const doc of [trip, seeded]) {
+    for (const today of [PLANNED, OVER]) {
+      for (const q of core.askableQuestions(doc)) {
+        const ans = core.ask(q, ctxAt(doc, today));
+        if (ans.caveats.some((c) => c.code === 'time_unknown')) {
+          assert.notEqual(ans.coverage, 'complete', `${q.kind}: time_unknown on a complete answer`);
+          assert.doesNotMatch(ans.text, /^Yes\.|^No\./, `${q.kind}: time_unknown beside a confident verdict`);
+        }
+      }
+    }
+  }
+});
+
+/**
+ * **QA R70-8** — the `unknown` arm offered the day's **day-wide** latest start as the reason it
+ * could not judge the asked window, so it named a time *after* that window: *"On 2026-08-07,
+ * nothing starts after 16:45"* about the 05:00–11:59 morning.
+ */
+test('R70-8: the unknown arm never quotes a time that falls after the window it is explaining', () => {
+  const { trip } = europe2026();
+  for (const part of ['morning', 'afternoon', 'evening'] as const) {
+    const a = core.ask({ kind: 'free_time', part, cityKey: null }, ctxAt(trip, PLANNED));
+    const to = DAYPART_WINDOWS[part].to;
+    for (const f of a.facts.filter((x) => x.label === 'day_state' && x.value === 'unknown')) {
+      const quoted = String(f.params.lastStartBeforeWindow);
+      if (quoted === '') continue;
+      assert.ok(quoted < DAYPART_WINDOWS[part].from, `${f.params.date}: ${quoted} is not before the ${part} window`);
+    }
+    // and nothing after the window's end reaches the sentence.
+    for (const m of a.text.matchAll(/\b([0-2]\d:[0-5]\d)\b/g)) {
+      assert.ok(m[1] <= to, `the ${part} answer quotes ${m[1]}, which is after its own window`);
+    }
+  }
+  const morning = core.ask({ kind: 'free_time', part: 'morning', cityKey: null }, ctxAt(trip, PLANNED));
+  assert.ok(!morning.text.includes('16:45'), 'R70-8 has not moved: a 16:45 start is still evidence about the morning');
+});
+
+/**
+ * **QA R70-9** — the no-days arm hard-coded *"not a free evening"* for all three dayparts.
+ * **QA R70-10** — a day with zero stops is `open`, and the justification clause claimed *"every
+ * stop on that day states how long it takes"*: a positive statement about stops that do not exist.
+ */
+test('R70-9 / R70-10: the sentence names the daypart asked for, and never describes stops that do not exist', () => {
+  const { trip } = europe2026();
+  const withCity: Trip = { ...trip, cities: [...trip.cities, { key: 'lisbon', name: 'Lisbon', order: 99 } as never] };
+  for (const part of ['morning', 'afternoon', 'evening'] as const) {
+    const a = core.ask({ kind: 'free_time', part, cityKey: 'lisbon' }, ctxAt(withCity, PLANNED));
+    assert.equal(a.coverage, 'none');
+    const others = (['morning', 'afternoon', 'evening'] as const).filter((p) => p !== part);
+    for (const other of others) assert.ok(!a.text.includes(other), `the ${part} answer talks about the ${other}`);
+  }
+  // R70-10: an unplanned day. `open` is the honest verdict; the reason is that nothing is
+  // recorded, not that every stop states its length.
+  const unplanned: Trip = {
+    ...trip,
+    days: trip.days.map((d) => (d.id === '2026-08-14' ? { ...d, stops: [] } : d)),
+  };
+  const a = core.ask({ kind: 'free_time', part: 'evening', cityKey: 'split' }, ctxAt(unplanned, PLANNED));
+  const day = a.facts.find((f) => f.label === 'day_state' && f.params.date === '2026-08-14')!;
+  assert.equal(day.value, 'open');
+  assert.equal(day.params.stopsOnDay, 0);
+  assert.match(a.text, /no stops at all/, 'the empty day is not described as empty');
+  assert.ok(
+    !/2026-08-14[^.]*states how long/.test(a.text),
+    'the sentence makes a positive claim about stops that do not exist (R70-10)',
+  );
+});
+
+/**
+ * **The 48-verdict sweep — `I-37`'s headline criterion and A-96 Part 4's table**, measured over
+ * the whole population rather than the flagship day (§0 position 12 (b)). Revision 77 returned
+ * **44 busy / 0 open / 4 unknown**; exactly two verdicts move, both `unknown` → `busy`, both
+ * because a journey's stated run reaches into the window. **A ceiling, not a floor**: this names
+ * every cell that is not `busy`, so a third mover reddens it.
+ */
+test('A-96 Part 4: all 16 days × 3 dayparts classify 46 busy / 0 open / 2 unknown', () => {
+  const { trip } = europe2026();
+  const parts = ['morning', 'afternoon', 'evening'] as const;
+  const rows = trip.days.flatMap((d) => parts.map((p) => ({ date: d.date, part: p, state: classifyDay(d, p).state })));
+  assert.equal(rows.length, 48);
+  const count = (s: string) => rows.filter((r) => r.state === s).length;
+  assert.equal(count('busy'), 46);
+  assert.equal(count('open'), 0);
+  assert.equal(count('unknown'), 2);
+  assert.deepEqual(
+    rows.filter((r) => r.state !== 'busy').map((r) => `${r.date} ${r.part}`),
+    ['2026-08-07 morning', '2026-08-08 morning'],
+    'a cell moved that A-96 Part 4 did not measure moving — stop and report (I-37 stop-and-report (a))',
+  );
 });
 
 test('NOT ONE day of this trip returns `open`, at any daypart — N5 (injected, SHOWN TO FIRE)', () => {
@@ -257,8 +416,8 @@ test('NOT ONE day of this trip returns `open`, at any daypart — N5 (injected, 
     assert.deepEqual(
       open,
       [],
-      'a day returned `open` on a trip where 143 of 143 stops state no duration — a default ' +
-        'duration has been invented somewhere (§11.7 rule 3)',
+      'a day returned `open` on a trip where 91 of 112 scheduled stops state no run length — a ' +
+        'default duration has been invented somewhere (§11.7 rule 3)',
     );
   };
   check(sweep((d, p) => classifyDay(d, p).state));
@@ -280,7 +439,13 @@ test('NOT ONE day of this trip returns `open`, at any daypart — N5 (injected, 
   assert.throws(() => check(faultyRows), /`open`/);
 });
 
-test('N4 (injected, SHOWN TO FIRE): give the 14th\'s stops a durationMins and the day flips to `open`', () => {
+/**
+ * The `open` arm is **unfireable against the reference trip — 0 of 48 before this ruling and 0 of
+ * 48 after** (A-96 Part 5, criterion rule 9): the legacy planner recorded no durations, so every
+ * day carries at least one stop that states none. It is held instead by a document that does
+ * state them — a real `Trip` driven through the real `ask`, not an assertion about an assertion.
+ */
+test('N4 (injected, SHOWN TO FIRE): give the 14th\'s stops a durationMins and the day flips `busy` → `open`', () => {
   const { trip } = europe2026();
   const fixed: Trip = {
     ...trip,
@@ -292,23 +457,30 @@ test('N4 (injected, SHOWN TO FIRE): give the 14th\'s stops a durationMins and th
   const before = core.ask(q, ctxAt(trip, PLANNED));
   const after = core.ask(q, ctxAt(fixed, PLANNED));
   const state = (a: Answer, date: string) => a.facts.find((f) => f.label === 'day_state' && f.params.date === date)!.value;
-  assert.equal(state(before, '2026-08-14'), 'unknown');
+  // 17:15 + 80 reaches 18:35 and the evening is busy; 17:15 + a stated 45 ends AT 18:00, which
+  // the window does not contain — a stated run is half-open at its end, exactly as `overlap`
+  // compares two runs.
+  assert.equal(state(before, '2026-08-14'), 'busy');
   assert.equal(state(after, '2026-08-14'), 'open', 'the fault did not flip the day');
   assert.equal(after.coverage, 'complete');
+  assert.match(after.text, /^Yes\./);
   assert.notEqual(before.text, after.text, 'the sentence did not change when the answer did');
 });
 
 test('N6 (injected, SHOWN TO FIRE): a partial answer does not read like a complete one', () => {
   const { trip } = europe2026();
-  const fixed: Trip = {
+  // The partial case: the 14th's 17:15 journey stops stating its run, so the day cannot be judged.
+  const blinded: Trip = {
     ...trip,
     days: trip.days.map((d) =>
-      d.id === '2026-08-14' ? { ...d, stops: d.stops.map((s) => ({ ...s, durationMins: 45 })) } : d,
+      d.id === '2026-08-14'
+        ? { ...d, stops: d.stops.map((s) => (s.placement.kind === 'scheduled' && s.placement.time === '17:15' ? { ...s, arrival: null } : s)) }
+        : d,
     ),
   };
   const q: Question = { kind: 'free_time', part: 'evening', cityKey: 'split' };
-  const partial = core.ask(q, ctxAt(trip, PLANNED));
-  const complete = core.ask(q, ctxAt(fixed, PLANNED));
+  const partial = core.ask(q, ctxAt(blinded, PLANNED));
+  const complete = core.ask(q, ctxAt(trip, PLANNED));
   assert.equal(partial.coverage, 'partial');
   assert.equal(complete.coverage, 'complete');
   const check = (a: Answer, b: Answer) =>
@@ -452,6 +624,95 @@ test('N8 (injected, SHOWN TO FIRE): the lifetime scope is refused by name, never
   assert.throws(() => check({ kind: 'matched', question: { kind: 'country_count' }, restatement: 'x', params: {}, unread: [] }), /not refused/);
 });
 
+/**
+ * **QA R70-5.** The lifetime refusal was a six-phrase literal list, so *"how many countries have
+ * I visited"* — one verb away from the phrase that IS on the list — was answered **"This trip
+ * accounts for 7 countries"**. §11.3 rule 3 names the *class*, a past-tense first-person frame,
+ * and that is what the recogniser now asks for.
+ */
+test('R70-5: the lifetime scope is a CLASS, not six phrases — five more phrasings refuse', () => {
+  const { trip } = europe2026();
+  const refused = (text: string) => {
+    const m = core.matchQuestion(text, trip);
+    assert.equal(m.kind, 'out_of_scope', `answered against THIS trip instead of refusing: "${text}"`);
+    if (m.kind !== 'out_of_scope') return;
+    assert.equal(m.reason, 'lifetime');
+    assert.match(m.pointer, /stats/);
+  };
+  for (const text of [
+    'how many countries have I visited',
+    'how many countries have I seen',
+    'how many countries have I stayed in',
+    'which countries have I visited',
+    'how many countries did I visit',
+    'how many countries total',
+    // the original six still refuse — the class contains them
+    'how many countries have I been to',
+    'how many countries ever',
+    'how many countries across all my trips',
+  ]) refused(text);
+
+  // The trip-scoped neighbours are NOT swallowed: they differ by one word and by an entire data
+  // set, and the refusal is asked first, so a false positive here would cost a real answer.
+  for (const text of [
+    'how many countries am I visiting',
+    'which countries am I visiting',
+    'what countries does this trip cover',
+    'how many countries on this trip',
+  ]) {
+    assert.equal(core.matchQuestion(text, trip).kind, 'matched', `the lifetime class swallowed a trip-scoped question: "${text}"`);
+  }
+  // And it does not reach past `country_count` into the other intents.
+  assert.equal(core.matchQuestion('have I booked everything', trip).kind, 'matched');
+});
+
+/**
+ * **QA R70-6.** *"when do I leave FOR Vienna"* was matched silently as `city_edge{vienna,leave}`,
+ * with the preposition that flips the meaning landing in `unread` under a delivered answer. Both
+ * readings are expressible in the closed union, so §11.3 rule 1 applies: **two readings is a
+ * refusal, never a choice.**
+ */
+test('R70-6: an edge verb negated by the preposition beside it is ambiguous, not a silent pick', () => {
+  const { trip } = europe2026();
+  for (const text of ['when do I leave for Vienna', 'when do I depart for Prague', 'when do I arrive from Split']) {
+    const m = core.matchQuestion(text, trip);
+    assert.equal(m.kind, 'ambiguous', `silently picked one reading of "${text}"`);
+    if (m.kind !== 'ambiguous') continue;
+    assert.deepEqual(m.readings.map((r) => r.kind === 'city_edge' ? r.edge : r.kind).sort(), ['arrive', 'leave']);
+    assert.equal(m.restatements.length, 2);
+  }
+  // The unprepositioned form still answers — the fix is the preposition, not the verb.
+  const plain = core.matchQuestion('when do I leave Vienna', trip);
+  assert.equal(plain.kind, 'matched');
+  const other = core.matchQuestion('when do I arrive in Vienna', trip);
+  assert.equal(other.kind, 'matched');
+});
+
+/**
+ * **QA R70-7.** `tokenize` kept only `[a-z0-9]+` runs, so a word written in any other script
+ * **could not appear in `unread`** — §11.3 rule 2 was unenforceable for exactly the input it was
+ * written for, and *"do I have a free evening in Сплит"* was answered about the whole trip with
+ * the user's own subject word gone without trace.
+ */
+test('R70-7: a non-Latin word the recogniser did not read is REPORTED, not deleted', () => {
+  const { trip } = europe2026();
+  const m = core.matchQuestion('do I have a free evening in 東京', trip);
+  assert.equal(m.kind, 'matched');
+  if (m.kind !== 'matched') return;
+  assert.ok(m.unread.includes('東京'), `the user's own subject word vanished: ${JSON.stringify(m.unread)}`);
+
+  // And the same tokenizer reads the trip's OWN names in that script — one function, both sides.
+  const cyrillic: Trip = {
+    ...trip,
+    cities: trip.cities.map((c) => (c.key === 'split' ? { ...c, name: 'Сплит' } : c)),
+  };
+  const hit = core.matchQuestion('do I have a free evening in Сплит', cyrillic);
+  assert.equal(hit.kind, 'matched');
+  if (hit.kind !== 'matched') return;
+  assert.deepEqual(hit.question, { kind: 'free_time', part: 'evening', cityKey: 'split' });
+  assert.ok(!hit.unread.includes('сплит'), 'the city name was matched and should not be reported unread');
+});
+
 test('a recommendation is refused by name — Jacob\'s own fence, made a feature of the recogniser', () => {
   const { trip } = europe2026();
   for (const text of ['where should I eat in Split', 'any bars near the palace', 'what\'s good in Prague', 'recommend a restaurant']) {
@@ -530,6 +791,130 @@ test('N9 (injected, SHOWN TO FIRE): nothing sensitive reaches an answer, at both
   const leaked = `${core.ask({ kind: 'unbooked' }, ctxAt(trip, PLANNED)).text} ${named[0].links![0].href}`;
   assert.throws(() => check(leaked), /credential-shaped/);
   assert.deepEqual(core.redactionHits(leaked), ['url']);
+});
+
+/**
+ * **QA R70-4 / §11.8 clause 2 as rewritten by A-96 Part 6.** Revision 77 asserted
+ * `redactionHits(answer.text) === []` over the reference trip and called it done — and it held
+ * **only because the fixture's own six city names and its title happen to match no pattern**.
+ * `title: "Split flat (door code 4821)"` rendered `['keyword_token','keyword_digits']`, a §6.6
+ * credential class, straight into prose. A test that passes because of the fixture's spelling is
+ * not a guarantee, so this one runs over a **mutated copy** whose title and one city name carry
+ * one string per §6.6 pattern class.
+ */
+function pathological(trip: Trip): Trip {
+  return {
+    ...trip,
+    // one string per §6.6 pattern class, in the two free-text fields revision 77 narrated
+    title: 'Split flat (door code 4821) https://tickets.example.com/x me@example.com 000 000 0000 ABCDEF',
+    cities: trip.cities.map((c) => (c.key === 'london' ? { ...c, name: 'LONDON' } : c)),
+  };
+}
+
+test('R70-4: no credential reaches an answer\'s PROSE, and it is a property of the renderer — N3 (injected, SHOWN TO FIRE)', () => {
+  const { trip } = europe2026();
+  const dirty = pathological(trip);
+
+  // The instrument itself: the unmutated fixture cannot fire this, which is what R70-4 measured.
+  assert.deepEqual(core.redactionHits(trip.title), [], '0 of the reference trip\'s own title hits any pattern today');
+  for (const c of trip.cities) assert.deepEqual(core.redactionHits(c.name), [], `${c.key} already hits a pattern`);
+  assert.notDeepEqual(core.redactionHits(dirty.title), [], 'the mutated title is not actually credential-shaped');
+  assert.deepEqual(core.redactionHits(dirty.cities.find((c) => c.key === 'london')!.name), ['alnum_reference']);
+
+  const check = (doc: Trip) => {
+    let answers = 0;
+    for (const today of [PLANNED, OVER]) {
+      for (const q of core.askableQuestions(doc)) {
+        const a = core.ask(q, ctxAt(doc, today));
+        assert.deepEqual(core.redactionHits(a.text), [], `${q.kind}: a credential-shaped string reached the prose: ${a.text}`);
+        for (const cav of a.caveats) {
+          assert.deepEqual(core.redactionHits(cav.message), [], `${q.kind}: a credential-shaped string reached caveat ${cav.code}`);
+        }
+        answers += 1;
+      }
+    }
+    assert.ok(answers > 0, 'the sweep asserted nothing');
+  };
+  check(trip);
+  check(dirty);
+
+  // The chokepoint is real: the title is in `params` and in a fact, and NOT in the sentence.
+  const overview = core.ask({ kind: 'trip_overview' }, ctxAt(dirty, PLANNED));
+  assert.equal(overview.params.title, dirty.title, 'the structured half stopped carrying the document\'s own value');
+  assert.equal(overview.facts.find((f) => f.label === 'trip_title')!.value, dirty.title);
+  assert.ok(!overview.text.includes('4821'), 'the title is still narrated');
+
+  // N3, injected: the fault is the city-name path bypassing the chokepoint. Rendered here as the
+  // same three sentences built from the RAW name, which is what removing it would produce.
+  const raw = dirty.cities.find((c) => c.key === 'london')!.name;
+  for (const kind of ['trip_overview', 'city_edge', 'free_time']) {
+    const q = core.askableQuestions(dirty).find((m) =>
+      m.kind === kind && (m.kind !== 'city_edge' ? true : m.cityKey === 'london'))!;
+    const a = core.ask(q, ctxAt(dirty, PLANNED));
+    const bypassed = `${a.text} ${raw}`;
+    assert.deepEqual(core.redactionHits(bypassed), ['alnum_reference'], `${kind}: the fault does not produce the hit it claims`);
+    assert.throws(
+      () => assert.deepEqual(core.redactionHits(bypassed), [], 'a credential-shaped string reached the prose'),
+      /credential-shaped/,
+    );
+  }
+  // And the redacted city still identifies its subject — A-96 Part 8 residue 2.
+  const edge = core.ask({ kind: 'city_edge', cityKey: 'london', edge: 'leave' }, ctxAt(dirty, PLANNED));
+  assert.equal(edge.params.cityKey, 'london');
+  assert.ok(edge.text.includes('[redacted]'), 'an ALL-CAPS city name renders as poor prose, never as a leak');
+});
+
+test('R70-4: one chokepoint — nothing in ask/ interpolates a record\'s free text into prose except through it', () => {
+  const src = readdirSync(ASK_DIR)
+    .filter((f) => f.endsWith('.ts') && f !== 'prose.ts')
+    .map((f) => [f, readFileSync(resolve(ASK_DIR, f), 'utf8')] as const);
+  for (const [name, text] of src) {
+    const code = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    // The inadmissible set of A-96 Part 6, as it would appear in a template literal.
+    for (const banned of ['${trip.title}', '${stop.name}', '${s.name}', '${place.name}', '${p.name}', '${c.summary}', '${stop.note}']) {
+      assert.equal(code.includes(banned), false, `ask/${name} narrates ${banned} — A-96 Part 6 admits only City.name`);
+    }
+  }
+  // And `redactText` is reached in exactly one place inside `ask/`.
+  const importers = readdirSync(ASK_DIR).filter((f) => readFileSync(resolve(ASK_DIR, f), 'utf8').includes("from '../build/redactText.ts'"));
+  assert.deepEqual(importers, ['prose.ts'], 'the redaction chokepoint has more than one door');
+});
+
+/**
+ * **QA R70-1.** `trip_overview`'s empty arm fired when **either** count was zero and always
+ * rendered *"no days and no cities"*, contradicting the `day_count`/`city_count` facts printed
+ * four lines below it in the same `Answer` — and labelled a describable document `none`.
+ */
+test('R70-1: the empty overview states only the count that is actually zero', () => {
+  const { trip } = europe2026();
+  const noCities: Trip = { ...trip, cities: [], days: trip.days.map((d) => ({ ...d, cities: [] })) };
+  const noDays: Trip = { ...trip, days: [] };
+  const neither: Trip = { ...noDays, cities: [] };
+
+  const a = core.ask({ kind: 'trip_overview' }, ctxAt(noCities, PLANNED));
+  assert.equal(a.facts.find((f) => f.label === 'day_count')!.value, 16);
+  assert.equal(a.facts.find((f) => f.label === 'city_count')!.value, 0);
+  assert.ok(a.text.includes('no cities'), 'the sentence does not say which count is zero');
+  assert.ok(!a.text.includes('no days'), 'the sentence says "no days" about a document with 16 of them');
+  assert.equal(a.coverage, 'partial', 'a document the engine can describe was labelled `none`');
+
+  const b = core.ask({ kind: 'trip_overview' }, ctxAt(noDays, PLANNED));
+  assert.equal(b.facts.find((f) => f.label === 'city_count')!.value, 6);
+  assert.ok(b.text.includes('no days'));
+  assert.ok(!b.text.includes('no cities'), 'the sentence says "no cities" about a document with 6 of them');
+  assert.equal(b.coverage, 'partial');
+
+  const c = core.ask({ kind: 'trip_overview' }, ctxAt(neither, PLANNED));
+  assert.ok(c.text.includes('no days') && c.text.includes('no cities'));
+  assert.equal(c.coverage, 'none');
+  assert.deepEqual(c.caveats.map((x) => x.code), ['no_records']);
+
+  // Every clause of every arm agrees with the facts it is rendered from (§11.5).
+  for (const [doc, ans] of [[noCities, a], [noDays, b], [neither, c]] as const) {
+    const row = core.tripSummary(doc, core.COUNTRY_INDEX);
+    if (row.dayCount > 0) assert.ok(!ans.text.includes('no days'));
+    if (row.cityCount > 0) assert.ok(!ans.text.includes('no cities'));
+  }
 });
 
 test('the ceilings hold: no ambient clock, no randomness, no network, no fs inside ask/', () => {

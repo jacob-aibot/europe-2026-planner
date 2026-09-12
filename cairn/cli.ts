@@ -82,12 +82,30 @@ function todayIsValid(): boolean {
 
 type Loaded = { trip: core.Trip; issues: core.Issue[]; cityRangeCheck?: unknown; unmatchedNames?: string[] };
 
-const loaded: Loaded = file
-  ? { trip: core.fromJSON(readFileSync(file, 'utf8')), issues: [] }
-  : (loadEurope2026() as unknown as Loaded);
-const trip = loaded.trip;
-
 const out = (s: string) => process.stdout.write(`${s}\n`);
+
+/**
+ * **QA R70-12.** `--file` was read and parsed here at module scope with **no `try`**, so
+ * `node cli.ts ask "…" --file broken.json` exited on a raw `TripParseError` **stack trace**.
+ * Pre-existing, but `ask` is now a command a user points at their own document, and this CLI's
+ * house style for input it will not act on is stated forty lines above in `todayIsValid`'s own
+ * comment: **one line, no stack, a non-zero exit** (R28-9). `fromJSON`'s message already carries
+ * the JSON path, which is the useful half of the trace.
+ */
+function loadOrRefuse(): Loaded | null {
+  if (!file) return loadEurope2026() as unknown as Loaded;
+  try {
+    return { trip: core.fromJSON(readFileSync(file, 'utf8')), issues: [] };
+  } catch (err: unknown) {
+    out(`--file ${file}: ${err instanceof Error ? err.message : String(err)}`);
+    process.exitCode = 2;
+    return null;
+  }
+}
+
+const loaded = loadOrRefuse();
+// `null` means the refusal above already printed and set the exit code. Nothing below runs.
+const trip = loaded === null ? (null as unknown as core.Trip) : loaded.trip;
 const money = (roll: core.CostRollUp) =>
   Object.entries(roll.byCurrency)
     .map(([cur, v]) => core.formatRange(cur, v.lo, v.hi))
@@ -183,7 +201,8 @@ function cmdImport() {
     out('import report is only available for the legacy fixture (drop --file)');
     return;
   }
-  const r = loaded;
+  // `loaded` is non-null on every path that reaches a command — see `loadOrRefuse`.
+  const r = loaded as Loaded;
   out(`import warnings: ${r.issues.length}`);
   const byCode: Record<string, number> = {};
   for (const i of r.issues) byCode[i.code] = (byCode[i.code] ?? 0) + 1;
@@ -702,7 +721,10 @@ const commands: Record<string, () => void | Promise<void>> = {
 };
 
 const run = commands[cmd];
-if (!run) {
+if (loaded === null) {
+  // R70-12: `--file` named a document this CLI will not act on. The refusal is already printed
+  // and `process.exitCode` is already 2; no command runs against a trip that does not exist.
+} else if (!run) {
   out(`unknown command "${cmd}". Try: ${Object.keys(commands).join(' | ')}`);
   process.exitCode = 1;
 } else {

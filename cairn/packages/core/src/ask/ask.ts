@@ -24,18 +24,24 @@
  *    `derive/`, `conflict/` or `validate/` function. **Exactly two computations are `ask/`'s
  *    own** — the daypart classifier (`freeTime.ts`) and `country_count`'s evidence walk (below) —
  *    both about *answering* rather than about the trip. A third is a design defect routed to the
- *    architect, whose fix is a function in `derive/` used by both callers.
+ *    architect, whose fix is a function in `derive/` used by both callers. **That trigger fired
+ *    inside the increment that wrote it** (QA R70-3): *how long a stop occupies the clock* was a
+ *    third computation, already implemented privately in `conflict/rules/overlap.ts`, and §11.11
+ *    A-96 moved it to `derive/occupancy.ts` with both callers reading it. `ask/` is still at two.
  * 3. **`text` is rendered from `facts` and from nothing else** (§11.5). There is no template that
  *    describes the trip in prose.
  *
- * **A rule this file adds, and it is load-bearing rather than fussy: the renderer interpolates
- * the document's dates, times, counts, city names and country codes — never a record's free-text
- * NAME.** §11.8 requires `redactionHits(answer.text)` to be `[]` for every answer, and §6.6's
- * pattern set legitimately fires on user prose: measured over the reference trip, **four stop
- * names and one `unbooked_ticketed` summary** match `alnum_reference` (a 6+ character all-caps
- * token — a flight designator, a bar written in capitals). Those names are not credentials, and
- * they are not mangled either: they travel in `AnswerFact.value`/`params` and through the cites,
- * which is where a surface reads them from. The sentence stays clean by construction.
+ * **A rule this file adds, and it is load-bearing rather than fussy** (§11.8 clause 2, rewritten
+ * by §11.11 **A-96 Part 6** after QA R70-4): **a record's free text may be narrated only where
+ * the closed `Question` union makes that record the SUBJECT of the question.** `Question` carries
+ * a `cityKey` and nothing else that names a record, so the admissible set is **exactly
+ * `{City.name}`** and it goes through the **one chokepoint** in `prose.ts`, which applies §6.6's
+ * `redactText` before interpolation. `trip.title`, `Stop.name`, `Place.name`, `Booking.*` and
+ * `Stop.note` are descriptions of records no question takes as its subject: they travel in
+ * `AnswerFact.value`/`params` and through the cites, which is where a surface reads them from,
+ * and they never reach `text` or a `caveat.message`. Revision 77 asserted this as a property of
+ * the data and it was a property of the fixture's spelling: a trip titled *"Split flat (door code
+ * 4821)"* rendered a §6.6 credential class straight into prose.
  *
  * Pure. No `Date.now()`, no randomness, no `fetch`, no `fs`: `today` and the country index are
  * **injected** (§2.1). It mints no record, takes no `IdFactory`, has no write path, and
@@ -47,10 +53,12 @@ import { isIsoDate } from '../model/ids.ts';
 import { cityRange, daysForCity, orderedCities, tripSummary, weekdayOf } from '../derive/summary.ts';
 import { lifecycle } from '../derive/lifecycle.ts';
 import { stopLatLng } from '../derive/geo.ts';
+import { clockOf } from '../derive/occupancy.ts';
 import { countryOf } from '../derive/country.ts';
 import { detectConflicts } from '../conflict/detect.ts';
 import { UNBOOKED_HORIZON_DAYS } from '../conflict/rules/unbookedTicketed.ts';
 import { classifyDay, DAYPART_WINDOWS } from './freeTime.ts';
+import { cityProse } from './prose.ts';
 import type {
   Answer, AnswerCaveat, AnswerCaveatCode, AnswerCite, AnswerCoverage, AnswerFact, AskCtx, Question,
 } from './types.ts';
@@ -96,6 +104,12 @@ function list(parts: readonly string[]): string {
   return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
 }
 
+/**
+ * The city's own name, **for `facts` and `params` only**. A-96 Part 6: the structured half of an
+ * `Answer` is the document's own values and carries no redaction guarantee — that decision
+ * belongs to the surface that renders them (§6.6). Anything headed for `text` or a
+ * `caveat.message` uses `cityProse` instead, which is the one chokepoint.
+ */
 function cityNameOf(trip: Trip, key: CityKey): string {
   return trip.cities.find((c) => c.key === key)?.name ?? key;
 }
@@ -176,21 +190,41 @@ function answerOverview(question: Question, ctx: AskCtx): Answer {
       firstDay: days.length > 0 ? days[0].date : '',
       lastDay: days.length > 0 ? days[days.length - 1].date : '',
     }, cites));
+    const cityWord = cityProse(trip, c.key);
     clauses.push(range === null
-      ? `${c.name} (no days recorded)`
-      : `${c.name} ${range} (${days.length} day${days.length === 1 ? '' : 's'})`);
+      ? `${cityWord} (no days recorded)`
+      : `${cityWord} ${range} (${days.length} day${days.length === 1 ? '' : 's'})`);
   }
 
-  const empty = row.dayCount === 0 || row.cityCount === 0;
-  const coverage: AnswerCoverage = empty ? 'none' : 'complete';
+  // **QA R70-1.** The empty arm used to fire when EITHER count was zero and then render *"no
+  // days and no cities"* for both, contradicting the `day_count`/`city_count` facts in the same
+  // `Answer` — and label a describable document `none`. The sentence now states only the count
+  // that is actually zero, and a document with one of the two is `partial` rather than `none`:
+  // §11.5's *"every rendered clause corresponds to a fact"* is checked inside one answer.
+  const missing: string[] = [];
+  if (row.dayCount === 0) missing.push('no days');
+  if (row.cityCount === 0) missing.push('no cities');
+  const bothMissing = missing.length === 2;
+  const empty = missing.length > 0;
+  const coverage: AnswerCoverage = bothMissing ? 'none' : empty ? 'partial' : 'complete';
   const caveats = empty
-    ? [caveat('no_records', 'This trip has no days or no cities recorded yet, so there is nothing to summarise.', { dayCount: row.dayCount, cityCount: row.cityCount })]
+    ? [caveat('no_records',
+        `This trip records ${list(missing)} yet, so ${bothMissing ? 'there is nothing to summarise' : 'this summary is what is on it so far'}.`,
+        { dayCount: row.dayCount, cityCount: row.cityCount })]
     : [];
 
+  // A-96 Part 6: `trip.title` is a record's free text that no question takes as its subject, so
+  // the sentence opens with the dates and the lifecycle stage instead. The title is in `params`,
+  // in the `trip_title` fact, and the trip's id is in `cites`.
   const text = empty
-    ? `${trip.title} runs ${trip.startDate} → ${trip.endDate}, and it is ${stage} as of ${today}. ` +
-      'Nothing else is recorded on it yet — no days and no cities — so there is nothing more I can tell you about it.'
-    : `${trip.title} runs ${trip.startDate} → ${trip.endDate}: ${row.dayCount} days, ${stage} as of ${today}. ` +
+    ? `This trip runs ${trip.startDate} → ${trip.endDate}, and it is ${stage} as of ${today}. ` +
+      `It records ${list(missing)} yet` +
+      (bothMissing
+        ? ', so there is nothing more I can tell you about it.'
+        : `, so this is partial: ${row.dayCount} days, ${row.cityCount} cities, ${row.stopCount} scheduled stops, ` +
+          `${row.poolCount} pooled ideas, ${row.placeCount} places and ${trip.bookings.length} bookings.` +
+          (clauses.length > 0 ? ` It covers ${list(clauses)}.` : ''))
+    : `This trip runs ${trip.startDate} → ${trip.endDate}: ${row.dayCount} days, ${stage} as of ${today}. ` +
       `It covers ${row.cityCount} cities — ${list(clauses)}. ` +
       `On it are ${row.stopCount} scheduled stops, ${row.poolCount} pooled ideas, ${row.placeCount} places and ` +
       `${trip.bookings.length} bookings. ` +
@@ -229,6 +263,9 @@ function answerOverview(question: Question, ctx: AskCtx): Answer {
 function answerCityEdge(question: Extract<Question, { kind: 'city_edge' }>, ctx: AskCtx): Answer {
   const { trip } = ctx;
   const name = cityNameOf(trip, question.cityKey);
+  // The narrated form — A-96 Part 6's one admissible user-authored value, through the one
+  // chokepoint. `name` above is the raw value and stays in `facts`/`params`.
+  const said = cityProse(trip, question.cityKey);
   const days = daysForCity(trip, question.cityKey);
   const leaving = question.edge === 'leave';
 
@@ -237,13 +274,13 @@ function answerCityEdge(question: Extract<Question, { kind: 'city_edge' }>, ctx:
     return {
       question,
       text:
-        `I have no days recorded for ${name} on this trip, so I cannot tell you when you ` +
+        `I have no days recorded for ${said} on this trip, so I cannot tell you when you ` +
         `${leaving ? 'leave' : 'arrive'}. That is a gap in the document, not an answer.`,
       params: { city: name, cityKey: question.cityKey, edge: question.edge },
       facts,
       cites: citesOf(facts, [tripCite(trip), cityCite(question.cityKey)]),
       coverage: 'none',
-      caveats: [caveat('no_records', `No day of this trip lists ${name} among its cities.`, { city: name, cityKey: question.cityKey })],
+      caveats: [caveat('no_records', `No day of this trip lists ${said} among its cities.`, { city: name, cityKey: question.cityKey })],
     };
   }
 
@@ -267,19 +304,19 @@ function answerCityEdge(question: Extract<Question, { kind: 'city_edge' }>, ctx:
   }
 
   const spans = others.length > 0
-    ? ` That day also carries ${list(others.map((k) => cityNameOf(trip, k)))}.`
+    ? ` That day also carries ${list(others.map((k) => cityProse(trip, k)))}.`
     : '';
   const time = journey && journey.placement.kind === 'scheduled' ? journey.placement.time : null;
   const text = journey
     ? (leaving
-        ? `You leave ${name} on ${dated(edgeDay.date)} — the last of the ${days.length} day${days.length === 1 ? '' : 's'} it occupies.${spans} ` +
+        ? `You leave ${said} on ${dated(edgeDay.date)} — the last of the ${days.length} day${days.length === 1 ? '' : 's'} it occupies.${spans} ` +
           `The first journey recorded on that day ${time === null ? 'states no time' : `starts at ${time}`}, and it is cited below.`
-        : `You arrive in ${name} on ${dated(edgeDay.date)} — the first of the ${days.length} day${days.length === 1 ? '' : 's'} it occupies.${spans} ` +
+        : `You arrive in ${said} on ${dated(edgeDay.date)} — the first of the ${days.length} day${days.length === 1 ? '' : 's'} it occupies.${spans} ` +
           `The first journey recorded on that day ${time === null ? 'states no time' : `starts at ${time}`}, and it is cited below.`)
     : (leaving
-        ? `The last day ${name} occupies is ${dated(edgeDay.date)}.${spans} No stop on that day is recorded as a journey, ` +
+        ? `The last day ${said} occupies is ${dated(edgeDay.date)}.${spans} No stop on that day is recorded as a journey, ` +
           'so I can give you the date and not the time.'
-        : `The first day ${name} occupies is ${dated(edgeDay.date)}.${spans} No stop on that day is recorded as a journey, ` +
+        : `The first day ${said} occupies is ${dated(edgeDay.date)}.${spans} No stop on that day is recorded as a journey, ` +
           'so I can give you the date and not the time.');
 
   return {
@@ -484,21 +521,31 @@ function answerCountryCount(question: Question, ctx: AskCtx): Answer {
 // ------------------------------------------------------------------------------------ free_time
 
 /**
- * §11.7 rule 3 — **nothing is defaulted into existence**, and this is the worked example.
+ * §11.7 rule 3 — **nothing is defaulted into existence, and nothing the document DOES state is
+ * ignored** (§11.11 A-96 Part 3). This is the worked example.
  *
- * Measured over the reference trip: **143 of 143 stops carry `durationMins: null`**, so *"do I
- * have a free evening in Split?"* has no evidence behind a **yes**. The classifier is three-valued
- * (`freeTime.ts`), and the measured consequence is the `[stated]` oracle for the whole increment:
- * Split's four days, `evening = 18:00–23:59` — **12th busy** (20:00), **13th busy** (20:15,
- * 20:30), **15th busy** (18:00, 19:30), **14th unknown** (nothing starts after 17:15, and that
- * stop states no duration). **Not one day returns `open`**, and `coverage` is `partial`.
+ * Measured over the reference trip: **0 of 143 stops carry a non-null `durationMins`**, and **91
+ * of 112 scheduled stops state no run length by any field at all** — the other 21 are journeys
+ * that state one in `arrival.mins`. The classifier is three-valued (`freeTime.ts`) and works over
+ * **occupied intervals** rather than start instants, which is what makes the `[stated]` oracle
+ * for this increment come out right: Split's four days, `evening = 18:00–23:59` — **12th busy**
+ * (20:00), **13th busy** (20:15, 20:30), **15th busy** (18:00, 19:30), and **14th busy** because
+ * nothing *starts* after 17:15 but that 17:15 stop is a `travelRole: 'journey'` bus with
+ * `arrival: {bus, 80}`, so the document says you are on it until **18:35**. `coverage` is
+ * `complete` and the answer is a **No**. Revision 77 answered *"I can't tell"* here, over
+ * evidence the document carries (QA R70-3).
  *
  * **Rule 1: a partial answer says so in its own sentence.** The three arms below are three
- * different sentences, so a `coverage` field nothing renders cannot survive here.
+ * different sentences, so a `coverage` field nothing renders cannot survive here — and **a
+ * `time_unknown` caveat can no longer sit beside a confident verdict** (QA R70-2): a stop that
+ * cannot be placed on the clock makes its day `unknown` in the classifier, which is the field a
+ * surface branches on, so the caveat only ever accompanies the *"I can't tell"* arm.
  */
 function answerFreeTime(question: Extract<Question, { kind: 'free_time' }>, ctx: AskCtx): Answer {
   const { trip } = ctx;
   const where = question.cityKey === null ? 'this trip' : cityNameOf(trip, question.cityKey);
+  // The narrated scope — A-96 Part 6's chokepoint. `where` is the raw value, for `params`.
+  const said = question.cityKey === null ? 'this trip' : cityProse(trip, question.cityKey);
   const days = question.cityKey === null ? trip.days : daysForCity(trip, question.cityKey);
   const window = DAYPART_WINDOWS[question.part];
   const windowText = `${question.part} (${window.from}–${window.to})`;
@@ -509,51 +556,84 @@ function answerFreeTime(question: Extract<Question, { kind: 'free_time' }>, ctx:
     return {
       question,
       text:
-        `I have no days recorded for ${where}, so there is no ${question.part} for me to look at. ` +
-        'That is a gap in the document, not a free evening.',
+        `I have no days recorded for ${said}, so there is no ${question.part} for me to look at. ` +
+        // QA R70-9: the daypart asked for, not a hard-coded "evening" beside it.
+        `That is a gap in the document, not a free ${question.part}.`,
       params: { city: where, part: question.part, days: 0 },
       facts,
       cites: citesOf(facts, [tripCite(trip), ...scopeCites]),
       coverage: 'none',
-      caveats: [caveat('no_records', `No day of this trip is recorded for ${where}.`, { city: where })],
+      caveats: [caveat('no_records', `No day of this trip is recorded for ${said}.`, { city: where })],
     };
   }
 
   const facts: AnswerFact[] = [fact('days_in_scope', days.length, { city: where, part: question.part, window: `${window.from}-${window.to}`, days: days.length }, scopeCites)];
+  const busyStarts: Array<{ date: IsoDate; time: string }> = [];
+  const busyRuns: Array<{ date: IsoDate; mode: string; from: string; to: string }> = [];
+  const unknownDays: Array<{ date: IsoDate; lastBefore: string; without: number }> = [];
+  const openDays: IsoDate[] = [];
+  const emptyDays: IsoDate[] = [];
   let busy = 0;
   let open = 0;
-  const unknownDays: Array<{ date: IsoDate; latestStart: string }> = [];
-  const openDays: IsoDate[] = [];
-  let stopsWithoutDuration = 0;
+  let stopsWithoutOccupancy = 0;
   let stopsWithoutTime = 0;
+  let stopsInScope = 0;
 
   for (const day of days) {
     const v = classifyDay(day, question.part);
-    stopsWithoutDuration += v.withoutDuration.length;
-    stopsWithoutTime += v.withoutTime.length;
-    const cites: AnswerCite[] = [dayCite(day), ...scopeCites, ...v.starts.map(stopCite)];
-    if (v.state === 'unknown' && v.latestStart !== null) {
-      const last = day.stops.find((s) => s.placement.kind === 'scheduled' && s.placement.time === v.latestStart);
+    stopsInScope += v.stopCount;
+    stopsWithoutOccupancy += v.withoutOccupancy.length;
+    // **QA R70-2.** Only a day whose verdict the hole could change reports it: on a `busy` day an
+    // unplaceable stop cannot make the window free, and §11.5 defines a caveat as *why an answer
+    // is not complete*. A caveat on an answer that IS complete is the contradiction R70-2 found.
+    if (v.state !== 'busy') stopsWithoutTime += v.withoutTime.length;
+    const cites: AnswerCite[] = [dayCite(day), ...scopeCites, ...v.occupying.map((o) => stopCite(o.stop))];
+    if (v.state === 'unknown' && v.lastUncertainBefore !== null) {
+      const last = day.stops.find((s) => s.placement.kind === 'scheduled' && s.placement.time === v.lastUncertainBefore);
       if (last) cites.push(stopCite(last));
     }
     facts.push(fact('day_state', v.state, {
       date: day.date,
       part: question.part,
       state: v.state,
+      occupying: v.occupying.length,
       startsInWindow: v.starts.length,
-      latestStart: v.latestStart ?? '',
-      stopsWithoutDuration: v.withoutDuration.length,
+      runsIntoWindow: v.runsInto.length,
+      lastStartBeforeWindow: v.lastUncertainBefore ?? '',
+      stopsWithoutOccupancy: v.withoutOccupancy.length,
+      stopsWithoutTime: v.withoutTime.length,
+      stopsOnDay: v.stopCount,
     }, cites));
-    if (v.state === 'busy') busy += 1;
-    else if (v.state === 'open') { open += 1; openDays.push(day.date); }
-    else unknownDays.push({ date: day.date, latestStart: v.latestStart ?? '' });
+    if (v.state === 'busy') {
+      busy += 1;
+      const run = v.runsInto[0];
+      const start = v.starts[0];
+      // The stop's own evidence, and only the parts of it the engine controls: a `TravelMode`
+      // is an enum label and the times are the document's clock. The stop's NAME is in `cites`.
+      if (run && run.stop.arrival) {
+        busyRuns.push({ date: day.date, mode: run.stop.arrival.mode, from: clockOf(run.interval.startMin), to: clockOf(run.interval.endMin) });
+      } else if (start && start.placement.kind === 'scheduled' && start.placement.time !== null) {
+        busyStarts.push({ date: day.date, time: start.placement.time });
+      }
+    } else if (v.state === 'open') {
+      open += 1;
+      openDays.push(day.date);
+      if (v.stopCount === 0) emptyDays.push(day.date);
+    } else {
+      unknownDays.push({ date: day.date, lastBefore: v.lastUncertainBefore ?? '', without: v.withoutOccupancy.length });
+    }
   }
-  facts.push(fact('stops_without_duration', stopsWithoutDuration, { stops: stopsWithoutDuration, days: days.length }, [tripCite(trip)]));
+  facts.push(fact('stops_without_occupancy', stopsWithoutOccupancy, { stops: stopsWithoutOccupancy, of: stopsInScope, days: days.length }, [tripCite(trip)]));
 
   const n = days.length;
   // "16 days ON this trip" / "4 days IN Split" — the preposition follows the scope, because a
   // sentence a user reads twice a week is not a place to save a branch.
-  const scope = `${n} day${n === 1 ? '' : 's'} ${question.cityKey === null ? 'on' : 'in'} ${where}`;
+  const scope = `${n} day${n === 1 ? '' : 's'} ${question.cityKey === null ? 'on' : 'in'} ${said}`;
+  // The census, with its denominator (§11.7 rule 6) — 20 of 28 across Split, 91 of 112 trip-wide,
+  // and never "28 stops say nothing" when 8 of them do (QA R70-3).
+  const census =
+    `${stopsWithoutOccupancy} of the ${stopsInScope} stop${stopsInScope === 1 ? '' : 's'} across ${scope} ` +
+    `state no run length${stopsWithoutOccupancy === 0 ? '' : ', and Cairn does not invent a duration for a stop that states none'}.`;
   let text: string;
   let coverage: AnswerCoverage;
   if (unknownDays.length > 0) {
@@ -562,32 +642,55 @@ function answerFreeTime(question: Extract<Question, { kind: 'free_time' }>, ctx:
     text =
       `I can't tell. Of the ${scope}, ${busy} ${busy === 1 ? 'is' : 'are'} busy in the ${windowText}` +
       `${open > 0 ? `, ${open} ${open === 1 ? 'is' : 'are'} clear` : ''}, and ${unknownDays.length} I cannot judge. ` +
-      `On ${one.date}, ${one.latestStart === '' ? 'nothing is timed at all' : `nothing starts after ${one.latestStart}`} — but ` +
-      `${stopsWithoutDuration} stop${stopsWithoutDuration === 1 ? '' : 's'} across ${scope} say nothing about how long they take, ` +
-      `so I cannot say the ${question.part} is free. Cairn does not invent a duration for a stop that states none.`;
+      // QA R70-8: only a time BEFORE the window is evidence about the window. Where the day
+      // offers none, the sentence says so rather than quoting a start time that comes after it.
+      `On ${one.date}, nothing I can place runs into the ${question.part}` +
+      `${one.lastBefore === '' ? '' : `, and the last thing that starts before it is at ${one.lastBefore}`} — but ` +
+      `${census} So I cannot say the ${question.part} is free.`;
   } else if (open > 0) {
     coverage = 'complete';
+    // QA R70-10: a day with no stops at all is `open`, and the justification for it is that
+    // nothing is recorded — not the vacuous truth that every stop on it states its length.
+    const planned = openDays.filter((d) => !emptyDays.includes(d));
+    const because = [
+      planned.length > 0
+        ? `${list(planned)} ${planned.length === 1 ? 'has' : 'have'} nothing occupying the ${windowText} and every stop on ` +
+          `${planned.length === 1 ? 'that day' : 'those days'} states how long it takes`
+        : '',
+      emptyDays.length > 0 ? `${list(emptyDays)} ${emptyDays.length === 1 ? 'carries' : 'carry'} no stops at all` : '',
+    ].filter((s) => s !== '');
     text =
-      `Yes. Of the ${scope}, ${open} ${open === 1 ? 'has' : 'have'} nothing starting in the ${windowText} and every stop on ` +
-      `${open === 1 ? 'that day' : 'those days'} states how long it takes: ${list(openDays)}. ` +
+      `Yes. Of the ${scope}, ${open} ${open === 1 ? 'is' : 'are'} clear in the ${windowText}: ${list(because)}. ` +
       `${busy > 0 ? `The other ${busy} ${busy === 1 ? 'is' : 'are'} busy then.` : ''}`.trim();
   } else {
     coverage = 'complete';
+    const clauses = [
+      ...busyRuns.map((r) => `on ${r.date} you are on a ${r.mode} from ${r.from} until ${r.to}`),
+      busyStarts.length > 0
+        ? `${busyRuns.length > 0 ? 'the other ' : ''}${busyStarts.length === 1 ? 'one has' : `${busyStarts.length} have`} ` +
+          `something starting at ${list(busyStarts.map((b) => b.time))}`
+        : '',
+    ].filter((s) => s !== '');
     text =
-      `No. Every one of the ${scope} has something starting in the ${windowText}, so there is no free ` +
-      `${question.part} ${question.cityKey === null ? 'on this trip' : `in ${where}`}.`;
+      `No. Something occupies the ${windowText} on every one of the ${scope}` +
+      `${clauses.length > 0 ? `: ${list(clauses)}` : ''}. ` +
+      `${stopsWithoutOccupancy > 0 ? `${census} That does not change the answer — a stop that states none still occupies its start.` : ''}`.trim();
   }
 
   const caveats: AnswerCaveat[] = [];
-  if (unknownDays.length > 0) {
+  const unknownForDuration = unknownDays.filter((d) => d.without > 0);
+  if (unknownForDuration.length > 0) {
+    // A-96 Part 3: the message stops naming `durationMins`, because that is not the only field
+    // the document states a run length in. **`AnswerCaveatCode` does not move.**
     caveats.push(caveat('duration_unknown',
-      `${unknownDays.length} of ${n} days cannot be judged: nothing starts in the window, but a stop on that day ` +
-        'states no durationMins, so an earlier stop could still be running.',
-      { days: unknownDays.length, of: n, stops: stopsWithoutDuration }));
+      `${unknownForDuration.length} of ${n} days cannot be judged: nothing I can place occupies the window, but a stop on ` +
+        'that day states no duration and is not a journey that states its run, so it could still be running.',
+      { days: unknownForDuration.length, of: n, stops: stopsWithoutOccupancy }));
   }
   if (stopsWithoutTime > 0) {
     caveats.push(caveat('time_unknown',
-      `${stopsWithoutTime} scheduled stops in this range carry no time, so they could not be placed in or out of the window.`,
+      `${stopsWithoutTime} scheduled stop${stopsWithoutTime === 1 ? '' : 's'} in this range carry no time, so they could not be ` +
+        'placed in or out of the window. Those days are reported as ones I cannot judge, never as clear.',
       { stops: stopsWithoutTime }));
   }
 
@@ -597,6 +700,7 @@ function answerFreeTime(question: Extract<Question, { kind: 'free_time' }>, ctx:
     params: {
       city: where, part: question.part, window: `${window.from}-${window.to}`,
       days: n, busy, open, unknown: unknownDays.length,
+      stopsWithoutOccupancy, stopsInScope,
     },
     facts,
     cites: citesOf(facts, [tripCite(trip), ...scopeCites]),

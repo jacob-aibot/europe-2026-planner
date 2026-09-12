@@ -1091,3 +1091,54 @@ test('cli ask honours --today through todayIsValid, like every other dated comma
   assert.equal(bogus.code, 2, bogus.out);
   assert.match(bogus.out, /--today must be a real calendar date/);
 });
+
+/**
+ * **QA R70-5.** The lifetime refusal was six literal phrases, so the obvious neighbours fell
+ * straight through and were answered **"This trip accounts for 7 countries"** — *right about the
+ * wrong question*, at the door a user actually types at.
+ */
+test('R70-5: every past-tense first-person countries question refuses at the CLI, like "have I been to"', () => {
+  for (const text of [
+    'how many countries have I visited',
+    'how many countries have I seen',
+    'how many countries have I stayed in',
+    'which countries have I visited',
+    'how many countries did I visit',
+    'how many countries total',
+  ]) {
+    const r = cli('ask', text);
+    assert.equal(r.code, 2, `"${text}" exited ${r.code}, not 2 — it was answered against THIS trip:\n${r.out}`);
+    assert.match(r.out, /different data set/, r.out);
+    assert.equal(/This trip accounts for 7 countries/.test(r.out), false, `"${text}" was answered anyway:\n${r.out}`);
+  }
+  // The control: the trip-scoped phrasing still answers, at the same door.
+  const scoped = cli('ask', 'how many countries am I visiting');
+  assert.equal(scoped.code, 0, scoped.out);
+  assert.match(scoped.out, /This trip accounts for 7 countries/);
+});
+
+/**
+ * **QA R70-12.** `--file` was read and `fromJSON` called at module scope with no `try`, so a
+ * document this CLI will not act on exited on a raw `TripParseError` **stack trace**. The house
+ * style is one line, no stack, a non-zero exit (R28-9).
+ */
+test('R70-12: a --file this CLI will not act on refuses with one line and exit 2, not a stack trace', () => {
+  const broken = join(CAIRN, 'node_modules', '.cairn-r70-broken.json');
+  writeFileSync(broken, '{"schemaVersion": 5, "trip": {}}');
+  try {
+    for (const [args, expect] of [
+      [['ask', 'what does my trip look like', '--file', '/dev/null'], /not valid JSON/],
+      [['ask', 'what does my trip look like', '--file', broken], /at \$\./],
+      [['trip', '--file', join(CAIRN, 'no-such-file.json')], /ENOENT/],
+    ] as const) {
+      const r = cli(...args);
+      assert.equal(r.code, 2, `exited ${r.code}, not 2:\n${r.out}${r.err}`);
+      assert.match(r.out, /^--file /m, `the refusal does not name the flag:\n${r.out}`);
+      assert.match(r.out, expect);
+      assert.equal(/at .*(cli|fromJSON)\.ts:\d+/.test(r.out + r.err), false, `a stack trace reached the user:\n${r.err}`);
+      assert.equal(r.out.split('\n').filter((l) => l.trim() !== '').length, 1, `the refusal is more than one line:\n${r.out}`);
+    }
+  } finally {
+    rmSync(broken, { force: true });
+  }
+});

@@ -329,6 +329,7 @@ import * as AccessPredicates from '../src/access/predicates.ts';
 import * as AskMod from '../src/ask/ask.ts';
 import * as AskFreeTime from '../src/ask/freeTime.ts';
 import * as AskMatch from '../src/ask/match.ts';
+import * as AskProse from '../src/ask/prose.ts';
 import * as AskResolveCite from '../src/ask/resolveCite.ts';
 import * as AskTypes from '../src/ask/types.ts';
 import * as Bookings from '../src/build/bookings.ts';
@@ -365,6 +366,7 @@ import * as DeriveGeo from '../src/derive/geo.ts';
 import * as DeriveGeoCheck from '../src/derive/geoCheck.ts';
 import * as DeriveLegs from '../src/derive/legs.ts';
 import * as DeriveLifecycle from '../src/derive/lifecycle.ts';
+import * as DeriveOccupancy from '../src/derive/occupancy.ts';
 import * as DeriveSummary from '../src/derive/summary.ts';
 import * as DeriveTravelStats from '../src/derive/travelStats.ts';
 import * as GeoCountriesGen from '../src/geo/countries.gen.ts';
@@ -634,6 +636,7 @@ const CENSUS = [
   ['ask/ask.ts', AskMod],
   ['ask/freeTime.ts', AskFreeTime],
   ['ask/match.ts', AskMatch],
+  ['ask/prose.ts', AskProse],
   ['ask/resolveCite.ts', AskResolveCite],
   ['ask/types.ts', AskTypes],
   ['build/bookings.ts', Bookings],
@@ -670,6 +673,7 @@ const CENSUS = [
   ['derive/geoCheck.ts', DeriveGeoCheck],
   ['derive/legs.ts', DeriveLegs],
   ['derive/lifecycle.ts', DeriveLifecycle],
+  ['derive/occupancy.ts', DeriveOccupancy],
   ['derive/summary.ts', DeriveSummary],
   ['derive/travelStats.ts', DeriveTravelStats],
   ['geo/countries.gen.ts', GeoCountriesGen],
