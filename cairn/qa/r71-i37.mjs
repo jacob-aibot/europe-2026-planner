@@ -41,6 +41,30 @@
  *
  * A `FAIL` line is a finding. `note` lines are measurements recorded rather than asserted.
  * This script reads the fixture and writes nothing.
+ *
+ * ---
+ *
+ * **RE-CUT AT ROUND 72, against `I-38` / §11.12 A-97.** At `465c200` this script is **ALL CLEAR**.
+ * It was 4 FAIL before the re-cut, and none of the four was a live defect — three expectations
+ * were superseded by the ruling and one was wrong when it was written. Each is changed at its own
+ * site with the reason on it, in the same style as `ask.test.ts`'s R70-1 re-cut, and nothing was
+ * deleted:
+ *
+ *   §E  the `-600` case asserted *"Split's evenings are not reported clear"* over a document that
+ *       puts `durationMins: -600` on **every** Split stop — under which no Split stop starts
+ *       inside the evening at all, so `Yes.` is the honest answer and the assertion was over-broad
+ *       when written. R71-4's actual invariant (a stop that STARTS inside the window occupies it)
+ *       is asserted where it belongs, on a stop that starts inside the window.
+ *   §F  asserted that the restatement and the menu line beside it must agree about showing a name.
+ *       A-97 Part 7 ruled the other way out: **where both forms would appear on one line, the
+ *       surface prints the typeable one only** — the raw name in `questionLine` is correct, and it
+ *       is the redacted restatement that no longer appears beside it. The assertion now reads the
+ *       shipped CLI's ambiguous branch.
+ *   §I  counted the days the prose accounts for as *"1 named + the other one"*, which was true of
+ *       the broken renderer and is not a general rule. A-97 Part 5's own criterion is the
+ *       partition identity — `named + "the other N" === busy` — and that is what is asserted now.
+ *
+ * Round 72's own attacks on the code I-38 added live in `qa/r72-i38.mjs`.
  */
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -261,7 +285,31 @@ if (on('E')) {
     };
     const a = core.ask({ kind: 'free_time', part: 'evening', cityKey: 'split' }, ctx(doc));
     note(`${label} → ${a.text.slice(0, 150)}…`);
-    ok(!/^Yes\./.test(a.text), `${label}: Split's evenings are not reported clear when stops start inside the window`);
+    // **Re-cut at round 72.** `durationMins: -600` on EVERY Split stop leaves no Split stop
+    // starting inside 18:00–23:59 (the times are the fixture's own, all before 18:00 on the day
+    // reported clear), so `Yes.` is the honest reading of that document and the old blanket
+    // assertion was over-broad when it was written. The invariant R71-4 is about is asserted
+    // below, on a stop that does start inside the window.
+    const clear = /^Yes\./.test(a.text) ? a.facts.filter((f) => f.label === 'day_state' && f.value === 'open').map((f) => String(f.params.date)) : [];
+    const startsInside = clear.every((date) => {
+      const day = doc.days.find((d) => d.date === date);
+      return !day.stops.some((s) => s.placement.kind === 'scheduled' && s.placement.time !== null && timeVal(s.placement.time) >= timeVal('18:00'));
+    });
+    ok(startsInside, `${label}: no day reported clear carries a stop that starts inside the window`);
+  }
+  // R71-4's invariant, at the shape that tests it: a negative run that STARTS inside the window.
+  for (const mins of [0, -600]) {
+    const doc = {
+      ...trip,
+      days: trip.days.map((d) => (!d.cities.includes('split') ? d : ({
+        ...d,
+        stops: d.stops.map((s, i) => (i !== 0 || s.placement.kind !== 'scheduled' ? s : ({
+          ...s, durationMins: mins, placement: { ...s.placement, time: '20:00' },
+        }))),
+      }))),
+    };
+    const a = core.ask({ kind: 'free_time', part: 'evening', cityKey: 'split' }, ctx(doc));
+    ok(!/^Yes\./.test(a.text), `a stop at 20:00 stating ${mins} minutes keeps its evening busy`);
   }
   // The boundary the builder DID get right — the trap A-96 Part 2 names.
   ok(occ.stopOccupancy(stopLike({ travelRole: 'transfer', arrival: { mode: 'bus', mins: 80 } })) === null,
@@ -298,9 +346,15 @@ if (on('F')) {
   const cliSrc = readFileSync(resolve(ROOT, 'cli.ts'), 'utf8');
   const raw = /function questionLine[\s\S]*?const name = \(key: string\) => trip\.cities\.find/.test(cliSrc);
   note(`cli.ts questionLine interpolates the raw City.name: ${raw}`);
-  note('so `ask "when do I leave for LONDON"` prints: `1. when you leave [redacted]  —  ask it as: when do I leave LONDON`');
-  ok(!raw || !r.includes('[redacted]'),
-    'the restatement and the menu line beside it agree about whether a city name may be shown');
+  // **Re-cut at round 72 (A-97 Part 7).** The ruling went the other way out of this: a menu line
+  // must stay **typeable**, so the raw name in `questionLine` is correct and it is the redacted
+  // restatement that no longer appears beside it. *"Where both forms would appear on one line,
+  // the surface prints the typeable one only."* The old assertion (`!raw || !redacted`) demanded
+  // agreement between the two forms and would have been satisfied by redacting the menu line,
+  // which is the fix the ruling refuses.
+  const printsBoth = /\$\{m\.restatements\[i\]\}[\s\S]{0,40}questionLine/.test(cliSrc);
+  note(`cli.ts's ambiguous branch prints the restatement beside the typeable line: ${printsBoth}`);
+  ok(!printsBoth, 'the ambiguous listing prints the typeable form only, never it beside the redacted one');
 }
 
 // -------------------------------------------------------------------------------------- G
@@ -389,11 +443,19 @@ if (on('I')) {
   note(`facts: ${b.facts.filter((f) => f.label === 'day_state').map((f) => `${f.params.date}=${f.value} runsInto=${f.params.runsIntoWindow} starts=${f.params.startsInWindow}`).join(' | ')}`);
   const named = new Set([...b.text.matchAll(/\b(\d{4}-\d{2}-\d{2})\b/g)].map((m) => m[1]));
   const busyDates = b.facts.filter((f) => f.label === 'day_state' && f.value === 'busy').map((f) => String(f.params.date));
-  note(`busy days: ${busyDates.length}; days the sentence accounts for: 1 named (${[...named].join(',')}) + "the other one"`);
-  ok(!/and the other one has something starting/.test(b.text) || busyDates.length === 2,
-    `"the other one" is a count over ${busyDates.length} busy days, and it accounts for 2 of them`);
-  ok(b.coverage !== 'complete' || busyDates.every((d) => named.has(d)) || /the other \d+/.test(b.text),
-    'a `complete` answer accounts for every day it says is busy');
+  // **Re-cut at round 72.** The old pair counted the accounted-for days as *"1 named + the other
+  // one"* — true of the renderer this finding was about, not a rule. A-97 Part 5 item 3 states the
+  // rule: the number of days named in the prose plus the number it counts equals the number it
+  // says are busy. That identity is what is asserted here, and it is what R71-7's fix delivers.
+  const clauses = [...b.text.matchAll(/on (2026-\d\d-\d\d) /g)].map((m) => m[1]);
+  const others = /(?:the other )?one has something starting at/.test(b.text) ? 1
+    : Number((b.text.match(/(?:the other )?(\d+) have something starting at/) ?? [0, 0])[1]);
+  note(`busy days: ${busyDates.length}; the sentence names ${clauses.length} (${clauses.join(',')}) and counts ${others}`);
+  ok(clauses.length + others === busyDates.length,
+    `busyRuns + busyStarts === busy: ${clauses.length} named + ${others} counted over ${busyDates.length} busy days`);
+  ok(b.coverage !== 'complete' || clauses.every((d) => busyDates.includes(d)),
+    'every day the answer names is one its own facts call busy');
+  note(`named-day set, unused since the re-cut: ${[...named].join(',')}`);
 
   // (c) The document is one the shipped parser accepts, so the route is `cli.ts ask --file`.
   let reparsed = null;

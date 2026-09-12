@@ -4871,3 +4871,37 @@ names the live field, with a guard above it so a future rename cannot make it pa
 Neither script writes anything: both read the fixture through `loadEurope2026()` and build every
 variant document in memory. `r71-i37.mjs` additionally reads `test/stats-storage.test.ts`,
 `fixtures/golden/`, `cli.ts` and the `ask/` and `derive/` sources as text.
+
+**Round 72** is the confirmation round over **I-38** (§11.12 **A-97**), at `465c200`. Two scripts,
+run from `cairn/`:
+
+```bash
+node qa/r72-i38.mjs          # 9 sections, 82 assertions — 23 FAIL over 8 findings, ~20 s
+node qa/r71-i37.mjs          # RE-CUT at four sites — ALL CLEAR at 465c200
+```
+
+`r72-i38.mjs`'s sections: **A** confirms R71-1 (`endMin === 1665`, *"still on it at midnight"*, no
+next-day clock, `runEndsAt === '27:45'`); **B** the uncapped `endMin`'s blast radius — the consumer
+census (`occupiedInterval` has **one** production caller), clamped-vs-unclamped over 112 intervals ×
+3 dayparts, the window matrix that carries **R72-4**, and the substitute evidence for `16:45–27:45`
+rebuilt independently (note: the planted stop must state a `durationMins` of its own, or `overlap`
+does not compare it); **C** **R72-3**, the exact-midnight boundary; **D** confirms R71-7 by fuzz —
+600 generated documents, 1,800 answers, four invariants, 0 violations; **E** **R72-5**; **F** the
+scope gate — **R72-1**, **R72-2**, **R72-7**, and R71-3's confirmations; **G** **R72-6** and
+**R72-8**; **H** the `ask.test.ts` re-cut driven in both directions plus R71-5's two halves; **I**
+the ceilings.
+
+**Do not re-derive these from round 72:** `overlap` returns **0** findings on the reference trip, so
+`node cli.ts conflicts` has never printed `16:45–27:45` there — round 71's report said otherwise and
+that sentence was illustrative, not measured. And `occupiedInterval` is read by `ask/freeTime.ts`
+alone: no conflict verdict can move with the clamp, because there is no call path, which is a
+stronger statement than the goldens being byte-identical.
+
+**`qa/r71-i37.mjs` is RE-CUT and is now ALL CLEAR (80 assertions, 0 FAIL) — that is the measurement,
+not the goal.** Four assertions moved, each with its reason at its own site, and the header carries
+the summary. §F demanded that the redacted restatement and the typeable menu line beside it *agree*;
+A-97 Part 7 ruled the opposite way out, so the assertion now reads the shipped CLI branch. §I ×2
+counted *"1 named + the other one"*, which was true of the broken renderer rather than a rule, and
+now assert A-97 Part 5 item 3's identity. §E ×1 was wrong when it was written — a document with
+`durationMins: -600` on every Split stop leaves no Split stop starting inside the evening, so `Yes.`
+is honest; R71-4's invariant is asserted on a stop that does start inside the window.
