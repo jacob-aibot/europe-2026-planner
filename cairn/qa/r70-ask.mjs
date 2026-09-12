@@ -28,6 +28,34 @@
  *
  * A `FAIL` line is a finding. `note` lines are measurements recorded rather than asserted.
  * This script reads the fixture and writes nothing.
+ *
+ * ---
+ *
+ * **RE-CUT at QA round 71, against `I-37` (`e0fea87`). It is now ALL CLEAR, and that is the
+ * measurement: every finding §A–§G carried is closed.** Five assertions moved and each one says
+ * why at its site — do not re-derive them:
+ *
+ *  - **§C ×3.** Two asserted properties of the FIXTURE that were R70-3's own evidence (*no journey
+ *    stop states a run length* — 21 do; *the 17:15 bus does not run into the evening* — it does),
+ *    so they were unpassable by construction and their passing would have meant the finding was
+ *    wrong. Verified as such, not taken on the builder's word. They now assert what I-37 made
+ *    checkable: `stopOccupancy` reads all 21, and the 14th's evening is `busy` on a `runsInto`.
+ *    The third read the fact label `stops_without_duration` and **crashed**; the label is
+ *    `stops_without_occupancy` at `e0fea87` and **the rename is right** (`AnswerFact.label` is a
+ *    free `string`, no closed union, no golden — round 71 §H3), so the probe is what moves.
+ *  - **§F ×1.** Two neighbouring assertions required the same Cyrillic word to be both matched and
+ *    unread; a matched span is consumed, so the pair could not both hold. Confirmed by running it
+ *    (`unread` is `do i have a in`). R70-7's property is about a word the recogniser did NOT read,
+ *    so it is now asked of one.
+ *  - **§G ×1, and this one was passing VACUOUSLY.** `DayVerdict.latestStart` became
+ *    `lastUncertainBefore` at `e0fea87` — an **undisclosed** rename — so the filter read
+ *    `undefined` and the assertion could not fail. It now names the live field, with a guard
+ *    above it so a future rename cannot make it pass by absence again.
+ *  - **§I ×1.** R70-11 is adjudicated by §11.11 **A-96 Part 7**, which rules for the shipped code
+ *    and corrects §11.7 rule 4's prose instead. No code change is wanted, so the `ok` becomes a
+ *    re-derivation of A-96 Part 7's own number (2 of 12 edges).
+ *
+ * Round 71's own findings are in **`qa/r71-i37.mjs`**, not here.
  */
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -37,6 +65,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
 const core = await import(resolve(ROOT, 'packages/core/src/index.ts'));
 const { classifyDay, DAYPART_WINDOWS } = await import(resolve(ROOT, 'packages/core/src/ask/freeTime.ts'));
+const { stopOccupancy } = await import(resolve(ROOT, 'packages/core/src/derive/occupancy.ts'));
 const { loadEurope2026 } = await import(resolve(ROOT, 'fixtures/loadEurope2026.mjs'));
 
 const { trip } = loadEurope2026();
@@ -103,8 +132,15 @@ if (on('C')) {
   const journeys = trip.days.flatMap((d) => d.stops).filter((s) => s.travelRole === 'journey');
   const stated = journeys.filter((s) => s.arrival && typeof s.arrival.mins === 'number');
   note(`journey stops: ${journeys.length}; of which state arrival.mins: ${stated.length}`);
-  ok(stated.length === 0 || journeys.length === 0,
-    'no journey stop states a run length the classifier ignores');
+  // RE-CUT, round 71. As written this asserted `stated.length === 0` — that no journey stop
+  // states a run length at all. That is a statement about the FIXTURE and it is false by
+  // construction (21 of 21 do); it was R70-3's own evidence written as a requirement, so it
+  // could never pass and its passing would have meant the finding was wrong. The property the
+  // finding is actually about is that the CLASSIFIER reads that run length, and I-37 is what
+  // made it checkable: `stopOccupancy` answers `journey_run` for every one of the 21.
+  const readAsRun = journeys.filter((s) => stopOccupancy(s)?.source === 'journey_run');
+  ok(readAsRun.length === stated.length && stated.length === journeys.length,
+    `every one of the ${journeys.length} journey stops' \`arrival.mins\` is read as its own run — ${readAsRun.length} of ${stated.length}`);
 
   const d14 = trip.days.find((d) => d.id === '2026-08-14');
   const last = d14.stops.filter((s) => s.placement.kind === 'scheduled' && s.placement.time !== null)
@@ -117,16 +153,29 @@ if (on('C')) {
   note(`the 14th's last start: ${last.placement.time} "${last.name}" travelRole=${last.travelRole} ` +
     `arrival=${JSON.stringify(last.arrival)} → ends ${ends}`);
   const w = DAYPART_WINDOWS.evening;
-  ok(!(last.travelRole === 'journey' && ends !== null && ends >= w.from),
-    `the stop §11.7 calls "states no duration" does not in fact run into the ${w.from}-${w.to} window`);
+  // RE-CUT, round 71. Same shape as the assertion above: this required the 17:15 bus NOT to run
+  // into the evening, which is the fact R70-3 was reporting. What is checkable after I-37 is that
+  // the classifier now agrees with the document — the 14th's evening is `busy`, and the bus is in
+  // `runsInto` rather than in `starts`, with the interval that says so.
+  const v14 = classifyDay(d14, 'evening');
+  const runsIn = v14.runsInto.map((o) => `${o.stop.placement.time}→${Math.floor(o.interval.endMin / 60)}:${String(o.interval.endMin % 60).padStart(2, '0')}`);
+  ok(last.travelRole === 'journey' && ends !== null && ends >= w.from && v14.state === 'busy' && runsIn.length === 1,
+    `the ${w.from}-${w.to} window on 2026-08-14 is \`${v14.state}\` because of a stated run that reaches into it — ${runsIn.join(',') || 'none'}`);
 
   const a = core.ask({ kind: 'free_time', part: 'evening', cityKey: 'split' }, ctx(trip));
-  const claimed = Number(a.facts.find((f) => f.label === 'stops_without_duration').value);
+  // RE-CUT, round 71. The fact label is `stops_without_occupancy` at `e0fea87` — BUILD-NOTES
+  // disclosure 1, and the rename is RIGHT: `AnswerFact.label` is a free `string` with no closed
+  // union and no golden behind it, and the number it labels counts stops that state no run length
+  // by ANY field, so a label saying `duration` would have been R70-3's own defect one layer out.
+  // This probe is what moves. Reading the old label is what crashed the script at `e0fea87`.
+  const census = a.facts.find((f) => f.label === 'stops_without_occupancy');
+  const claimed = Number(census.value);
   const splitStops = trip.days.filter((d) => d.cities.includes('split')).flatMap((d) => d.stops);
   const withArrival = splitStops.filter((s) => s.travelRole === 'journey' && s.arrival);
-  note(`the sentence says ${claimed} Split stops "say nothing about how long they take"; ` +
-    `${withArrival.length} of them are journeys that state arrival.mins`);
-  ok(withArrival.length === 0, 'the rendered clause is true of every stop it counts');
+  note(`the sentence says ${claimed} of ${census.params.of} Split stops state no run length; ` +
+    `${withArrival.length} of the ${splitStops.length} are journeys that state arrival.mins`);
+  ok(claimed === splitStops.length - withArrival.length,
+    'the rendered clause is true of every stop it counts — the journeys that state a run are excluded from it');
 }
 
 // -------------------------------------------------------------------------------------- D
@@ -196,8 +245,18 @@ if (on('F')) {
     `(unread: ${n.kind === 'matched' ? n.unread.join(' ') : ''})`);
   ok(n.kind !== 'matched' || n.question.cityKey === 'split',
     'the trip\'s own city, named in Cyrillic, is not silently widened to the whole trip');
-  ok(n.kind !== 'matched' || n.unread.some((w) => /[^\x00-\x7f]/.test(w)),
-    '§11.3 rule 2: a word the recogniser did not read is reported, not deleted by the tokenizer');
+  // RE-CUT, round 71. The assertion that stood here required the SAME word to appear in `unread`,
+  // which the assertion above requires to have been MATCHED — and a matched span is consumed, so
+  // the two could not both hold and the pair was unpassable by construction. That is confirmed,
+  // not taken on the builder's word: `unread` here is exactly `do i have a in`. R70-7's property
+  // is about a word the recogniser did NOT read, so the re-cut asks it of one — a Cyrillic word
+  // that names nothing on this trip, which the old `[a-z0-9]` tokenizer deleted without trace.
+  ok(n.kind === 'matched' && !n.unread.some((w) => /[^\x00-\x7f]/.test(w)),
+    'a non-Latin city name the recogniser DID read is consumed, not reported as unread');
+  const unknownWord = core.matchQuestion('do I have a free evening in Сплит and Львів', cyr);
+  note(`"…in Сплит and Львів" → ${unknownWord.kind} (unread: ${unknownWord.kind === 'matched' ? unknownWord.unread.join(' ') : ''})`);
+  ok(unknownWord.kind !== 'matched' || unknownWord.unread.some((w) => /[^\x00-\x7f]/.test(w)),
+    '§11.3 rule 2: a non-Latin word the recogniser did not read is reported, not deleted by the tokenizer');
 
   const far = core.matchQuestion('do I have a free evening in 東京', trip);
   ok(far.kind !== 'matched' || far.unread.some((w) => /[^\x00-\x7f]/.test(w)),
@@ -207,10 +266,16 @@ if (on('F')) {
 // -------------------------------------------------------------------------------------- G
 if (on('G')) {
   head('G', 'R70-8 / R70-9 / R70-10 — three prose defects in free_time');
-  // R70-8: the cited `latestStart` is day-wide, so it can be AFTER the window asked about.
+  // R70-8: the cited start time is day-wide, so it can be AFTER the window asked about.
+  // RE-CUT, round 71. `DayVerdict.latestStart` is `lastUncertainBefore` at `e0fea87` — an
+  // UNDISCLOSED rename (BUILD-NOTES discloses `withoutDuration` → `withoutOccupancy` and the fact
+  // label, not this one) that left this filter reading `undefined`, so the assertion passed
+  // vacuously and the builder's "33 ok" included a dead one. The field is internal to `ask/`, so
+  // the rename costs nothing — but the assertion has to name the live field to mean anything.
   const rows = trip.days.flatMap((d) => ['morning', 'afternoon', 'evening'].map((p) => ({ date: d.date, part: p, ...classifyDay(d, p) })));
-  const odd = rows.filter((r) => r.state === 'unknown' && r.latestStart !== null && r.latestStart > DAYPART_WINDOWS[r.part].to);
-  for (const r of odd) note(`${r.date} ${r.part} (window ${DAYPART_WINDOWS[r.part].from}-${DAYPART_WINDOWS[r.part].to}) cites latestStart ${r.latestStart}`);
+  ok(rows.every((r) => 'lastUncertainBefore' in r), 'the field this section reads exists — a rename may not make it pass by absence');
+  const odd = rows.filter((r) => r.state === 'unknown' && r.lastUncertainBefore != null && r.lastUncertainBefore > DAYPART_WINDOWS[r.part].to);
+  for (const r of odd) note(`${r.date} ${r.part} (window ${DAYPART_WINDOWS[r.part].from}-${DAYPART_WINDOWS[r.part].to}) cites ${r.lastUncertainBefore}`);
   ok(odd.length === 0, 'the "nothing starts after X" clause names a time inside the window it explains');
 
   // R70-9: the no-days arm hard-codes "evening".
@@ -284,9 +349,16 @@ if (on('I')) {
       if (j) wrong.push(`${c.key} ${edge} ${day.id} — ${j.placement.time} "${j.name}"`);
     }
   }
-  for (const w of wrong) note(`literal §11.7 rule 4 would print "no departure stop" here: ${w}`);
-  note(`BUILD-NOTES KD-131 names ONE such day (London's last); the data carries ${wrong.length}`);
-  ok(wrong.length === 0, 'the literal reading of §11.7 rule 4 agrees with §11.5\'s no_departure_stop definition');
+  for (const w of wrong) note(`revision 77's literal §11.7 rule 4 would have printed "no departure stop" here: ${w}`);
+  note(`BUILD-NOTES KD-131 named ONE such day (London's last); the data carries ${wrong.length}`);
+  // RE-CUT, round 71. This was an `ok` and it is now a measurement. §11.11 A-96 Part 7 ADJUDICATED
+  // R70-11 and ruled for the shipped code: §11.5's ungated definition of `no_departure_stop` is
+  // the rule, §11.7 rule 4's two-city gate was the error, and rule 4's prose is corrected in place
+  // rather than `answerCityEdge` being changed. The finding is closed with no code change wanted,
+  // so asserting against the corrected doc would be reopening a ruling. The two edge days stay
+  // measured here so the number behind A-96 Part 7 is re-derivable.
+  ok(wrong.length === 2 && wrong.some((w) => w.startsWith('london leave')) && wrong.some((w) => w.startsWith('vienna arrive')),
+    'A-96 Part 7 re-derived: 2 of 12 edges are one-city days that carry a journey stop — Vienna\'s first and London\'s last');
 }
 
 // -------------------------------------------------------------------------------------- J

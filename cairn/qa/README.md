@@ -4808,3 +4808,66 @@ avoids. Write `export const probe = (s: string) => s.split(/[^a-z0-9]+/);` to
 
 `r70-ask.mjs` writes nothing: it reads the fixture through `loadEurope2026()` and builds every variant
 document in memory.
+
+---
+
+**Round 71** is the confirmation round over **`I-37`** (`3bc5b3e` … `e0fea87`) — ARCHITECTURE
+**§11.11 A-96**, *one definition of how long a stop occupies the clock, and prose that is clean by
+construction*. One new script, and **`qa/r70-ask.mjs` is RE-CUT in the same round** (see below).
+
+```bash
+node qa/r71-i37.mjs            # every section — offline, ~6 s, writes nothing
+node qa/r71-i37.mjs A B        # named sections only
+```
+
+Sections **B**–**G** and **I** are findings, **A** and **H** are confirmations, **J** is the
+ceilings. It runs **79 assertions, 27 of them FAIL**, and every FAIL is a finding in round 71's block
+of `../docs/QA-FINDINGS.md`. **§B and §I are the two to reach for whenever a question is about what
+`free_time`'s `busy` SENTENCE says**, because they are the two halves of the same new branch: §B is
+the clamped `endMin` rendered as a clock time (the flagship answer says a flight ends at 23:59 when
+the document says 27:45, and `crossesDay` has no production reader), and §I is the `runsInto` day
+that renders no clause at all because `busyRuns` is gated on `arrival`.
+
+**`qa/r71-i37.mjs` §A is the one to reach for whenever a question is about the 48-VERDICT SWEEP.**
+It transcribes revision 77's `classifyDay` out of `git show 3bc5b3e` and runs both classifiers over
+all 16 days × 3 dayparts in one pass, so *"44/0/4 → 46/0/2, exactly two movers"* is re-derived rather
+than quoted: the two movers are named, the two survivors are named, and it separately asserts that
+nothing moves the other way and that every revision-77 `busy` is still `busy`. **A third mover
+reddens it.**
+
+**§H is the one to reach for before re-deriving anything about the redaction chokepoint, the
+`stops_without_occupancy` rename, the `SOURCE_ALLOW` row or the `overlap` identity.** **H1** puts a
+distinct sentinel in **every** user-authored string field the model has — sixteen of them, including
+`MoveOverride.label`, `Ticket.label`, `Booking.route.*`, `Stop.flags` and both `Day` title fields —
+and sweeps all 36 menu questions at both clocks over `answer.text`, every `caveat.message` **and**
+`restate()`: exactly one field reaches prose and it is `City.name`, redacted. **H2** measures
+`redactText`'s own boundary through the chokepoint (`LONDON`, `London door code 4821`, `ЛОНДОН`,
+fullwidth digits, a Greek-omicron homoglyph) — the escapes are §6.6 pattern-set gaps, not chokepoint
+gaps, and §11.8's criterion cannot see them because it uses `redactionHits` as both guard and oracle.
+**H5** re-implements `overlap.ts`'s deleted module-private `occupancy` and diffs it against
+`stopOccupancy` over **858 stop shapes** (every scheduled and pooled stop × five mutations), which is
+the identity claim checked rather than taken from the golden.
+
+Three faults were injected in throwaway `git worktree`s with a copied `node_modules` (the
+`r68-repin.sh` discipline; the live tree was never modified). Recorded here so nobody re-derives
+them: **`cityProse` returning the raw name** → 1,944 pass / **1 fail** (`ask.test.ts:814`), so the
+R70-4 guard is real; **`restate()` reverted to `cityName`** → **1,945 pass / 0 fail**, typecheck exit
+0, which is **R71-5**; **dropping the `travelRole === 'journey'` guard in `stopOccupancy`** — A-96
+Part 2's named trap — reddens **five** tests including the two named for it.
+
+**`qa/r70-ask.mjs` is RE-CUT and is now ALL CLEAR (40 assertions, 0 FAIL) — that is the measurement,
+not the goal.** Five assertions moved and each says why at its own site; do not re-derive them, and
+do not read the ALL CLEAR as *"round 70 found nothing"*. §C ×2 asserted properties of the **fixture**
+that were R70-3's own evidence written as requirements, so they were unpassable by construction;
+§C ×1 crashed on `stops_without_duration`, which is `stops_without_occupancy` at `e0fea87` and the
+rename is **right** (round 71 §H3 — `AnswerFact.label` is a bare `string`, no closed union, no
+golden), so the probe is what moved; §F ×1 required one Cyrillic word to be both matched and unread,
+which a consumed span makes impossible; §I ×1 is R70-11, adjudicated by **A-96 Part 7** in favour of
+the shipped code, so it becomes a re-derivation of that ruling's own number. **A sixth, which the
+builder did not flag: §G1 was passing VACUOUSLY** — `DayVerdict.latestStart` became
+`lastUncertainBefore` at `e0fea87` in an undisclosed rename, so the filter read `undefined`. It now
+names the live field, with a guard above it so a future rename cannot make it pass by absence again.
+
+Neither script writes anything: both read the fixture through `loadEurope2026()` and build every
+variant document in memory. `r71-i37.mjs` additionally reads `test/stats-storage.test.ts`,
+`fixtures/golden/`, `cli.ts` and the `ask/` and `derive/` sources as text.
