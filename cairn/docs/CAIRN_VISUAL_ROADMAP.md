@@ -19,6 +19,72 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟦 THE SERVER IS DESIGNED, NOTHING IS BOUGHT, AND PHASE 3 IS DELIBERATELY SMALLER THAN IT WAS.
+> As of 2026-09-14 this block is the newest and it supersedes every block below it.** Nothing on your
+> phone changes and no code changed. You said to start Phase 3 — the first phase that needs a server at
+> all — and this is the ruling that had to come first, before any domain, host, database or login
+> provider is paid for. **Still bought: nothing.**
+>
+> **The one thing that had to be protected.** Cairn's strongest promise is that if someone stole the whole
+> database, there would be **no record of where you have physically been** — that is why the whole
+> city list is bundled on your phone instead of asking a server. A server is where that promise dies if
+> nobody writes the rule down. So it is written down: **nothing a GPS, a phone or a photo produced is ever
+> stored on a server, in any phase**, and there is now an automatic check that refuses any new database
+> column that could hold one. Not a convention — a test that goes red.
+>
+> **What a friend actually sees, and it is not your trip.** Your trip notes carry hotel door PINs, booking
+> confirmation numbers and live ticket links. Measured on your real Europe 2026 trip: **146 pieces of text
+> in the document look like a credential**, plus four of the warnings Cairn itself writes, which quote
+> your booking references out loud. So a friend is **never sent your trip**. Your phone builds a separate,
+> cleaned-up copy — a *snapshot* — and the server only ever hands out that. On your trip the snapshot has
+> **zero booking references, zero ticket links, zero door PINs, and no bookings at all**. What is left is
+> four stop names that merely *look* like codes (`Condor DE2081`, `Smartwings QS1083`) and Cairn will
+> **show you those before you share**, and let you decide — it will never quietly rewrite your own words.
+>
+> On top of that, the part of the server that answers a public share link **is not allowed to read your
+> trips at all**. Even a bug in that page cannot reach a door PIN, because the door to that filing cabinet
+> is locked at the database, not by our code remembering to check.
+>
+> **Phase 3 got smaller, on purpose.** It ships: your trips syncing across your devices, friends, sharing
+> a trip **read-only** with a friend or by link, and public share pages anyone can open in a browser.
+> **It does NOT ship two people editing the same trip.** The reason is honest: when two edits collide,
+> Cairn keeps one and writes down what it discarded — which is fine when both edits were *yours* and you
+> are standing there reading the note, and not fine when the person whose work vanished is somewhere else
+> and never sees it. Building that properly is its own piece of work and it is not worth holding up
+> sharing for.
+>
+> **The order it lands in, and the first two steps cost nothing:**
+>
+> | | What it is | Needs buying? |
+> |---|---|---|
+> | 1 | The cleaned-up snapshot a friend sees | **no** — runs on a laptop |
+> | 2 | The syncing machinery, tested against a fake server | **no** — runs on a laptop |
+> | 3 | The database, its locks, and the permission grid | **no** — a database on your own machine |
+> | 4 | Shares, share links, revoking a share, the public page | a host, when you want it live |
+> | 5 | Friends, taking a stop from a friend's trip, the DISCOVER tab | — |
+>
+> **Where this stands.**
+>
+> | | Built (the code exists) | Verified (a tester attacked it) | Shippable to you |
+> |---|---|---|---|
+> | The server boundary, as a written ruling | **n/a — it is a design, not code** | — | — |
+> | The cleaned-up snapshot (step 1) | **not yet** — ruled today, queued | — | — |
+> | Syncing across your devices (step 2) | **not yet** — ruled today, queued | — | — |
+> | Sharing a trip read-only (steps 3–4) | **not yet** — ruled today, queued | — | — |
+> | Two people editing one trip | **deliberately not in this phase** | — | — |
+> | The picker screen | **not yet, and still fenced by the visual direction** | — | — |
+>
+> **Two things said plainly rather than left vague.** The **picker screen is still the last unbuilt piece
+> of Phase 2**, it is still waiting on a visual direction only you can give, and by the project's own rule
+> **Phase 3 code waits for Phase 2 to be signed off** — today's ruling is a design pass and does not jump
+> that queue. And the *"how many countries am I up to"* bug found last round is a separate thing that
+> **blocks none of this**.
+>
+> **One question is deliberately left open** — what should happen when a trip file arrives that says it
+> belongs to somebody else. It is a real question, it is not a server question, and it is scheduled to be
+> answered before sharing is built rather than guessed at now.
+
+
 > **🟩 THE *HISPANIOLA* FIX IS IN AND SIGNED OFF — AND THE SAME ROUND FOUND A WHOLE ISLAND TERRITORY
 > MISSING FROM THE CITY LIST. As of 2026-09-10 (later the same day) this block is the newest and it
 > supersedes every block below it.** Nothing on your phone changes. Two things happened: the fix the block

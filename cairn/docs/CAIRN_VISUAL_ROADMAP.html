@@ -319,6 +319,38 @@
 </style>
 </head>
 <body>
+<div class="callout" style="border-left:4px solid #1565c0;padding:.75rem 1rem;margin:1rem 0;background:#e3f2fd">
+<p><strong>&#128998; THE SERVER IS DESIGNED, NOTHING IS BOUGHT, AND PHASE 3 IS DELIBERATELY SMALLER THAN IT WAS. As of 2026-09-14 this block is the newest and it supersedes every block below it.</strong> Nothing on your phone changes and no code changed. You said to start Phase 3 &mdash; the first phase that needs a server at all &mdash; and this is the ruling that had to come first, before any domain, host, database or login provider is paid for. <strong>Still bought: nothing.</strong></p>
+<p><strong>The one thing that had to be protected.</strong> Cairn&rsquo;s strongest promise is that if someone stole the whole database, there would be <strong>no record of where you have physically been</strong> &mdash; that is why the whole city list is bundled on your phone instead of asking a server. A server is where that promise dies if nobody writes the rule down. So it is written down: <strong>nothing a GPS, a phone or a photo produced is ever stored on a server, in any phase</strong>, and there is now an automatic check that refuses any new database column that could hold one. Not a convention &mdash; a test that goes red.</p>
+<p><strong>What a friend actually sees, and it is not your trip.</strong> Your trip notes carry hotel door PINs, booking confirmation numbers and live ticket links. Measured on your real Europe 2026 trip: <strong>146 pieces of text in the document look like a credential</strong>, plus four of the warnings Cairn itself writes, which quote your booking references out loud. So a friend is <strong>never sent your trip</strong>. Your phone builds a separate, cleaned-up copy &mdash; a <em>snapshot</em> &mdash; and the server only ever hands out that. On your trip the snapshot has <strong>zero booking references, zero ticket links, zero door PINs, and no bookings at all</strong>. What is left is four stop names that merely <em>look</em> like codes (<code>Condor DE2081</code>, <code>Smartwings QS1083</code>) and Cairn will <strong>show you those before you share</strong>, and let you decide &mdash; it will never quietly rewrite your own words.</p>
+<p>On top of that, the part of the server that answers a public share link <strong>is not allowed to read your trips at all</strong>. Even a bug in that page cannot reach a door PIN, because the door to that filing cabinet is locked at the database, not by our code remembering to check.</p>
+<p><strong>Phase 3 got smaller, on purpose.</strong> It ships: your trips syncing across your devices, friends, sharing a trip <strong>read-only</strong> with a friend or by link, and public share pages anyone can open in a browser. <strong>It does NOT ship two people editing the same trip.</strong> The reason is honest: when two edits collide, Cairn keeps one and writes down what it discarded &mdash; which is fine when both edits were <em>yours</em> and you are standing there reading the note, and not fine when the person whose work vanished is somewhere else and never sees it. Building that properly is its own piece of work and it is not worth holding up sharing for.</p>
+<p><strong>The order it lands in, and the first two steps cost nothing:</strong></p>
+<table style="width:100%;border-collapse:collapse;font-size:0.86rem;margin:.5rem 0">
+<thead><tr><th></th><th>What it is</th><th>Needs buying?</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>The cleaned-up snapshot a friend sees</td><td><strong>no</strong> &mdash; runs on a laptop</td></tr>
+<tr><td>2</td><td>The syncing machinery, tested against a fake server</td><td><strong>no</strong> &mdash; runs on a laptop</td></tr>
+<tr><td>3</td><td>The database, its locks, and the permission grid</td><td><strong>no</strong> &mdash; a database on your own machine</td></tr>
+<tr><td>4</td><td>Shares, share links, revoking a share, the public page</td><td>a host, when you want it live</td></tr>
+<tr><td>5</td><td>Friends, taking a stop from a friend&rsquo;s trip, the DISCOVER tab</td><td>&mdash;</td></tr>
+</tbody>
+</table>
+<p><strong>Where this stands.</strong></p>
+<table style="width:100%;border-collapse:collapse;font-size:0.86rem;margin:.5rem 0">
+<thead><tr><th></th><th>Built (the code exists)</th><th>Verified (a tester attacked it)</th><th>Shippable to you</th></tr></thead>
+<tbody>
+<tr><td>The server boundary, as a written ruling</td><td><strong>n/a &mdash; it is a design, not code</strong></td><td>&mdash;</td><td>&mdash;</td></tr>
+<tr><td>The cleaned-up snapshot (step 1)</td><td><strong>not yet</strong> &mdash; ruled today, queued</td><td>&mdash;</td><td>&mdash;</td></tr>
+<tr><td>Syncing across your devices (step 2)</td><td><strong>not yet</strong> &mdash; ruled today, queued</td><td>&mdash;</td><td>&mdash;</td></tr>
+<tr><td>Sharing a trip read-only (steps 3&ndash;4)</td><td><strong>not yet</strong> &mdash; ruled today, queued</td><td>&mdash;</td><td>&mdash;</td></tr>
+<tr><td>Two people editing one trip</td><td><strong>deliberately not in this phase</strong></td><td>&mdash;</td><td>&mdash;</td></tr>
+<tr><td>The picker screen</td><td><strong>not yet, and still fenced by the visual direction</strong></td><td>&mdash;</td><td>&mdash;</td></tr>
+</tbody>
+</table>
+<p><strong>Two things said plainly rather than left vague.</strong> The <strong>picker screen is still the last unbuilt piece of Phase 2</strong>, it is still waiting on a visual direction only you can give, and by the project&rsquo;s own rule <strong>Phase 3 code waits for Phase 2 to be signed off</strong> &mdash; today&rsquo;s ruling is a design pass and does not jump that queue. And the <em>&ldquo;how many countries am I up to&rdquo;</em> bug found last round is a separate thing that <strong>blocks none of this</strong>.</p>
+<p><strong>One question is deliberately left open</strong> &mdash; what should happen when a trip file arrives that says it belongs to somebody else. It is a real question, it is not a server question, and it is scheduled to be answered before sharing is built rather than guessed at now.</p>
+</div>
 <div class="callout" style="border-left:4px solid #2e7d32;padding:.75rem 1rem;margin:1rem 0;background:#e8f5e9">
 <p><strong>&#129001; THE <em>HISPANIOLA</em> FIX IS IN AND SIGNED OFF &mdash; AND THE SAME ROUND FOUND A WHOLE ISLAND TERRITORY MISSING FROM THE CITY LIST. As of 2026-09-10 (later the same day) this block is the newest and it supersedes every block below it.</strong> Nothing on your phone changes. Two things happened: the fix the block below promised landed and survived a tester; and while checking it, the tester found something older and worse, which is now ruled and queued.</p>
 <p><strong>Typing <em>Hispaniola</em> no longer puts the Dominican Republic on your lifetime map.</strong> Sixteen entries that are islands lying in &mdash; or claimed by &mdash; more than one country have stopped being treated as cities: <em>Hispaniola</em>, <em>Antilles</em>, <em>Borneo</em>, <em>New Guinea</em>, the two Tierra del Fuego entries, and ten smaller disputed islands. <strong>Nothing else was removed.</strong> The first attempt at this rule would have deleted <strong>Vatican City</strong> along with the capitals of the Faroes, Jersey, the Isle of Man and &Aring;land; the builder measured that, refused to switch it on, and said so &mdash; and the rule was re-cut rather than the objection overruled. This is the first thing in the whole city-list arc with a <strong>tester&rsquo;s sign-off</strong>: the sixteen were re-derived from scratch, independently, and came out identical.</p>
