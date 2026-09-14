@@ -1835,8 +1835,21 @@ bullets pointing at §11.10** (1k → **2k**). §8 does **not** move, §4 does n
 §10 does not move. **This revision opens no `.tsx`, no `apps/web` file and no `docs/design/` file, and
 nothing in it gates `I-30`**, which is still fenced by the unresolved visual direction and by nothing else.
 
+**Revision 80, 2026-09-14 — the SERVER BOUNDARY, and it is a NEW SECTION rather than a §8.4 ruling.**
+**§12 — *the server boundary*** — is new, **~11k**, and **SELF-CONTAINED**: a builder or breaker of ROADMAP
+**`I-39`…`I-43`** reads **§12 whole and nothing else in this document**. Not §2 whole, not §4, not §8, not
+§10, not §11, and no `A-` ruling at all. §12 quotes what it needs from §1.3, §2.2a, §2.14, §4.3, §5.2,
+§6.1, §6.2, §6.3, §7, §8.7 and §8.8. **The rest of this revision is banners and two bullets that a reader
+of §12 does not need to open**: **§0 gains position 14** (3k → **5k**; the heading is now *Fourteen
+positions*), and **§5.2, §6.1, §6.2, §7, §8.7 and §8.8 gain amendment banners in place** — §5 stays ~2k,
+§6 ~4k, §7 ~2k, and §8 does not move as `doc-section` rounds it. **§1, §2, §3, §4, §9, §10 and §11 do not
+move at all.** **This revision opens no `.tsx`, no `apps/web` file, no `qa/` file and no `docs/design/`
+file, it changes no code and no golden byte, and nothing in it gates `I-30`** — which is still fenced by
+the unresolved visual direction and by nothing else.
+
 | section | ~size | who reads it, and when |
 |---|---|---|
+| **§12** | ~11k | **The whole read for a builder or breaker of ROADMAP `I-39`, `I-40`, `I-41`, `I-42` and `I-43`, and it is read ALONE.** Also the read for anyone about to buy a host, a database or an auth provider, and for anyone tempted to add a column to a server table. Its Part 3 (**the never-list**) and Part 4 (**what a share page may contain**) are the two parts that are read before any other decision in Phase 3. It needs **no** §8.4 ruling, no part of §2 and no part of §4. |
 | **§11** | ~18k | **The whole read for a builder or breaker of ROADMAP `I-35`, `I-36`, `I-37` and `I-38`, and it is read ALONE** — with **§11.12 A-97 first, then A-96 Parts 2, 3 and 6** for a builder of `I-38`. Also the read for anyone tempted to put a language model, a network call or a recommendation anywhere near a trip — §11.1 and §11.2 are the ruling and §11.10 is what is refused. It needs **no** §8.4 ruling, no part of §2 and no part of §4. |
 
 | ruling | ~size | who reads it, and when |
@@ -2082,7 +2095,7 @@ crosses a section boundary. Otherwise this table is the contract.
 
 ---
 
-## 0. Thirteen positions, stated up front
+## 0. Fourteen positions, stated up front
 
 1. **The brief's two hard constraints hold, and one is worse than the brief says.** They force a native
    shell for pillars 4 and 5 — not a native-first architecture. Jacob has confirmed the end state:
@@ -2246,6 +2259,27 @@ crosses a section boundary. Otherwise this table is the contract.
    refuses otherwise. A denylist of the other scope's phrasings is a list over an open set (this project has
    now shortened one six times); default-deny does not make the next gap less likely, it makes it a refusal
    with the menu behind it instead of a confident answer at the wrong scope.
+14. **The server stores bytes it cannot read, and a share page is served a different byte string than the
+   one the owner's document is in.** Added at revision 80, with **§12**, and it is the ruling that precedes
+   any infrastructure being bought. Phase 3 is the first phase that needs a server, and the property at risk
+   is the product's strongest: *a full dump of the production database contains zero raw location traces*.
+   Four clauses, each a one-way door. **(a)** A trip is stored as **one blob per trip** — `documents.doc`,
+   bytes, never `jsonb` — because `mergeTrips`, `SCHEMA_VERSION` and the opaque `StorageVersion` already own
+   merging, migration and fencing, and a relational decomposition is a second implementation of all three
+   (sequencing rule 1). The server imports **only** `core/access` and never `fromJSON`, so there is no
+   server-side code that can be wrong about what a trip is. **(b)** **Nothing a sensor produced is ever
+   stored server-side, in any phase** — the discriminant is *provenance*, not geometry, and the mechanism is
+   a committed check over `db/migrations/*.sql` refusing any coordinate-shaped **column**. A coordinate
+   inside a plan document is a fact about one plan; a column is a location dataset. **(c)** A non-owner is
+   **never served the trip document**. They are served a `ShareSnapshot` minted on the owner's device by a
+   pure core function, stored in its own table, and read by a database role with **no `SELECT` grant on
+   `documents`** — so a permission bug on the share page cannot reach a door PIN. Measured at `ff2c5de`: the
+   reference trip carries **146** credential-pattern hits across seven fields plus four derived conflict
+   summaries; the projection leaves **27**, and **4** under a link audience, all four false positives.
+   **(d)** The trigger for CRDTs is not the `editor` role — it is **a `MergeReport` whose `overwritten` list
+   has a reader who is not the writer**. Phase 3 therefore ships `owner` and `viewer` and does not mint
+   `editor`, `commenter` or `TripMember`, while keeping all three in the predicates and in every cell of the
+   conformance matrix. §**12**, §12.1, §12.3, §12.4, §12.7.
 
 ---
 
@@ -16712,6 +16746,12 @@ rules and the resulting provider order.
 
 ### 5.2 Social graph and sharing permissions
 
+> **⚠ Amended at revision 80 by §12.** The flow below stands. Three clauses are narrowed there and
+> are read with it: a share is served a **`ShareSnapshot`**, never the trip document (§12.4); `editor`
+> and `commenter` are **not minted in Phase 3** and the CRDT trigger is restated (§12.7); and enforcement
+> gains a **third** layer under the two named here — the share route's database role cannot read
+> `documents` at all (§12.5).
+
 **Flow.** `Friendship` is a bidirectional accepted edge. `TripShare` grants a principal (a user, or a link
 token) `viewer | commenter | editor` on a trip, with `expiresAt` and `revokedAt`. `TripMember` is
 co-ownership.
@@ -16777,6 +16817,13 @@ things qualify. They are §6.1–§6.4. §6.5 lists what is explicitly *not* bei
 
 ### 6.1 What is stored where
 
+> **⚠ Extended at revision 80 by §12.3 and §12.4.** This table is unchanged and every row in it stands.
+> §12.3 adds the row it never had — **the trip document itself**, which from Phase 3 is stored server-side
+> as bytes under the owner's tenancy — and states the discriminant that makes cross-cutting rule 3 precise:
+> **provenance, not geometry.** Nothing a *sensor* produced is ever server-side; `Place.at` and
+> `City.centre` are plan data and always were in `toJSON`. §12.4 rules what a **non-owner** is served, which
+> is never this document.
+
 | Data | On device | Reaches the server | Never transmitted |
 |---|---|---|---|
 | **Raw location fixes** | encrypted SQLite, kept until trip end + 30 days, one-button wipe | **nothing** — no batch, no crash report, no analytics event | the fix stream, in every phase |
@@ -16804,6 +16851,11 @@ Cross-cutting rules the tester should treat as assertions:
 4. Location and library permission prompts state the on-device-only guarantee at the point of asking.
 
 ### 6.2 Authorization on every read path
+
+> **⚠ Extended at revision 80 by §12.5 and §12.6.** All five rules stand. §12.5 adds the **role split**
+> (`cairn_api` / `cairn_share_reader` / `cairn_ingest`) and the grant that makes rule 2 survive an
+> application bug; §12.6 adds the two things that decide whether rule 4's conformance matrix works — the
+> enumeration is compiler-maintained, and **the risk is the `Relationship` handed to `can`, not `can`**.
 
 Designed now because retrofitting it is the worst migration in this product.
 
@@ -16979,6 +17031,10 @@ bundle, and the dependency-direction test of §3 asserts it.
   fire. It returns in the phase that has an hours source — Phase 3 at the earliest.
 - **Real-time collaboration / CRDTs.** Phase 2 is last-writer-wins per stop behind the §2.2a version guard. Two people
   editing one stop at once is not a problem tens of users have.
+  **Revision 80 restates the trigger and it is NOT the `editor` role** (§12.7): last-writer-wins is honest
+  exactly while the writer whose work `mergeTrips` overwrote is the person reading `report.overwritten`.
+  Two devices of one user satisfy that; two people do not. **Phase 3 therefore ships `owner` and
+  `viewer` only**, and the trigger is a share role whose holder can write.
 - **Sub-maps of a single stop** (`LOKRUM_PLACES`/`LOKRUM_LOOP`). A curated walking loop *inside* one stop is
   a second nesting level in the model; it stays hand-authored in the old app until something else needs it.
 - **Opening hours as a general system.** `Place.hours` exists and one rule uses it, but a full grammar
@@ -16990,6 +17046,9 @@ bundle, and the dependency-direction test of §3 asserts it.
   non-goals, restated so nobody re-adds them.
 - **Public share pages with SEO/OG rendering** — the accounts phase. They are the one surface where a
   permission bug is publicly visible, so they get their own attack pass.
+  **Revision 80 rules what one may contain** (§12.4): a `ShareSnapshot` minted on the owner's device,
+  served by a database role with no `SELECT` grant on `documents`. The attack pass still happens; what
+  changed is that there is nothing on that route for it to reach.
 - **Whether an ownerless import may adopt its foreign provenance unexamined** — QA **P2-8**, routed to the
   architect since round 12, carried by nine status notes as *"still open"*, re-measured at the Phase 2
   phase gate (QA **R54-9**), and **still correctly unruled**. *(Recorded here at revision 57 because it had
@@ -25368,6 +25427,11 @@ that paragraph; it is not a discovery.
 
 ### 8.7 The social graph — five edges, and the pairs that must never be collapsed
 
+> **⚠ Scoped at revision 80 by §12.7.** The five edges and the collapses they refuse are unchanged.
+> **Phase 3 mints only `TripShare` with role `viewer`, plus `Connection`** — `TripMember`, `editor` and
+> `commenter` have no endpoint. All of them stay in the predicates and in every cell of the conformance
+> matrix, which is a fixture-driven test and therefore still fires.
+
 Phase 3's tables, stated now because `core/access` already models three of them and the conformance matrix
 is generated from the types:
 
@@ -25391,6 +25455,12 @@ Publication is a `TripShare` to a link principal, which already exists; there is
 adding one is what would create the moderation obligation §6.5 defers.
 
 ### 8.8 What §8 refuses to architect, and the two it refuses outright
+
+> **⚠ Given a mechanism at revision 80 by §12.3 and §12.8.** The refusal of live presence is unchanged
+> and is not weakened. What is new is that *"nothing may add a `last_seen_at`, a `current_city` or a
+> coordinate column 'for later'"* now has a **committed check over `db/migrations/*.sql`** behind it rather
+> than a sentence, and that the CRDT bullet's trigger is **restated more precisely in §12.7** — it is a
+> `MergeReport` with a reader who is not the writer, not the existence of the `editor` role.
 
 - **Live presence — *"people currently or approximately in the same destination"*. Refused outright, and
   this is the one place I push back on the thesis.** It cannot be built without the server holding where
@@ -29612,3 +29682,587 @@ has no ordering constraint.
    rider 4 says what a builder does about it. **Trigger for re-opening it as a ruling:** a phrasing that
    carries a marker and is nonetheless answered at the wrong scope, or the third capability to need a scope
    gate — at which point the marker set belongs in one place rather than in `country_count`'s.
+
+## 12. The server boundary — what may exist server-side, and what a share page is
+
+**Revision 80. Jacob has directed that Phase 3 begin, and this section is the ruling that must precede any
+infrastructure being bought or built.** It is **SELF-CONTAINED and it is READ ALONE**: a builder or breaker
+of ROADMAP `I-39`…`I-43` reads **§12 whole and nothing else in this document**. Not §2 whole, not §4, not
+§8, not §10, not §11, and no `A-` ruling at all. §12 quotes what it needs from §1.3, §2.2a, §2.14, §4.3,
+§5.2, §6.1, §6.2, §6.3, §7, §8.7 and §8.8, and it amends five of them in place with banners.
+
+**Why it exists.** Cairn today is entirely local-first: documents in IndexedDB, zero runtime dependencies in
+`packages/core`, no network anywhere. The product's strongest property is `PRODUCT-VISION.md` §7 risk 7 —
+*"a full dump of the production database contains **zero** raw location traces"* — and §6.1's own sentence
+under it, *"Location data is a liability the moment it is server-side… cheap to build and impossible to
+un-build, because the retention, deletion, breach and jurisdiction obligations attach the day the first row
+lands."* **A server is where that property goes to die if this ruling is not deliberate**, and every
+hosting, database and auth decision downstream is either obvious or reversible-at-expense depending on what
+this section settles. Nothing has been purchased. Nothing in §12 requires a vendor; Part 11 names the two
+decisions that genuinely do and says what they cannot change.
+
+**Every measured value in this section was taken at `ff2c5de`, offline, from the committed fixture through
+the shipped `packages/core`, with no network and no generator run. Each is labelled as history against that
+commit (criterion rule 6) and no criterion in `ROADMAP.md` depends on one** — the criteria name goldens and
+assertions, which is the drift-proof form.
+
+---
+
+### 12.1 Part 1 — the storage boundary: five tables, one blob, and no second model of a trip
+
+**Confirmed, from the model rather than from the brief.** The server needs **users, sessions, share grants,
+connections, and a blob per trip**. It does **not** need a relational decomposition of a trip, and building
+one would be a design defect under sequencing rule 1. Three properties of the shipped model decide it, and
+each is a thing that already exists:
+
+1. **A trip is a document with a merge function.** `mergeTrips(base, local, remote)` is a three-way merge
+   against a common ancestor, entity by entity, with rules 1–5 and a `MergeReport` naming everything it took
+   and everything it overrode. It is pure — no clock, no ids, no IO. A server that decomposed the trip into
+   `days`, `stops`, `places`, `bookings` tables would have to re-implement those five rules in SQL, and that
+   is a second implementation of the resolution half of §2.2.
+2. **Schema versioning already has one owner.** `SCHEMA_VERSION` is **5**, `fromJSON` hand-validates and
+   throws `TripParseError` with a JSON path, and `migrate.ts` is the ladder. A server table set is a second
+   migration ladder that must be kept in lockstep with the first, forever, across clients that have not
+   updated. There is no version of that which is cheaper than storing bytes.
+3. **The write fence is already opaque and already portable.** §2.2a and §4.3's `StorageVersion` is
+   *"opaque, compared for equality only, no ordering, no arithmetic, no parsing, no inference of recency"*,
+   and its own docstring says the discipline exists so that *"an HTTP `ETag`, a Postgres `xmin` and a SQLite
+   counter can all be dropped in without touching a line above the port."* That sentence was written in
+   Phase 1 as an aspiration. **Phase 3 is the increment that cashes it**, and it cashes it by taking the
+   sentence literally.
+
+**The tables, and every one of them carries a tenancy column (§6.2 rule 1):**
+
+| Table | Tenancy | Holds | Notes |
+|---|---|---|---|
+| `users` | `id` | an account, `created_at`, `deleted_at` | **no email column, no display name that duplicates an identity's** |
+| `auth_identities` | `user_id` | `(provider, subject)`, and the email the provider asserts **if it asserts one** | the provider's subject is the join key; the email is never copied onto `users`, because a copy of a fact about a resource goes stale (§0 position 6) |
+| `sessions` | `user_id` | `device_label`, `created_at`, `expires_at`, `revoked_at` | revocation is what §6.3's device row needs |
+| `documents` | `trip_id` **and** `owner_id` | `doc` (bytes), `summary` (bytes), `storage_version`, `updated_at`, `deleted_at` | **one row per trip.** The whole trip, as `toJSON` produced it |
+| `shares` | `trip_id` | `principal_kind`, `principal_user_id`, `token_hash`, `role`, `expires_at`, `revoked_at`, `created_by` | the `TripShare` edge of §8.7, verbatim |
+| `share_snapshots` | `share_id` **and** `trip_id` | `audience`, `minted_at`, `doc` (bytes), `etag` | Part 4. **A different table, a different byte string and a different database role from `documents`** |
+| `connections` | `from_user_id` | `to_user_id`, `state`, `created_at` | the `Connection` edge of §8.7. Grants nothing (Part 6) |
+
+**Absent on purpose, and the absence is the ruling:** no `trip_members` table (Part 7), no `comments` table
+(Part 7), no `participants` table (§8.3 keeps participants inside the document and Part 4 keeps them out of
+a snapshot), no `blobs`/tickets table (Phase 4 — there is nothing to store until acceptance fetches an
+attachment), no presence table of any kind (Part 8).
+
+**Five clauses about `documents`, each of which a builder would otherwise get wrong:**
+
+- **(a) `doc` is `text` or `bytea`, never `jsonb`.** Two independent reasons and either alone is sufficient.
+  `jsonb` normalises key order and collapses duplicate keys, so the bytes that come back are not the bytes
+  that went in — and §4.3's fence says *"equality of a `StorageVersion` asserts that the document bytes under
+  that id have not changed since the token was issued."* A store that cannot return its own input cannot
+  honour that sentence. And `jsonb` makes the document **queryable**, which is the first step down the road
+  where the server starts having opinions about what a trip is. **Criterion:** write the reference trip's
+  `toJSON` output, read it back, assert byte-identical.
+- **(b) `summary` is stored beside it, also as bytes, and is written only by the same statement that writes
+  `doc`.** It exists so a newly signed-in device can render the Library without downloading forty documents
+  — which is §0 position 8's whole argument for the row — and it is stored rather than derived because the
+  server may not parse the document (clause (d)). §8.4 clause 1's *"a summary is computed only from the
+  document being written, in the write that carries it"* is preserved **structurally**: there is no endpoint
+  that takes a summary without a document, exactly as §4.3's `refreshSummary` is a *local* optimisation with
+  no remote counterpart.
+- **(c) `storage_version` is the fence, and it is served as an HTTP `ETag`.** Write is
+  `PUT …/documents/{tripId}` with `If-Match`; a mismatch is **412**, which the client maps to
+  `{ok: false, storedVersion}` and its already-shipped merge path. It is minted server-side, inside the same
+  statement as the write, and it never repeats — not after a delete, not after recreation under the same id
+  (§2.2a rule 2, which is what closes R3-4's ABA and which a naive `updated_at` ETag would reopen).
+- **(d) The server never parses a document.** `services/api` imports from `@cairn/core` **exactly the access
+  surface** (Part 6) and nothing else. It does not import `fromJSON`, `toJSON`, `mergeTrips`,
+  `detectConflicts` or `summarizeTrip`. This is greppable and it is an assertion in the dependency-direction
+  test §3 already calls for. The consequence is the point: **there is no server-side code path that can be
+  wrong about what a trip is**, because there is no server-side code that knows.
+- **(e) There is no `schema_version` column.** It would have no production reader — the writing client owns
+  the version and the reading client migrates — and criterion rule 10 says an unread field is a design
+  defect, not an inert one. If a reader ever appears (a server-side refusal of a too-new document, which
+  nothing needs), the column arrives with it.
+
+**What crosses the wire, in full:** the document bytes, the summary bytes, the opaque version, and the
+identifiers in the tables above. Nothing else. There is no partial-document endpoint, no per-stop PATCH and
+no field-level API, and adding one is a design defect routed to me — it would require the server to
+understand a `Stop`, and clause (d) is the property being protected.
+
+---
+
+### 12.2 Part 2 — `SyncPort` **is** `StoragePort`, and the sync ancestor is a second pointer, not a second store
+
+**`SyncPort` is not a new interface. It is `StoragePort` (§4.3) implemented over HTTP.** `listTrips` is
+`GET /documents`, `load` is `GET /documents/{id}` returning bytes plus `ETag`, `saveIfVersion` is `PUT` with
+`If-Match`, `delete` is `DELETE`. `refreshSummary` has **no remote counterpart** and the remote
+implementation throws: §4.3 A-30's reason for that method is a *local* background pass that must not mint
+against another tab's fence, and there is no remote background pass. **Declared here rather than left for a
+builder to discover** — an interface method that cannot be implemented is exactly the kind of thing that
+gets implemented badly in silence.
+
+**The client keeps one store and gains one slice.** The reducer's `persistence` slice — `savedDoc`,
+`savedVersion`, `status` — **does not move**, and no Phase 3 increment may add a field to it. Local storage
+stays the only thing the store writes through. Sync is a separate component holding, per trip, a
+`sync: { syncedDoc: Trip | null; remoteVersion: StorageVersion | null; status }` pair, and:
+
+- `syncedDoc` is **the ancestor `mergeTrips` needs**, and it is §2.2b F2's pointer one level out: it is the
+  exact document this device last got the remote to agree to, assigned from a port result and from nowhere
+  else. It is never `state.doc`, never `savedDoc`, and never computed.
+- A push is `remote.saveIfVersion(id, remoteVersion, toJSON(local), summary)`. On `ok:false` the client
+  pulls, runs `mergeTrips(syncedDoc, local, remote)`, writes the merged document **locally first** through
+  the existing store (so the user's own device is never left holding a document it has not seen), and
+  re-pushes.
+- **There is no push channel, no websocket and no long poll in Phase 3.** The client pulls on open, on
+  focus, and after a successful push. This is stated as a limit rather than a gap: a trip that changed on
+  another device shows up when you look at it, and the UI says when it last synced.
+
+**Failure mode, and it is the one that matters: a merge whose loss report has no audience.** `mergeTrips`
+rule 3 is last-writer-wins with the loss recorded in `report.overwritten`, and *"nothing here is silent"* is
+true only if somebody reads the report. Part 7 is where that becomes a scoping decision rather than a
+sentence.
+
+---
+
+### 12.3 Part 3 — what may never be stored server-side, and the mechanism that holds it
+
+**The discriminant is provenance, not geometry.** A coordinate a human typed, picked or imported from a plan
+is **plan data**; a coordinate a sensor produced is a **trace**. The product's claim has always been about
+the second — §6.1's table says *"raw location fixes: **nothing** reaches the server, in every phase"* — and
+saying it precisely is what stops a later reader from concluding either that the claim was false (because
+`Place.at` is obviously in the document) or that it is safe to add a `last_seen_at` (because "we already
+store coordinates").
+
+**The never-list. Nothing on it may be stored server-side in any phase, in any column, in any blob, in any
+log line and in any backup:**
+
+1. **Any coordinate whose provenance is a device sensor** — a raw fix, a `LocationSegment`, a `Visit`
+   coordinate, a dwell inference's coordinates, an EXIF coordinate. §1.4 item 5 already rules that
+   `LocationPoint`/`LocationSegment` are device-local types with **no server counterpart**; this restates it
+   as a storage prohibition rather than a modelling preference.
+2. **Any photo original and any original EXIF block.** §10 keeps originals in the library by design and
+   stores two canvas re-encodes; a re-encode has no metadata left to leak. Phase 3 stores **no photo bytes
+   at all** — §10.3's byte stores are IndexedDB, keyed `[tripId, photoId]`, and Phase 6 is where an accepted,
+   attached photo first uploads. `Trip.photos` metadata rides inside the document blob like any other record
+   class; it carries no bytes.
+3. **The photo library index** — ids, timestamps, GPS, thumbnails. Device-local, in every phase.
+4. **Message bodies**, beyond Phase 4's encrypted scan buffer deleted within 24 h of parsing. Not a Phase 3
+   concern and named here so the Phase 3 schema does not grow a place to put one.
+5. **Any presence field** — `last_seen_at`, `current_city`, `current_location`, a geohash, an "active now"
+   flag. Part 8.
+6. **A mailbox refresh token in plaintext.** Phase 4; §6.1 already rules KMS.
+
+**The mechanism, and it can fire.** A committed check over `db/migrations/*.sql` asserts that **no table
+outside the document blobs declares a column whose name or type is coordinate-shaped** — name matching
+`lat`, `lng`, `latitude`, `longitude`, `geohash`, `coord`, `trace`, `fix`, `last_seen`, `current_location`;
+type in `point`, `geography`, `geometry`, `earth`. It runs in `npm test`, needs no database, and reads the
+committed migration text.
+
+**Injected fault, and it fires:** add `ALTER TABLE users ADD COLUMN last_seen_at timestamptz;` to a
+migration and the check reddens, naming the table, the column and this Part. Add
+`current_location point` and it reddens naming the type. **The fault is fireable today** — there are no
+migrations yet, so the first migration written is also the first thing the check runs on, and the check is
+written before the first migration (`I-41`).
+
+**Why a column and not a blob.** A coordinate inside a per-trip document is a fact about one plan. A
+**column** is queryable, joinable, indexable, exportable and subpoenable — it is the thing that turns "we
+hold some documents" into "we operate a location dataset", and that transition is what attaches the
+retention, deletion, breach and jurisdiction obligations §7 risk 7 warns about. The line is drawn where the
+liability actually changes, and it is drawn somewhere a `grep` can see it.
+
+**The honest restatement of the headline claim**, because a claim broader than its mechanism is a defect in
+the claim (§0 position 10): *"a full dump of the production database contains zero raw location traces"* is
+**true and stays true**. It has never meant "zero coordinates" — `Place.at` and `City.centre` are in
+`toJSON` today and always were. Say it the precise way from here on: **the database contains no coordinate
+that a sensor produced, and no column of any kind that could hold one.**
+
+---
+
+### 12.4 Part 4 — what a share page renders, and what it must never contain
+
+This is the sharpest sub-question in Phase 3, because a share page is content the server must serve to
+someone who is **not** the owner, and a trip document carries door PINs, booking references and ticket URLs.
+
+**Measured at `ff2c5de`, on the unmodified reference trip, offline.** `redactionHits` — core's own exported
+pattern set, `packages/core/src/build/redactText.ts` — over every string in the document:
+
+| leaf field | hits | what they are |
+|---|---|---|
+| `href` | 69 | stop links, place links, **and live unauthenticated ticket order URLs** |
+| `note` | 24 | door PINs (`PIN 4809`), confirmation numbers (`conf 5814731574`), order numbers |
+| `sourceDoc` | 21 | provenance's name for the document a booking came from |
+| `reference` | 19 | `Booking.reference` — `YZGDTS`, `IU1TUY`, `I54C9A` |
+| `path` | 6 | bundled ticket paths under `tickets/` |
+| `name` | 4 | `Stop.name` only. **All four are false positives**: `Condor DE2081 → Frankfurt`, `Condor DE4345 → Vienna (VIE)`, `Smartwings QS1083 → Prague`, `DECENTRAL — Sachertorte nightcap` |
+| `subtitle` | 3 | `Day.subtitle` |
+
+**146 hits across 7 fields**, plus **4 of the 17 derived conflicts** whose `summary` quotes a booking
+reference verbatim in prose core composed (`unverified_reference` ×2, `superseded_booking`,
+`unbooked_ticketed`). **A share page that renders this document renders Jacob's hotel door PIN.**
+
+#### The ruling: the server strips nothing, because it is never given anything to strip
+
+**A share page is served a `ShareSnapshot`, and a `ShareSnapshot` is minted on the owner's device by a pure
+function in `packages/core`, uploaded as its own row, and served by a database role that cannot read
+`documents` at all.** Three consequences, and the third is the one that makes this defensible:
+
+- The server performs **no redaction**. There is no server-side redaction code to be wrong.
+- A dump of `share_snapshots` contains exactly what share pages have shown. A dump of `documents` contains
+  the owner's trips, which is where they belong.
+- A **permission bug on the share page cannot reach a door PIN**, because the connection serving it has no
+  `SELECT` grant on `documents`. That is a defence that survives an application bug, which is exactly what
+  `PRODUCT-VISION.md` §7 risk 8 is worried about.
+
+#### What the projection is — and it is not a third redaction threshold
+
+This project already has two written thresholds and **§12 invents no third one**. It composes them:
+
+- **The copy threshold** — §2.14 **A-15**/**A-18**. *"A copy crosses to one person who is looking at the
+  record they chose"*, so the **stop's** links survive and the **place's** do not.
+- **The build-artifact threshold** — §6.6. *"A build artifact is published to anyone with no user in the
+  loop, so it drops every href it sees."*
+
+**Two audiences, and the audience selects which threshold applies to links:**
+
+| `audience` | Who | Links |
+|---|---|---|
+| `'user'` | a named Cairn account the owner chose | the **copy** threshold: `Stop.links[].href` survives, `Place.links[].href` drops |
+| `'link'` | anyone holding the URL, with no person in the loop | the **build-artifact** threshold: **every `href` drops, the label is kept** |
+
+That split is a ruling, and its reasoning is §6.6's own sentence applied honestly: a link share has no user
+in the loop, which is the exact condition under which §6.6 refuses to keep an href. A-15's carve-out was
+argued for a recipient who chose the record; nobody chooses a URL that was forwarded to them.
+
+**The projection, field by field.** `shareSnapshot(trip, audience)` emits:
+
+| Field | Crosses as |
+|---|---|
+| `id`, `title`, `startDate`, `endDate`, `datePrecision`, `homeCurrency` | verbatim, except `title` through `redactText` |
+| `ownerId` | **verbatim.** It is what makes the snapshot's provenance readable and what `importDoc`'s ownership check needs (Part 10) |
+| `cities` | `key`, `name`, `centre`, `countryCode`, `countrySource`. A `CityPick` is the user's own record and does not cross |
+| `days` | `id`, `date`, `cityKey`, `subtitle` through `redactText`, and `stops` projected as below |
+| `pool` | same stop projection |
+| `places` | the **A-15 place projection**, verbatim — `note` redacted, `links[].href` dropped for both audiences |
+| `revision`, `schemaVersion` | verbatim |
+| **`bookings`** | **dropped whole** |
+| **`resolutions`** | **dropped whole** |
+| **`photos`** | **dropped whole** in Phase 3 |
+| **`participants`** | **dropped whole** in Phase 3 (Part 9 bullet 3) |
+| **`homeBase`** | **dropped whole.** It is where the traveller lives. It grants a viewer nothing and it is the single most personal field in the document |
+| **`party`** | **dropped whole.** It describes the household, and nothing on a share page reads it |
+| **`meta`** | **dropped whole, and the reason is structural**: `TripMeta` is declared `{ poolNotes?; sourceHash?; [k: string]: unknown }`. **An open index signature cannot be enumerated, so a denylist over it can never fail closed.** An allowlist is therefore mandatory, and in Phase 3 the allowlist is empty |
+
+A stop crosses through **the same per-field classification `copyStop.ts` already applies** — `note`, `cost.note`,
+`cost.display`, `arrival`, `MoveOverride.label`, `OpeningHours.note` — with `ticket` dropped for all three
+kinds, `flags` verbatim, and `provenance` reduced to `{source, state, confidence}` with `sourceDoc`,
+`messageId` and `actorUserId` **removed**. `provenance.origin` — the credit link of §2.14 rule 7 — crosses,
+because it is the attribution the product exists to preserve.
+
+**Measured, at `ff2c5de`: the copy projection applied to all 112 scheduled stops of the reference trip
+yields a document with 0 bookings, 0 tickets, 0 derived conflicts, 16 places, 20 notes containing
+`[redacted]`, and exactly 27 residual `redactionHits` — `href` 23 and `name` 4.** Every `note`, every
+`reference`, every `sourceDoc`, every ticket `path` and every `subtitle` hit is gone. Under
+`audience: 'link'` the 23 `href` hits go too, leaving **4**, and all four are the false positives named in
+the table above.
+
+#### The four residual hits, and the rule that covers them — because they are the real finding
+
+`Stop.name` is redacted by **neither** existing threshold. A copy keeps the name (a name is the thing being
+copied) and §6.6's free-text row does not list it. So **a credential typed into a stop's name crosses both
+thresholds today**, and the four false positives are the proof that `redactionHits` *can* see a name —
+nothing runs it there.
+
+**`shareSnapshot` does not redact a name and does not refuse to mint. It reports.** It returns
+`{ doc, warnings: ShareWarning[] }`, where a `ShareWarning` is `{ path, field, matched }` for every string
+the snapshot emits that `redactionHits` matches. The reason it reports rather than rewrites is the root
+`CLAUDE.md`'s own rule: silently renaming a user's stop is **our** text presented as **theirs**, and
+"DE2081" is a flight number that a human can see is a flight number and a function cannot.
+
+**`warnings` has a named production reader in the same increment (criterion rule 10): the share-create
+surface in `apps/web` lists them and the share cannot be minted until the owner has seen the list.** The
+server never receives a warning; it is a client-side gate on an owner's own action.
+
+**Injected fault, and it fires:** set one stop's name to `PIN 0754`, call `shareSnapshot`, and assert
+**exactly one** warning is added, naming that stop's path — **and assert the string is still present in
+`doc`**, so the mechanism is proved to be a report and not a silent rewrite.
+
+**The closure claim is a named set, not a count (§0 position 12 (a)).** A committed golden holds the
+residual hit set for the reference trip **by field and by string** — the 4 names, and the 23 hrefs for
+`audience: 'user'`. A twenty-eighth string appearing is a **stop-and-report**, never a golden update. And
+the claim is scoped honestly per §0 position 13 (d): *the test passes* is not *the projection cannot leak*,
+so the projection additionally carries **A-15's key-set assertion** — a field added to `Stop`, `Place`,
+`Day` or `Trip` without a classification in the table above reddens the compiler and the test. The
+projection fails **closed** on a field it has not been told about.
+
+#### Freshness, and the failure mode
+
+§5.2's ruling stands and this Part is its mechanism: **a share is a snapshot at share time, not a live
+feed.** The snapshot is re-minted on the owner's next successful sync while the share is live. If the owner
+never opens the app, the share stays frozen — and **the share page renders `mintedAt` in words**, so a
+friend knows what they are looking at. That is "flag it, do not guess".
+
+**The one live operation is revocation**, and §5.2's failure mode is unchanged and is still the thing to
+attack: pull a share, revoke it, go offline, reopen — the correct behaviour is an error, never stale
+content. A revoked or expired share returns **404**, not 403, and not a body; the API does not disclose
+whether a token ever existed.
+
+---
+
+### 12.5 Part 5 — three database roles, and the grant that makes a share-page bug survivable
+
+§6.2 rule 2 stands unchanged: RLS is `ENABLE` + `FORCE` on every table, default-deny, an explicit policy per
+operation, and the API connects as a role **without** `BYPASSRLS`. §12 adds the role split, and it adds it
+for the same reason §6.2 rule 3 gives `services/ingest` its own role before there is any ingest code:
+*the component holding a credential must not be able to reach the thing the credential protects.*
+
+| Role | `SELECT` on | `INSERT`/`UPDATE` on | Created in |
+|---|---|---|---|
+| `cairn_api` | `users`, `auth_identities`, `sessions`, `documents`, `shares`, `share_snapshots`, `connections` | all of them, under policy | `I-41` |
+| `cairn_share_reader` | `shares`, `share_snapshots` — **and nothing else** | nothing | `I-41` |
+| `cairn_ingest` | `mail_accounts` | `ingest_candidates` | `I-41`, **before any ingest code exists** (§6.2 rule 3) |
+
+**`cairn_share_reader` has no `SELECT` grant on `documents`.** The public share-page route connects as that
+role. The property this buys, stated as the thing to attack: **no defect in share-page code — not a broken
+predicate, not a missing `WHERE`, not a path-traversal in a token, not an ORM that loads a relation it was
+not asked for — can return a door PIN, a booking reference or a ticket URL**, because the connection serving
+that route cannot read the table they are in. This is the defence-in-depth answer to `PRODUCT-VISION.md` §7
+risk 8, and it costs one `GRANT` statement.
+
+**Injected fault, and it fires:** in a test, connect as `cairn_share_reader` and
+`SELECT doc FROM documents` → the statement must fail with a **permission** error from Postgres, not return
+zero rows. A policy that filters to zero rows and a grant that refuses the table are different instruments
+and the test asserts the second one. *(A zero-row result would mean the grant was given and RLS was doing
+the work — which is exactly the weaker posture this Part exists to refuse.)*
+
+**No service-role key in any client bundle**, checked by grepping built assets — ROADMAP's existing Phase 3
+criterion, unchanged.
+
+---
+
+### 12.6 Part 6 — `packages/core/access` runs server-side, and that is the mechanism against drift
+
+**It runs. Verified, not assumed** — executed at `ff2c5de` on this machine, Node 22.22.2:
+`packages/core/src/access/predicates.ts` was imported directly into a bare `node:http` server process, with
+no build step, no transpiler and no dependencies, and answered five `(principal × operation)` cells
+correctly including an **expired link denied** at a `now` past its `expiresAt`. The property that makes this
+possible is the one `cairn-constraints` §2 and §3 protect — zero runtime dependencies and
+`erasableSyntaxOnly` type-stripping compatibility — and **nothing in §12 may break it. If the server needs a
+dependency, it lives in `services/api`, never in `packages/core`.**
+
+**The ruling:** `services/api` calls `can(op, principal, relationship, now)` from `@cairn/core`. It does
+**not** write an authorization check of its own. A second implementation of the access rules is a design
+defect under sequencing rule 1, exactly like a second implementation of legs or costs, and it is the
+mechanism that keeps client and server rules from drifting: they are not two rules that agree, they are
+**one function called twice**.
+
+**Predicates are the definition; policies are the enforcement** (§1.3, §6.2 rule 4, unchanged). RLS policies
+are hand-written SQL — nothing generates SQL from TypeScript and §12 does not pretend otherwise — and the
+**conformance matrix** is what holds them to the predicates. §6.2 rule 4 and ROADMAP's existing criterion
+already specify it; §12 adds the two things that decide whether it works.
+
+**(a) The matrix is enumerated from the types, and the enumeration is compiler-maintained.** `Operation` is
+a five-member union, `Principal` is a three-arm union, `Role` is three members, and the principal axis adds
+the four relationship-only principals §8.7 names — **owner, member, viewer, commenter, editor, friend,
+revoked friend, participant-with-no-share, stranger, expired link, anonymous**. Per §0 position 10 (a) the
+denominator is a `Record<Operation, true>` and a `Record<Role, true>` the compiler maintains, so a role or
+operation added later **cannot be silently absent**. A cell names the principal, the relationship, the
+operation and the expected verdict, and — ROADMAP's own clause — *a cell that agrees because both sides are
+`false` for the wrong reason is a defect*, which is why each `deny` cell also records **which** clause
+denied it.
+
+**(b) The real risk is not `can`. It is the `Relationship` handed to it.** `can` is pure and has been
+attacked since Phase 1 (F-13's lexical-compare fail-open is fixed *inside* it, and `requireNow` throws
+rather than answering without a clock). What no test has ever covered is the **assembly**: a server that
+builds `Relationship` by querying `shares` and forgets `revoked_at` gets a correct answer to a wrong
+question. So:
+
+> **`Relationship` is assembled by exactly one function in `services/api`, from exactly one SQL view, and
+> the conformance matrix drives *that function* rather than a hand-built literal.** A second assembly site
+> is a design defect routed to me.
+
+Its production reader is named in the same increment (criterion rule 10): the request middleware that
+resolves a `tripId` for every authenticated route.
+
+**Injected fault, and it fires:** drop `revoked_at` from the assembly view's `WHERE` clause; the matrix's
+*revoked viewer* row must flip from `deny` to `allow` on the **predicate** side while the **policy** side
+still denies, and the disagreement fails the build. This fault bites because both sides are evaluated
+independently against the same fixture database.
+
+**Friendship grants nothing, and the matrix asserts it before there is code that could make it true.**
+`Relationship.friendIds` is already carried and already read by nothing that grants — §8.7's five edges and
+the collapses it refuses. ROADMAP's existing injected fault stands verbatim: add a participant to a trip and
+a `Connection` from that user, and assert **no** operation's verdict changes anywhere in the matrix.
+
+---
+
+### 12.7 Part 7 — concurrent editing: the trigger, stated precisely, and what Phase 3 therefore does not ship
+
+`PRODUCT-VISION.md` §7 risk 9 says *"two people editing one trip is a Phase 3 event, and last-writer-wins is
+the answer only while nobody complains,"* and §8.8 names the trigger as *"the first `editor` role on a
+shared trip."* **That trigger is named one notch too late, and §12 restates it.** The thing that breaks
+last-writer-wins is not the role. It is this:
+
+> **`mergeTrips` rule 3 resolves a genuine two-sided edit by taking the local side and recording the loss in
+> `report.overwritten`. That is honest exactly as long as the writer whose work was overwritten is the
+> person reading the report.**
+
+Two devices of **one** user always satisfy that: the report says *"your phone's edit to this stop was
+overwritten by this one"*, and the person who made both edits is standing there. Two **people** do not: the
+loser is somewhere else, never sees the report, and finds out when their change is gone. The defect is not
+in the merge — the merge is correct and its report is complete — it is that **the report has no audience**.
+
+**Therefore, and this is the scope ruling for Phase 3:**
+
+- **Phase 3 ships `owner` and `viewer`.** A user share and a link share, both read-only, both served a
+  snapshot (Part 4). Multi-device sync for one owner ships with it, and last-writer-wins is *correct* there
+  because the audience is in the room.
+- **`editor`, `commenter` and `TripMember` do not ship in Phase 3.** There is no endpoint that mints such a
+  row. `commenter` additionally has no record class behind it — `Trip` has no comments array, and adding one
+  is a `SCHEMA_VERSION` bump plus a `mergeTrips` arm plus a copy-path classification plus a snapshot
+  classification, which is a phase of its own and not a role toggle.
+- **All three stay in the predicates, in the types and in every cell of the conformance matrix.** The matrix
+  is a test fixture over a fixture database, so a `editor` row is inserted by the test and both sides are
+  evaluated — **the cells fire.** Nothing here is an unfireable assertion (§0 position 5 (b)).
+- **CRDTs stay deferred**, §7 unchanged, and the trigger is now: *a share role whose holder can write, which
+  is the first time a `MergeReport` has a reader who is not the writer.* The bounded design it would take,
+  written down now so the version that shows up under schedule pressure is recognisable: per-stop
+  last-writer-wins **plus a durable, per-recipient `overwritten` inbox** — not a CRDT — is the cheapest
+  honest answer, and a CRDT is only required when simultaneous edits to the *same field* are routine rather
+  than rare. Nothing in Phase 3's schema forecloses either: both are a `documents` row and a new table.
+
+**What this buys.** It is the difference between a Phase 3 a single builder finishes and one he does not.
+Read-only sharing is the whole of Jacob's stated social primitive — *"they could even look at mine and just
+add a certain activity"* — and `copyStopInto` is how anything moves. Collaborative editing is a feature
+nobody has asked for, carrying the one unsolved problem in the phase.
+
+---
+
+### 12.8 Part 8 — live location is never server-side, and the schema is constrained now
+
+§8.8's refusal stands **verbatim and is not weakened**. §12 adds what it means for a schema that is being
+designed this month.
+
+- **Live presence — where someone is *now* — is refused, in every phase.** Nothing may add a `last_seen_at`,
+  a `current_city`, a `current_location` or a coordinate column "for later". Part 3's migration check is the
+  mechanism, and it is the first thing written in `I-41`.
+- **Historical, simplified, per-day, explicitly-shared traces are a different thing and are not refused.**
+  §6.1's table already permits one: *"only on an explicit per-day share: one polyline, one trip, members
+  only, deletable."* That is `SharedTrace`, it is scheduled in Phase 7 (trace sharing), and **Phase 3 builds
+  no table, no column and no placeholder for it.**
+- **It needs none.** A `SharedTrace` is a per-trip document with a tenancy column and a TTL — the same shape
+  as a `share_snapshot` row. It arrives as a row in a table created by the increment that builds it, it is
+  **never joined to anything**, and it is **never a column on `users` or `documents`**. That is precisely
+  why deferring it is safe: there is no migration to regret.
+- **Phase 5's device work is unaffected.** §6.1's on-device encrypted SQLite, the 30-day retention, the
+  one-button wipe and `segmentTrace()` in core are unchanged, because none of them was ever going to be
+  server-side.
+
+**The sentence to check a future proposal against:** if a feature requires the server to know where somebody
+is, or was, at a granularity finer than *"this trip's plan says Vienna, Aug 8–10"* (§0 position 8's line),
+it is refused here and reopening it is Jacob's decision in writing, not an implementation detail.
+
+---
+
+### 12.9 Part 9 — what §12 defers, each with a trigger
+
+- **Comments.** No record class, no table, no endpoint. `canComment` and the `commenter` role stay in the
+  predicates and in the matrix. **Trigger:** a ruling that adds a comment record to the document, which is a
+  `SCHEMA_VERSION` bump and belongs with the merge and copy-path classifications it forces.
+- **Co-ownership (`TripMember`) and the `editor` role.** Part 7. **Trigger:** a durable per-recipient
+  `overwritten` inbox, or a complaint from a second writer — whichever comes first.
+- **Participants in a snapshot.** A participant list names **third parties who did not consent to appearing
+  on a link-shared page**. Phase 3 drops them from every snapshot. **Trigger:** Phase 3's own linking of
+  `Participant.userId` to a real account, at which point a participant is a principal who can be asked.
+- **Photos on a share page.** Phase 6 owns photo egress; Phase 3 stores no photo bytes and its snapshots
+  carry no `photos`. **Trigger:** §10.5's per-photo opt-in, which is a Phase 6 ruling.
+- **Ticket blobs.** Nothing to store until Phase 4's acceptance fetches an attachment. **Trigger:** Phase 4.
+- **Push, websockets, live cursors, presence-in-the-document.** Poll on open and on focus. **Trigger:** a
+  measured complaint about staleness, not a preference for a socket.
+- **Invite-by-email and account discovery by email.** A share is to an existing Cairn user or to a link.
+  There is no email lookup endpoint, which is also how the product avoids being an email-enumeration oracle
+  before it has rate limiting (§6.5). **Trigger:** rate limiting, which is deferred with the rest of the
+  public-grade-later list.
+- **Moderation, rate limiting, billing, admin tooling, scaling, i18n.** §6.5, unchanged.
+- **A language model.** §11.2's three preconditions are unchanged, and **Phase 3 discharges exactly one of
+  them** — *a server exists*. The other two do not move: the `Question` union is still §11.3's, and **what
+  may leave the device is still Jacob's decision, in writing, and it has not been made.** A server existing
+  is not permission.
+
+---
+
+### 12.10 Part 10 — `importDoc`'s ownership check (QA `P2-8` / `REVIEW` `A-2`) is NOT ruled here
+
+Stated plainly rather than quietly carried for a tenth time. §7 and ROADMAP's Phase 3 entry condition both
+say this must be ruled *"before the first line of share, friend or public-share-link code, and before
+anything reopens `importDoc`'s ownership check."*
+
+**It is not ruled in this pass, and that is a scoping decision with a reason:** this pass was directed at the
+server boundary, and `P2-8` is a question about what an *account* makes true of a document that arrives from
+outside — *does "allowed" also mean "adopt its foreign provenance unexamined"* — which is a ruling about the
+document model, not about what the server stores. Ruling it badly inside a server pass is worse than ruling
+it deliberately in its own.
+
+**What §12 does settle about it**, because these follow from Part 1 and Part 4 and would otherwise be
+re-derived:
+
+1. **`importDoc` is not a sharing channel and §12 opens no path that makes it one.** A snapshot arrives
+   through the share route into the browse pane, never through `importDoc`.
+2. **`ShareSnapshot.ownerId` crosses verbatim** (Part 4), so a snapshot is *never* an ownerless document —
+   which means the ambiguous case `P2-8` is about cannot be produced by any Phase 3 share path.
+3. **`P2-8` is therefore due at `I-42`**, the share increment, and not before. `I-39`, `I-40` and `I-41`
+   contain no share, friend or public-link code. This is recorded as a **dependency in ROADMAP**, not as a
+   thing this section resolved.
+
+---
+
+### 12.11 Part 11 — the two decisions that genuinely depend on a vendor, and what they cannot change
+
+Nothing has been bought. §12 is implementable on any managed Postgres, any self-hosted Postgres, and any
+host that can run a Node process. Two decisions genuinely depend on a vendor, and neither changes a table:
+
+1. **Auth: in-house sessions, or a managed auth provider.** Either way the schema is
+   `users` + `auth_identities(provider, subject)`, and either way a request arrives carrying a principal the
+   API resolves. What a managed provider changes is who mints and rotates the session token, **not** what
+   `Relationship` is assembled from and not what `can` decides. **Decide it when a host is chosen; do not
+   decide it by which SDK is easiest to install.**
+2. **How the principal reaches the policies.** The vendor-neutral form is: the API opens a transaction,
+   `SET LOCAL` a session variable carrying the principal, and the policies read it. A platform with built-in
+   JWT-claim plumbing collapses that to configuration. **Neither form changes a policy's *predicate*, which
+   is the conformance matrix's subject.**
+
+**What is not vendor-dependent and must not become so:** the blob-not-schema decision (Part 1), the
+never-list and its migration check (Part 3), the snapshot projection (Part 4) — which is pure core and runs
+in plain Node with no database at all — the role split (Part 5), and `can` being the one implementation
+(Part 6). **Every one of those is testable before a single account is opened**, which is why `I-39` and
+`I-40` come before `I-41`.
+
+**One thing the brief asked to be costed and §1.3 already answered, restated because Phase 3 is where it is
+spent:** take managed Postgres and take RLS. §12 does not reverse it. What §12 adds is that **RLS is the
+second line, not the first** — the first is that the share route's role cannot read the table (Part 5), and
+the second is that the server cannot parse a document even if it could read one (Part 1 clause (d)).
+
+---
+
+### 12.12 Part 12 — residues, and one fault declared unfireable
+
+1. **The `redactionHits` pattern set is tuned for credentials and it over-matches ordinary travel prose.**
+   Measured: 4 of the reference trip's stop names match, all benign (`DE2081`, `DE4345`, `QS1083`,
+   `DECENTRAL`). Part 4's answer is a **warning with a human reader**, not a refusal and not a silent
+   rewrite, precisely because the false-positive rate is real. **Trigger for revisiting:** a measured
+   complaint that the share-create screen is noisy, at which point the answer is a per-string dismissal the
+   owner controls — not a looser pattern set, because the pattern set is also `copyStop`'s and `gen-sample`'s.
+2. **The 23 surviving `href` hits under `audience: 'user'` are a deliberate A-15 carve-out and are asserted
+   by name in a golden, not waved at.** They are public vendor pages on the reference trip. **Trigger:** a
+   ticket URL appearing in `Stop.links` rather than in `Stop.ticket` — which the golden would catch as a
+   twenty-fourth string, and which is a stop-and-report.
+3. **Declared unfireable, per §0 position 5 (b).** The `deny` cells of the conformance matrix for the
+   `member` and `editor` principals cannot be reached by any Phase 3 **production** code path, because no
+   endpoint mints such a row. They are **not** unfireable as *tests*: the matrix inserts the row into the
+   fixture database directly and both sides are evaluated, so the cells redden if a predicate or a policy
+   changes. **The property holding the gap meanwhile is the absence of a mint endpoint**, and the instrument
+   is a committed assertion that no route handler inserts into `shares` with `role IN ('editor','commenter')`
+   — one grep, in `npm test`.
+4. **`SyncPort.refreshSummary` throws in the remote implementation and that is stated, not discovered**
+   (Part 2). **Trigger:** a remote background pass, which Phase 3 does not have.
+5. **Not measured and not guessed: bytes per user and egress on a repeatedly-opened share page.**
+   `PRODUCT-VISION.md` §7 risk 6 asks for a measured estimate before Phase 6. §12 does not invent one. What
+   it does is make the measurement cheap later: a snapshot is one text row per share, and its size for the
+   reference trip is a number `I-39` can print on day one.
+
+---
+
