@@ -2085,6 +2085,53 @@ unresolved visual direction and by nothing else.
   ignored the gate (KD-131). **The prose is corrected; the code is not touched** — sequencing rule 12 (b),
   third instance, and this time the builder under-stated the fix's necessity rather than over-stating it.
 
+**Revision 80, 2026-09-14.** **Jacob has directed that Phase 3 begin, and this revision is the DESIGN PASS
+that must precede any infrastructure being bought or built — `ARCHITECTURE.md` revision 80's new §12, the
+server boundary.** It is **not** a QA consequence and it queues no fix. Nothing has been purchased: no
+domain, no host, no database, no auth provider, and §12 Part 11 names the only two decisions that genuinely
+depend on a vendor and says what neither can change. **Phase 3 below is rewritten** — it gains five
+increments (**`I-39`**…**`I-43`**), a per-increment sequence, narrowed scope, and entry conditions that say
+plainly what does and does not gate it. **Sequencing rule 14** is new.
+
+- **The scope moves, and the move is the ruling.** Phase 3 ships **`owner` and `viewer`** — multi-device
+  sync for one owner, a user share, a link share, friends, and public share pages. **`editor`, `commenter`
+  and `TripMember` do not ship**, and the reason is not caution: `mergeTrips` rule 3's last-writer-wins is
+  honest exactly while the writer whose work was overwritten is the person reading `report.overwritten`,
+  and two devices of one user satisfy that while two people do not. **The CRDT trigger is therefore
+  restated: it is a `MergeReport` with a reader who is not the writer, not the existence of the `editor`
+  role.** All three roles stay in the predicates and in **every cell** of the conformance matrix, which is
+  a fixture-driven test and therefore still fires (§12.7, §12.12 residue 3).
+- **The server stores bytes it cannot read.** Users, auth identities, sessions, shares, connections, and
+  **one blob per trip**. Confirmed from the model, not the brief: `mergeTrips` is a three-way document merge,
+  `SCHEMA_VERSION` **5** and `migrate.ts` own the ladder, and `StorageVersion` is opaque by written contract
+  — a relational decomposition is a second implementation of all three, which is sequencing rule 1. `doc` is
+  `text`/`bytea` and **never `jsonb`**; there is **no `schema_version` column**, because nothing would read
+  it (criterion rule 10); and `services/api` imports **only** `core/access`, never `fromJSON` (§12.1).
+- **What a share page may contain, measured rather than reasoned about** (§0 position 12 (b)). At
+  `ff2c5de`, offline, through the shipped `packages/core`: the reference trip carries **146**
+  `redactionHits` across seven fields — `href` 69, `note` 24, `sourceDoc` 21, `reference` 19, `path` 6,
+  `name` 4, `subtitle` 3 — **plus 4 of its 17 derived conflict summaries**, which quote booking references
+  verbatim in prose core composed. The §2.14 copy projection over all **112** scheduled stops leaves **27**
+  (`href` 23, `name` 4) with **0** bookings, **0** tickets, **0** conflicts and **20** notes redacted; under
+  a **link** audience the hrefs go too, leaving **4**, and all four are false positives (`DE2081`, `DE4345`,
+  `QS1083`, `DECENTRAL`). **The server strips nothing because it is never given anything to strip**: a
+  non-owner is served a `ShareSnapshot` minted on the owner's device, stored in its own table, read by a
+  database role with **no `SELECT` grant on `documents`** (§12.4, §12.5).
+- **`core/access` runs server-side, verified rather than assumed.** `predicates.ts` was imported into a bare
+  `node:http` process at `ff2c5de` — no build step, no dependencies, expired link correctly denied. It is
+  **one function called twice**, not two rule sets that agree, and the risk §12.6 names is the
+  `Relationship` handed to `can`, never `can` itself.
+- **Live location stays refused and now has a mechanism** (§12.3, §12.8): a committed check over
+  `db/migrations/*.sql` refusing any coordinate-shaped **column**, written **before** the first migration.
+  A `SharedTrace` needs no Phase 3 schema, which is exactly why deferring it is safe.
+- **Two things stated rather than papered over.** **`I-30` is unbuilt and is the last Phase 2 increment**;
+  by sequencing rule 2 it gates Phase 3's **code** and it does **not** gate this ruling. **`R72-1`** —
+  `country_count`'s scope gate — shares no file with Phase 3 and gates neither; whether it gates Phase 2's
+  SHIP verdict is the manager's call and not mine. And **`P2-8`/`A-2` is NOT ruled in this pass**,
+  deliberately: it is a question about the document model, it is due at **`I-42`**, and §12.10 says so.
+- **No code file, no `.tsx`, no `apps/web`, no `qa/`, no `docs/design/`, no golden byte and no version
+  constant moves.**
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -2096,7 +2143,7 @@ unresolved visual direction and by nothing else.
 |---|---|---|
 | **1** ✅ | `packages/core` + `packages/client` + `apps/web`: a local-first, multi-trip planner Jacob can open and use | none — Node 24 and a browser |
 | **2** | **Travel history, local-first**: past trips, the trip lifecycle, the lifetime map, travel identity, trip participants as data | **none** — still Node 24 and a browser |
-| **3** *(was 2)* | `services/api` + Postgres/RLS: accounts, sync, friends, shares, public share links, the accept control | a managed Postgres/auth/storage account |
+| **3** *(was 2)* | `services/api` + Postgres/RLS: accounts, multi-device sync, friends, **read** shares, public share links, the accept control. **Narrowed at revision 80: `owner` + `viewer` only — no `editor`, no `commenter`, no `TripMember`** (§12.7) | a managed Postgres/auth/storage account — **and not before `I-41`, which needs a LOCAL one** |
 | **4** *(was 3)* | `services/ingest`: mailbox → candidate review queue → tickets | forward-in address, then Outlook OAuth, then Gmail |
 | **5** *(was 4)* | `apps/mobile` (Expo): offline travel, then background location, observed visits, timezones | Apple/Google developer accounts, a physical phone, **a Play background-location declaration** |
 | **6** *(was 5)* | Photos: on-device library scan, stop suggestions, opt-in attach | device photo library, **a Play broad-media-access review** |
@@ -11108,71 +11155,327 @@ rounds is how a probe stayed broken for seven commits with no status note mentio
 
 ## Phase 3 *(was Phase 2)* — server, accounts, the social graph, and share links
 
-**Ships:** `services/api` (Node 24, Postgres, RLS, managed auth and object storage), `packages/client` gains
-a `SyncPort`, sign-in, multi-device sync, friends, per-trip shares (`viewer/commenter/editor`), ticket
-upload, and **public share links a friend opens in a browser without installing anything** — the web
-companion's other job per Jacob's answer. **Sharing is read + `copyStopInto`**; the browse-another-trip pane
-from Phase 1 gains shared trips as a source and nothing else changes. `forkTrip` is not in this phase and is
+> **⚠ Rewritten at revision 80** against `ARCHITECTURE.md` **§12**, which is the ruling that precedes any
+> infrastructure being bought or built. **A builder or breaker of any increment below reads §12 whole and
+> nothing else in `ARCHITECTURE.md`** — not §2, not §4, not §8, not §10, not §11, and no `A-` ruling at all.
+> The revision-9 text this replaces is history; where the two disagree, §12 and this section win.
+
+**Ships:** `services/api` (Node 24, Postgres, RLS `FORCE`d and default-deny, three database roles),
+`packages/client` gains a `SyncPort`, sign-in, multi-device sync for one owner, friends (`Connection`),
+per-trip **read** shares to a Cairn user or to a link, and **public share pages a friend opens in a browser
+without installing anything**. **Sharing is read + `copyStopInto`**; the browse-another-trip pane from Phase
+1 gains shared trips as a source and nothing else about it changes. `forkTrip` is not in this phase and is
 not coming (§2.14).
 
-**Also here, because it needs accounts and it needs a ruling:** the `acceptCandidate` control in
-`apps/web`, which Phase 1 shipped without (`REVIEW.md`: an imported stop stays badged *from a friend*
-forever). **R8-3 is ruled before it ships**, and **R8-4 is ruled before or with the `SyncPort`.** If Jacob
-pulls the accept control forward into Phase 2, R8-3 moves with it — the two are one item.
+**Narrowed at revision 80, and the narrowing is a ruling, not caution** (§12.7). Phase 3 ships **`owner` and
+`viewer`**. **`editor`, `commenter` and `TripMember` have no mint endpoint**, because `mergeTrips` rule 3's
+last-writer-wins is honest exactly while the writer whose work was overwritten is the person reading
+`report.overwritten` — true for two devices of one user, false for two people. All three roles stay in the
+predicates, in the types and in **every cell** of the conformance matrix. CRDTs stay deferred (§7) and the
+trigger is now *a `MergeReport` with a reader who is not the writer*.
 
 **Five edges, and the pairs that must not be collapsed** (§8.7): `TripParticipant` (who travelled, shipped
 in Phase 2, grants nothing), `TripMember`, `TripShare`, `Connection`, `LocationShare`. Phase 2's
-participants become linkable to real `User`s here — `Participant.userId` stops being permanently null —
-and linking a participant **still grants nothing**; a grant is a second row the user creates deliberately.
+participants become linkable to real `User`s here — `Participant.userId` stops being permanently null — and
+linking a participant **still grants nothing**; a grant is a second row the user creates deliberately.
+`LocationShare` has no table in this phase and needs none (§12.8).
 
 **Independently useful:** Jacob's trips stop living in one browser, and his friends can see them.
 
-Entry: Phase 2 shipped, with a manager verdict of SHIP — **and `A-2` / QA `P2-8` ruled by the architect
-before the first line of share, friend or public-share-link code, and before anything reopens `importDoc`'s
-ownership check.** *(Added at revision 60, QA **R54-9**, which re-measured it at the Phase 2 gate and found
-it unchanged: with `"ownerId":"user:marta"` present the file is refused with `ForeignDocumentError`;
-**delete that one key and the same file is adopted whole as `local:self`**, carrying stops whose
-`provenance.actorUserId` is still `user:marta`, with `validateTrip` reporting **0** ownership issues. It has
-been routed to the architect since QA round 12, nine status notes have carried it as *"still open"*, and
-until revision 57 it had **no home in a contract document at all** — only `REVIEW.md`'s routing table, which
-is a verdict record. `ARCHITECTURE.md` **§7** now states it with its trigger, and this line is that trigger.
-It is a **scope rule, not an open defect** — nothing before this phase creates a second person whose
-document could arrive — and it is placed here rather than ruled now because `BRIEF.md`'s settled sentence,
-*"`importDoc` … refuses a document owned by someone else, **visibly**"*, can only be made true by a design
-that knows what an account is.)*
+**Also here, because it needs accounts and it needs a ruling:** the `acceptCandidate` control in `apps/web`,
+which Phase 1 shipped without (`REVIEW.md`: an imported stop stays badged *from a friend* forever). **R8-3
+is ruled before it ships**, and **R8-4 is ruled before or with the `SyncPort`.** If Jacob pulls the accept
+control forward into Phase 2, R8-3 moves with it — the two are one item.
 
-**Exit criteria**, tagged per **How a criterion is written**:
+**Do not ship an empty DISCOVER tab.** It appears in **`I-43`**, when there is a network behind it, and not
+one increment earlier.
+
+---
+
+### Entry conditions — stated plainly, including the two that do not gate
+
+1. **Phase 2 shipped, with a manager verdict of SHIP** (sequencing rule 2). **`I-30` — the picker screen —
+   is unbuilt and is the last Phase 2 increment, blocked on a visual direction that is not in this
+   repository.** It therefore **gates Phase 3's code** through rule 2, and it **does not gate revision 80's
+   design ruling**, which is what ROADMAP's own entry condition has always required to happen *before* the
+   first line of Phase 3 code. Stated rather than left ambiguous.
+2. **`R72-1` does not gate Phase 3**, in design or in code. It is `country_count`'s scope gate in §11 — six
+   of twelve `TRIP_SCOPE_MARKERS` are person/tense markers, so a lifetime question carrying one is still
+   answered about this trip — and it shares **no file** with anything below. Whether it gates Phase 2's SHIP
+   verdict is the manager's call, not the architect's. *(Its shape is worth one sentence to anyone building
+   `I-42`: it is a capability answering at the wrong **scope**, and a share page answering for the wrong
+   **principal** is the same failure one axis over. That is an analogy, not a dependency.)*
+3. **`A-2` / QA `P2-8` — ruled by the architect before `I-42`, and it is NOT ruled by revision 80.** §12.10
+   says so and says why: it is a question about the document model (*does "allowed" also mean "adopt its
+   foreign provenance unexamined"*), not about what the server stores, and ruling it inside a server pass is
+   worse than ruling it in its own. **`I-39`, `I-40` and `I-41` contain no share, friend or public-link
+   code**, so the condition binds at `I-42` and not before. What revision 80 does settle: a `ShareSnapshot`
+   carries `ownerId` verbatim, so **no Phase 3 share path can produce the ownerless document `P2-8` is
+   about**.
+4. **Nothing is purchased before `I-41`.** `I-39` and `I-40` run in plain Node with no database and no
+   account. `I-41` needs **a local Postgres**, not a hosted one.
+
+---
+
+### The increment sequence
+
+**`I-39` → `I-40` → `I-41` → `I-42` → `I-43`.** The first two need no vendor and no account; `I-41` needs a
+local database; only deployment needs a purchase, and deployment is not an increment.
+
+---
+
+### `I-39` — `shareSnapshot`, the projection, in `packages/core`
+
+**The smallest shippable first increment, and it is deliberately the highest-risk thing in the phase.** If
+this is wrong, the phase ships the defect the whole ruling exists to prevent. It is pure, zero-dependency,
+plain-Node core code that can be attacked with `node --test` and no server, no account and no browser.
+
+**Route: builder + breaker, MANDATORY** — it is a new `packages/core` export surface *and* it touches the
+redaction family, which is two rows of the delegation table at once.
+
+**Read:** `ARCHITECTURE.md` §12 whole. Nothing else in that document.
+
+**Parts.**
+
+1. **`packages/core/src/share/shareSnapshot.ts`**, exporting
+   `shareSnapshot(trip: Trip, audience: ShareAudience): ShareSnapshotResult` where
+   `ShareAudience = 'user' | 'link'` and `ShareSnapshotResult = { doc: Trip; warnings: ShareWarning[] }`.
+   Pure: no clock, no ids, no IO. Added to `packages/core/src/index.ts`; the export count is asserted by the
+   test that owns it, not quoted here (criterion rule 6).
+2. **The field-by-field projection of §12.4**, implemented through the classification `copyStop.ts` already
+   applies — `note`, `cost.note`, `cost.display`, `arrival`, `MoveOverride.label`, `OpeningHours.note` — and
+   §6.6's `redactText` for `Trip.title` and `Day.subtitle`, which the copy path never sees. **No new pattern
+   set and no third threshold.**
+3. **Dropped whole:** `bookings`, `resolutions`, `photos`, `participants`, `homeBase`, `party`, `meta`.
+   `meta` is dropped **for a structural reason that goes in a comment beside it**: `TripMeta` declares
+   `[k: string]: unknown`, and an open index signature cannot be enumerated, so a denylist over it can never
+   fail closed.
+4. **The audience split on links:** `audience: 'user'` keeps `Stop.links[].href` (the §2.14 A-15 carve-out);
+   `audience: 'link'` drops every `href` and keeps the label (§6.6's build-artifact rule, which applies
+   because a link share has no person in the loop).
+5. **`warnings`**, one per string the snapshot emits that `redactionHits` matches, carrying `path`, `field`
+   and `matched`. **It reports; it never rewrites and never refuses.**
+6. **Key-set assertions on `Stop`, `Place`, `Day` and `Trip`**, in the A-15/A-18 form, so a field added to
+   any of them without a classification reddens the test. The projection **fails closed** on a field it has
+   not been told about.
+7. **`cli.ts share-preview <tripId> --audience=<user|link>`** — prints the warning list and the snapshot's
+   byte size. This is what makes `PRODUCT-VISION.md` §7 risk 6's later measurement cheap, and it is the only
+   way to exercise the projection before a UI exists.
+
+**Acceptance criteria.**
+
+- **The projection over the reference trip leaves exactly the residual hit set in
+  `fixtures/golden/share-snapshot-hits.json`, by field and by string, for both audiences.** Ceiling, not
+  floor: *exactly* these strings and no others. `[stated]` + `[snapshot]` — the golden is paired with the
+  stated ceiling below, per criterion rule 2. `[stated]`
+- **Stated ceiling, and it is scoped to the subjects this increment adds** (criterion rule 8): under
+  `audience: 'link'` the residual set is **exactly four strings, all of them `Stop.name`**; under
+  `audience: 'user'` it is those four plus `Stop.links[].href` and **nothing from any other field**. The
+  **unscoped** number — `redactionHits` over the *unprojected* reference trip — is **146** across seven
+  fields plus **4 of 17** conflict summaries, and it is stated so the selector is provably a filter and not
+  a hole. *(History, measured at `ff2c5de`; no criterion depends on the figure — the criteria depend on the
+  golden and on the field ceiling.)* `[stated]`
+- **The projected document carries zero `Booking`, zero `Ticket` of any kind and zero `ConflictResolution`,
+  and `detectConflicts` over it returns zero conflicts.** Outcome clause: *a share page therefore cannot
+  render a conflict summary, which is the path by which core's own prose quotes a booking reference
+  verbatim — four times on this trip.* `[stated]`
+- **Injected fault, and it fires:** set one stop's `name` to `PIN 0754`, project, and assert **exactly one**
+  warning is added naming that stop's path — **and assert the string is still present in `doc`**, proving
+  the mechanism is a report and not a silent rewrite. `[stated]`
+- **Injected fault, and it fires:** add a field to `Stop` without classifying it; the key-set assertion
+  reddens and names the field. `[stated]`
+- **Injected fault, and it fires:** project with `audience: 'link'` a trip whose `Stop.links[0].href` is a
+  ticket order URL; assert the href is absent and the label is present. `[stated]`
+- **`meta` is absent from every projection**, asserted over a trip carrying an unknown `meta` key the
+  projection was never told about. Outcome clause: *the assertion is about the index signature, so it must
+  use a key no source file mentions.* `[stated]`
+- **The projection is pure**: two calls on the same input are byte-identical, and `packages/core` still
+  takes zero runtime dependencies. `[stated]`
+
+**Dependencies / blockers:** none. It needs no server, no account, no database and no browser.
+
+**Stop-and-report:** a twenty-eighth residual string on the reference trip, or a residual hit in any field
+other than `name` and `links[].href`. That is a difference in a named set, not a size (sequencing rule 12),
+and it goes back to the architect rather than into a golden update.
+
+---
+
+### `I-40` — `SyncPort` and the sync slice, against a loopback adapter, in plain Node
+
+**Route: builder + breaker** — it changes `packages/client` and the reducer's neighbourhood.
+
+**Read:** §12 whole, and `packages/client/src/ports/types.ts`'s `StorageVersion` docstring.
+
+**Parts.**
+
+1. **`SyncPort` is `StoragePort`.** No new interface. The remote implementation's `refreshSummary`
+   **throws**, and the reason is in a comment at the throw (§12.2): §4.3 A-30's method exists for a *local*
+   background pass and there is no remote one.
+2. **A `sync` slice**, per trip: `{ syncedDoc: Trip | null; remoteVersion: StorageVersion | null; status }`.
+   `syncedDoc` is `mergeTrips`' ancestor, assigned **from a port result and from nowhere else** (§0
+   position 6, §2.2b F2). **The reducer's `persistence` slice does not gain a field** — and that is a
+   criterion below, not a hope.
+3. **Push / pull / merge / re-push**, with the merged document written **locally first** so a device is
+   never left holding a document it has not seen.
+4. **A loopback `SyncPort`** in `packages/client/test`, backed by the existing in-memory storage, with
+   injectable refusal and latency. This is what makes the whole state machine attackable with `node --test`.
+5. **Poll on open and on focus.** No push, no websocket, no long poll. The UI states when it last synced.
+
+**Acceptance criteria.**
+
+- **Two loopback clients, one trip, both edit different stops, both push:** the second is refused, merges,
+  and both edits survive. Outcome clause: *`report.fromRemote` names the other client's stop and
+  `report.overwritten` is empty.* `[stated]`
+- **Two clients edit the SAME stop:** last-writer-wins, and `report.overwritten` names it. Outcome clause:
+  *the losing edit is named in a report the UI is required to show, and the criterion asserts the report's
+  contents, not that a merge happened.* `[stated]`
+- **Injected fault, and it fires:** assign `syncedDoc` from `state.doc` instead of from the port result; the
+  same-stop test must then silently lose the remote edit with an **empty** `overwritten` report. `[stated]`
+- **`persistence` gains no field.** A greppable assertion over `reducer.ts`'s `PersistenceSlice` key set,
+  with the count owned by the assertion. `[stated]`
+- **`refreshSummary` on the remote port throws, and one test asserts the throw and its message.** Declared,
+  not discovered (§12.12 residue 4). `[stated]`
+- **Every Phase 1 and Phase 2 number is re-derived unchanged.** `[legacy from Phase 1]`
+
+**Dependencies / blockers:** none. No server exists yet and none is needed.
+
+---
+
+### `I-41` — the schema, the roles, the migration check, and the first real `services/api`
+
+**Route: builder + breaker, MANDATORY** — a new deploy unit holding credentials, and the first
+authorization enforcement in the product.
+
+**Read:** §12 whole, then §6.2 and §6.3.
+
+**Parts.**
+
+1. **`db/migrations/0001_*.sql`** — the seven tables of §12.1, every one with a tenancy column, RLS
+   `ENABLE` + `FORCE`, default-deny, an explicit policy per operation.
+2. **The migration check of §12.3, written BEFORE the first migration**: no table may declare a
+   coordinate-shaped column. It reads committed migration text, needs no database, and runs in `npm test`.
+3. **Three database roles** (§12.5): `cairn_api`, `cairn_share_reader`, `cairn_ingest`. **`cairn_ingest` is
+   created here, before any ingest code exists** (§6.2 rule 3). **`cairn_share_reader` has no `SELECT` grant
+   on `documents`.**
+4. **`services/api`**: sign-in, sessions, and the document endpoints of §12.2 — `GET /documents`,
+   `GET/PUT/DELETE /documents/{tripId}` with `ETag`/`If-Match` and **412** on mismatch. It imports from
+   `@cairn/core` **exactly the access surface**.
+5. **One `Relationship` assembly function, from one SQL view** (§12.6 (b)), named in the request middleware
+   that resolves a `tripId`.
+6. **The conformance matrix**, enumerated from the types, run against the local database.
+
+**Acceptance criteria.**
 
 - **The access conformance matrix passes on every cell** — core predicates vs RLS policies, every principal
-  × relationship × operation, and **the matrix is enumerated from the type definitions, not hand-listed**,
-  so a new role or operation cannot be silently absent. Count criterion, outcome clause: *every cell names
-  the principal, the relationship, the operation and the expected verdict; a cell that agrees because both
-  sides are `false` for the wrong reason is a defect.* `[stated]`
+  × relationship × operation, **enumerated from the type definitions, not hand-listed**, so a new role or
+  operation cannot be silently absent. Count criterion, outcome clause: *every cell names the principal, the
+  relationship, the operation, the expected verdict **and which clause denied it**; a cell that agrees
+  because both sides are `false` for the wrong reason is a defect.* `[stated]`
 - **The five edges are five tables and the matrix proves it** (§8.7). *"Participant with no share"*,
   *"follower with no share"* and *"member"* are three distinct principals, and the first two are denied
-  **every** operation including `view`, in the predicates **and** in the policies. **Injected fault:** add
-  a participant to a trip and a `Connection` from that user, and assert **no** operation's verdict changes
-  anywhere in the matrix. A schema in which participation, friendship or membership can be inferred from
-  one another fails this outright — that is principle 3, and it is cheaper to assert here than to migrate
-  later `[stated]`
-- **Injected fault:** revoke a share, go offline, reopen the cached trip → **an error, never stale content**;
-  and expire a share by moving the clock, not by editing the row `[stated]`
-- **Injected fault:** grant `services/ingest`'s database role and try to write a stop → refused by grant, not
-  by application code `[stated]`
+  **every** operation including `view`, in the predicates **and** in the policies. **Injected fault:** add a
+  participant to a trip and a `Connection` from that user, and assert **no** operation's verdict changes
+  anywhere in the matrix. `[stated]`
+- **Injected fault, and it fires:** drop `revoked_at` from the `Relationship` assembly view's `WHERE`
+  clause; the *revoked viewer* row flips to `allow` on the predicate side while the policy side still
+  denies, and the disagreement fails the build. `[stated]`
+- **Injected fault, and it fires:** connect as `cairn_share_reader` and `SELECT doc FROM documents` → the
+  statement fails with a **permission** error from Postgres. Outcome clause: *zero rows is a FAILURE of this
+  criterion, because zero rows means the grant was given and RLS was doing the work — which is the weaker
+  posture §12.5 exists to refuse.* `[stated]`
+- **Injected fault, and it fires:** grant `cairn_ingest` and try to write a stop → refused by grant, not by
+  application code. `[stated]`
+- **Injected fault, and it fires:** add `ALTER TABLE users ADD COLUMN last_seen_at timestamptz;` to a
+  migration → the §12.3 check reddens, naming the table, the column and the Part. Add `current_location
+  point` → it reddens naming the type. `[stated]`
+- **Byte identity:** `PUT` the reference trip's `toJSON` output, `GET` it back, assert byte-identical.
+  Outcome clause: *this is what makes `StorageVersion`'s own sentence true, and it is the criterion a
+  `jsonb` column fails.* `[stated]`
+- **`services/api` imports no core symbol outside the access surface**, asserted by the §3
+  dependency-direction test. Outcome clause: *`fromJSON` in the server's import graph means the server has
+  started having opinions about what a trip is.* `[stated]`
+- **No `schema_version` column exists**, asserted over the migration text. `[stated]`
+- **No service-role key appears in any client bundle**, checked by grepping the built assets. `[stated]`
+- **No coordinates and no mailbox content in any log line**, checked by grepping the logging paths for
+  coordinate-shaped floats (§6.1 cross-cutting rule 1). `[stated]`
+
+**Dependencies / blockers:** `I-40`. Needs a **local** Postgres; needs no hosted anything.
+
+---
+
+### `I-42` — shares, snapshots, revocation, and the public share page
+
+**Route: builder + breaker, MANDATORY.** **Blocked on `A-2`/`P2-8` being ruled** (entry condition 3).
+
+**Parts.** `shares` and `share_snapshots` write paths; the snapshot re-mint on the owner's next successful
+sync while a share is live; link tokens stored **hashed**; the share-create surface in `apps/web` listing
+`I-39`'s warnings, which is `warnings`' named production reader (criterion rule 10); the public share page
+served as `cairn_share_reader`; `mintedAt` rendered in words.
+
+**Acceptance criteria.**
+
+- **Injected fault, and it fires:** revoke a share, go offline, reopen the cached trip → **an error, never
+  stale content**; and expire a share by moving the clock, not by editing the row. `[stated]`
+- **A revoked or expired share returns 404 with no body**, not 403 and not a discriminating message.
+  Outcome clause: *the API does not disclose whether a token ever existed.* `[stated]`
+- **The bytes a share page serves are the snapshot's bytes**, asserted byte-for-byte against
+  `shareSnapshot(trip, 'link')` run locally. Outcome clause: *if these two ever differ, something
+  server-side is transforming a document, which §12.1 clause (d) forbids.* `[stated]`
+- **Injected fault, and it fires:** delete the `WHERE share_id = …` from the share-page query; the request
+  must still fail, because the role cannot read `documents` and the snapshot table is tenanted. `[stated]`
+- **A share cannot be minted while an undismissed warning exists**, asserted through the client, not the
+  server. `[stated]`
+- **No endpoint mints a share with `role IN ('editor','commenter')`**, asserted by one grep over route
+  handlers — the instrument §12.12 residue 3 names. `[stated]`
+
+**Dependencies / blockers:** `I-41`; `A-2`/`P2-8` ruled.
+
+---
+
+### `I-43` — `Connection`, the friend's-trip source, and DISCOVER
+
+**Route: builder + breaker, MANDATORY** — it touches `copyStopInto`'s consumers.
+
+**Parts.** `Connection` create/accept/remove; the Phase 1 browse-another-trip pane gains **shared trips** as
+a source; `copyStopInto` from a snapshot; `Participant.userId` becomes linkable and **still grants nothing**;
+the **DISCOVER** tab appears, with the network behind it.
+
+**Acceptance criteria.**
+
+- **A friend's snapshot is a valid `copyStopInto` source and the copy is a fixed point**: copying a stop out
+  of a snapshot produces a stop whose `redactionHits` set is **identical** to the one it had in the
+  snapshot. Outcome clause: *the copy threshold and the share threshold agree by construction, which is the
+  reason §12.4 composed them instead of inventing a third.* `[stated]`
+- **Injected fault, and it fires:** accept a `Connection` and assert **no** cell of the conformance matrix
+  changes, and that the friend still cannot `view` any trip. `[stated]`
+- **Linking `Participant.userId` changes no verdict**, asserted the same way. `[stated]`
+- **The DISCOVER tab is never rendered empty-by-construction**: with zero connections it shows the
+  connection affordance, not an empty list of trips. `[stated]`
+
+**Dependencies / blockers:** `I-42`.
+
+---
+
+### Phase 3 exit criteria
+
+Everything above, plus:
+
 - **The deletion cascade of §6.3 passes an orphan sweep**, and the sweep is run after each of the five
   deletion kinds in the §6.3 table, not once at the end. Outcome clause: *a friend's copied stop survives
   the deletion of the trip it came from, and its `attribution` resolves to a tombstone rather than
-  disappearing* `[stated]`
+  disappearing.* `[stated]`
 - **A full account export produces a readable zip** whose `trips/*.json` round-trip through Phase 1's
-  `fromJSON` unchanged `[legacy from Phase 1]`
-- **No service-role key appears in any client bundle**, checked by grepping the built assets `[stated]`
+  `fromJSON` unchanged. `[legacy from Phase 1]`
 - **The shipped sample on the public share host is not Jacob's trip.** §6.6's deliberate gap closes here:
-  redaction is enough while the build is his own; a public marketing surface needs an invented trip
+  redaction is enough while the build is his own; a public marketing surface needs an invented trip.
   `[stated]`
+- **A full dump of the phase's database contains no coordinate that a sensor produced and no column that
+  could hold one** — the §12.3 check, run over every migration the phase landed. `[stated]`
 
 Built here because it is expensive to retrofit and cheap now: tenancy columns on every table, RLS `FORCE`d
-and default-deny, the `services/ingest` database role created **before** any ingest code exists, and the
-export/deletion cascade. Not built here: moderation, rate limiting, billing, admin tooling (§6.5).
+and default-deny, the three database roles, the coordinate-column check, and the export/deletion cascade.
+Not built here: moderation, rate limiting, billing, admin tooling (§6.5), comments, co-ownership, editing by
+a second person, photo egress, ticket blobs, push, and invite-by-email (§12.9, each with its trigger).
 
 ---
 
@@ -11478,3 +11781,23 @@ built.
    line, no architect round; a phrasing that reaches an *answer* is MAJOR and comes back to me, because it
    means the gate is wrong.** The second half exists to end an arms race this project has now run twice in
    two rounds on one function: the routing rule is what stops a third phrase list from being written.
+
+14. **A server may store a document and may not understand one; a non-owner is served a different byte
+   string than the owner's** (revision 80, §0 position 14, `ARCHITECTURE.md` **§12**). This is the routing
+   half of the server boundary, and it binds every increment from Phase 3 onward. **(a)** An increment that
+   proposes a **column** the server can query for something the document already says — a `stop_count`, a
+   `country`, a `city`, a `last_edited_by`, a coordinate of any kind — is a **design defect routed to me**,
+   because it is a second model of a trip and §12.1 refuses it. The exception that is not one: a **tenancy**
+   column is required on every table (§6.2 rule 1) and says nothing about the trip's contents. **(b)** An
+   increment that puts `fromJSON`, `toJSON`, `mergeTrips`, `detectConflicts` or `summarizeTrip` into
+   `services/api`'s import graph **stops and reports**. The server's ignorance of the document is the
+   property, not a consequence. **(c)** **A projection that decides what a non-owner may see is built in
+   `packages/core`, is pure, and ships its residual credential-hit set as a committed golden by field and by
+   string** — never as a count, and never as *"the test passes"* over one document whose strings happen to be
+   innocent (§0 position 13 (d)). A new residual string is a **stop-and-report**, on sequencing rule 12 (a)'s
+   authority. **(d)** **A role whose holder can write is scheduled only with the mechanism that tells the
+   loser** — a `MergeReport` whose `overwritten` list has a reader who is not the writer is the CRDT trigger,
+   restated, and an increment that mints an `editor` share without it is a design defect routed to me
+   (§12.7). **(e)** Where a decision genuinely depends on a **vendor**, the increment says which vendor
+   decision and what it cannot change, rather than assuming one. Nothing in Phase 3's design requires a
+   purchase before `I-41`, and `I-41` requires a **local** database, not a hosted one.
