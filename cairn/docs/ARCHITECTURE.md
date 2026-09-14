@@ -29751,8 +29751,11 @@ attachment), no presence table of any kind (Part 8).
 **Five clauses about `documents`, each of which a builder would otherwise get wrong:**
 
 - **(a) `doc` is `text` or `bytea`, never `jsonb`.** Two independent reasons and either alone is sufficient.
-  `jsonb` normalises key order and collapses duplicate keys, so the bytes that come back are not the bytes
-  that went in — and §4.3's fence says *"equality of a `StorageVersion` asserts that the document bytes under
+  `jsonb` **does not preserve white space, does not preserve the order of object keys, and does not keep
+  duplicate object keys** — verified 2026-09-14 against
+  [PostgreSQL 18 §8.14, *JSON Types*](https://www.postgresql.org/docs/current/datatype-json.html), which
+  states it in those words and says the `json` type is the one that *"stores an exact copy of the input
+  text"* — so the bytes that come back are not the bytes that went in — and §4.3's fence says *"equality of a `StorageVersion` asserts that the document bytes under
   that id have not changed since the token was issued."* A store that cannot return its own input cannot
   honour that sentence. And `jsonb` makes the document **queryable**, which is the first step down the road
   where the server starts having opinions about what a trip is. **Criterion:** write the reference trip's
