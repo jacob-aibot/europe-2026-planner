@@ -1421,6 +1421,15 @@ test('A-98 Part 3: 43 fragments generate 816 sentences, every one answers, and n
   // The tripwire is not vacuous: the diagnostic it counts does fire, on the sentences it is for.
   assert.equal(lifetimeScoped('how many countries have I been to'), true);
   assert.equal(lifetimeScoped('how many countries in total'), true);
+
+  // **`COUNTRY_TRIGGERS` cannot authorise an answer either** (A-98 Part 2): **126 of the 816**
+  // carry no phrase from that list at all and are answered anyway, because membership is the
+  // only thing that answers. What the trigger list still decides is which REFUSAL an unaccepted
+  // sentence gets — `scope_unclear` where it matches, `unrecognised` where it does not.
+  assert.equal(outcomeOf('countries are we visiting', trip), 'matched:country_count');
+  assert.equal(outcomeOf('countries on my itinerary', trip), 'matched:country_count');
+  assert.equal(outcomeOf('countries are we booking', trip), 'unrecognised');
+  assert.equal(outcomeOf('which countries are we booking', trip), 'out_of_scope:scope_unclear');
 });
 
 /**
