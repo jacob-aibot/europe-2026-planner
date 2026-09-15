@@ -33,6 +33,23 @@
  *                prints `§8.4` at a user. CONFIRMS R71-3 for marker-less text.
  *   G  R72-6     R71-6 (d)'s numeral survives in the two sibling arms. **R72-8**: a journey that
  *                states both `durationMins` and `arrival` loses its mode word.
+ *
+ * **RE-CUT at I-44 (`master` = 4142ecb) by QA round 73.** Four assertions in §F and one in §G
+ * moved, each with its reason at its own site; §G gains two controls for A-98 Part 8's second
+ * conjunct. Nothing moved because the probe was wrong about the old code — §F's three `ambiguous`
+ * expectations and §G's mode-word expectation were all correct AT `465c200`; A-98 ruled a third
+ * outcome for the first three and shipped the fix for the fourth. Round 73's own findings are in
+ * `qa/r73-i44.mjs` and are deliberately NOT back-ported here. §B has one further re-cut, at a
+ * regex that contradicted its own label.
+ *
+ * **TWO assertions are deliberately left RED at `4142ecb`, and they are findings, not staleness:**
+ *   §D  `every clock rendered in prose is a real time of day` — **8 malformed of 1,800**, all
+ *       `24:00`, where round 72 measured **0**. R72-3's fix moves `endMin === 1440` out of the
+ *       *"still on it at midnight"* arm and into the clock arm, which has no `24:00` case. This
+ *       is **R73-2** and the assertion is unmoved, unmodified, and right.
+ *   §E  two of three — **R72-5 is HALF fixed.** The negative guard ships; the upper half the
+ *       finding also names (`durationMins: 1e9` → `"16666684:40"`) does not, and the field still
+ *       has no production reader. This is **R73-4**.
  *   H  CONFIRMS  the R70-1 → R71-2 re-cut is correct in BOTH directions, and R71-5's two halves.
  *   I  the ceilings: determinism of the new prose, no ambient input in the changed files.
  *
@@ -122,8 +139,21 @@ if (on('B')) {
     'exactly one production caller — classifyDay, whose only use of endMin is through intervalIntersects');
   const ov = readFileSync(resolve(ROOT, 'packages/core/src/conflict/rules/overlap.ts'), 'utf8');
   ok(!/occupiedInterval|endMin/.test(ov), '`overlap` does not read the interval at all: no conflict verdict can move');
-  ok(!/\.endMin\s*[-+*/<>]|sort\(/.test(readFileSync(resolve(ROOT, 'packages/core/src/ask/ask.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')),
-    'no consumer does arithmetic on endMin or sorts by it — it is formatted and compared, nothing else');
+  // **RE-CUT at I-44.** This regex forbade `<` and `>` beside `.endMin` as well as `+ - * /`,
+  // which contradicts its own label: *"it is formatted and COMPARED, nothing else"*. R72-5's fix
+  // adds exactly the comparison the label permits — `endMin >= startMin`, two fields of the same
+  // interval, deciding whether the instant is a wall clock at all — so the probe reddened for a
+  // change that is inside the property it was written to protect. Arithmetic and sorting are what
+  // the assertion is actually for, and they are still forbidden; the one comparison is named.
+  {
+    const askSrc = readFileSync(resolve(ROOT, 'packages/core/src/ask/ask.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    ok(!/\.endMin\s*[-+*/]|sort\(/.test(askSrc),
+      'no consumer does arithmetic on endMin or sorts by it — it is formatted and compared, nothing else');
+    const comparisons = [...askSrc.matchAll(/\.endMin\s*[<>]=?\s*([A-Za-z0-9_.]+)/g)].map((m) => m[1]);
+    ok(comparisons.every((rhs) => rhs.endsWith('startMin')),
+      `every comparison on endMin is against the same interval's own start (R72-5's guard): ${JSON.stringify(comparisons)}`);
+  }
 
   // 2. The clamp is inert over the REAL population, not just over an argument about bounds.
   let intervals = 0, moved = 0, crossers = 0;
@@ -341,15 +371,60 @@ if (on('F')) {
   note(`${escapes} of ${lifetimeWithMarker.length} lifetime phrasings reach an ANSWER through 'am i' / 'do i' / 'do we'`);
   note('measured at d8f5a1e too — this is A-97 Part 6\'s residue, not I-38\'s regression');
 
-  // **R72-2** — the refusal returns from inside the candidate loop and discards what was collected.
-  for (const [q, before] of [['how many countries have I booked', 'ambiguous'], ['which countries have a free evening', 'ambiguous']]) {
-    note(`"${q}": d8f5a1e → ${before}, 465c200 → ${kind(q)}`);
-    ok(kind(q) === before,
-      `the scope gate suppresses country_count only, and leaves other intents' readings standing: "${q}"`);
+  // **R72-2 — RE-CUT at I-44 (§11.13 A-98 Part 7), and each move is checked for its REASON.**
+  //
+  // These three assertions asked for `ambiguous`, which was the pre-A-97 outcome R72-2 wanted
+  // restored. A-98 Part 7 ruled a THIRD outcome and it is the one that ships: the gate suppresses
+  // one candidate and returns nothing, **and `country_count` is not a reading of any of these
+  // three sentences**, because none of them is a sentence Cairn wrote. So the reading that
+  // survives is the other intent's, alone — which is R72-2's complaint answered more fully than
+  // R72-2 asked. `ambiguous` would now be Cairn claiming a reading it does not have.
+  //
+  // **A move is only correct if it moved for the ruled reason**, so each of the three asserts the
+  // surviving reading's own CONTENT and §11.3 rule 2's unread half, not just its `kind`.
+  const readingOf = (q) => matchQuestion(q, trip);
+  {
+    const m = readingOf('how many countries have I booked');
+    ok(m.kind === 'matched' && m.question.kind === 'unbooked',
+      `A-98 Part 7 outcome 2: "how many countries have I booked" → ${kind('how many countries have I booked')}`);
+    ok(m.kind === 'matched' && ['how', 'many', 'countries'].every((w) => m.unread.includes(w)),
+      `…and the country words are REPORTED unread rather than silently dropped: ${JSON.stringify(m.unread ?? null)}`);
   }
-  // …and the control: with a marker present, the other reading survives as an ambiguity.
-  ok(kind('what countries do I fly out of Vienna to') === 'ambiguous',
-    'control: with a marker, a country trigger beside a city_edge is still two readings');
+  {
+    const m = readingOf('which countries have a free evening');
+    ok(m.kind === 'matched' && m.question.kind === 'free_time'
+      && m.question.part === 'evening' && m.question.cityKey === null,
+      `A-98 Part 7 outcome 1: "which countries have a free evening" → ${JSON.stringify(m.kind === 'matched' ? m.question : m.kind)}`);
+    ok(m.kind === 'matched' && ['which', 'countries'].every((w) => m.unread.includes(w)),
+      `…and "which countries" is reported unread: ${JSON.stringify(m.unread ?? null)}`);
+    // The reason the old assertion was right to complain: `scope_unclear`'s own text is false of
+    // a sentence containing "free evening". That text must not be what this sentence gets.
+    ok(m.kind !== 'out_of_scope', 'the sentence-level refusal no longer speaks for a sentence another intent read');
+  }
+  {
+    // The old CONTROL. It asked for `ambiguous` on the theory that `country_count` is a second
+    // reading here; A-98 Part 7 says it is not a reading at all, so one reading is the right
+    // number. Checked for the reason: the surviving reading is the city_edge the sentence names.
+    const m = readingOf('what countries do I fly out of Vienna to');
+    ok(m.kind === 'matched' && m.question.kind === 'city_edge'
+      && m.question.cityKey === 'vienna' && m.question.edge === 'leave',
+      `control: a country trigger beside a city_edge is now ONE reading, the city_edge: ${JSON.stringify(m.kind === 'matched' ? m.question : m.kind)}`);
+    ok(m.kind === 'matched' && m.unread.includes('countries'),
+      `…with "countries" unread, so the word that used to buy a second reading is still accounted for: ${JSON.stringify(m.unread ?? null)}`);
+  }
+  // …and the filter's third pinned outcome, unmoved: a country trigger, no other reading, no
+  // authored sentence. This is R71-3's own population and A-98 leaves it exactly where it was.
+  ok(kind('how many countries') === 'out_of_scope:scope_unclear',
+    'A-98 Part 7 outcome 3: the bare stem still refuses with the scope reason');
+  // The filter cannot discard a reading, because it runs only where there is none. Asserted the
+  // way the code spells it rather than by example: `COUNTRY_TRIGGERS` is read once and used once.
+  {
+    const src = readFileSync(resolve(ROOT, 'packages/core/src/ask/match.ts'), 'utf8');
+    const uses = [...src.matchAll(/\bcountries\b(?!\s*:)/g)].length;
+    ok(/const countries = firstOf\(tokens, COUNTRY_TRIGGERS\);/.test(src)
+      && /if \(candidates\.length === 0\) \{[\s\S]{0,400}?if \(countries !== null\)/.test(src),
+      `the country trigger's only consumer is the no-candidate branch (${uses} tokens named \`countries\` in the file)`);
+  }
 
   // **R72-7** — the pointer a user reads.
   const m = matchQuestion('how many countries', trip);
@@ -370,12 +445,32 @@ if (on('G')) {
   ok(!/the 1 day/.test(one.text), '"Of the 1 day in Split" — R71-6 (d) fixed this string in the `No.` arm only');
   const oneBusy = askFree(splitDoc([dayOf([busy])]));
   ok(/on the only day in Split/.test(oneBusy.text), 'control: the `No.` arm says "the only day in Split" (R71-6 (d), fixed)');
+  // **NOT re-cut, recorded**: R72-6 asked for two sites and got two sites. Two more numerals for
+  // a population of one survive in answers this same section builds — *"Of the only day in Split,
+  // **1** is clear"* and the `I can't tell` arm's *"Of the **1 day** in Split"*. They are round
+  // 73's **R73-3**, asserted in `qa/r73-i44.mjs` §E, and deliberately NOT asserted here: this
+  // script is round 72's record and R72-6 named its sites.
+  note(`R73-3 lives in r73-i44.mjs §E, not here: ${/Of the only day in Split, 1 is clear/.test(one.text) ? 'the `Yes.` arm still counts to one beside the phrase R72-6 fixed' : 'closed'}`);
 
   // **R72-8** — a journey that states BOTH fields loses its mode word.
+  // **RE-CUT at I-44 (§11.13 A-98 Part 8).** This assertion is now GREEN and it moved for the
+  // ruled reason — `journeyModeWord` is `travelRole === 'journey' && arrival !== null`, whatever
+  // `source` is — but the planted document is re-cut so the move is checked rather than taken:
+  // `durationMins` and `arrival.mins` **agree** here, so the mode word and the clock the clause
+  // renders describe the same journey. Where they DISAGREE the clause makes a claim the document
+  // contradicts; that is round 73's **R73-1** and it is asserted in `qa/r73-i44.mjs` §D, not here.
   const both = askFree(splitDoc([dayOf([stopAt('16:30', { durationMins: 120, travelRole: 'journey', arrival: { mode: 'flight', mins: 120 } })])]));
-  note(`durationMins + arrival: ${both.text.slice(0, 140)}`);
-  ok(/you are on a flight from 16:30/.test(both.text),
+  note(`durationMins + arrival, AGREEING: ${both.text.slice(0, 140)}`);
+  ok(/you are on a flight from 16:30 until 18:30/.test(both.text),
     'a journey stop whose run came from durationMins still knows its mode, and the mode is an enum label');
+  // The second conjunct, which is the trap A-98 Part 8 spells out: `arrival` on a NON-journey
+  // stop is the leg INTO it, and 60 of the reference trip's 112 scheduled stops are that shape.
+  const into = askFree(splitDoc([dayOf([stopAt('16:30', { durationMins: 120, travelRole: 'transfer', arrival: { mode: 'bus', mins: 60 } })])]));
+  ok(!/you are on a/.test(into.text),
+    `N′: a transfer carrying an arrival is NOT rendered as a journey in progress: ${into.text.slice(-70)}`);
+  const noArr = askFree(splitDoc([dayOf([stopAt('16:30', { durationMins: 120, travelRole: 'journey', arrival: null })])]));
+  ok(!/you are on a/.test(noArr.text),
+    `a journey with no arrival has no mode to name, and names none: ${noArr.text.slice(-70)}`);
 }
 
 // -------------------------------------------------------------------------------------- H

@@ -4905,3 +4905,38 @@ counted *"1 named + the other one"*, which was true of the broken renderer rathe
 now assert A-97 Part 5 item 3's identity. §E ×1 was wrong when it was written — a document with
 `durationMins: -600` on every Split stop leaves no Split stop starting inside the evening, so `Yes.`
 is honest; R71-4's invariant is asserted on a stop that does start inside the window.
+
+**Round 73** is the confirmation round over **I-44** (§11.13 **A-98**), at `4142ecb`. Two scripts,
+run from `cairn/`:
+
+```bash
+node qa/r73-i44.mjs          # 7 sections, 76 assertions — 13 FAIL over 6 findings, ~15 s
+node qa/r72-i38.mjs          # RE-CUT at 6 sites; 3 FAIL REMAIN and they are findings
+```
+
+`r73-i44.mjs`'s sections: **A** the accept set, **regenerated from ARCHITECTURE §11.13 A-98 Part 3's
+own published fragments rather than read out of `match.ts`** — 43 fragments, 816 sentences, 816
+distinct, all answered, all `unread: []`, 0 tripping the lifetime diagnosis, 126 carrying no country
+trigger — plus the two edge findings (**R73-5**, the four present-simple bare frames; **R73-6**, the
+60-of-96 failure of closure under *"… on this trip"*); **B** recall on a 40-phrase corpus written
+before the accept set was read (**20 of 40**, against a published 15 of 18); **C** A-98 Part 7's
+three pinned outcomes plus the **structural** reason the filter cannot discard a reading —
+`COUNTRY_TRIGGERS` is named exactly twice in the file and its one read is inside
+`if (candidates.length === 0)` — and **R73-7**; **D** **R73-1**, reached through the public
+`updateStop` door on the reference trip's own flagship leg; **E** **R73-3**; **F** **R73-2**;
+**G** the ceilings (91 exports, the 48 verdicts, criterion rule 11's whole surface found by grep,
+determinism, and the increment's fence checked against `git diff --stat` rather than the report).
+
+**Do not re-derive these from round 73:** the accept set really is 816 with no colliding cells, all
+816 really do answer with an empty `unread`, and `Object.keys(core).length` really is 91 — those
+were measured independently of the builder's own assertions and agreed. And `journeyModeWord`'s
+disclosed reason holds: **0** of the reference trip's `runsInto` entries across all 48 day×daypart
+cells are non-journey stops, so N5 has no prose site that reddens there.
+
+**`qa/r72-i38.mjs` is RE-CUT at six sites and is deliberately NOT all clear.** §F ×4 and §G ×1
+moved because A-98 ruled a third outcome (each re-cut assertion now checks the surviving reading's
+**content**, not just its `kind`, so a move is verified for its reason); §B ×1 was a **probe
+defect** — the regex forbade the comparison its own label permits. The **three remaining FAILs are
+findings**: §D ×1 is **R73-2** (8 malformed `24:00` clocks over 1,800 fuzzed answers, where round 72
+measured 0) and §E ×2 is **R73-4** (R72-5 is half fixed; the `1e9` case and the missing production
+reader both stand).
