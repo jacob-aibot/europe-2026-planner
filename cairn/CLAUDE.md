@@ -15,7 +15,23 @@ adding, moving or trusting one.
 
 ## Document cost map
 
-**Every row re-measured at revision 81 (2026-09-15)** — `ARCHITECTURE` 621k → **627k** with §11's new
+**Every row re-measured at revision 82 (2026-09-15)** — `ARCHITECTURE` 628k → **636k** with §11's new
+**§11.14 A-99** (§11 alone 24k → **31k**; **§0 stays ~5k** with position 13 clause (g); **§1–§10 and §12 do
+not move at all**) and `ROADMAP` 278k → **282k** with **I-45**, criterion **rule 12** and the revision-82
+ledger entry (Phase 2 alone 194k → **198k**; *How a criterion is written* stays **3k**). **A-99 is ~7k and
+it is the ENTRY POINT to §11 — read it first, then A-98 whole, then A-97 Parts 2 and 5, then §11.3, §11.5
+and §11.7, each of which carries its amendment banner in place.** A builder or breaker of `I-45` reads
+**§11 whole and nothing else in `ARCHITECTURE.md`**; A-96 is history. This revision is QA round 73's
+architect half. Round 73 **closed R72-1** — the scope gate holds, structurally, and A-98 Parts 1–7 are done
+— and found two MAJORs in the neighbouring code: the mode word rendered from `arrival.mode` beside a clock
+from `durationMins`, and four of sixteen bare fragments that are **present simple**, which is habitual
+rather than trip-scoped. A-99 answers with **three deletions and one parameter**: four fragments withdrawn,
+six hand-written frames replaced by a generated twin per bare frame (816 sentences from 43 fragments →
+**1,272 from 25**), `runEndsAt` deleted, and `journeyModeWord` given the interval it is labelling.
+**A-99 Part 10 is the convergence judgement for the whole `ask` capability and it pre-commits a narrowing
+— read it before proposing any further work on `ask`.**
+
+**Revision 81 (2026-09-15)** — `ARCHITECTURE` 621k → **627k** with §11's new
 **§11.13 A-98** (§11 alone 18k → **24k**; **§0 stays ~5k** with position 13 clause (f); **§1–§10 and §12 do
 not move at all**) and `ROADMAP` 274k → **278k** with **I-44**, criterion **rule 11**, the amended Phase 3
 entry condition 2 and the revision-81 ledger entry (Phase 2 alone 192k → **194k**; *How a criterion is
