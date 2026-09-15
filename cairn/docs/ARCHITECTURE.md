@@ -2111,6 +2111,30 @@ verdicts do not move, and `MatchOutcome` does not change at all** (A-97 already 
 **Nothing here gates `I-30`**, which is still fenced by the unresolved visual direction and by nothing else;
 **this ruling is one of the two gates on Phase 3 code, and it closes here.**
 
+**Revision 82, 2026-09-15 — the accept set closes by GENERATION, a clause takes its facts from one field,
+and the prose gets its first mechanism.** **§11 gains §11.14 — *A-99*** (A-99 itself ~7k; §11 24k →
+**31k**, the document 628k → **636k**), which is QA round 73's architect-routed half: **R73-1** (MAJOR — the
+mode word from `arrival.mode` beside a clock from `durationMins`, which is A-97 Part 2's own sibling rule
+failing inside A-98's fix for it), **R73-5** (MAJOR — four of the sixteen bare fragments are present simple,
+which is habitual, so *"what countries do I visit"* is answered about this trip), **R73-3** (the numeral for
+a population of one, at six sites over three rounds) and the architect half of **R73-4**. **Three deletions
+and one parameter.** The four present-simple fragments are **withdrawn**; A-98's six hand-written `… on
+<np>` frames are **deleted** in favour of a generated twin for every bare frame, taking the set to **1,272
+sentences from 25 fragments** where A-98 had 816 from 43; **`runEndsAt` is deleted** from the `day_state`
+fact (three wrong values, zero readers, two rounds — criterion rule 10's own case); and `journeyModeWord`
+**takes the interval it is labelling**, because a predicate that cannot see the value it must agree with
+cannot be audited for agreement. **§0 gains position 13 clause (g)** (~5k → ~6k) and **ROADMAP gains
+criterion rule 12** — *prose the product composes about a user's data is held by a criterion over the
+rendered text*. **§11.12 A-97 Part 4 and §11.13 A-98 Parts 3, 4, 5, 8, 9 and 10 carry amendment banners in
+place**; **§1–§10 and §12 do not move at all.** **No export, no version constant, no golden byte, no `.tsx`,
+no `apps/web`, no `qa/` file, no `docs/design/` file, no corpus byte, no new dependency — §2.10 stays at 91,
+`core-conflicts.json` stays byte-identical, the 48 verdicts do not move, and `MatchOutcome`, `Answer`,
+`AnswerFact` and `AnswerCaveatCode` do not change shape.** **A-99 Part 10 is the convergence judgement and
+it pre-commits a narrowing**: if round 74 or 75 finds a prose defect no criterion covers, `free_time`'s
+composed paragraph is withdrawn in favour of a one-sentence verdict plus the `facts` array. **Nothing here
+gates Phase 3** — Jacob's direction was that the `country_count` scope arc close before Phase 3 code, and
+A-98 Parts 1–7 did that — **and nothing here gates `I-30`.**
+
 Read the whole document when you are the manager, when you are changing the design, or when a change
 crosses a section boundary. Otherwise this table is the contract.
 
@@ -2294,6 +2318,21 @@ crosses a section boundary. Otherwise this table is the contract.
    is bigger than our list"* to *"one of our own 816 sentences is ambiguous"*, which is findable by reading
    43 fragments. **This is the seventh incomplete enumeration in this project and the first one closed by
    deleting the enumeration rather than lengthening it.** §**11.13**.
+   **(g)** *Added at revision 82 (§11.14 **A-99**, QA **R73-1**/**R73-3**/**R73-5**).* **Where a renderer
+   must not mix two fields, the function that renders takes both of them — the signature is the mechanism.**
+   Clause (e)'s *"a renderer branches on the same discriminant the classifier branched on"* was read,
+   quoted and then broken by the very ruling that invoked it: `journeyModeWord(stop)` states the rule in its
+   doc comment and **cannot check it**, because the interval it is labelling is not in its parameter list,
+   so the mode word came from `arrival` while the clock came from `durationMins` and the answer stated a
+   landing time the same stop contradicts. A discipline the code offers no place to apply is position 10's
+   own case — a claim stronger than its mechanism — and the remedy is a parameter, not a third restatement.
+   **Two siblings, from the same round and the same cause.** **A count of one never reaches prose as a bare
+   numeral**, and the boundary that holds it is the **rendered text** (`Answer.text`), not a list of
+   sentences a builder must remember: the same defect was fixed by enumeration in three consecutive rounds
+   and returned each time with new sites, one of them *inside the sentence the previous round fixed*. **And
+   a cost measured over a corpus its own author wrote is not a measurement** (position 12): a published
+   83% recall figure measured 50% on the first independently written corpus, so recall is asserted as
+   **monotonicity over a committed corpus** rather than as a percentage. §**11.14**.
 14. **The server stores bytes it cannot read, and a share page is served a different byte string than the
    one the owner's document is in.** Added at revision 80, with **§12**, and it is the ruling that precedes
    any infrastructure being bought. Phase 3 is the first phase that needs a server, and the property at risk
@@ -28773,10 +28812,21 @@ look like' style questions, not 'where should I eat'."* The second half is a fen
 the more important half: *"where should I eat"* needs a live places API, a paid vendor and a server, and it
 is **explicitly out of scope and not to be designed around.**
 
-**This section is ~18k tokens and it is SELF-CONTAINED. Read it alone.** It quotes what it needs from §2.1,
-§2.5, §2.7, §2.10, §8.1, §8.2, §8.4 and §10.5. A builder or breaker of ROADMAP `I-35`, `I-36`, `I-37` or
-`I-38` reads **§11 whole and nothing else in this document** — not §2 whole, not §4, not §8, not §10.
+**This section is ~31k tokens and it is SELF-CONTAINED. Read it alone.** It quotes what it needs from §2.1,
+§2.5, §2.7, §2.10, §8.1, §8.2, §8.4 and §10.5. A builder or breaker of ROADMAP `I-35`, `I-36`, `I-37`,
+`I-38`, `I-44` or `I-45` reads **§11 whole and nothing else in this document** — not §2 whole, not §4, not
+§8, not §10.
 
+> **Revision 82 adds §11.14 — A-99, at the end of this section, and it is READ FIRST, before A-98.** It is
+> QA round 73's consequence: it amends §11.12 A-97 Part 4 (withdrawing `runEndsAt`) and §11.13 A-98 Parts
+> 3, 4, 5, 8, 9 and 10 in place, each with a banner. **A builder of `I-45` reads A-99 whole, then A-98
+> whole, then A-97 Parts 2 and 5, then §11.3, §11.5 and §11.7** — and needs no other section of this
+> document. **A-99 Part 10 is the convergence judgement for this whole capability and it pre-commits a
+> narrowing; read it even if you are only fixing one finding.**
+>
+> **Revision 81 added §11.13 — A-98.** It is QA round 72's consequence and it is the `country_count` scope
+> arc's closing ruling; A-99 amends six of its Parts without reopening its mechanism.
+>
 > **Revision 79 adds §11.12 — A-97, at the end of this section, and it is READ FIRST, before A-96.** It is
 > QA round 71's consequence and it amends §11.3 rule 3 and its `MatchOutcome` union, §11.7 rule 3's worked
 > sentence, §11.8 clause 2 and **§11.11 Part 8 residue 3** in place; each carries a banner pointing at it.
@@ -29598,6 +29648,12 @@ door with `0` and with negatives). (c) *"still on it at midnight"* is **exactly*
 so the clause and the verdict are now the same statement — which is §11.6's grounding law, applied to a
 sentence rather than to a cite.
 
+> **WITHDRAWN at revision 82 by §11.14 A-99 Part 9 (QA R72-5 / R73-2 / R73-4).** `runEndsAt` acquired three
+> wrong values and zero production readers in two rounds; *"a surface that wants the instant"* is the
+> speculative consumer criterion rule 10 exists to refuse. **The field is deleted from the `day_state`
+> fact's `params`**; a consumer resolves the day's stop cites and calls `occupiedInterval`. The paragraph
+> below is kept for the reasoning that led here and no longer states the design.
+
 **The structured half keeps the number.** The `day_state` fact's `params` gain **`runEndsAt`** — the
 uncapped wall clock, `'27:45'`, `''` where the day has no run — so a surface that wants the instant has it,
 under its own §6.6 obligations (§11.8 clause 2's last paragraph). A clock string is not a coordinate and
@@ -29828,6 +29884,18 @@ Four consequences, and the first is the one that makes this different from the t
   `scope_unclear` rather than `unrecognised` — for a sentence that is clearly about countries and is not one
   we can be asked. It is diagnostic too.
 
+> **AMENDED at revision 82 by §11.14 A-99 Parts 3, 4 and 5 (QA R73-5 / R73-6).** Three changes to the
+> factors below. **(a)** The four **present-simple** bare frames — `do i visit`, `do we visit`, `do i go
+> to`, `do we go to` — are **withdrawn**: present simple is habitual bare, so they fail this Part's own
+> admission test, and the justifying comment *"trip-scoped by their own tense"* names the wrong grammatical
+> feature. The admission test gains **clause 2**: *a bare frame is admitted only if its habitual reading
+> requires an added adverbial.* **(b)** The set **closes under naming the document** — for every bare frame
+> `B`, `` `${B} on <np>` `` is **generated**, not authored — and A-98's six hand-written `… on <np>` entries
+> leave `NP_FRAMES`. **(c)** `do i visit on <np>`, `do we visit on <np>`, `do i go to on <np>`, `do we go to
+> on <np>` and `have i visited on <np>` are admissible **only** with the document named. **The arithmetic
+> becomes `6 × (12 + 25 × 8)` = 1,272 sentences from 25 adjudicated fragments.** Read A-99 Parts 3–5 before
+> this Part.
+
 **Part 3 — the accept set, published by its factors rather than as 816 lines.** It is **generated at module
 load**, in `packages/core/src/ask/match.ts`, module-private (§11.9):
 
@@ -29862,6 +29930,12 @@ Some cells are ungrammatical (*"number of countries am i visiting"*). That costs
 and an ungrammatical cell is still trip-scoped, which is the only property the set has to have. **A cell that
 is ungrammatical is harmless; a fragment that is scope-ambiguous is the ruling's only failure mode** (Part 5).
 
+> **AMENDED at revision 82 by §11.14 A-99 Parts 6 and 7 (QA R73-6).** The refusal below **stands**. Its
+> published cost — *"15 answer, 3 refuse"* — is **withdrawn as a floor** and survives only as history against
+> `5fa74e1`: seven of those eighteen phrasings were written by the agent that wrote the accept set, which is
+> §0 position 12's own case. Recall is replaced by **monotonicity** over a committed corpus (A-99 Part 6).
+> Part 10 residue 1's trigger is **raised** rather than fired (A-99 Part 7).
+
 **Part 4 — the one relaxation, named and refused.** *Strip a leading politeness particle, then compare* —
 `so`, `hey`, `ok`, `cairn`, `please` — would answer two of the three trip phrasings this ruling gives up.
 **Refused.** A particle list is a list over English **whose failure direction includes an answer**: a
@@ -29871,6 +29945,12 @@ refusing it**, at `5fa74e1`, over the 18 trip-scoped phrasings QA round 72 and t
 them: **15 answer, 3 refuse** — *"how many countries"* (which §11.3 rule 3 as amended by A-97 **requires** to
 refuse), and *"so how many countries am I visiting"* and *"hey how many countries does this trip visit"*,
 which are Part 10 residue 1.
+
+> **REALISED at revision 82 by §11.14 A-99 Part 3 (QA R73-5).** This Part's *"exactly one way"* prediction
+> was correct and the case arrived on the first adversarial pass: four of the sixteen bare fragments were
+> scope-ambiguous, at an error rate of 4 in 43 human judgements. That number is the argument for A-99 Part
+> 5's generator — **every fragment is a place we can be wrong**, so fewer fragments and more generated
+> sentences is the only direction this mechanism moves.
 
 **Part 5 — the failure direction stops being an argument and becomes a construction.** A-97 Part 6 rider 1's
 asymmetry is kept — an unlisted trip phrasing costs a refusal with the menu behind it (§11.3 rule 5); an
@@ -29925,6 +30005,15 @@ is not a reading of either sentence**, because neither is a question Cairn can b
 §11.3 rule 2 carries the honesty — the words that were not read are printed — and rule 1 still governs
 wherever two readings genuinely survive.
 
+> **AMENDED at revision 82 by §11.14 A-99 Part 1 (QA R73-1).** The two conjuncts below are right and are
+> kept; a **third** is added, because the predicate never asks whether the interval it labels IS that
+> journey. On a journey stating both `durationMins` and `arrival`, `stopOccupancy` takes `durationMins` and
+> this Part renders `arrival.mode` beside a clock from the other field. **`journeyModeWord` takes the
+> interval as a parameter** and emits the mode only where the interval was measured from `arrival` —
+> `interval.source === 'journey_run'`, or `'stated_duration'` with `stop.durationMins === stop.arrival.mins`.
+> *"`source` keeps nothing"* is withdrawn: `source` is the record of which field the number came from, which
+> is exactly the question the renderer must ask.
+
 **Part 8 — R72-8: `OccupancySource` names a FIELD, not a role.** A journey stop that states **both**
 `durationMins` and `arrival` takes `stopOccupancy`'s first branch, so `source` is `'stated_duration'`, so
 A-97 Part 5 item 2's gate withholds the mode word and the day renders *"on 2026-08-10 something that starts
@@ -29962,7 +30051,15 @@ rule 9).
    Part 1's three preposition cases. Measured at `5fa74e1`: **13 of 13 reach an answer**, 11 of them
    `matched: country_count`. This is the ruling's own fault and it fires, today, against the committed
    fixture through the shipped CLI with no `--file`.
-2. **GREEN BY CONSTRUCTION; a tripwire on growth, and declared as such.** No member of the accept set trips
+2. > **REPLACED at revision 82 by §11.14 A-99 Part 4 (QA R73-5 / R73-6).** This criterion has the authority
+   > backwards: it cannot see a scope-ambiguous fragment that carries no lifetime trigger, and it **vetoes
+   > its own repair** — *"how many countries have I visited on this trip"* names the document, refuses as
+   > `lifetime`, and could never be admitted without reddening it. The property worth holding is
+   > **order-independence**, not disjointness: *every member of the accept set returns `matched:
+   > country_count` with both English lists in place*, with membership decided **before** either list is
+   > consulted. **N: restore the old order** → the criterion reddens by name, today.
+
+   **GREEN BY CONSTRUCTION; a tripwire on growth, and declared as such.** No member of the accept set trips
    `LIFETIME_TRIGGERS` or `lifetimeFrame` (measured: 0 of 816), so the order the two refusals are asked in
    cannot change any outcome. It cannot redden today because the set was built to satisfy it; **it reddens
    the day a fragment is admitted that carries a past-travel frame**, which is exactly when Part 6 rider 1's
@@ -29976,7 +30073,12 @@ rule 9).
    set and the pointer can drift, which is the state this ruling creates. **N: change the pointer's quoted
    phrasing to *"how many countries have I been to"*** → it reddens naming the pointer.
 4. **RED at `5fa74e1`. Part 7's three outcomes**, asserted as a table, including the two `unread` lists.
-5. **RED against a planted document; UNFIREABLE against the reference trip, and declared.** Part 8's mode
+5. > **AMENDED at revision 82 by §11.14 A-99 Part 1.** N and N′ below are kept as A-99's N2 and N3; a third
+   > fault (**drop the `fromArrival` test**) and a second planted document (one whose two fields **agree**)
+   > join them. The test shipped for this criterion currently asserts a sentence its own document
+   > contradicts and must be re-cut.
+
+   **RED against a planted document; UNFIREABLE against the reference trip, and declared.** Part 8's mode
    clause. All **21** journey stops on the reference trip carry `durationMins: null`, so `source` is
    `'journey_run'` for every one and the change is inert there — which is A-96 Part 5's declaration doing
    the same double duty it did for R71-7. The instruments that hold it are the planted document
@@ -29997,8 +30099,12 @@ three-valued classifier, `stopOccupancy` and `occupiedInterval` are all untouche
 `I-30`**, the city picker, which is fenced by the unresolved visual direction and by nothing else.
 
 1. **The prefix cost.** A sentence that is an accepted phrasing with anything in front of it refuses
-   (Part 4). **Trigger:** QA measuring a *realistic* prefixed phrasing in two separate rounds, or Jacob
-   typing one. **Cost meanwhile:** one refusal with the menu behind it.
+   (Part 4). **Trigger RAISED at revision 82 by §11.14 A-99 Part 7:** the two-rounds trigger was met by QA
+   round 73 and **deliberately not fired** — A-99 Part 3 withdraws four fragments because our adjudication
+   of English was wrong, and a leading-particle list is another adjudication of English whose failure
+   direction includes an answer. **New trigger:** Jacob typing a prefixed phrasing, or a prefix cost
+   measured *after* A-99 Part 5's closure rule ships. **Cost meanwhile:** one refusal with the menu behind
+   it, measured at 2 of 40 against the closure rule's 60 of 96.
 2. **The accept set will be short of some phrasing a person writes, permanently, and that is the design.**
    **Trigger for reopening the MECHANISM — not the set:** §11.1 design (b)'s language-model parser, which is
    the only thing in this design that can read a sentence's structure. §11's opening rule already permits it
@@ -30015,6 +30121,341 @@ three-valued classifier, `stopOccupancy` and `occupiedInterval` are all untouche
 **Order.** **Part 7 → Part 2/3 → Part 8.** Part 7 is a placement fix that the equality gate must be dropped
 into, so doing it first means the new gate is written once, in the right place. Part 8 shares no file with
 either (`ask/ask.ts` only) and has no ordering constraint.
+
+### 11.14 A-99 — a clause takes its facts from one field, a count of one is not a numeral, and an accept set closes under naming the document
+
+**Revision 82. QA round 73's architect-routed half: R73-1 (MAJOR), R73-5 (MAJOR), R73-3 (MINOR) and the
+architect half of R73-4.** It amends **§11.13 A-98** Parts 3, 5, 8, 9 and 10 in place, **withdraws** A-97
+Part 4's *"structured half"* paragraph, and adds **§0 position 13 clause (g)** and **ROADMAP criterion rule
+12**. It also answers the two judgements round 73 asked for by name: **R73-6's recall figure** (Part 6) and
+**whether this capability is converging** (Part 10). Measured values below were taken at `08c4696`, offline,
+through the shipped `cli.ts ask` and `qa/r73-i44.mjs`, and are labelled as history against that commit
+(criterion rule 6). **Read Part 1 → Part 11 before any of the banners.**
+
+**Part 1 — R73-1: the mode word and the clock must come out of the same field, and A-98's predicate cannot
+see that.** A-98 Part 8 emits the mode where `stop.travelRole === 'journey' && stop.arrival !== null`. Both
+conjuncts are right, the trap they were spelled for (60 of 112 scheduled stops carry an `arrival` that is
+the leg *into* them) is real, and the breaker verified both boundaries. **The predicate is nonetheless
+wrong, and the reason is that it never asks about the thing it is labelling.** `stopOccupancy` takes
+`durationMins` where it is set, so on a journey stating **both** fields the clause renders `arrival.mode`
+beside a clock derived from `durationMins`:
+
+```
+stop-2 (LAX→VIE): time 16:45, arrival {mode:'flight', mins:660}, durationMins 200
+  → "on 2026-08-07 you are on a flight from 16:45 until 20:05"
+```
+
+The same stop says that flight is in the air for eleven hours. Before A-98 the sentence read *"something
+that starts at 16:45 runs until 20:05"* — odd, and **true**. **A-98 made a true sentence false**, and it did
+so inside the fix for a rule (*a renderer branches on the same discriminant the classifier branched on*)
+that A-97 Part 2 wrote one ruling earlier, which is the second time this class has recurred after being
+written down. Reachable through `core.updateStop` and through `--file`; **not** reachable on the reference
+trip through `cli.ts ask` with no `--file`, because all 21 of its journey stops carry `durationMins: null`.
+
+> **A clause that states a fact and a number in one breath takes both from the same statement in the
+> document.** The mode word is admissible only where the interval being rendered **was measured from the
+> field that names the mode**.
+
+The predicate:
+
+```ts
+export function journeyModeWord(stop: Stop, interval: OccupiedInterval): string {
+  if (stop.travelRole !== 'journey' || stop.arrival === null) return '';
+  // The interval was measured from `arrival` — either because `stopOccupancy` read it, or because
+  // `durationMins` states the same number and the two readings are the same instant.
+  const fromArrival =
+    interval.source === 'journey_run' ||
+    (interval.source === 'stated_duration' && stop.durationMins === stop.arrival.mins);
+  return fromArrival ? stop.arrival.mode : '';
+}
+```
+
+**The faults, declared at their site** (§0 position 5 (b), criterion rule 9). **N1: drop the `fromArrival`
+test** → the disagreeing document renders *"you are on a flight from 16:45 until 20:05"* and the assertion
+reddens naming the two fields. **N2: restore `interval.source === 'journey_run'` alone** → the agreeing
+document loses its mode word and reverts to *"something that starts at…"*, which is A-98 Part 8's own N4.
+**N3: drop the `travelRole` conjunct** → a `transfer` carrying the leg into it renders *"you are on a …"*
+and reddens **on the reference trip**, where 60 stops are that shape — A-98's N5, unchanged. N1 and N2 are
+**unfireable against the reference trip and declared so**: all 21 of its journey stops carry `durationMins:
+null`, so the instruments are the planted document `qa/r73-i44.mjs` §D builds and two hand-built `Trip`s in
+`ask.test.ts` — one where the fields agree and one where they do not.
+
+This is the breaker's candidate (`durationMins === null || durationMins === arrival.mins`) written as the
+question rather than as the symptom, and it is **total**: `source === null` is not a run at all and falls to
+`''`, which is the arm the disagreeing shape now also takes — *"something that starts at 16:45 runs until
+20:05"*, true of the document, exactly as before A-98. **A-98 Part 8's two conjuncts survive unchanged** and
+its motivating shape (a journey whose `durationMins` agrees with `arrival.mins`) keeps its mode word; only
+the disagreeing shape loses it. `OccupancySource` still names a field and is still not a statement about the
+stop's role — what changed is that the renderer now asks *"which field is the number I am about to print?"*,
+which is a question `source` is the right answer to.
+
+**The shipped test that proves Part 8 must be re-cut, because it currently certifies the defect**: it plants
+`durationMins: 120` beside `arrival: {mode:'flight', mins: 300}` and asserts *"you are on a flight from
+16:30 until 18:30"* about a five-hour flight. That document must now assert the mode-less clause, and a
+**second** document whose two fields agree must carry the mode-word assertion. A test pinning a sentence the
+document contradicts is not evidence that the ruling shipped; it is the ruling's defect, written down twice.
+
+**Part 2 — why this recurred, and the restatement §0 position 13 (e) needs.** Position 13 (e) and A-97 Part
+2 are both correct and both were read by the agent that broke them. The failure is not comprehension. It is
+that **`journeyModeWord(stop)` cannot check the rule its doc comment states** — the value it must agree with
+is not in its parameter list, so no reviewer, test or type can ask it the question. A discipline that the
+code offers no place to apply is §0 position 10's own case: a claim stronger than the mechanism that
+maintains it.
+
+> **§0 position 13 (g): where a renderer must not mix two fields, the function that renders takes both of
+> them.** A predicate that cannot see the value it must agree with cannot be audited for agreement. **The
+> signature is the mechanism.** A rule about which fields may be combined is stated as a parameter list
+> before it is stated as a sentence, and a helper whose parameters admit only one of the two values is a
+> rule with no shape behind it.
+
+That clause is what makes this a ruling rather than a fourth restatement, and it is the same move Part 7
+makes for prose and Part 5 makes for the accept set: **replace a thing a builder must remember with a
+boundary every path passes through.**
+
+**Part 3 — R73-5: four fragments are withdrawn, and the discriminant is ASPECT, not tense.** I am the second
+reader round 73 asked for, and I uphold the finding on all four. `do i visit`, `do we visit`, `do i go to`,
+`do we go to` are **bare present simple**, whose unmarked reading with an eventive verb is **habitual**.
+*"What countries do I visit"* and *"which countries do I go to"* are the ordinary English for a life pattern,
+and *"how many countries do I visit"* invites *"in a year"* rather than *"on this trip"*. Applying A-98 Part
+3's own admission test verbatim — *can this exact whole sentence, for any stem, be a question about the
+user's whole travel history?* — the answer is **yes, for every stem**. The fragments fail the test that
+admitted them. They are refused. The justifying comment (*"trip-scoped by their own tense"*) is not repaired;
+it is **replaced**, because it names the wrong grammatical feature.
+
+**The twelve survivors are not survivors by inspection; they share a property the four do not.** Every
+remaining bare frame is **progressive** (`am i visiting`, `are we seeing`, `am i going to`, `are we
+travelling to`) or **`will`-future** (`will i visit`, `will we see`). Neither has a habitual reading without
+an added adverbial: *"how many countries am I visiting"* becomes habitual only as *"…am I visiting **these
+days**"*, and *"how many countries will I visit"* becomes a life question only as *"…**ever**"* or *"…**in my
+life**"*. Bare present simple needs **nothing added** — habitual is its default. That is the line, it is a
+property of the fragment rather than a judgement about it, and a reviewer can apply it to the next candidate
+fragment without re-reading this paragraph:
+
+> **Admission test, clause 2 (new): a bare frame — one that names no document — is admitted only if its
+> habitual reading requires an added adverbial.** Present simple is refused bare. Progressive and
+> `will`-future are admitted bare. A frame that names the document is not subject to this clause at all,
+> because the noun phrase IS the adverbial.
+
+**The same four verbs are admissible the moment the document is named**, and this is the proof that the
+discriminant is right rather than convenient: `do i visit on <np>` and `do we visit on <np>` already ship and
+**stay**, because *"how many countries do I visit on this trip"* has no habitual reading — *"on this trip"*
+supplies the occasion the bare frame lacked. I adjudicate `do i go to on <np>` and `do we go to on <np>`
+admissible on the same reasoning and they are added here, so the four verbs are present in exactly the
+environment that scopes them. **Withdrawn: 4 fragments. The cells that went with them: 4 × 6 stems = 24, of
+which 0 are recovered, because the two-word bare sentences they generated have no other frame.**
+
+**Part 4 — the accept set outranks every list over English, and A-98 Part 9 criterion 2 had the authority
+backwards.** Criterion 2 asserts that no member of the accept set trips `LIFETIME_TRIGGERS` or
+`lifetimeFrame` (measured 0 of 816). Round 73 is right on both counts it raises: the criterion **cannot see
+R73-5**, because a present-simple fragment carries no lifetime trigger; and it **blocks its own repair**,
+because *"how many countries have I visited on this trip"* is a real trip phrasing that names the document,
+refuses today as `lifetime`, and could never be admitted without reddening it. A criterion that forbids a
+correct fragment is not a safety net; it is a veto held by the weaker of the two mechanisms.
+
+> **Where the accept set and a list over English disagree about one sentence, the accept set wins and the
+> list is the thing that was wrong.** The accept set is adjudicated sentence by sentence against a published
+> test; a denylist is a heuristic over an open set. **A-98 Part 2's own rule read the other way round**: a
+> list over English may diagnose a refusal, so it may never overrule an answer either.
+
+Two consequences, and both are structural.
+
+1. **The order changes.** `matchQuestion` today asks `lifetimeTokens` and `RECOMMENDATION_TRIGGERS` before
+   anything else, which is why the lifetime list can veto an authored sentence. **Accept-set membership is
+   decided first**, and where the sentence is one Cairn wrote, neither refusal is consulted:
+   `const authored = ACCEPTED_COUNTRY_QUESTIONS.has(tokens.join(' '))`, computed at the top, guards both.
+   Nothing else about the two refusals moves, and a non-member is treated exactly as it is today.
+2. **Criterion 2 is REPLACED, and the replacement is fireable.** The property worth holding was never
+   *"the two sets are disjoint"* — it was *"the order these are asked in cannot change the outcome for a
+   sentence we wrote"*. Assert **that**: every member of the accept set returns `matched: country_count`
+   **with the lifetime and recommendation lists in place**, and the fault to inject is **restoring the old
+   order** — after which *"how many countries have I visited on this trip"* refuses and the criterion
+   reddens by name. The old criterion was green by construction and could never fire (A-98 declared this
+   honestly); the new one fires today, against a fragment the same increment admits.
+
+`have i visited on <np>` is adjudicated admissible here — it names the document, and no stem makes it a
+question about a life — and is added with the two `go to` frames of Part 3.
+
+**Part 5 — R73-6: the accept set CLOSES under naming the document, by generation rather than by a longer
+list.** Round 73 measured that appending *"on this trip"* — the one phrase that can only mean this document
+— turns an answer into a refusal in **60 of 96** cases, because ten of the sixteen bare frames have no
+`… on <np>` twin. That is not ten missing fragments. It is a **theorem the generator should be applying**:
+
+> **If a bare frame is trip-scoped, the same frame with the document named is trip-scoped a fortiori.** The
+> added noun phrase narrows; it cannot widen, and Part 4's whole-sentence equality means no preposition can
+> get in front of it (A-98 Part 1 item 2's hole is a containment hole and this gate has no containment).
+> **So the twin is generated, never authored.**
+
+The factor lists become — and the arithmetic is the ruling's, not a measurement (criterion rule 6):
+
+```
+STEMS (6)              unchanged
+
+DOC_NPS (8)            unchanged: {this, my, the, our} × {trip, itinerary}
+
+BARE_FRAMES (12)       A-98's sixteen minus the four present-simple ones (Part 3).
+                       Progressive and will-future only.
+
+NP_FRAMES (9)          frames that are inherently NP-taking, unchanged from A-98:
+                       on · in · are on · are in · does <np> visit · does <np> cover ·
+                       does <np> go to · does <np> include · is <np>
+
+NP_ONLY_FRAMES (4)     frames admissible ONLY with the document named (Parts 3 and 4):
+                       do i visit on <np> · do we visit on <np> · do i go to on <np> ·
+                       do we go to on <np>          [+ have i visited on <np>, Part 4]
+
+GENERATED TWINS (12)   `${B} on <np>` for every bare frame B — by the rule above, not by hand.
+                       A-98's six hand-written `… on <np>` entries are DELETED from NP_FRAMES:
+                       four are now generated and two moved to NP_ONLY_FRAMES.
+
+ACCEPT = 6 × (12 + (9 + 4 + 12) × 8) = 6 × 212 = 1,272 sentences from 25 adjudicated fragments
+```
+
+**1,272 sentences from 25 fragments, where A-98 had 816 from 43.** More recall from fewer human judgements,
+which is the only direction this mechanism should ever move: every fragment is a place we can be wrong, and
+R73-5 measured that error rate at 4 in 43.
+
+**Part 6 — the recall figure is WITHDRAWN, and recall stops being published as a percentage.** Round 73
+measured **20 of 40 (50%)** on a corpus written independently of the builder's, against A-98's published
+**15 of 18 (83%)**. I do not treat the gap as a design defect: no refusal is a wrong answer, and A-98 Part 5's
+asymmetry holds. **I treat it as a measurement defect, and it is §0 position 12's own case** — *a rule's cost
+is measured over the population the rule will run on*. Seven of A-98's eighteen phrasings were written by the
+same agent that wrote the accept set, so the figure measured the author's imagination, not the user's.
+
+> **A recall figure measured on a corpus its own author wrote is not a measurement, and no criterion may
+> rest on one.** A-98 Part 4's *"15 answer, 3 refuse"* is withdrawn as a published floor and survives only as
+> history against `5fa74e1`.
+
+What replaces it is **monotonicity**, which cannot be gamed and needs no percentage: **every phrasing
+answered at `08c4696` is answered after this increment**, over a committed corpus that is the union of round
+72's 18, round 73's 40 and A-98 Part 1's 13 lifetime cases, held in `packages/core/test/` where the builder
+owns it. The raw count is published in `BUILD-NOTES.md` as history. **A new refusal in that corpus is a
+finding, not a pass** — which is what the 15/18 floor was reaching for and could not express.
+
+**Part 7 — the particle strip stays REFUSED, and A-98 Part 10 residue 1's trigger is raised.** Round 73's
+corpus refuses *"so how many countries am I visiting"* and *"tell me how many countries I am visiting"*, and
+A-98 Part 10 residue 1 names *"QA measuring a realistic prefixed phrasing in two separate rounds"* as its
+trigger. That trigger is now met on its face and I am **declining to fire it**, for one reason that is
+specific to this round: **A-99 Part 3 has just withdrawn four fragments because our adjudication of English
+was wrong, and a leading-particle list is another adjudication of English whose failure direction includes an
+answer.** Overturning one English judgement and minting another in the same ruling is not a position. The
+trigger is restated at a higher bar: **Jacob typing a prefixed phrasing, or a prefix cost measured after the
+Part 5 closure rule ships** — because the closure rule addresses 60 of 96 refusals and the particle strip
+addresses 2 of 40, and it is the cheap one that carries the risk.
+
+**Part 8 — R73-3: one count renderer, and the criterion is over the RENDERED TEXT.** The numeral-for-one
+defect now has **six known sites across three rounds**, one of them inside the sentence R72-6 fixed. R71-6 (d)
+fixed one of three; R72-6 fixed two and predicted the return of a third; it returned with three more. **A
+fourth enumeration will be wrong too**, and §0 position 10 plus position 5's revision-50 clause both forbid
+resting the claim on a list a builder must remember. The builder who declined to widen an enumerated prose
+fix was procedurally right; what it needed was a boundary, and there is exactly one: **`Answer.text`**.
+
+> **No count reaches prose as a bare numeral.** Every number `packages/core/src/ask/` interpolates into an
+> `Answer.text` goes through one renderer, and a population of one is rendered as a word or as a definite
+> description, never as `1`.
+
+Two module-private functions in `ask/`, used by **every** arm of **every** answer:
+
+```ts
+countWord(n: number): string              // 'one' for 1, String(n) otherwise
+countNoun(n: number, singular: string, preposition: string, scope: string): string
+                                          // 1 → `the only ${singular} ${preposition} ${scope}`
+                                          // n → `the ${n} ${singular}s ${preposition} ${scope}`
+```
+
+`theDays` and `everyOne` already spell the right answer at two sites; they become the output of `countNoun`
+rather than two local ternaries, and `scope` — which is where *"across 1 day"* and *"Of the 1 day"* leak —
+stops existing as a separate string that other sentences can reach for. Verb agreement with a numeric subject
+follows the same value: *"1 of the 2 stops … state"* becomes *"one of the 2 stops … states"*.
+
+**The criterion is mechanical and it is not a fixture.** Over a generated population of documents exercising
+all three arms of `answerFreeTime` and every other `Question` kind, at populations of 0, 1, 2 and many, and
+whose city names carry no digits: **no `Answer.text` contains the standalone token `1`.** Dates and clock
+times cannot match it (`2026-08-10`, `18:00–23:59` have no bare `1`), a real count of eleven cannot match it,
+and a count of one always does. **N, injected: restore `${n}` at any one interpolation site** → the sweep
+reddens naming the answer and the sentence. If the sweep reddens outside `free_time`, that is the criterion
+doing its job and those sites are fixed in the same increment — **which is the whole point of a criterion over
+the boundary rather than over a list of six addresses.** This becomes **ROADMAP criterion rule 12**.
+
+**Part 9 — R73-4: `runEndsAt` is REMOVED, and A-97 Part 4's *"structured half keeps the number"* paragraph is
+withdrawn.** The field has produced three findings in two rounds — malformed clocks at negative
+`durationMins` (R72-5), `"16666684:40"` at `1e9` (R73-4), `"24:00"` at the exact midnight lander (R73-2's
+second half) — and in the same two rounds it has acquired **zero** production readers. `cli.ts` prints the
+first four non-empty params of a fact and `runEndsAt` is the seventh, so neither its correct value nor any of
+its three wrong ones has ever been shown to anybody. Criterion rule 10 permits an unread field **declared**
+unread with a trigger; A-97 Part 4 declared no such thing — it named a hypothetical *"surface that wants the
+instant"*, which is the speculative consumer the rule exists to refuse.
+
+> **A field whose only reader is imagined does not ship, and a derived string in `params` is a second copy of
+> a computation that already has one home.** `runEndsAt` is deleted from the `day_state` fact's `params`.
+
+Nothing user-visible changes: the fact keeps `date`, `part`, `state`, `occupying`, `startsInWindow`,
+`runsIntoWindow`, `lastStartBeforeWindow`, `stopsWithoutOccupancy`, `stopsWithoutTime`, `stopsOnDay`, and it
+keeps its `cites` — every occupying stop of the day is cited, and a consumer that wants an instant resolves
+the cite and calls `occupiedInterval`, which is the one definition A-96 Part 2 built. **This closes R72-5 and
+R73-4 outright and removes half of R73-2.** `AnswerFact` does not change shape; `§2.10` stays at **91**.
+
+**The trigger for reinstating it**, stated so it is a design question and not a memory: **the first surface
+that renders an end instant**. That surface needs the instant, `crossesDay`, and the identity of the stop the
+run belongs to — three values, not one string — and it gets a designed shape with a named reader and a domain
+guard, in the ruling that adds the surface.
+
+**Part 10 — the convergence judgement, because it was asked for and because it is the most useful thing in
+this ruling.** Four consecutive rounds on `ask`, every one finding something real. My reading of the four:
+
+**The mechanisms have converged, and they converged by deletion.** The scope gate went from a marker list
+(three failed passes) to whole-sentence equality against sentences we wrote, and R72-1 is **closed
+structurally**: the class *"Cairn states a falsehood about the user's life"* is now unreachable, because an
+answer requires membership in a finite adjudicated set. The occupancy derivation went from two opinions to
+one function, and its last three findings (R72-3, R72-4, R73-2) were each **one value wide**. That is what
+convergence looks like, and this ruling continues it: Part 5 deletes 18 hand-written fragments in favour of a
+generator, Part 9 deletes a field, Part 3 deletes four fragments.
+
+**The prose has not converged, and it is where all the remaining risk is.** Counted over rounds 71–73's own
+tables (history, not a criterion): **seventeen** findings are defects in **sentences and lists we wrote** —
+R71-6 (five), R72-6 (two), R72-7 (one), R73-3 (four), R73-5 (four), R73-7 (one) — against four in the
+mechanisms. Three of those classes recurred **after being fixed**. Every one was
+found by a human reading output, and until this ruling every fix was a hand edit to a template literal with
+no mechanism behind it. Part 8 installs the first such mechanism and it covers exactly one class.
+
+So: **I recommend narrowing, and I am pre-committing the narrowing rather than arguing about it now.**
+
+> **If QA round 74 or 75 finds a prose defect in an `Answer.text` that no criterion covers, `free_time`'s
+> composed paragraph is WITHDRAWN.** It is replaced by a one-sentence verdict (*"No. Something occupies the
+> evening on every one of the 16 days on this trip."*) plus the `facts` array the answer already carries and
+> every surface already receives. The censuses, the per-day clauses and the *"the other one is busy then"*
+> remainder stop being English and become data.
+
+The reasoning for choosing that as the thing to cut: `free_time` is the only answer that composes a paragraph
+from counts, dates, clock times, mode words and two censuses across three arms, and **eleven of the
+seventeen are in it**. The `facts`/`cites` half of `Answer` has produced **zero** defects of this class in
+four rounds, because it is data rather than English. We are not bad at answering the question; we are bad at
+writing the paragraph, and the paragraph is the optional half.
+
+**Two things follow immediately and are not deferred.** **(a)** `ask` grows **no sixth `Question` kind** until
+this ruling's criteria are green — `I-36` stays blocked, on its own stated reasoning (*its headline criterion
+is that the boundary did not move*) plus this one. **(b)** Phase 3 is **not** gated on the rest of it: Jacob's
+direction was that the `country_count` scope arc close before Phase 3 code begins, and A-98 Parts 1–7 did
+that. **Nothing in A-99 is a gate on Phase 3, and nothing in it gates `I-30`.**
+
+**Part 11 — routing and batching, for the builder round that follows.** Round 73's seven findings resolve into
+**two files and two batches**, and they share no state:
+
+| batch | file | findings | order |
+|---|---|---|---|
+| **A** | `packages/core/src/ask/match.ts` | **R73-5** (Part 3, withdraw four fragments), **R73-6** (Part 5, the closure rule), **R73-7** (builder: `scope_unclear`'s text is false where `cityHits.length > 0`), plus Part 4's ordering change | Part 4's ordering first, then Parts 3 and 5 as one edit to the factor lists, then R73-7 |
+| **B** | `packages/core/src/ask/ask.ts` | **R73-1** (Part 1), **R73-4** (Part 9, delete the field), **R73-2** (builder: `clockOf(1440)` renders `"24:00"`), **R73-3** (Part 8, the pluraliser) | R73-1 and R73-4 first (both touch the `day_state` fact and the `busyRuns` push), then R73-2's clause, then R73-3's sweep over the final text |
+
+**R73-2's prose half is the builder's and is unchanged by this ruling**: `endMin === 1440` is correctly
+`crossesDay: false` and the clause needs an ending for a run that ends exactly at midnight — *"until
+midnight"* is the phrase, and it is not *"still on it at midnight"*, which is the other arm's and is false of
+a landed flight. Part 9 removes the same value from `params`, so R73-2 has one arm after this, not two.
+
+**Neither batch touches `derive/occupancy.ts`.** A-97 Part 3 and A-98 Part 3's occupancy work is **done** —
+round 73 verified both boundaries and the 48 verdicts are unmoved — and every remaining finding is in the two
+files above. That is worth stating plainly after four rounds: **the derivation layer is closed; the
+presentation layer is not.**
+
+---
 
 ## 12. The server boundary — what may exist server-side, and what a share page is
 
