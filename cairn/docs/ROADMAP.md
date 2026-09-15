@@ -2132,6 +2132,60 @@ plainly what does and does not gate it. **Sequencing rule 14** is new.
 - **No code file, no `.tsx`, no `apps/web`, no `qa/`, no `docs/design/`, no golden byte and no version
   constant moves.**
 
+**Revision 81, 2026-09-15.** **QA round 72's architect half, and it is ONE ruling that DELETES a list** —
+`ARCHITECTURE.md` revision 81's new **§11.13 A-98**, with **`I-44`** queued as its whole code consequence.
+Round 72's verdict was **SHIP, 0 blockers, 1 MAJOR, 7 MINOR**; the MAJOR (**R72-1**) is not a regression and
+is the residue A-97 Part 6 rider 4 defined as the trigger for the next ruling, so this revision is the
+ruling it named. **This is the third round on one boundary and it is the first that does not lengthen the
+list.** Round 70 added five entries, round 71 found eight more escaping, A-97 flipped to default-deny and
+round 72 measured the flip half-inert — **ten lifetime phrasings still answered about this trip**, through
+markers (`am i`, `do i`, `will we`, …) that carry **person and tense**, not scope. **`I-36` stays blocked
+behind `I-44`. No `.tsx`, no `apps/web` file and no `docs/design/` file, and nothing here gates `I-30`**,
+which is still fenced by the unresolved visual direction and by nothing else.
+
+- **The routed question was answered directly, and the answer is *no*.** *Can "this trip" versus "my whole
+  life" be a lexical property of a sentence, under the zero-dependency, no-LLM constraint?* **It cannot** —
+  and the measurement that settles it is not *"the list is short"*. It is that **every containment test over
+  the user's sentence is defeated by a preposition**: measured at `5fa74e1`, *"how many countries am I up to
+  **including this trip**"*, *"which countries am I yet to visit **before this trip**"* and *"**apart from
+  this trip** how many countries am I up to"* each carry a noun phrase that unambiguously denotes the
+  document in hand, each is a question about a life, and each is **answered** *"This trip accounts for 7
+  countries"*. Containment is not reference, and a bag-of-phrases test has no notion of scope to see the
+  preposition with. The verb-conjunction repair QA floated dies the same way: *"am I **visit**ing"* is this
+  trip and *"am I yet to **visit**"* is a life list, same two features.
+- **The ruling: a scope gate asks whether the sentence is one Cairn wrote.** `country_count` matches by
+  **whole-sentence token equality** against **816** sentences generated from **43 adjudicated fragments**
+  (6 stems × {16 bare frames + 15 frames × 8 document noun phrases}). **`TRIP_SCOPE_MARKERS` is deleted.**
+  `LIFETIME_TRIGGERS` and `COUNTRY_TRIGGERS` become diagnostic only — and A-97 Part 6 rider 2's *"a
+  diagnosis, not the safety mechanism"* stops being an assertion and becomes a **checked property**: no
+  accepted sentence trips either list (measured 0 of 816), so the order they are asked in cannot change an
+  outcome. **Over-refusal becomes the only failure the mechanism can produce**, by construction rather than
+  by argument; the residual MAJOR shrinks from *"English is bigger than our list"* to *"one of our own 816
+  sentences is ambiguous"*, which is found by reading 43 fragments.
+- **Measured cost, published rather than estimated** (§0 position 12 (b)). Over the 18 trip-scoped phrasings
+  round 72 and A-98 collected: **15 answer, 3 refuse.** The three are *"how many countries"* — which §11.3
+  rule 3 already **requires** to refuse — and two sentences with a word in front of them (*"so how many
+  countries am I visiting"*). A leading-particle stripper would recover both and is **refused by name**: it
+  is a list over English whose failure direction includes an **answer**, which is the one thing this ruling
+  removes.
+- **Two MINORs ride with it, both ruled rather than routed blind.** **R72-2** — the gate `return`ed from
+  inside the candidate loop and discarded readings other intents had already produced, so *"which countries
+  have a free evening"* refused with a sentence that is false of it; **the gate is a candidate filter and
+  the sentence-level refusal fires only where `unrecognised` would have.** **R72-8** — `OccupancySource`
+  names **which field stated the run length**, not the stop's role, so a journey stating both `durationMins`
+  and `arrival` lost its mode word; the mode is gated on the stop's own journey role. That is A-97 Part 2's
+  own sibling rule (*a renderer branches on the discriminant the classifier branched on*) failing **inside
+  A-97's own fix, one item later**.
+- **Criterion rule 11** is new — *text the product tells a user to type is asserted to round-trip* — and its
+  founding case is this ruling's own: after A-98 the `scope_unclear` pointer can quote a phrasing the gate
+  refuses, and a refusal that teaches an unusable rewrite is worse than one that teaches nothing.
+  **Phase 3 entry condition 2 is amended in place**: `R72-1` gates Phase 3 **by Jacob's direction, not by
+  dependency**, and both halves stay visible.
+- **§2.10 stays at 91**, `SCHEMA_VERSION` (5) and `SUMMARY_VERSION` (8) do not move, `MatchOutcome` does not
+  change at all, `core-conflicts.json` stays byte-identical and the 48 verdicts do not move. **No code file,
+  no `.tsx`, no `apps/web`, no `qa/`, no `docs/design/`, no golden byte and no new dependency in this
+  revision.**
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -2159,8 +2213,9 @@ trips has a travel history.
 
 ## How a criterion is written
 
-Ten rules. They apply to every phase in this document, and a criterion that breaks one is a defect
-routed to me, not to whoever failed to meet it. **Rule 10 is revision 79's and it is the newest**; rule 9 is
+Eleven rules. They apply to every phase in this document, and a criterion that breaks one is a defect
+routed to me, not to whoever failed to meet it. **Rule 11 is revision 81's and it is the newest**; rule 10 is
+revision 79's; rule 9 is
 revision 76's; rule 8 is revision 70's; rule 7 is revision 69's; rule 6 is revision 53's; the other five are
 unchanged.
 
@@ -2274,6 +2329,20 @@ rule 10 says a field nothing reads is **declared** — and the declaration is ch
 reader until §7's timezone work; until then `endMin` is clamped and no caller may render it"* would have
 made R71-1 a design question instead of a false statement in the flagship answer. **An undeclared unread
 field is a design defect routed to me.**
+
+**11. Text the product tells a user to type is asserted to round-trip** (revision 81, §0 position 13 (f),
+ARCHITECTURE §11.13 **A-98** Part 9 criterion 3, QA **R72-1**/**R72-7**). A menu line, a refusal's *"ask it
+as…"*, an error message quoting a command — each is a **promise that the string works**, and each is a
+string one side of the product composes and the other side parses, which is the drift shape rule 10 is
+about with a user standing in the gap. The standing menu round-trip (*every line `askableQuestions` prints
+parses back to the question it was rendered from*) was already this rule for half of the surface; **A-98
+makes the other half load-bearing**, because after it the `scope_unclear` pointer can quote a phrasing the
+gate refuses, and a refusal that teaches an unusable rewrite is worse than one that teaches nothing. **The
+criterion is over the SET of such strings, discovered rather than listed** — every `askableQuestions` line
+through the surface's own renderer, and every quoted phrasing inside an `out_of_scope` pointer — so a new
+pointer is covered on the day it is written and not on the day someone remembers it. This is rule 3's shape
+(*the fault it exists to catch*) applied to text rather than to data: **N is to change one quoted phrasing
+to something the parser refuses**, and the criterion names which string reddened.
 
 ---
 
@@ -10752,6 +10821,120 @@ direction and by nothing else.
   over `I-38` as one subject, re-cutting `qa/r71-i37.mjs` against the corrected renderer; that re-cut is the
   breaker's, not the builder's.
 
+#### I-44 — the scope gate stops testing English: `country_count` matches sentences Cairn wrote (revision 81, `ARCHITECTURE.md` revision 81's §11.13 **A-98**; QA round 72's consequence, and the increment that closes the `country_count` scope arc)
+
+**Read `ARCHITECTURE.md` §11.13 A-98 whole FIRST, then §11.12 A-97 Parts 2, 5 and 6, then §11.3. Nothing
+else in `ARCHITECTURE.md`** — not §2, not §4, not §8, not §10, not §12, and not A-96. **No `DESIGN.md`**:
+this increment renders nothing.
+
+**Why it exists.** This is the **third** round on one boundary. Round 70 found five phrasings answered at
+the wrong scope and they were fixed by adding five entries; round 71 found eight more; A-97 flipped
+`country_count` to default-deny and round 72 measured the flip **half-inert** — ten lifetime phrasings still
+answered *"This trip accounts for 7 countries"*, through the six of twelve markers that are **person and
+tense** markers rather than scope markers (**R72-1**, MAJOR, and it is A-97 Part 6 rider 4's own MAJOR
+class: *a phrasing that reaches an ANSWER means the gate itself is wrong*). A-98 refuses a fourth list and
+measures that the whole family is dead: **containment is not reference**, and *"how many countries am I up
+to **including this trip**"* is answered today by a gate that would pass any marker-quality review. The
+replacement is **whole-sentence equality against sentences Cairn itself authored**.
+
+**What it is NOT.** **No `.tsx`, no `apps/web` file of any kind, no `packages/client/src`, no
+`docs/design/`, no `qa/` rewrite** (the breaker owns `qa/r72-i38.mjs`). No new `Question` kind — that is
+`I-36`. No `MatchOutcome` change at all: A-97 already minted `scope_unclear`, and **§2.10 stays at 91.** No
+stored field, no migration, no golden regenerated, no corpus byte; `SCHEMA_VERSION` (5) and
+`SUMMARY_VERSION` (8) do not move, `fixtures/golden/core-conflicts.json` stays **byte-identical**, and
+A-96 Part 4's **48 verdicts** do not move. **It does not gate `I-30`**, which is fenced by the unresolved
+visual direction and by nothing else.
+
+- **Built, in three parts. Part 1 → part 2 are ORDERED; part 3 shares no file with them.**
+  1. **`ask/match.ts` — the gate's PLACEMENT, first** (A-98 Part 7, **R72-2**). The scope decision stops
+     `return`ing from inside the candidate loop. `country_count` becomes a candidate or does not; the
+     sentence-level `out_of_scope: 'scope_unclear'` fires **only at the end**, only where a
+     `COUNTRY_TRIGGERS` phrase is present, the sentence is not accepted, **and no other intent produced a
+     reading** — i.e. exactly where `unrecognised` would otherwise be returned. Doing this first means the
+     new gate is written once, in the right place.
+  2. **`ask/match.ts` — the gate itself** (A-98 Parts 2 and 3). `TRIP_SCOPE_MARKERS` is **deleted**. A
+     module-private `Set<string>` is generated at module load from the four factor lists A-98 Part 3
+     publishes (6 stems, 4 determiners × 2 nouns, 15 NP frames, 16 bare frames → **816** sentences), and
+     `country_count` is a candidate **iff** `tokenize(text).join(' ')` is a member. One spelling, no second
+     reading (criterion rule 8). `COUNTRY_TRIGGERS` stays and stops producing a candidate. **R72-7** rides
+     here: the `scope_unclear` pointer stops printing `§8.4` at a person, and what it quotes as the way
+     forward must round-trip (verification 3 below).
+  3. **`ask/ask.ts` — the mode word** (A-98 Part 8, **R72-8**). The `busyRuns` clause emits the mode where
+     **`stop.travelRole === 'journey' && stop.arrival !== null`**, whatever `interval.source` is. **Two
+     conjuncts, not one**: `arrival` on a non-journey stop is the leg *into* it and 60 of the reference
+     trip's 112 scheduled stops are that shape. **No new field on `OccupiedInterval`.**
+  4. **The remaining builder-routed findings of round 72, as one pass** — **R72-3** and **R72-4**
+     (`derive/occupancy.ts`: `crossesDay`'s off-by-one against the half-open convention, and the clamp's
+     `Math.min(endMin, DAY_END_MIN + 1)` with the fourth-daypart test re-cut to match), **R72-5**
+     (`runEndsAt`'s domain guard) and **R72-6** (`ask.ts:709`/`:710`'s two surviving numerals). **They batch
+     by file**: R72-6 and R72-5 share `ask/ask.ts` with part 3, R72-7 shares `ask/match.ts` with parts 1 and
+     2, and R72-3/R72-4 are one file nothing else in this increment opens.
+- **Verification.** Every criterion of `I-35`, `I-37` and `I-38` is re-run unchanged; these are additional.
+  Each states whether its fault fires today (criterion rule 9).
+  - `[stated]` **The thirteen lifetime phrasings refuse, and none is answered.** R72-1's ten, plus A-98 Part
+    1's three preposition cases (*"…am I up to **including this trip**"*, *"which countries am I yet to visit
+    **before this trip**"*, *"**apart from this trip** how many countries am I up to"*). Each returns
+    `out_of_scope` — by `'lifetime'` where a totality marker or past frame is present, by `'scope_unclear'`
+    where neither is — and **none returns `matched`**. A ceiling, not a floor (rule 4). **RED at `5fa74e1`**:
+    all thirteen reach an answer there, eleven of them `matched: country_count`, and *"how many countries am
+    I up to"* is reachable through `node cli.ts ask` with no `--file` on the unmodified fixture. **N1,
+    injected: relax the gate from equality to containment on the accept set's stems** → the three preposition
+    cases are answered again and the assertion reddens naming them.
+  - `[stated]` **The accept set cannot be rescued by the lifetime list.** **No member of the accept set trips
+    `LIFETIME_TRIGGERS` or `lifetimeFrame`** — asserted over all 816, so the order the two refusals are asked
+    in cannot change any outcome, and A-97 Part 6 rider 2's *"a diagnosis, not the safety mechanism"* becomes
+    a checked property rather than a claim. **UNFIREABLE at birth and declared so** (criterion rule 9 (b)):
+    the set is built to satisfy it, measured 0 of 816 before ruling. **It reddens the day a fragment carrying
+    a past-travel frame is admitted**, which is exactly when A-98 Part 6 rider 1's builder-only route would
+    otherwise be dangerous, and the property is held meanwhile by A-98 Part 3's admission test applied to 43
+    fragments by a human.
+  - `[stated]` **Everything Cairn tells a user to type, parses.** Every line `cli.ts`'s `questionLine` prints
+    for `askableQuestions(trip)` round-trips to the question it was rendered from (the standing assertion,
+    unchanged) **and every phrasing quoted inside an `out_of_scope` pointer parses to a `matched` outcome**
+    (criterion rule 11, new). **GREEN at `5fa74e1` and declared**: today's pointer quotes the menu line
+    verbatim, so it cannot redden; it becomes fireable the moment the accept set and the pointer can drift,
+    which is the state this increment creates. **N2, injected: change the pointer's quoted phrasing to *"how
+    many countries have I been to"*** → it reddens naming the pointer, not the menu.
+  - `[stated]` **The gate is a candidate filter.** Three outcomes, as a table, with their `unread` lists:
+    `"which countries have a free evening"` → `matched: free_time` (`evening`, `cityKey: null`), `unread`
+    contains `which` and `countries`; `"how many countries have I booked"` → `matched: unbooked`, `unread`
+    contains `countries`; `"how many countries"` → `out_of_scope: 'scope_unclear'`. **RED at `5fa74e1`**: the
+    first two are `scope_unclear` there, which is R72-2. **N3, injected: restore the `return` inside the
+    candidate loop** → both revert and the assertion reddens.
+  - `[stated]` **Recall is measured, not asserted.** Over the 18 trip-scoped phrasings QA round 72 and A-98
+    collected between them, **15 answer and 3 refuse**, and the three are named in the test: *"how many
+    countries"* (which §11.3 rule 3 requires to refuse) and the two prefixed sentences of A-98 Part 4. **A
+    floor on the 15 and a NAMED list for the 3** — a fourth refusal is a finding, not a pass.
+  - `[stated]` **The mode word.** On a planted document whose journey stop states **both** `durationMins` and
+    `arrival`, the busy-day clause reads *"you are on a flight from 16:30 until 18:30"*. **UNFIREABLE against
+    the reference trip and declared**: all **21** of its journey stops carry `durationMins: null`, so
+    `source` is `'journey_run'` for every one and the change is inert there. Instruments: the planted
+    document `qa/r72-i38.mjs` §G already builds, and a hand-built `Trip` in `ask.test.ts`. **N4, injected:
+    restore `source === 'journey_run'`** → the clause reverts to *"something that starts at 16:30"*. **N5,
+    injected: drop the `travelRole` conjunct** → a `transfer` stop with an `arrival` renders *"you are on a
+    …"* and the assertion reddens **on the reference trip**, where 60 stops are that shape.
+  - `[stated]` **The deleted list stays deleted.** `TRIP_SCOPE_MARKERS` does not appear anywhere under
+    `packages/` — a greppable ceiling over the implementation, not a word-absence claim about a file
+    (criterion rule 7): the name is the ruling's own and only a ruling brings it back.
+  - `[stated]` **The ceiling held.** `Object.keys(core).length` is **91**; `packages/core/src/ask/` still
+    owns exactly two computations of its own (§11.4); no `Date.now`, no `Math.random`, no `fetch`; 36 menu
+    answers byte-identical across two calls; `fixtures/golden/core-conflicts.json` byte-identical; the 48
+    verdicts still 46 busy / 0 open / 2 unknown.
+- **Stop-and-report conditions.** Three, and each means the ruling is wrong rather than the build. **(a)** If
+  any of A-96 Part 4's 48 verdicts moves, stop — this increment renders and recognises; it does not classify.
+  **(b)** If a *realistic* trip-scoped phrasing cannot be admitted without a fragment that fails A-98 Part
+  3's admission test, stop and report it — that is the ruling's own boundary being met, and widening the set
+  by a sentence instead of a fragment is the move A-98 forbids. **(c)** If any `Answer` type, `AnswerCite`,
+  `AnswerCaveatCode` member, `MatchOutcome` member or `resolveCite` signature has to change to land this,
+  stop — §11's boundary moved, and that is a ruling (sequencing rule 13 (d)).
+- **Dependencies / blockers.** `I-38` is built. **Part 1 → part 2**; part 3 is independent. **`I-36` stays
+  blocked behind this**, on the same reasoning that blocked it behind `I-38`: its headline criterion is that
+  the boundary did not move, and the boundary moved here. **Nothing here gates `I-30`.** **Jacob has directed
+  that this close before Phase 3 code begins** — see Phase 3 entry condition 2, which records that the
+  direction is a direction and not a dependency.
+- **Route: builder, and then one confirmation round over `I-44` as one subject.** The re-cut of
+  `qa/r72-i38.mjs` §F and §G is the **breaker's**, not the builder's.
+
 ### Exit criteria — the Phase 2 ship gate
 
 Tagged per **How a criterion is written**. The first two are ceilings on Phase 1 and are the ones that fail
@@ -11199,10 +11382,13 @@ one increment earlier.
    repository.** It therefore **gates Phase 3's code** through rule 2, and it **does not gate revision 80's
    design ruling**, which is what ROADMAP's own entry condition has always required to happen *before* the
    first line of Phase 3 code. Stated rather than left ambiguous.
-2. **`R72-1` does not gate Phase 3**, in design or in code. It is `country_count`'s scope gate in §11 — six
-   of twelve `TRIP_SCOPE_MARKERS` are person/tense markers, so a lifetime question carrying one is still
-   answered about this trip — and it shares **no file** with anything below. Whether it gates Phase 2's SHIP
-   verdict is the manager's call, not the architect's. *(Its shape is worth one sentence to anyone building
+2. **`R72-1` gates Phase 3 by DIRECTION, not by dependency, and the distinction is kept visible.**
+   **⚠ Amended at revision 81.** Technically it shares **no file** with anything below and nothing in Phase 3
+   reads `ask/`; that has not changed, and this entry said so. **What changed is that Jacob directed it close
+   before Phase 3 code begins**, which it does: §11.13 **A-98** is the ruling and **`I-44`** is the code. So
+   the honest statement is *a direction binds it, not a dependency* — if the two are ever traded off, the
+   trade is Jacob's to make on that basis and not on a false claim that Phase 3 needs it. Whether it gates
+   Phase 2's SHIP verdict is still the manager's call, not the architect's. *(Its shape is worth one sentence to anyone building
    `I-42`: it is a capability answering at the wrong **scope**, and a share page answering for the wrong
    **principal** is the same failure one axis over. That is an analogy, not a dependency.)*
 3. **`A-2` / QA `P2-8` — ruled by the architect before `I-42`, and it is NOT ruled by revision 80.** §12.10
