@@ -528,6 +528,36 @@ function answerCountryCount(question: Question, ctx: AskCtx): Answer {
 // ------------------------------------------------------------------------------------ free_time
 
 /**
+ * **The mode word a busy day's run clause may use — §11.13 A-98 Part 8 (QA R72-8).**
+ *
+ * > **`OccupancySource` says which field of the document stated the run length. It is not a
+ * > statement about the stop's role, and no renderer may read it as one.**
+ *
+ * A-97 Part 5 item 2 gated this on `interval.source === 'journey_run'`, whose stated reason —
+ * *"for `source === 'stated_duration'` there is no mode"* — is false for a journey stop that
+ * states **both** `durationMins` and `arrival`: `stopOccupancy` takes its first branch, `source`
+ * says `'stated_duration'`, and `stop.arrival.mode` is sitting right there. **That is A-97 Part
+ * 2's own sibling rule failing inside A-97's own fix, one item later** — *a renderer branches on
+ * the same discriminant the classifier branched on, never on a field that merely correlates with
+ * it.* The renderer's question is not *"which field stated the run length"*; it is *"is this
+ * interval a journey the stop itself makes"*, which is `stopOccupancy`'s own journey test with
+ * the `durationMins` precedence removed.
+ *
+ * **Two conjuncts, and the second one is the trap.** §2.5 and A-96 Part 2 make `arrival` on a
+ * NON-journey stop the leg *into* the stop — a journey that already finished — and **60 of the
+ * reference trip's 112 scheduled stops are that shape**. `stop.arrival !== null` alone would
+ * render *"you are on a bus from 16:30 until 18:30"* about a bus that arrived hours ago.
+ *
+ * `''` where no mode word may be used, which is what the clause builder tests. **No new field on
+ * `OccupiedInterval`** (A-97 Part 3 decision 3: two fields for one quantity is how the next
+ * caller picks the wrong one silently). Pure.
+ *
+ * @throws nothing.
+ */
+export function journeyModeWord(stop: Stop): string {
+  return stop.travelRole === 'journey' && stop.arrival !== null ? stop.arrival.mode : '';
+}
+/**
  * §11.7 rule 3 — **nothing is defaulted into existence, and nothing the document DOES state is
  * ignored** (§11.11 A-96 Part 3). This is the worked example.
  *
@@ -578,6 +608,7 @@ function answerFreeTime(question: Extract<Question, { kind: 'free_time' }>, ctx:
     };
   }
 
+
   const facts: AnswerFact[] = [fact('days_in_scope', days.length, { city: where, part: question.part, window: `${window.from}-${window.to}`, days: days.length }, scopeCites)];
   const busyStarts: Array<{ date: IsoDate; time: string }> = [];
   const busyRuns: Array<{ date: IsoDate; mode: string; from: string; to: string; crossesDay: boolean }> = [];
@@ -623,7 +654,15 @@ function answerFreeTime(question: Extract<Question, { kind: 'free_time' }>, ctx:
       // uncapped wall clock of the day's own evidence run (`'27:45'` on 2026-08-07), `''` where
       // the day has no run. A clock string is not a coordinate and §11.8 clause 1 is untouched;
       // a surface that wants the instant has it under its own §6.6 obligations.
-      runEndsAt: evidence !== null && evidence.interval.source !== null ? clockOf(evidence.interval.endMin) : '',
+      // **QA R72-5 — the guard.** `clockOf` of a number is not a wall clock: `fromJSON` accepts
+      // a negative `durationMins` and no build door refuses one, so an interval can end before
+      // it starts and this field carried `"-2:00"` (and, at -2000, `"-16:-20"`). A-97 Part 4
+      // kept this field so a surface could have the instant the prose refuses to state; an
+      // instant that runs backwards is not that instant, and `''` is what this field already
+      // means by *"this day has no run"*.
+      runEndsAt: evidence !== null && evidence.interval.source !== null
+        && evidence.interval.endMin >= evidence.interval.startMin
+        ? clockOf(evidence.interval.endMin) : '',
       stopsWithoutOccupancy: v.withoutOccupancy.length,
       stopsWithoutTime: v.withoutTime.length,
       stopsOnDay: v.stopCount,
@@ -638,10 +677,10 @@ function answerFreeTime(question: Extract<Question, { kind: 'free_time' }>, ctx:
       } else {
         busyRuns.push({
           date: day.date,
-          // Gated on the INTERVAL's source, not on the field it came from: `source ===
-          // 'journey_run'` IS `stopOccupancy`'s definition of a journey stating its run, so the
-          // enum label is available. `stated_duration` has no mode word and gets none.
-          mode: evidence.interval.source === 'journey_run' && evidence.stop.arrival !== null ? evidence.stop.arrival.mode : '',
+          // **A-98 Part 8 (QA R72-8): gated on the STOP's role, not on which field stated the
+          // run length.** `source` merely correlates with *"is this a journey the stop itself
+          // makes"*, and the correlation ended for a journey that states both fields.
+          mode: journeyModeWord(evidence.stop),
           from: clockOf(evidence.interval.startMin),
           to: clockOf(evidence.interval.endMin),
           crossesDay: evidence.interval.crossesDay,
@@ -663,7 +702,10 @@ function answerFreeTime(question: Extract<Question, { kind: 'free_time' }>, ctx:
   const preposition = question.cityKey === null ? 'on' : 'in';
   const scope = `${n} day${n === 1 ? '' : 's'} ${preposition} ${said}`;
   // QA R71-6 (d): *"on every one of the 1 day in Split"*. One day is not a population.
-  const everyOne = n === 1 ? `the only day ${preposition} ${said}` : `every one of the ${scope}`;
+  // **QA R72-6**: the same numeral survived in the `Yes.` arm's *"Of the 1 day in Split"*, which
+  // reads off this same `n`, so the phrase itself is named once and used at both sites.
+  const theDays = n === 1 ? `the only day ${preposition} ${said}` : `the ${scope}`;
+  const everyOne = n === 1 ? theDays : `every one of the ${scope}`;
   // The census, with its denominator (§11.7 rule 6) — 20 of 28 across Split, 91 of 112 trip-wide,
   // and never "28 stops say nothing" when 8 of them do (QA R70-3).
   const census =
@@ -706,8 +748,10 @@ function answerFreeTime(question: Extract<Question, { kind: 'free_time' }>, ctx:
     // QA R71-6 (e): `.trim()` bound to the second template literal rather than to the
     // concatenation, so an answer whose second half is empty ended in a trailing space.
     text = (
-      `Yes. Of the ${scope}, ${open} ${open === 1 ? 'is' : 'are'} clear in the ${windowText}: ${list(because)}. ` +
-      `${busy > 0 ? `The other ${busy} ${busy === 1 ? 'is' : 'are'} busy then.` : ''}`
+      `Yes. Of ${theDays}, ${open} ${open === 1 ? 'is' : 'are'} clear in the ${windowText}: ${list(because)}. ` +
+      // QA R72-6: *"The other 1 is busy then."* — a remainder of one is not a count either, and
+      // `busyStarts`' own *"one has something starting at…"* already spells it this way.
+      `${busy > 0 ? `The other ${busy === 1 ? 'one is' : `${busy} are`} busy then.` : ''}`
     ).trim();
   } else {
     coverage = 'complete';

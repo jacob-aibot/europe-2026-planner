@@ -21,9 +21,10 @@ import * as core from '../src/index.ts';
 import { resolveCite } from '../src/ask/resolveCite.ts';
 import { classifyDay, DAYPART_WINDOWS } from '../src/ask/freeTime.ts';
 import { clockOf, occupiedInterval } from '../src/derive/occupancy.ts';
+import { journeyModeWord } from '../src/ask/ask.ts';
 import { lifetimeScoped, restate } from '../src/ask/match.ts';
 import type { Answer, AnswerCite, Question } from '../src/ask/types.ts';
-import type { Trip } from '../src/index.ts';
+import type { Stop, Trip } from '../src/index.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ASK_DIR = resolve(HERE, '..', 'src', 'ask');
@@ -1610,4 +1611,165 @@ test('A-98 Part 2: `TRIP_SCOPE_MARKERS` does not exist anywhere under packages/'
   assert.ok(files.length > 20, `the walk found only ${files.length} files — it is not looking where it thinks`);
   const offenders = files.filter((f) => readFileSync(f, 'utf8').includes('TRIP_SCOPE_MARKERS'));
   assert.deepEqual(offenders, [], 'the deleted list is back');
+});
+
+// ---------------------------------------------------------------------------------------------
+// 10. §11.13 **A-98 Part 8** and the round-72 builder findings that share `ask/ask.ts` with it.
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * **A-98 Part 8 (QA R72-8) — `OccupancySource` names a FIELD, not a role.**
+ *
+ * A journey stop that states **both** `durationMins` and `arrival` takes `stopOccupancy`'s first
+ * branch, so `source` is `'stated_duration'`, so A-97 Part 5 item 2's gate withheld the mode word
+ * and the day rendered *"on 2026-08-13 something that starts at 16:30 runs until 18:30"* —
+ * dropping a `TravelMode` the document records and that A-97 itself calls admissible.
+ *
+ * **This is A-97 Part 2's own sibling rule failing inside A-97's own fix, one item later**: *a
+ * renderer branches on the same discriminant the classifier branched on, never on a field that
+ * merely correlates with it.* The renderer's question is not *"which field stated the run
+ * length"*; it is *"is this interval a journey the stop itself makes"*.
+ *
+ * **Two conjuncts, deliberately.** §2.5 makes `arrival` on a NON-journey stop the leg *into* the
+ * stop — a journey already finished — and **60 of the reference trip's 112 scheduled stops are
+ * that shape**. `stop.arrival !== null` alone would render *"you are on a bus"* about a bus that
+ * arrived hours ago.
+ *
+ * **UNFIREABLE against the reference trip and declared**: all 21 of its journey stops carry
+ * `durationMins: null`, so `source` is `'journey_run'` for every one and the clause is inert
+ * there. The instrument for the clause is the planted document below; the instrument for the
+ * second conjunct is the reference trip itself, where N5 reddens over 60 stops.
+ */
+test('A-98 Part 8: the mode word is the STOP\'s role, not the interval\'s source — N4/N5 (injected, SHOWN TO FIRE)', () => {
+  const { trip } = europe2026();
+  const thirteenth = trip.days.find((d) => d.id === '2026-08-13')!;
+  const base = thirteenth.stops[0];
+  // The shape A-97's gate cannot see: a journey that states its own duration AND its arrival.
+  const both = {
+    ...base,
+    travelRole: 'journey' as const,
+    arrival: { mode: 'flight' as const, mins: 300 },
+    durationMins: 120,
+    placement: { ...(base.placement as { kind: 'scheduled' }), time: '16:30' },
+  } as typeof base;
+  const doc: Trip = {
+    ...trip,
+    days: trip.days.map((d) => (d.id === '2026-08-13' ? { ...d, stops: [both] } : d)),
+  };
+  // `stopOccupancy`'s FIRST branch wins, so `source` is the one A-97 used to withhold the mode.
+  const v = classifyDay(doc.days.find((d) => d.id === '2026-08-13')!, 'evening');
+  assert.equal(v.runsInto.length, 1);
+  assert.equal(v.runsInto[0].interval.source, 'stated_duration');
+
+  const clause = (text: string) => {
+    assert.ok(
+      text.includes('on 2026-08-13 you are on a flight from 16:30 until 18:30'),
+      `the day drops a TravelMode the document records:\n${text}`,
+    );
+  };
+  const a = core.ask({ kind: 'free_time', part: 'evening', cityKey: 'split' }, ctxAt(doc, PLANNED));
+  clause(a.text);
+  assert.equal(a.text.includes(both.name), false, 'a stop name reached prose — A-96 Part 6 makes it inadmissible');
+
+  // N4: restore the gate to `source === 'journey_run'`. The clause reverts to the subject phrase
+  // that names neither the mode nor the stop.
+  const n4 = a.text.replace('you are on a flight from 16:30 until 18:30', 'something that starts at 16:30 runs until 18:30');
+  assert.notEqual(n4, a.text, 'the fault did not change the clause it is supposed to change');
+  assert.throws(() => clause(n4), /drops a TravelMode/);
+
+  // **The second conjunct, on the reference trip.** `arrival` on a non-journey stop is the leg
+  // INTO it, and the predicate must say so for all 60 of them.
+  const scheduled = trip.days.flatMap((d) => d.stops);
+  const journeys = scheduled.filter((s) => s.travelRole === 'journey' && s.arrival !== null);
+  const legsInto = scheduled.filter((s) => s.travelRole !== 'journey' && s.arrival !== null);
+  assert.equal(scheduled.length, 112);
+  assert.equal(journeys.length, 21, 'A-96 Part 2 measured 21 journey stops, every one carrying an arrival');
+  assert.equal(legsInto.length, 60, '§2.5 — 60 of the 112 scheduled stops carry an arrival that is a journey already finished');
+  const silent = (word: string, s: Stop) => {
+    assert.equal(word, '', `a leg INTO ${s.placement.kind === 'scheduled' ? s.placement.dayId : 'a pooled stop'} would render "you are on a ${word}" about a journey that already arrived`);
+  };
+  for (const s of legsInto) silent(journeyModeWord(s), s);
+  for (const s of journeys) assert.equal(journeyModeWord(s), s.arrival!.mode, 'a journey stop lost its mode word');
+
+  // N5: drop the `travelRole` conjunct and point the predicate at `stop.arrival` alone. It
+  // reddens ON THE REFERENCE TRIP, where 60 stops are the shape the conjunct exists for.
+  assert.throws(
+    () => { for (const s of legsInto) silent(s.arrival !== null ? s.arrival.mode : '', s); },
+    /would render "you are on a/,
+  );
+});
+
+/**
+ * **QA R72-5 — a clock string is not a wall clock just because `clockOf` produced it.**
+ *
+ * `runEndsAt` formatted `clockOf(endMin)` with no domain guard, so a document `fromJSON` accepts
+ * put `"-2:00"` — and, at `durationMins: -2000`, `"-16:-20"` — in `day_state.params`. A-97 Part 4
+ * kept that field so a surface could have the instant the prose refuses to state; an instant that
+ * runs backwards is not that, and **the failure mode of forgetting must be ugly, not false**: the
+ * empty string is what the field already means by *"this day has no run"*.
+ *
+ * The negative `durationMins` is not hypothetical: `fromJSON`'s `numOf` accepts it and no build
+ * door refuses it, which is the same premise R71-4 rests on.
+ */
+test('R72-5: `runEndsAt` states a wall clock or nothing — N (injected, SHOWN TO FIRE)', () => {
+  const { trip } = europe2026();
+  const base = trip.days.find((d) => d.id === '2026-08-13')!.stops[0];
+  const backwards = {
+    ...base,
+    durationMins: -1200,
+    placement: { ...(base.placement as { kind: 'scheduled' }), time: '18:00' },
+  } as typeof base;
+  const doc: Trip = {
+    ...trip,
+    days: trip.days.map((d) => (d.id === '2026-08-13' ? { ...d, stops: [backwards] } : d)),
+  };
+  const a = core.ask({ kind: 'free_time', part: 'evening', cityKey: 'split' }, ctxAt(doc, PLANNED));
+  const check = (value: string | number | null, date: string) => {
+    assert.ok(value === '' || /^\d+:[0-5]\d$/.test(String(value)), `${date}: runEndsAt is not a wall clock: ${JSON.stringify(value)}`);
+  };
+  for (const f of a.facts.filter((x) => x.label === 'day_state')) check(f.params.runEndsAt, String(f.params.date));
+  assert.equal(a.facts.find((f) => f.label === 'day_state' && f.params.date === '2026-08-13')!.params.runEndsAt, '');
+  // The good value is untouched — A-97 Part 4's whole point is that the uncapped instant survives
+  // in the structured half. 16:45 + 660 on the flagship day.
+  const flagship = core.ask({ kind: 'free_time', part: 'evening', cityKey: null }, ctxAt(trip, PLANNED));
+  const aug7 = flagship.facts.find((f) => f.label === 'day_state' && f.params.date === '2026-08-07')!;
+  assert.equal(aug7.params.runEndsAt, '27:45');
+  check(aug7.params.runEndsAt, '2026-08-07');
+  // N: drop the guard. `clockOf(-120)` is the value the field carried before this fix.
+  assert.throws(() => check('-2:00', '2026-08-13'), /not a wall clock/);
+  assert.throws(() => check('-16:-20', '2026-08-13'), /not a wall clock/);
+});
+
+/**
+ * **QA R72-6 — R71-6 (d) fixed one site and left the same numeral standing in its two siblings.**
+ *
+ * *"Of the **1 day** in Split, 1 is clear…"* and *"The other **1** is busy then."* read off the
+ * same `scope` and `busy` values the fixed site reads. One day is not a population and one busy
+ * day is not a count.
+ */
+test('R72-6: the `Yes.` arm does not count to one — N (injected, SHOWN TO FIRE)', () => {
+  const { trip } = europe2026();
+  const q: Question = { kind: 'free_time', part: 'evening', cityKey: 'split' };
+  const clearOf = (d: typeof trip.days[number]) => ({ ...d, stops: d.stops.map((s) => ({ ...s, durationMins: 30 })) });
+  const check = (text: string) => {
+    assert.equal(/\bthe 1 day\b/.test(text), false, `a population of one is counted: ${text}`);
+    assert.equal(/\bThe other 1\b/.test(text), false, `a remainder of one is counted: ${text}`);
+  };
+  // One day in scope, and it is clear.
+  const one: Trip = { ...trip, days: trip.days.filter((d) => d.id === '2026-08-14').map(clearOf) };
+  const yes = core.ask(q, ctxAt(one, PLANNED)).text;
+  check(yes);
+  assert.match(yes, /^Yes\. Of the only day in Split, /, yes);
+  // Two days, one clear and one busy: the remainder is "the other one".
+  const two: Trip = {
+    ...trip,
+    days: trip.days.filter((d) => d.id === '2026-08-14' || d.id === '2026-08-12').map((d) => (d.id === '2026-08-14' ? clearOf(d) : d)),
+  };
+  const both = core.ask(q, ctxAt(two, PLANNED)).text;
+  check(both);
+  assert.match(both, /Of the 2 days in Split, 1 is clear/, both);
+  assert.match(both, /The other one is busy then\.$/, both);
+  // N: the two numerals R71-6 (d) left standing.
+  assert.throws(() => check('Yes. Of the 1 day in Split, 1 is clear in the evening'), /a population of one/);
+  assert.throws(() => check('Yes. Of the 2 days in Split, 1 is clear. The other 1 is busy then.'), /a remainder of one/);
 });

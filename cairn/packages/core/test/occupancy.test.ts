@@ -154,6 +154,15 @@ test('occupiedInterval is null for a stop that is not on a day clock at all', ()
   assert.equal(occupiedInterval(untimed), null, 'a scheduled stop with no time was placed on a clock');
 });
 
+/**
+ * **Re-cut at I-44 (§11.13 A-98 Part 8).** The census read *any* `travelRole === 'journey'` beside
+ * the word `arrival`, which is wider than the property it names. A-98 Part 8 puts a second such
+ * conjunction in `ask/ask.ts` **deliberately** — *"the mode word is emitted where
+ * `stop.travelRole === 'journey' && stop.arrival !== null`, whatever `source` is"* — and that site
+ * reads `arrival.mode`, an enum label, not `arrival.mins`. A second reader of the **run length**
+ * is still a second definition of how long a journey stop runs and is still refused; a reader of
+ * the mode is not one, and the regex now says which it is looking for.
+ */
 test('one definition: `stopOccupancy` is the only reader of `arrival.mins` AS the stop\'s own run', () => {
   const walk = (dir: string): string[] =>
     readdirSync(dir).flatMap((n) => {
@@ -162,7 +171,7 @@ test('one definition: `stopOccupancy` is the only reader of `arrival.mins` AS th
     });
   const readers = walk(SRC).filter((f) => {
     const code = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    return /travelRole\s*===\s*'journey'[\s\S]{0,80}arrival/.test(code);
+    return /travelRole\s*===\s*'journey'[\s\S]{0,80}arrival[!?]?\.mins/.test(code);
   });
   assert.deepEqual(
     readers.map((f) => f.slice(SRC.length + 1)),
