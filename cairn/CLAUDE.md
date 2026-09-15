@@ -15,6 +15,31 @@ adding, moving or trusting one.
 
 ## Document cost map
 
+**Every row re-measured at revision 81 (2026-09-15)** — `ARCHITECTURE` 621k → **627k** with §11's new
+**§11.13 A-98** (§11 alone 18k → **24k**; **§0 stays ~5k** with position 13 clause (f); **§1–§10 and §12 do
+not move at all**) and `ROADMAP` 274k → **278k** with **I-44**, criterion **rule 11**, the amended Phase 3
+entry condition 2 and the revision-81 ledger entry (Phase 2 alone 192k → **194k**; *How a criterion is
+written* 2k → **3k**). **A-98 is ~5k and it is the ENTRY POINT to §11 — read it first, then A-97 Parts 2, 5
+and 6, then §11.3, each of which carries its amendment banner in place.** A builder or breaker of `I-44`
+reads **§11 whole and nothing else in `ARCHITECTURE.md`**; A-96 is history and A-97 Parts 1, 3, 4 and 7 are
+`I-38`'s. This revision is QA round 72's architect half, and it is **one ruling that DELETES a list**:
+`country_count`'s scope gate has now been rewritten three times by lengthening a phrase list, and round 72
+measured the third attempt half-inert — ten lifetime phrasings still answered *"This trip accounts for 7
+countries"* through markers that carry person and tense rather than scope (**R72-1**). A-98 answers the
+routed question directly and the answer is **no**: scope is not a lexical property of a sentence's parts,
+because **every containment test is defeated by a preposition** — *"how many countries am I up to
+**including this trip**"* carries a marker everyone agrees is a scope marker and is a question about a life.
+**A scope gate asks whether the sentence IS one of the questions Cairn can be asked**: whole-sentence
+equality against **816** sentences generated from **43 adjudicated fragments**, `TRIP_SCOPE_MARKERS`
+deleted, and both lists over English reduced to diagnosis — a fact now *checked* (0 of 816 trip the lifetime
+list) rather than asserted. Two MINORs ride with it: the gate is a **candidate filter**, not a return from
+inside the candidate loop (**R72-2**), and `OccupancySource` names **a field, not a role**, so a journey
+stating both `durationMins` and `arrival` keeps its mode word (**R72-8**). **No export, no version constant,
+no golden byte, no `.tsx`, no `apps/web`, no `qa/`, no corpus — §2.10 stays at 91, `MatchOutcome` does not
+change at all, the 48 verdicts do not move — and nothing here gates `I-30`.** `QA-FINDINGS` (**436k**) and
+`BUILD-NOTES` (**337k**) did not move with this revision; `CAIRN_VISUAL_ROADMAP` re-measures at **75k** (this
+revision opens no rendered surface) and `REVIEW` at **52k**.
+
 **Every row re-measured at revision 80 (2026-09-14)** — `ARCHITECTURE` 608k → **621k** with the new
 **§12** (~**11k**, the server boundary), **§0 3k → 5k** with **position 14** (the heading is now *Fourteen
 positions*) and amendment banners in place on **§5.2, §6.1, §6.2, §7, §8.7 and §8.8** (§5 stays ~2k, §6 ~4k,
