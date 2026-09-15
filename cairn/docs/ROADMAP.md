@@ -2132,6 +2132,34 @@ plainly what does and does not gate it. **Sequencing rule 14** is new.
 - **No code file, no `.tsx`, no `apps/web`, no `qa/`, no `docs/design/`, no golden byte and no version
   constant moves.**
 
+**Revision 82, 2026-09-15.** **QA round 73's architect half** — `ARCHITECTURE.md` revision 82's new **§11.14
+A-99**, with **`I-45`** queued as its whole code consequence, plus **criterion rule 12** above. Round 73's
+verdict was **SEND BACK, 0 blockers, 2 MAJOR, 5 MINOR**, and it **closed R72-1** structurally: thirteen of
+thirteen lifetime phrasings refuse and none is a member of the accept set, so A-98 Parts 1–7 — the ruling
+Jacob directed to close before Phase 3 code — are **done**. What sends it back is neighbouring code.
+
+- **Three deletions and one parameter.** The four **present-simple** bare fragments (`do i visit`, `do we
+  visit`, `do i go to`, `do we go to`) are **withdrawn** — present simple is habitual bare, so they fail
+  A-98 Part 3's own admission test and *"what countries do I visit"* was answered about this trip
+  (**R73-5**). A-98's six hand-written `… on <np>` frames are **deleted** in favour of a **generated twin
+  for every bare frame**, which takes the set to **1,272 sentences from 25 fragments** where A-98 had 816
+  from 43 — more recall from fewer human judgements, and *"how many countries am I seeing on this trip"*
+  stops refusing (**R73-6**). **`runEndsAt` is deleted** from the `day_state` fact: three wrong values and
+  zero readers in two rounds, which is criterion rule 10's own case (**R73-4**, and it closes **R72-5**).
+  And `journeyModeWord` **takes the interval it is labelling** as a parameter, because a predicate that
+  cannot see the value it must agree with cannot be audited for agreement (**R73-1**).
+- **The prose gets its first mechanism, and it is criterion rule 12.** The numeral-for-one defect was fixed
+  by enumeration in three consecutive rounds and returned each time, once **inside the sentence the previous
+  round fixed**. It is now held by a sweep over the **rendered text** of every answer (**R73-3**).
+- **The convergence judgement is A-99 Part 10 and it pre-commits a narrowing.** The mechanisms have
+  converged, by deletion; the prose has not — seventeen of round 71–73's findings are defects in sentences
+  and lists we wrote, against four in the mechanisms, and eleven of the seventeen are in `free_time`'s
+  composed paragraph. **If the confirmation round over `I-45` finds a prose defect no criterion covers, that
+  paragraph is withdrawn** in favour of a one-sentence verdict plus the `facts` array every surface already
+  receives. **`I-36` stays blocked. Nothing here gates `I-30` or Phase 3.**
+- **No code file, no `.tsx`, no `apps/web`, no `qa/`, no `docs/design/`, no golden byte and no version
+  constant moves in this revision.**
+
 **Revision 81, 2026-09-15.** **QA round 72's architect half, and it is ONE ruling that DELETES a list** —
 `ARCHITECTURE.md` revision 81's new **§11.13 A-98**, with **`I-44`** queued as its whole code consequence.
 Round 72's verdict was **SHIP, 0 blockers, 1 MAJOR, 7 MINOR**; the MAJOR (**R72-1**) is not a regression and
@@ -2213,8 +2241,9 @@ trips has a travel history.
 
 ## How a criterion is written
 
-Eleven rules. They apply to every phase in this document, and a criterion that breaks one is a defect
-routed to me, not to whoever failed to meet it. **Rule 11 is revision 81's and it is the newest**; rule 10 is
+Twelve rules. They apply to every phase in this document, and a criterion that breaks one is a defect
+routed to me, not to whoever failed to meet it. **Rule 12 is revision 82's and it is the newest**; rule 11 is
+revision 81's; rule 10 is
 revision 79's; rule 9 is
 revision 76's; rule 8 is revision 70's; rule 7 is revision 69's; rule 6 is revision 53's; the other five are
 unchanged.
@@ -2343,6 +2372,25 @@ through the surface's own renderer, and every quoted phrasing inside an `out_of_
 pointer is covered on the day it is written and not on the day someone remembers it. This is rule 3's shape
 (*the fault it exists to catch*) applied to text rather than to data: **N is to change one quoted phrasing
 to something the parser refuses**, and the criterion names which string reddened.
+
+**12. Prose the product composes about a user's data is held by a criterion over the RENDERED TEXT, never by
+a list of the sentences that were wrong** (revision 82, §0 position 13 (g), ARCHITECTURE §11.14 **A-99** Part
+8, QA **R71-6**/**R72-6**/**R73-3**). The numeral-for-a-population-of-one defect was found and fixed by
+enumeration in **three consecutive rounds** — one site of three, then two more, then four more, one of them
+**inside the sentence the previous round had just fixed**. Each fix was correct; each claim of completeness
+rested on a list that was already incomplete when it was written, which is position 10's own case with
+English in it. **The remedy is not a longer list.** A composed answer has exactly one boundary every path
+passes through — the string the user reads — and the criterion goes there: *over a generated population of
+documents exercising every arm of every answer, at populations of 0, 1, 2 and many, no rendered text contains
+the standalone token `1`.* Three properties make it a criterion rather than a fixture. **(a) It is
+discovered, not listed** — a sentence written next month is covered on the day it is written, including in
+arms nobody has enumerated. **(b) Its fault is cheap and exact** — restore one bare `${n}` at any
+interpolation site and it reddens naming the answer and the sentence (rule 3). **(c) It scopes its
+population** — the generated documents' own strings carry no digits, so the sweep measures our prose and not
+the user's data (rule 8). This is rule 11's sibling: rule 11 is about text the product tells a user to
+**type**, rule 12 about text the product **says**. **Generalise it before reaching for it**: the standalone
+`1` is one class, and the shape to copy is *find the one string every path produces and assert over it*, not
+*add a second regex*.
 
 ---
 
@@ -10934,6 +10982,152 @@ visual direction and by nothing else.
   direction is a direction and not a dependency.
 - **Route: builder, and then one confirmation round over `I-44` as one subject.** The re-cut of
   `qa/r72-i38.mjs` §F and §G is the **breaker's**, not the builder's.
+
+#### I-45 — the accept set closes by generation, a clause takes its facts from one field, and the prose gets its first mechanism (revision 82, `ARCHITECTURE.md` revision 82's §11.14 **A-99**; QA round 73's whole code consequence, and the LAST scheduled increment on `ask` before the narrowing in A-99 Part 10)
+
+**Read `ARCHITECTURE.md` §11.14 A-99 whole FIRST, then §11.13 A-98 whole, then §11.12 A-97 Parts 2 and 5,
+then §11.3, §11.5 and §11.7. Nothing else in `ARCHITECTURE.md`** — not §2, not §4, not §8, not §10, not §12.
+**No `DESIGN.md`**: this increment renders nothing. **Read A-99 Part 10 even if you are only fixing one
+finding** — it says what happens to this capability if the round after this one finds another prose defect.
+
+**Why it exists.** Round 73 confirmed A-98's scope gate closed R72-1 structurally — thirteen of thirteen
+lifetime phrasings refuse, none is a member of the accept set — and found **two MAJORs in the neighbouring
+code**: the mode word now comes from `arrival.mode` beside a clock from `durationMins` (**R73-1**, A-97 Part
+2's own sibling rule failing inside A-98's fix for it), and four of the sixteen bare fragments are **present
+simple**, which is habitual rather than occasion-scoped, so *"what countries do I visit"* is answered about
+this trip (**R73-5**). Plus the numeral-for-one defect at its **sixth** site in three rounds (**R73-3**), a
+field with three wrong values and no reader (**R73-4**), and three builder-routed MINORs.
+
+**What it is NOT.** **No `.tsx`, no `apps/web` file of any kind, no `packages/client/src`, no
+`docs/design/`, no `qa/` rewrite** (the breaker owns `qa/r73-i44.mjs` and `qa/r72-i38.mjs`). No new
+`Question` kind — `I-36` stays blocked, on its own reasoning and on A-99 Part 10 (a). **No change to
+`derive/occupancy.ts` at all**: A-97 Part 3 and A-98's occupancy work is done and round 73 verified both
+boundaries. No `MatchOutcome`, `Answer`, `AnswerFact`, `AnswerCite` or `AnswerCaveatCode` change; **§2.10
+stays at 91**; `SCHEMA_VERSION` (5) and `SUMMARY_VERSION` (8) do not move; `fixtures/golden/core-conflicts.json`
+stays **byte-identical**; A-96 Part 4's **48 verdicts** stay 46 busy / 0 open / 2 unknown. **Nothing here
+gates `I-30` or Phase 3.**
+
+- **Built in two batches. They share no file and no state; either may go first. Within a batch the order is
+  stated and it matters.**
+
+  **Batch A — `packages/core/src/ask/match.ts`.**
+  1. **The authority ordering, first** (A-99 Part 4). `const authored = ACCEPTED_COUNTRY_QUESTIONS.has(tokens.join(' '))`
+     is computed at the top of `matchQuestion`, and the `lifetimeTokens` and `RECOMMENDATION_TRIGGERS`
+     refusals are guarded by `!authored`. **A sentence Cairn wrote is never vetoed by a list over English.**
+     Nothing else about either refusal moves; a non-member behaves exactly as it does today. Doing this
+     first is what makes step 2's new fragments admissible.
+  2. **The factor lists** (A-99 Parts 3 and 5), as one edit. The four present-simple bare frames are
+     **deleted**; the comment justifying the list stops saying *"tense"* and states the admission test's new
+     clause 2 (*a bare frame is admitted only if its habitual reading requires an added adverbial*); A-98's
+     six hand-written `… on <np>` entries leave `NP_FRAMES`; a `NP_ONLY_FRAMES` list holds `do i visit on
+     <np>`, `do we visit on <np>`, `do i go to on <np>`, `do we go to on <np>` and `have i visited on <np>`;
+     and the generator emits `` `${B} on <np>` `` for every bare frame `B`. **`6 × (12 + 25 × 8)` = 1,272
+     sentences from 25 fragments.** The count is the ruling's arithmetic; assert the relationship, not a
+     transcribed total (criterion rule 6).
+  3. **R73-7** — `scope_unclear`'s text is false of a sentence naming a city of this trip. `cityHits` is
+     already in scope above the branch: where `cityHits.length > 0` the refusal is not a scope refusal at
+     all and the sentence falls through to `unrecognised` with the menu, which is the true statement.
+  4. **Recall becomes monotone** (A-99 Part 6). The corpus — round 72's 18 trip-scoped phrasings, round 73's
+     40, and A-98 Part 1's 13 lifetime cases, deduped — is committed as a literal in
+     `packages/core/test/`, with each entry marked `answer` or `refuse` **as measured at `08c4696`**. The
+     assertion is that **nothing that answered before refuses after**. No percentage is asserted anywhere;
+     the measured count goes in `BUILD-NOTES.md` as history against this commit.
+
+  **Batch B — `packages/core/src/ask/ask.ts`.**
+  1. **R73-1, the mode word** (A-99 Part 1). `journeyModeWord(stop, interval)` — the interval is a
+     **parameter**, which is the fix; the mode is emitted only where the interval was measured from
+     `arrival`. **The shipped test that proves A-98 Part 8 is re-cut**: its disagreeing document (`durationMins:
+     120` beside `arrival.mins: 300`) must now assert the mode-less clause, and a **second** document whose
+     fields agree carries the mode-word assertion. A test pinning a sentence its own document contradicts is
+     the defect written down twice.
+  2. **R73-4, the field** (A-99 Part 9). `runEndsAt` is **deleted** from the `day_state` fact's `params`,
+     with its guard and its three failure modes. The fact's other ten params and all its cites are unchanged.
+     This closes R72-5 and R73-4 outright and removes half of R73-2. Do it beside step 1 — both touch the
+     same `facts.push(fact('day_state', …))` region.
+  3. **R73-2's remaining arm** (builder). `endMin === 1440` is correctly `crossesDay: false`, and the clock
+     arm has no case for it: `clockOf(1440)` is `"24:00"`. The clause reads **"until midnight"** for that one
+     value — *not* *"still on it at midnight"*, which is the other arm's and is false of a flight that has
+     landed.
+  4. **R73-3, the pluraliser** (A-99 Part 8), **last, over the final text.** `countWord(n)` and
+     `countNoun(n, singular, preposition, scope)`, module-private in `ask/`, used by **every** arm of
+     **every** answer. `theDays` and `everyOne` become outputs of `countNoun`; the loose `scope` string stops
+     being reachable by other sentences; verb agreement with a numeric subject follows the same value
+     (*"one of the 2 stops … states"*). **Do not fix the four known sites and stop** — the criterion below
+     is the deliverable and it will name sites nobody has enumerated.
+
+- **Verification.** Every criterion of `I-35`, `I-37`, `I-38` and `I-44` is re-run unchanged except the two
+  A-99 replaces; these are additional. Each states whether its fault fires today (criterion rule 9).
+  - `[stated]` **The mode word and the clock come from one field.** On a planted journey stop whose
+    `durationMins` and `arrival.mins` **disagree**, the clause reads *"on 2026-08-07 something that starts at
+    16:45 runs until 20:05"* and contains **no mode word**; on one where they **agree**, it reads *"you are on
+    a flight from 16:30 until 21:30"*. **RED at `08c4696`** for the first document — it reads *"you are on a
+    flight from 16:45 until 20:05"* there, about a flight the same stop says lands at 03:45. **UNFIREABLE
+    against the reference trip and declared**: all 21 of its journey stops carry `durationMins: null`, so the
+    instruments are two hand-built `Trip`s in `ask.test.ts` and the planted document of `qa/r73-i44.mjs` §D.
+    **N1: drop the `fromArrival` test** → the disagreeing document renders the mode and it reddens naming both
+    fields. **N2: restore `interval.source === 'journey_run'` alone** → the agreeing document loses its mode.
+    **N3: drop the `travelRole` conjunct** → a `transfer` carrying the leg into it renders *"you are on a …"*
+    and reddens **on the reference trip**, where 60 stops are that shape.
+  - `[stated]` **The four present-simple fragments are gone and the twenty-four cells with them.** *"what
+    countries do I visit"*, *"which countries do I go to"*, *"how many countries do we visit"* and *"what
+    countries do we go to"* each return `out_of_scope`, and **none returns `matched`** — a ceiling, not a
+    floor (rule 4). **RED at `08c4696`**: all four are answered *"This trip accounts for 7 countries"* through
+    `node cli.ts ask` with no `--file`. **N4: restore `'do i visit'` to `BARE_FRAMES`** → it answers again and
+    the assertion reddens naming the fragment.
+  - `[stated]` **The same four verbs answer with the document named.** *"how many countries do I visit on this
+    trip"*, *"which countries do I go to on our itinerary"* → `matched: country_count`. This is the pair that
+    proves the discriminant is the adverbial and not the verb; a criterion that only asserted the refusals
+    would pass on an implementation that deleted the verbs entirely.
+  - `[stated]` **The accept set closes under naming the document.** For **every** member `m` generated from a
+    bare frame, `tokenize(m + ' on this trip')` is also a member and also answers — asserted over the whole
+    generated population, not over a sample. **RED at `08c4696`**: 60 of 96 such sentences refuse there.
+    **N5: delete the twin generation and re-add A-98's six hand-written entries** → the assertion reddens with
+    a count of the sentences that lost their twin.
+  - `[stated]` **The order the refusals are asked in cannot change the outcome for a sentence Cairn wrote**
+    (this **replaces** A-98 Part 9 criterion 2). Every member of the accept set returns `matched:
+    country_count` **with `LIFETIME_TRIGGERS`, `lifetimeFrame` and `RECOMMENDATION_TRIGGERS` all in place**,
+    and *"how many countries have I visited on this trip"* — a member carrying a past-travel frame — is among
+    them. **RED at `08c4696`**: it refuses as `lifetime` there. **N6: move the membership test back below the
+    two refusals** → that sentence refuses and the criterion reddens **by name**. The criterion it replaces
+    was green by construction and could never fire; this one fires today.
+  - `[stated]` **No count reaches prose as a bare numeral** (criterion rule 12). Over a generated population
+    of documents exercising all three arms of `answerFreeTime` and every other `Question` kind, at day and
+    stop populations of **0, 1, 2 and many**, and whose city names carry no digits: **no `Answer.text`
+    contains the standalone token `1`.** **RED at `08c4696`** at four known sites, and the criterion is
+    expected to redden at sites this entry does not name — **those are fixed in this increment, and finding
+    them is the criterion working.** **N7: restore a bare `${n}` at any one interpolation site** → it reddens
+    naming the answer and the sentence.
+  - `[stated]` **The deleted field stays deleted.** `runEndsAt` does not appear anywhere under `packages/` —
+    a greppable ceiling over the implementation (criterion rule 7): the name is a ruling's and only a ruling
+    brings it back. The `day_state` fact still carries its other params and **every occupying stop of the day
+    as a cite**, which is the path a future consumer takes to the instant.
+  - `[stated]` **Recall is monotone.** Every phrasing marked `answer` in the committed corpus still answers.
+    **A new refusal is a finding, not a pass.** **UNFIREABLE in the redward direction at `08c4696`** by
+    construction (the corpus is marked from that commit) and declared; it becomes fireable on the next
+    fragment change, which is what it is for. **N8: delete one bare frame** → the corpus entries that used it
+    redden by name.
+  - `[stated]` **Everything Cairn tells a user to type still parses** (criterion rule 11, unchanged from
+    `I-44`) — the menu round-trip and every phrasing quoted inside an `out_of_scope` pointer. The pointer's
+    quoted phrasing *"how many countries am I visiting"* is still a member after the factor lists change.
+  - `[stated]` **The ceiling held.** `Object.keys(core).length` is **91**; no `Date.now`, no `Math.random`, no
+    `fetch` under `packages/core/src/ask/`; 36 menu answers byte-identical across two calls;
+    `fixtures/golden/core-conflicts.json` byte-identical; the 48 verdicts still 46 busy / 0 open / 2 unknown;
+    `derive/occupancy.ts` **unchanged, byte for byte**.
+- **Stop-and-report conditions.** Four, and each means the ruling is wrong rather than the build. **(a)** If
+  any of A-96 Part 4's 48 verdicts moves, stop. **(b)** If the twin-generation rule admits a sentence that
+  fails A-98 Part 3's admission test, stop and report the sentence — A-99 Part 5 claims the closure is a
+  theorem, and a counterexample falsifies a ruling, not a build. **(c)** If criterion rule 12's sweep reddens
+  at a site whose fix would change what an answer *means* rather than how it counts, stop — that is a prose
+  redesign and A-99 Part 10 has already said what happens to those. **(d)** If deleting `runEndsAt` breaks a
+  consumer, stop: A-99 Part 9 asserts it has none, and a consumer is that assertion being false.
+- **Dependencies / blockers.** `I-44` is built. Batch A and batch B are independent. **`I-36` stays blocked**
+  behind this, on its own reasoning and on A-99 Part 10 (a). **Nothing here gates `I-30` or Phase 3** —
+  Jacob's direction was that the `country_count` scope arc close before Phase 3 code, and A-98 Parts 1–7 did
+  that; this increment is the neighbouring repair.
+- **Route: builder, and then one confirmation round over `I-45` as one subject.** **That round is the
+  decision point A-99 Part 10 names**: if it finds a prose defect in an `Answer.text` that no criterion
+  covers, `free_time`'s composed paragraph is withdrawn in favour of a one-sentence verdict plus the `facts`
+  array, and that withdrawal is a builder increment, not another architect round.
 
 ### Exit criteria — the Phase 2 ship gate
 
