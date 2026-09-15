@@ -21,7 +21,7 @@ import * as core from '../src/index.ts';
 import { resolveCite } from '../src/ask/resolveCite.ts';
 import { classifyDay, DAYPART_WINDOWS } from '../src/ask/freeTime.ts';
 import { clockOf, occupiedInterval } from '../src/derive/occupancy.ts';
-import { restate } from '../src/ask/match.ts';
+import { lifetimeScoped, restate } from '../src/ask/match.ts';
 import type { Answer, AnswerCite, Question } from '../src/ask/types.ts';
 import type { Trip } from '../src/index.ts';
 
@@ -1330,4 +1330,284 @@ test('R71-6: five prose edges', () => {
       assert.equal(text, text.trim(), `${q.kind} rendered a sentence with edge whitespace`);
     }
   }
+});
+
+// ---------------------------------------------------------------------------------------------
+// 9. §11.13 **A-98** — a scope gate does not test the user's sentence for a property; it asks
+//    whether the user's sentence IS one of the questions Cairn can be asked.
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * **The four factor lists, transcribed from A-98 Part 3, not regenerated from the implementation.**
+ *
+ * The ruling publishes 43 fragments — 6 stems, 4 determiners, 2 nouns, 15 NP frames and 16 bare
+ * frames — and their cross product is the 816 sentences `country_count` may be asked by. The test
+ * builds the set from the **document's** lists and the module builds it from its own copy, so a
+ * fragment dropped, mistyped or quietly added on either side is a failure here rather than a
+ * silent widening of what Cairn will answer.
+ *
+ * **A reviewer reads 43 fragments, not 816 sentences**, and each is adjudicated by one question:
+ * *can this exact whole sentence, for any stem, be a question about the user's whole travel
+ * history?* If yes for even one stem, the fragment is refused. Some cells are ungrammatical
+ * (*"number of countries am i visiting"*) and that costs nothing — nobody types them, and an
+ * ungrammatical cell is still trip-scoped, which is the only property the set has to have.
+ */
+const A98_STEMS = [
+  'how many countries', 'how many different countries', 'which countries',
+  'what countries', 'number of countries', 'countries',
+];
+const A98_DETERMINERS = ['this', 'my', 'the', 'our'];
+const A98_NOUNS = ['trip', 'itinerary'];
+const A98_NP_FRAMES = [
+  'on <np>', 'in <np>', 'are on <np>', 'are in <np>', 'does <np> visit',
+  'does <np> cover', 'does <np> go to', 'does <np> include', 'is <np>',
+  'am i visiting on <np>', 'are we visiting on <np>', 'do i visit on <np>',
+  'do we visit on <np>', 'will i visit on <np>', 'will we visit on <np>',
+];
+const A98_BARE_FRAMES = [
+  'am i visiting', 'are we visiting', 'will i visit', 'will we visit',
+  'do i visit', 'do we visit', 'am i seeing', 'are we seeing', 'will i see',
+  'will we see', 'do i go to', 'do we go to', 'am i going to', 'are we going to',
+  'am i travelling to', 'are we travelling to',
+];
+
+/** The cross product A-98 Part 3 spells: `6 × (16 + 15 × 8)`. */
+function a98AcceptSet(): Set<string> {
+  const nps = A98_DETERMINERS.flatMap((d) => A98_NOUNS.map((n) => `${d} ${n}`));
+  const frames = [...A98_BARE_FRAMES, ...A98_NP_FRAMES.flatMap((f) => nps.map((np) => f.replace('<np>', np)))];
+  const out = new Set<string>();
+  for (const stem of A98_STEMS) for (const frame of frames) out.add(`${stem} ${frame}`);
+  return out;
+}
+
+/** `matched:country_count`, `out_of_scope:scope_unclear`, `ambiguous`, … — one string per outcome. */
+function outcomeOf(text: string, trip: Trip): string {
+  const m = core.matchQuestion(text, trip);
+  if (m.kind === 'matched') return `matched:${m.question.kind}`;
+  if (m.kind === 'out_of_scope') return `out_of_scope:${m.reason}`;
+  return m.kind;
+}
+
+/**
+ * **A-98 Parts 2 and 3 — the only list that may cause an ANSWER is a list of sentences Cairn
+ * itself wrote**, and this is that list, whole.
+ *
+ * **A-98 Part 9 criterion 2 rides here and is DECLARED UNFIREABLE AT BIRTH**: no member of the
+ * accept set trips `LIFETIME_TRIGGERS` or `lifetimeFrame`, measured 0 of 816 before the ruling and
+ * green by construction after it. It is a **tripwire on growth** — it reddens the day a fragment
+ * carrying a past-travel frame is admitted, which is exactly when A-98 Part 6 rider 1's
+ * builder-only route would otherwise be dangerous — and the property is held meanwhile by Part 3's
+ * admission test, applied by a human to 43 fragments.
+ */
+test('A-98 Part 3: 43 fragments generate 816 sentences, every one answers, and not one trips the lifetime diagnosis', () => {
+  const { trip } = europe2026();
+  const fragments = A98_STEMS.length + A98_DETERMINERS.length + A98_NOUNS.length
+    + A98_NP_FRAMES.length + A98_BARE_FRAMES.length;
+  assert.equal(fragments, 43, 'the factor lists are no longer the 43 fragments A-98 Part 3 publishes');
+  const accept = a98AcceptSet();
+  assert.equal(accept.size, 816, '6 × (16 + 15 × 8) = 816');
+
+  let tripsLifetime = 0;
+  for (const sentence of accept) {
+    assert.equal(outcomeOf(sentence, trip), 'matched:country_count', `an authored sentence is not answered: "${sentence}"`);
+    const m = core.matchQuestion(sentence, trip);
+    // Whole-sentence equality means the whole sentence WAS read — §11.3 rule 2 has nothing left
+    // to report, and a sentence that is a question Cairn wrote can have no unread half.
+    if (m.kind === 'matched') assert.deepEqual(m.unread, [], `an authored sentence reported unread words: "${sentence}"`);
+    if (lifetimeScoped(sentence)) tripsLifetime++;
+  }
+  assert.equal(tripsLifetime, 0, 'a member of the accept set trips the lifetime diagnosis — the order the two refusals are asked in can now change an outcome');
+  // The tripwire is not vacuous: the diagnostic it counts does fire, on the sentences it is for.
+  assert.equal(lifetimeScoped('how many countries have I been to'), true);
+  assert.equal(lifetimeScoped('how many countries in total'), true);
+});
+
+/**
+ * **A-98 Part 9 criterion 1 — the thirteen lifetime phrasings refuse, and none is answered.**
+ *
+ * R72-1's ten, plus A-98 Part 1's three preposition cases. **Measured at this tree before the
+ * increment: 13 of 13 reached `matched: country_count`** — the ruling's own fault, firing against
+ * the committed fixture through the shipped recogniser.
+ *
+ * The three preposition cases are the ones that killed every cheaper repair: each carries a noun
+ * phrase that unambiguously denotes the document in hand (*"this trip"*) and each is a question
+ * about a life, because **the word that decides the scope is the preposition in front of the
+ * marker** — and containment has no notion of scope to see that with.
+ */
+test('A-98 Part 1: thirteen lifetime phrasings refuse — N1 (injected, SHOWN TO FIRE)', () => {
+  const { trip } = europe2026();
+  const check = (m: core.MatchOutcome, text: string) => {
+    assert.equal(m.kind, 'out_of_scope', `answered about THIS trip instead of refusing: "${text}"`);
+    if (m.kind !== 'out_of_scope') return;
+    assert.ok(m.reason === 'lifetime' || m.reason === 'scope_unclear', `the wrong refusal: "${text}"`);
+    assert.match(m.pointer, /stats/, `the refusal does not name a way forward: "${text}"`);
+  };
+  const lifetime = [
+    // R72-1's ten — every one carries a person or tense marker and no totality word.
+    'how many countries do I have under my belt',
+    'how many countries am I up to',
+    'how many countries am I on now',
+    'what countries do I still need to visit',
+    'how many countries do we have between us',
+    'how many countries do I have left in the world',
+    'which countries do I still have to see',
+    'how many countries am I missing',
+    'how many countries do I have on my list',
+    'which countries am I yet to visit',
+    // A-98 Part 1's three — a preposition in front of a marker that names the document.
+    'how many countries am I up to including this trip',
+    'which countries am I yet to visit before this trip',
+    'apart from this trip how many countries am I up to',
+  ];
+  assert.equal(lifetime.length, 13);
+  for (const text of lifetime) check(core.matchQuestion(text, trip), text);
+
+  // N1: relax the gate from equality to containment on the accept set's stems. The three
+  // preposition cases contain both a stem and a document noun phrase, so they are answered again.
+  const answered: core.MatchOutcome = { kind: 'matched', question: { kind: 'country_count' }, restatement: 'x', params: {}, unread: [] };
+  for (const text of lifetime.slice(10)) {
+    assert.throws(() => check(answered, text), /answered about THIS trip/, text);
+  }
+});
+
+/**
+ * **A-98 Part 7 (QA R72-2) — the gate is a CANDIDATE FILTER, not a sentence verdict.**
+ *
+ * `I-38` placed the scope check so that it `return`s from inside the candidate loop, discarding
+ * every reading collected before it: *"which countries have a free evening"* became
+ * `scope_unclear`, whose text (*"I cannot tell whether you mean this trip or every trip"*) is
+ * false of a sentence containing *"free evening"*. **`scope_unclear` is a better `unrecognised`**
+ * — it fires only where a country trigger is present, the sentence is not one Cairn wrote, and no
+ * other intent produced a reading.
+ */
+test('A-98 Part 7: the scope gate suppresses a candidate and returns nothing — N3 (injected, SHOWN TO FIRE)', () => {
+  const { trip } = europe2026();
+  const check = (m: core.MatchOutcome, text: string, want: string, unread: string[]) => {
+    const got = m.kind === 'matched' ? `matched:${m.question.kind}` : m.kind === 'out_of_scope' ? `out_of_scope:${m.reason}` : m.kind;
+    assert.equal(got, want, `"${text}" → ${got}`);
+    if (m.kind !== 'matched') return;
+    for (const w of unread) assert.ok(m.unread.includes(w), `§11.3 rule 2: "${w}" was neither read nor reported: ${JSON.stringify(m.unread)}`);
+  };
+  const free = core.matchQuestion('which countries have a free evening', trip);
+  check(free, 'which countries have a free evening', 'matched:free_time', ['which', 'countries']);
+  if (free.kind === 'matched') assert.deepEqual(free.question, { kind: 'free_time', part: 'evening', cityKey: null });
+  const booked = core.matchQuestion('how many countries have I booked', trip);
+  check(booked, 'how many countries have I booked', 'matched:unbooked', ['countries']);
+  // R71-3's own population is unchanged: a country trigger, no other reading, no authored sentence.
+  check(core.matchQuestion('how many countries', trip), 'how many countries', 'out_of_scope:scope_unclear', []);
+
+  // N3: restore the `return` inside the candidate loop. Both readings are discarded and the
+  // sentence-level refusal speaks for a sentence it did not read.
+  const discarded: core.MatchOutcome = { kind: 'out_of_scope', reason: 'scope_unclear', pointer: 'stats' };
+  assert.throws(() => check(discarded, 'which countries have a free evening', 'matched:free_time', []), /out_of_scope/);
+  assert.throws(() => check(discarded, 'how many countries have I booked', 'matched:unbooked', []), /out_of_scope/);
+});
+
+/**
+ * **A-98 Part 4 — recall is MEASURED, not asserted, and the refusals are NAMED.**
+ *
+ * Over the 18 trip-scoped phrasings rounds 70–72 and A-98 collected between them, **15 answer and
+ * 3 refuse**. The three are A-98 Part 4's published ones: *"how many countries"* (which §11.3 rule
+ * 3 as amended **requires** to refuse) and the two sentences carrying a leading particle. **A
+ * leading-particle stripper is refused by name** — it is a list over English whose failure
+ * direction includes an answer, which is the one class this ruling removes — so the two prefixed
+ * sentences are a cost that is paid, not a defect to repair.
+ *
+ * **A floor on the 15 and a named list for the 3: a fourth refusal is a finding, not a pass.**
+ */
+test('A-98 Part 4: 15 of 18 trip-scoped phrasings answer, and the 3 that refuse are the published ones', () => {
+  const { trip } = europe2026();
+  const phrasings = [
+    // The six QA round 72 §F measured as answering, verbatim.
+    'how many countries am I visiting',
+    'which countries am I visiting',
+    'how many countries on this trip',
+    'how many countries does this trip cover',
+    'what countries do we go to',
+    'how many countries are on my trip',
+    // The two more that rounds 70 and 71 pinned.
+    'what countries does this trip cover',
+    'how many countries does this trip visit',
+    // Seven this increment adds, each a cell of the published factor lists.
+    'how many countries am I going to',
+    'which countries are we visiting',
+    'what countries will I see',
+    'how many different countries does this trip include',
+    'number of countries on this trip',
+    'which countries do I visit on this trip',
+    'countries on my itinerary',
+    // A-98 Part 4's three, named: the bare stem §11.3 rule 3 requires to refuse, and the two
+    // sentences whose only defect is a particle in front of a phrasing Cairn wrote.
+    'how many countries',
+    'so how many countries am I visiting',
+    'hey how many countries does this trip visit',
+  ];
+  assert.equal(phrasings.length, 18);
+  const refused = phrasings.filter((t) => outcomeOf(t, trip) !== 'matched:country_count');
+  assert.deepEqual(refused, [
+    'how many countries',
+    'so how many countries am I visiting',
+    'hey how many countries does this trip visit',
+  ], 'the recall floor moved: a phrasing that answered no longer does, or a new one does');
+  assert.equal(phrasings.length - refused.length, 15);
+  for (const text of refused) assert.equal(outcomeOf(text, trip), 'out_of_scope:scope_unclear', text);
+});
+
+/**
+ * **Criterion rule 11, founding case — text the product tells a user to type is asserted to
+ * round-trip.** `cli.ts`'s menu round-trip is the standing half (`test/cli.test.ts`); this is the
+ * new half: **every phrasing quoted inside an `out_of_scope` pointer parses to a `matched`
+ * outcome.** It is GREEN today because the pointer quotes the menu line verbatim, and it becomes
+ * fireable the moment the accept set and the pointer can drift — which is the state A-98 creates.
+ *
+ * **R72-7 rides here**: the pointer a person reads on a phone ended *"…`stats` for your whole
+ * library (travelStats, §8.4)"*. An internal document section number is not a way forward.
+ */
+test('criterion rule 11: every phrasing a refusal quotes parses back to an answer — N2 (injected, SHOWN TO FIRE)', () => {
+  const { trip } = europe2026();
+  /** Every `"…"`-quoted span of a pointer, which is how this product spells "type this". */
+  const quoted = (pointer: string) => [...pointer.matchAll(/"([^"]+)"/g)].map((x) => x[1]);
+  const check = (pointer: string) => {
+    assert.equal(/§\d/.test(pointer), false, `a refusal a user reads cites an internal document section: ${pointer}`);
+    for (const phrase of quoted(pointer)) {
+      assert.equal(outcomeOf(phrase, trip), 'matched:country_count', `a refusal tells the user to type "${phrase}", and Cairn refuses it`);
+    }
+  };
+  const pointers: string[] = [];
+  for (const text of ['how many countries', 'how many countries have I been to', 'where should I eat in Split']) {
+    const m = core.matchQuestion(text, trip);
+    assert.equal(m.kind, 'out_of_scope', text);
+    if (m.kind === 'out_of_scope') pointers.push(m.pointer);
+  }
+  assert.equal(pointers.length, 3);
+  for (const p of pointers) check(p);
+  // Not vacuous: the `scope_unclear` pointer does quote a phrasing, and it is the menu's own line.
+  const unclear = pointers[0];
+  assert.deepEqual(quoted(unclear), ['how many countries am I visiting']);
+
+  // N2: change the pointer's quoted phrasing to a lifetime question. It reddens naming the
+  // POINTER, not the menu.
+  assert.throws(
+    () => check(unclear.replace('how many countries am I visiting', 'how many countries have I been to')),
+    /tells the user to type "how many countries have I been to"/,
+  );
+});
+
+/**
+ * **A-98 Part 2 — the ruling DELETES a list, and that is greppable.** `TRIP_SCOPE_MARKERS` was
+ * the third attempt at this boundary and its name is the ruling's own: only a ruling brings it
+ * back. This is a ceiling over the implementation, not a word-absence claim about a file
+ * (criterion rule 7) — the test file is allowed to name it, and does, one line above.
+ */
+test('A-98 Part 2: `TRIP_SCOPE_MARKERS` does not exist anywhere under packages/', () => {
+  const PKG = resolve(HERE, '..', '..');
+  const walk = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    if (e.name === 'node_modules' || e.name === 'test') return [];
+    const full = resolve(dir, e.name);
+    return e.isDirectory() ? walk(full) : full.endsWith('.ts') ? [full] : [];
+  });
+  const files = walk(PKG);
+  assert.ok(files.length > 20, `the walk found only ${files.length} files — it is not looking where it thinks`);
+  const offenders = files.filter((f) => readFileSync(f, 'utf8').includes('TRIP_SCOPE_MARKERS'));
+  assert.deepEqual(offenders, [], 'the deleted list is back');
 });

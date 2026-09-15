@@ -18,9 +18,11 @@
  *     written unconditionally — *text carrying a lifetime pattern returns
  *     `out_of_scope: 'lifetime'`* — so it is asked before any intent can consume the sentence.
  *     Answering the trip-scoped version would be **right about the wrong question**.
- *     **§11.12 A-97 Part 6 makes that list a DIAGNOSIS rather than the safety mechanism**: the
- *     mechanism is `country_count`'s own trip-scope gate below, which refuses
- *     `out_of_scope: 'scope_unclear'` where the text proves no scope at all.
+ *     **§11.13 A-98 Part 2 makes that list PROVABLY a diagnosis**: it cannot cause an answer,
+ *     because the only thing that can is membership of `ACCEPTED_COUNTRY_QUESTIONS` — the 816
+ *     sentences Cairn itself wrote — and no member of that set trips it (0 of 816, asserted).
+ *     So the order these two are asked in cannot change any outcome; it only chooses which
+ *     refusal a refused sentence gets.
  *  2. **Recommendation next** (rule 4). Jacob's own fence, made a feature of the recogniser
  *     rather than left to produce a bad answer.
  *  3. Then the intents. **Two readings is a refusal, never a choice** (rule 1): picking the first
@@ -109,35 +111,6 @@ const LIFETIME_TRIGGERS = [
 ];
 
 /**
- * **§11.3 rule 3 as amended by §11.12 A-97 Part 6 — the ways English refers to THE DOCUMENT IN
- * HAND**, and the reason `country_count` is default-deny.
- *
- * The lifetime list above is a **denylist over an open set** — every English way of saying
- * *"across everything"* — and this project has measured it short twice in two rounds: five
- * phrasings at R70-5, eight more at R71-3, including *"how many countries have I **already** been
- * to"*, one adverb from a phrasing that is refused and the ordinary way to ask. The inverse is a
- * list over a **bounded** set: the demonstrative, the product's own noun, and first-person present
- * or future. **A new trip-scope phrasing is a thing a person writes; a new totality phrasing is a
- * thing English generates.**
- *
- * **This list will also be incomplete, and that is the point.** An unlisted marker costs a
- * refusal with the menu behind it — §11.3 rule 5's own answer to every refusal — and an unlisted
- * totality phrase cost a **false statement about the user's life, stated as a fact**. Default-deny
- * does not make the next gap less likely; it puts it on the side of the boundary this capability
- * can afford. **A phrasing that reaches a refusal with the less specific reason is one line here
- * and no architect round; a phrasing that reaches an ANSWER means the gate itself is wrong and
- * comes back as a ruling** (A-97 Part 6 rider 4).
- */
-const TRIP_SCOPE_MARKERS = [
-  // the demonstrative
-  'this trip', 'this itinerary', 'here',
-  // the product's own noun
-  'my trip', 'the trip', 'my itinerary', 'the itinerary',
-  // first person, present or future
-  'am i', 'are we', 'do i', 'do we', 'will i', 'will we',
-];
-
-/**
  * **The other half of §11.3 rule 3, and it is a CLASS rather than a phrase list — QA R70-5.**
  *
  * The shipped rule was six literal phrases, so *"how many countries have I visited"*, *"…have I
@@ -203,6 +176,36 @@ function lifetimeFrame(tokens: readonly string[]): boolean {
 }
 
 /**
+ * **Is this sentence about the user's whole travel history? A DIAGNOSIS, and nothing more —
+ * §11.13 A-98 Part 2.**
+ *
+ * A list over English may **diagnose** a refusal; it may never **authorise an answer**. Before
+ * A-98 this predicate and the trip-scope marker list A-98 deletes decided between them whether
+ * `country_count` was
+ * answered, and R72-1 measured ten lifetime phrasings answered *"This trip accounts for 7
+ * countries"* straight through both. Now the only thing that causes an answer is membership of
+ * `ACCEPTED_COUNTRY_QUESTIONS` — a set of sentences **Cairn itself wrote** — and this predicate
+ * chooses only which *refusal* a sentence gets: the specific `'lifetime'` one rather than
+ * `'scope_unclear'`.
+ *
+ * **Exported for the A-98 Part 9 criterion 2 tripwire and for nothing else** (§11.9: it is not on
+ * §2.10's surface). That criterion asserts **no member of the accept set trips this** — 0 of 816 —
+ * so the order the two refusals are asked in cannot change any outcome. It is green by
+ * construction today and reddens the day a fragment carrying a past-travel frame is admitted,
+ * which is exactly when A-98 Part 6 rider 1's builder-only route would otherwise be dangerous.
+ *
+ * Pure. Never throws.
+ */
+export function lifetimeScoped(text: string): boolean {
+  return lifetimeTokens(tokenize(typeof text === 'string' ? text : ''));
+}
+
+/** The same diagnosis over an already-tokenised sentence — `matchQuestion`'s own path. */
+function lifetimeTokens(tokens: readonly string[]): boolean {
+  return firstOf(tokens, LIFETIME_TRIGGERS) !== null || lifetimeFrame(tokens);
+}
+
+/**
  * §11.3 rule 4. **Refused by name**, with the reason stated in one sentence. A restaurant
  * recommendation needs a live places API, a paid vendor and a server; it is explicitly out of
  * scope and not to be designed around.
@@ -229,10 +232,86 @@ const UNBOOKED_TRIGGERS = [
   'what still needs', 'have i booked', 'what is not booked', 'whats not booked',
 ];
 
+/**
+ * **DIAGNOSTIC ONLY after §11.13 A-98 Part 2.** This list no longer produces a candidate and
+ * cannot cause an answer. It survives to choose the **better refusal** — `scope_unclear` rather
+ * than `unrecognised` — for a sentence that is clearly about countries and is not one Cairn can
+ * be asked.
+ */
 const COUNTRY_TRIGGERS = [
   'how many countries', 'how many different countries', 'number of countries',
   'which countries', 'what countries', 'countries am i visiting', 'countries on this trip',
 ];
+
+/**
+ * **The sentences Cairn wrote — §11.13 A-98 Parts 2 and 3, and the reason there is no fourth
+ * phrase list in this file.**
+ *
+ * > **A scope gate does not test the user's sentence for a property. It asks whether the user's
+ * > sentence IS one of the questions Cairn can be asked.** The only list that may cause an
+ * > **answer** is a list of sentences **Cairn itself authored**. A list over English may
+ * > *diagnose* a refusal; it may never *authorise* one.
+ *
+ * Three rounds rewrote this boundary by lengthening a phrase list and all three leaked. The last
+ * one — a trip-scope marker list, tested by containment — was measured half-inert at R72-1: six
+ * of its twelve markers were **person and tense** markers (`am i`, `do we`) that occur just as
+ * naturally in a question about a lifetime, and the six that genuinely named the document leaked
+ * too, because **containment is not reference**. *"How many countries am I up to **including this
+ * trip**"* carries a noun phrase that unambiguously denotes the document in hand and is a
+ * question about a life: **the word that decides the scope is the preposition in front of the
+ * marker**, and a token-containment test has no notion of scope to see that with.
+ *
+ * So the gate is **whole-sentence token equality** against a set generated from 43 adjudicated
+ * fragments: `tokenize(text).join(' ')` is a member, or `country_count` is not a candidate. One
+ * spelling, no second reading (criterion rule 8).
+ *
+ * **The admission test for a new fragment** (A-98 Part 3, and a builder may apply it without an
+ * architect round — Part 6 rider 1): *can this exact whole sentence, for any stem, be a question
+ * about the user's whole travel history?* **If yes for even one stem, the fragment is refused.**
+ * Some cells are ungrammatical (*"number of countries am i visiting"*) and that costs nothing —
+ * nobody types them, and an ungrammatical cell is still trip-scoped, which is the only property
+ * the set has to have. **The set grows by a fragment, never by a sentence.**
+ *
+ * **Over-refusal is the only failure this mechanism can produce**, by construction: an answer
+ * requires membership of a finite set, every member of which was adjudicated before it was
+ * written down. An unlisted phrasing costs a refusal with the menu behind it (§11.3 rule 5); the
+ * failure it replaces was a false statement about a user's life.
+ */
+const COUNTRY_STEMS = [
+  'how many countries', 'how many different countries', 'which countries',
+  'what countries', 'number of countries', 'countries',
+];
+const DOC_DETERMINERS = ['this', 'my', 'the', 'our'];
+const DOC_NOUNS = ['trip', 'itinerary'];
+/** Frames that take a noun phrase naming the document; `<np>` is one of the eight. */
+const NP_FRAMES = [
+  'on <np>', 'in <np>', 'are on <np>', 'are in <np>', 'does <np> visit',
+  'does <np> cover', 'does <np> go to', 'does <np> include', 'is <np>',
+  'am i visiting on <np>', 'are we visiting on <np>', 'do i visit on <np>',
+  'do we visit on <np>', 'will i visit on <np>', 'will we visit on <np>',
+];
+/** Frames that name no document and are trip-scoped by their own tense (A-98 Part 3). */
+const BARE_FRAMES = [
+  'am i visiting', 'are we visiting', 'will i visit', 'will we visit',
+  'do i visit', 'do we visit', 'am i seeing', 'are we seeing', 'will i see',
+  'will we see', 'do i go to', 'do we go to', 'am i going to', 'are we going to',
+  'am i travelling to', 'are we travelling to',
+];
+
+/**
+ * `6 × (16 + 15 × 8)` = **816** sentences, generated at module load and **module-private**
+ * (§11.9). Not exported, not on §2.10's surface, and not reachable by a caller: a caller that can
+ * reach a trigger table is a caller that will grow a second.
+ */
+const ACCEPTED_COUNTRY_QUESTIONS: ReadonlySet<string> = (() => {
+  const nps: string[] = [];
+  for (const d of DOC_DETERMINERS) for (const n of DOC_NOUNS) nps.push(`${d} ${n}`);
+  const frames = [...BARE_FRAMES];
+  for (const f of NP_FRAMES) for (const np of nps) frames.push(f.replace('<np>', np));
+  const out = new Set<string>();
+  for (const stem of COUNTRY_STEMS) for (const f of frames) out.add(tokenize(`${stem} ${f}`).join(' '));
+  return out;
+})();
 
 const EDGE_TRIGGERS: Record<'arrive' | 'leave', readonly string[]> = {
   leave: ['leave', 'leaving', 'depart', 'departing', 'departure', 'head out of', 'fly out of'],
@@ -341,7 +420,7 @@ export function matchQuestion(text: string, trip: Trip): MatchOutcome {
   if (tokens.length === 0) return { kind: 'unrecognised' };
 
   // 1 & 2 — the two scope refusals, asked before any intent can consume the sentence.
-  if (firstOf(tokens, LIFETIME_TRIGGERS) !== null || lifetimeFrame(tokens)) {
+  if (lifetimeTokens(tokens)) {
     return {
       kind: 'out_of_scope',
       reason: 'lifetime',
@@ -381,29 +460,24 @@ export function matchQuestion(text: string, trip: Trip): MatchOutcome {
   const unbooked = firstOf(tokens, UNBOOKED_TRIGGERS);
   if (unbooked) { candidates.push({ kind: 'unbooked' }); take(unbooked); }
 
+  // **§11.13 A-98 — `country_count` is a candidate IF AND ONLY IF the sentence is one Cairn
+  // wrote.** Whole-sentence token equality, not containment: the scope of a sentence is not a
+  // property of the words in it, and this recogniser has no structure to read one out of. It does
+  // not need one, because the set of questions Cairn can be asked is closed and Cairn wrote it.
+  //
+  // **Nothing about this decision returns from `matchQuestion`** (A-98 Part 7, QA R72-2). The
+  // gate is scoped to this one intent — the only intent whose noun a *different* capability
+  // answers over a *different* population (`travelStats`) — and a sentence that fails it may
+  // still be a perfectly good question for another intent. The sentence-level refusal is at the
+  // bottom of this function, where `unrecognised` would otherwise be returned.
   const countries = firstOf(tokens, COUNTRY_TRIGGERS);
-  if (countries) {
-    // **§11.12 A-97 Part 6 — the scope is PROVED, not assumed.** `country_count` is the one intent
-    // whose noun a *different* capability answers over a *different* population (`travelStats`,
-    // §8.4), so it answers only where the text says it is about the document in hand. This is a
-    // **default-deny flip, not a longer list**: the lifetime denylist above still runs first and
-    // still produces the better-worded refusal, but it is a diagnosis and this is the mechanism.
-    // Scoped to this intent alone (rider 3) — `free_time`, `city_edge`, `unbooked` and
-    // `trip_overview` have no library-scope twin, and a gate they do not need is an invented
-    // refusal. **Trigger for the next one: the first new `Question` kind whose noun `travelStats`
-    // or any later library-scope surface also answers — it takes this gate at birth.**
-    if (firstOf(tokens, TRIP_SCOPE_MARKERS) === null) {
-      return {
-        kind: 'out_of_scope',
-        reason: 'scope_unclear',
-        pointer:
-          'I cannot tell whether you mean this trip or every trip you have recorded, and those ' +
-          'are two different data sets. Ask "how many countries am I visiting" for this trip, or ' +
-          '`stats` for your whole library (travelStats, §8.4).',
-      };
-    }
+  if (ACCEPTED_COUNTRY_QUESTIONS.has(tokens.join(' '))) {
     candidates.push({ kind: 'country_count' });
-    take(countries);
+    // The WHOLE sentence is consumed, because the whole sentence is what matched. §11.3 rule 2
+    // reports what the recogniser did not read, and under equality there is nothing it did not
+    // read — reporting `am i visiting` as unread here would be the recogniser lying the other
+    // way about its own comprehension.
+    take({ from: 0, to: tokens.length });
   }
 
   // `city_edge` needs BOTH halves. An edge verb with no city of this trip beside it produces no
@@ -447,7 +521,22 @@ export function matchQuestion(text: string, trip: Trip): MatchOutcome {
     }
   }
 
-  if (candidates.length === 0) return { kind: 'unrecognised' };
+  if (candidates.length === 0) {
+    // **`scope_unclear` is a better `unrecognised`, never a replacement for a reading** (A-98
+    // Part 7). It fires only here: a country trigger is present, the sentence is not one Cairn
+    // wrote, and no other intent produced a reading — so nothing is being discarded to say it.
+    if (countries !== null) {
+      return {
+        kind: 'out_of_scope',
+        reason: 'scope_unclear',
+        pointer:
+          'I cannot tell whether you mean this trip or every trip you have recorded, and those ' +
+          'are two different data sets. Ask "how many countries am I visiting" for this trip, or ' +
+          '`stats` for your whole library.',
+      };
+    }
+    return { kind: 'unrecognised' };
+  }
   if (candidates.length > 1) {
     return {
       kind: 'ambiguous',
