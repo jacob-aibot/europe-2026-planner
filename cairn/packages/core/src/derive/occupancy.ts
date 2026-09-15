@@ -58,7 +58,11 @@ export type OccupiedInterval = {
   endMin: number;
   /** `null` = no run length stated; the stop occupies an instant. */
   source: OccupancySource | null;
-  /** `endMin > DAY_END_MIN` — the run outlives the day it starts in. */
+  /**
+   * `endMin > DAY_END_MIN + 1` — the run outlives the day it starts in. **The `+ 1` is the
+   * half-open end this file uses everywhere else (QA R72-3)**: a run that ends at exactly 24:00
+   * has landed, and does not reach into the next day.
+   */
   crossesDay: boolean;
 };
 
@@ -93,7 +97,12 @@ export function occupiedInterval(stop: Stop): OccupiedInterval | null {
   const occ = stopOccupancy(stop);
   if (occ === null) return { startMin, endMin: startMin, source: null, crossesDay: false };
   const endMin = startMin + occ.mins;
-  return { startMin, endMin, source: occ.source, crossesDay: endMin > DAY_END_MIN };
+  // **QA R72-3.** `endMin > DAY_END_MIN` is off by one against the half-open convention
+  // `intervalIntersects` states below — *a leg landing at 18:00 does not occupy 18:00* — so an
+  // overnight leg landing at exactly 00:00 (17:00 + 7h00, an ordinary timetable entry) was said
+  // to outlive its day and rendered *"and still on it at midnight"* about a flight that had
+  // landed. The end of the day is the instant 24:00, and reaching it is not crossing it.
+  return { startMin, endMin, source: occ.source, crossesDay: endMin > DAY_END_MIN + 1 };
 }
 
 /**
@@ -137,6 +146,13 @@ export function intervalIntersects(i: OccupiedInterval, fromMin: number, toMin: 
   if (i.source === null) return i.startMin >= fromMin;
   // The run is closed inside its own day HERE, and nowhere else: the model makes no claim about
   // the next day, and `endMin` itself stays the document's own arithmetic (A-97 Part 3).
-  const end = Math.min(i.endMin, DAY_END_MIN);
+  //
+  // **`DAY_END_MIN + 1`, not `DAY_END_MIN` — QA R72-4.** This comparison is end-exclusive
+  // (`end > fromMin`), so clamping to 1439 made a run that genuinely covers minute 23:59 test
+  // `false` for any window beginning there: `intervalIntersects(i, 1439, 1439)` was `false` for a
+  // flight the document puts in the air until 03:45 the next morning. **A value computed to
+  // decide a question must still be true of the question it decides** — 1439 is day-closed but
+  // not end-exclusive, and the day closes at the instant 24:00.
+  const end = Math.min(i.endMin, DAY_END_MIN + 1);
   return i.startMin >= fromMin || end > fromMin;
 }

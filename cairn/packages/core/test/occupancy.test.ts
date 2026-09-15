@@ -138,9 +138,18 @@ test('A-97 Part 3: the clamp lives in `intervalIntersects`, and a window at the 
   for (const fromMin of [5 * 60, 12 * 60, 18 * 60]) {
     assert.equal(intervalIntersects(i, fromMin, 23 * 60 + 59), true);
   }
-  // A hypothetical fourth daypart that opens at 23:59 is the case the clamp exists for: the run
-  // reaches 27:45 in the document, and the model still makes NO claim about the next day.
-  assert.equal(intervalIntersects(i, 1439, 1439), false, 'the day-closed reading was lost when the clamp moved');
+  // **Re-cut at I-44 (QA R72-4).** This assertion pinned the BUG as the contract. The clamp was
+  // `Math.min(endMin, 1439)` while the predicate is **end-exclusive** (`end > fromMin`), so a run
+  // that genuinely covers minute 23:59 tested `false` for a window beginning there — for a flight
+  // the document puts in the air until 03:45 the next morning. `1439` is neither day-closed nor
+  // end-exclusive; `DAY_END_MIN + 1` is both, and it is the same `[start, end)` reading the rest
+  // of this file states.
+  assert.equal(intervalIntersects(i, 1439, 1439), true, 'a flight provably in the air at 23:59 does not occupy 23:59');
+  // And the clamp still does the one thing it was kept for: **no claim about the next day.** The
+  // document's own arithmetic reaches 1665, and a window in the small hours sees nothing.
+  assert.equal(intervalIntersects(i, 1440, 1500), false, 'the day-closed reading was lost when the clamp moved');
+  // Not vacuous: without the clamp the same window would be occupied by a run that ends at 27:45.
+  assert.equal(i.endMin > 1500, true, 'the unclamped end no longer reaches past the window this asserts nothing about');
 });
 
 test('occupiedInterval is null for a stop that is not on a day clock at all', () => {
@@ -214,4 +223,49 @@ test('R71-4: a stated run is tested at BOTH ends — a stop that starts inside t
   assert.equal(at('17:15', { durationMins: null, arrival: null }), false, 'a stop that states nothing was given a run');
   assert.equal(at('17:15', {}), true, 'the 17:15 bus runs to 18:35, inside the evening');
   assert.equal(at('20:00', { durationMins: null, arrival: null }), true, 'a stop with no stated run occupies its start instant');
+});
+
+/**
+ * **QA R72-3 — `crossesDay` was off by one against the half-open convention this file states.**
+ *
+ * `endMin > DAY_END_MIN` is `true` of a run that ends at **exactly 24:00**, so an overnight leg
+ * that lands at 00:00 — 17:00 + 7h00, an ordinary timetable entry — rendered *"on 2026-08-10 you
+ * are on a flight from 17:00 **and still on it at midnight**"* about a flight the document says
+ * has landed. Forty lines below, the same file spells the convention the other way: *a leg landing
+ * at 18:00 does not occupy 18:00*. A run ending at 24:00 does not reach into the next day.
+ *
+ * **The two halves are one statement**, which is why they are asserted together: the 24:00 lander
+ * occupies 23:59 (it is in the air for that minute) and does **not** cross the day. Only the
+ * minute after it does.
+ */
+test('R72-3: a run ending at exactly 24:00 does not cross the day — N (injected, SHOWN TO FIRE)', () => {
+  const { trip } = europe2026();
+  const journey = trip.days.flatMap((d) => d.stops)
+    .find((s) => s.travelRole === 'journey' && s.arrival && s.placement.kind === 'scheduled')!;
+  const at = (time: string, mins: number) => occupiedInterval(variant(journey, {
+    arrival: { ...journey.arrival!, mins },
+    placement: { ...(journey.placement as Extract<Stop['placement'], { kind: 'scheduled' }>), time },
+  }))!;
+  const check = (i: ReturnType<typeof at>, want: boolean, what: string) => {
+    assert.equal(i.crossesDay, want, `${what}: endMin ${i.endMin}, crossesDay ${i.crossesDay}`);
+  };
+  // 17:00 + 7h00 lands at 00:00. The document says it has landed.
+  const lands = at('17:00', 7 * 60);
+  assert.equal(lands.endMin, 1440);
+  check(lands, false, 'a run ending at exactly 24:00');
+  // One minute later, and it genuinely outlives the day.
+  const over = at('17:00', 7 * 60 + 1);
+  assert.equal(over.endMin, 1441);
+  check(over, true, 'a run ending at 00:01 the next day');
+  // 23:59 is the last minute of the day and a run ending there has not crossed it either.
+  check(at('17:00', 6 * 60 + 59), false, 'a run ending at 23:59');
+  // The half-open reading, in the same breath: the 24:00 lander IS in the air at 23:59.
+  assert.equal(intervalIntersects(lands, 1439, 1439), true, 'a flight that lands at 00:00 was not in the air at 23:59');
+
+  // N: `endMin > DAY_END_MIN`, the shipped expression. The 24:00 lander is said to outlive its
+  // day, and the only reader of this field renders "and still on it at midnight" from it.
+  assert.throws(
+    () => check({ ...lands, crossesDay: lands.endMin > 23 * 60 + 59 }, false, 'a run ending at exactly 24:00'),
+    /crossesDay true/,
+  );
 });
