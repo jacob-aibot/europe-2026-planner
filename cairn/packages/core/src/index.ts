@@ -1,16 +1,23 @@
 /**
  * `@cairn/core` — the public surface of ARCHITECTURE §2.10 and nothing else.
  *
- * **86 runtime symbols, one list, set equality in both directions** (69 at revision 5, QA R2-12,
+ * **One list, set equality in both directions — and this docstring states no count** (corrected at
+ * ARCHITECTURE revision 83 / ROADMAP revision 83, manager finding MGR-12: this line said **86** while
+ * `Object.keys(index).length` was **91**; `surface.test.ts`'s `THE_LIST` was current throughout, and the
+ * per-join comments below at `:121`, `:144` and `:231` each recorded their increment correctly — only this
+ * headline was stale. The count is obtained by running ROADMAP criterion E's command, never by reading a
+ * comment.) The join history, which is what a comment is for (69 at revision 5, QA R2-12,
  * BUILD-NOTES KD-33; +`reassertRetirements` at revision 6; +`lifecycle` at Phase 2 I-1;
  * +`countryOf` and `COUNTRY_INDEX` at Phase 2 I-5; +`SUMMARY_VERSION` at Phase 2 I-6;
  * +`travelStats` at Phase 2 I-7; +`clusterPoints` at Phase 2 I-8d, §4.4 A-41 Part 6;
  * +`isIsoDate` at Phase 2 I-8e, §2.9 A-46 Part 2; +`countryKeyPoint` at Phase 2 I-8g,
- * §4.4 A-48 Part 2; **+`addPhoto`, `removePhoto`, `updatePhoto` and `readExif` at Phase 2 I-13,
+ * §4.4 A-48 Part 2; +`countryParts` at Phase 2 I-8h, §4.4 A-49 Part 2; **+`addPhoto`, `removePhoto`, `updatePhoto` and `readExif` at Phase 2 I-13,
  * §10.1/§10.2, A-57 Part 6 — 79 → 83, counted in this pass and pinned in §2.10 and ROADMAP
  * criterion E in the same commit, which is §8.9's rule**; **+`addParticipant`,
  * `updateParticipant` and `removeParticipant` at Phase 2 I-9, §8.3/§8.9 — 83 → 86, counted in
- * that pass**). It used to be 110 against a 50-name list plus a 60-name "beyond §2.10,
+ * that pass**; +`searchGazetteer` at Phase 2 I-21, §8.4 A-82 Part 9; +`cityPickFromRow` at Phase 2 I-22a,
+ * §8.4 A-84 Part 3 clause 4; +`ask`, `matchQuestion` and `askableQuestions` at ROADMAP I-35, §11.9).
+ * It used to be 110 against a 50-name list plus a 60-name "beyond §2.10,
  * each with a justification" list, which made the acceptance criterion true by construction:
  * 110 = 50 + 60 for *any* 110 exports. A boundary the Phase 2 server and the Phase 4 native
  * app are written against cannot be "110 against 50, enumerated".

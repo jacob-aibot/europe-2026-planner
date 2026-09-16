@@ -2135,6 +2135,25 @@ composed paragraph is withdrawn in favour of a one-sentence verdict plus the `fa
 gates Phase 3** — Jacob's direction was that the `country_count` scope arc close before Phase 3 code, and
 A-98 Parts 1–7 did that — **and nothing here gates `I-30`.**
 
+**Revision 83, 2026-09-16 — §2.10 stops stating its own count, and that is the WHOLE of this document's
+change.** This revision is the architect half of the manager's `I-30` / Phase 2 gate verdict, and **almost
+all of it is in `ROADMAP.md`** — four of Phase 2's exit criteria were false about the artefact Phase 2
+shipped (**MGR-10**, **MGR-12**, **MGR-13**). What lands here is one correction in **§2.10** and nothing
+else: its **contract sentence** and its **code-block header** both still said **86 runtime symbols** while
+the command returns **91**, which MGR-10 did not catch because §2.10's *join genealogy* — at the head of the
+same section — is current and records all three joins (`searchGazetteer` at `I-21`, `cityPickFromRow` at
+`I-22a`, the answer engine's three at `I-35`). **Both now point at the command instead of restating a
+value**, which is §4.2 A-70 Part 7 item 3's count rule applied to the section that has broken it most often;
+the *"complete at 86"* line inside the I-9 parenthetical is labelled as history in place. **§2.10's list, its
+derivation principle (P1/P2), its two ceilings and its genealogy do not change** — the contract is unmoved
+and only the number is withdrawn. **No section other than §2.10 moves, no ruling is added, no `A-` number is
+minted, §0 does not move, §11 and §12 do not move, and nothing here gates `I-45` or Phase 3.** **No export,
+no version constant, no golden byte, no `.tsx`, no `apps/web`, no `qa/` file, no `docs/design/` file, no
+corpus byte, no new dependency** — the export surface is **91**, measured at `1adc706` by running the
+command and not by reading this sentence. The one code change in the pass is
+`packages/core/src/index.ts:4`'s headline **docstring** (MGR-12), which is a comment. `ROADMAP.md` revision
+83 carries the rest, including **criterion rule 13** and **sequencing rule 15**.
+
 Read the whole document when you are the manager, when you are changing the design, or when a change
 crosses a section boundary. Otherwise this table is the contract.
 
@@ -9890,8 +9909,9 @@ move**, because nothing in §11 is stored and `ask` has no write path.
 `index.ts` and `surface.test.ts` at I-13 and this block was not updated in that commit, so §2.10's prose
 stood at 79 while the code stood at 83 — `SUMMARY_VERSION`'s correction at revision 24, verbatim, and for
 the same reason: set equality is between `index.ts` and `surface.test.ts`, and the prose count is the one
-thing neither of them can check. Both are folded in here in I-9's pass, and the list below is complete at
-**86**.)* **`addPhoto` / `removePhoto` / `updatePhoto` join under P1** — `packages/client`'s `ACTION_SPECS`
+thing neither of them can check. Both are folded in here in I-9's pass, and the list below was complete at
+**86** **as of I-9** — history, not a claim about the list below, which has grown three times since
+(revision 83).)* **`addPhoto` / `removePhoto` / `updatePhoto` join under P1** — `packages/client`'s `ACTION_SPECS`
 resolves `core[spec.coreFn]` off this index for all three — **and under P2**, since §10.1 names them;
 `readExif` is both as well, and §10.2 **A-58** Part 3 is why it is in core rather than in `apps/web`.
 `reattachDanglingPhotos` stays internal: it is §10.3's repair applied by `removeStop` and `ensureDays`, and
@@ -9984,9 +10004,14 @@ rule.
 
 §2.10's own enforcement
 rule is *"widening the surface is a documentation change
-first"*, and these lines are that change. The list below is the whole contract: **86 runtime symbols**,
-one list, asserted as set equality in both directions against the runtime exports of
-`packages/core/src/index.ts`. It replaces a two-list arrangement — 50 "in §2.10" plus 60 "beyond §2.10, each
+first"*, and these lines are that change. The list below is the whole contract: **one list, asserted as set
+equality in both directions against the runtime exports of `packages/core/src/index.ts`**, and **this
+section states no count** *(corrected at revision 83, manager finding MGR-10: it said **86** while the
+command returned **91**, three increments after the last of the three joins that moved it — and the
+genealogy at the head of this section had recorded all three correctly the whole time)*. The number is
+obtained by running the command in `ROADMAP.md` criterion E, and is **held** by
+`packages/core/test/surface.test.ts`'s `THE_LIST`; the join history at the head of this section says which
+increment added what and why, which is the part a document owns. It replaces a two-list arrangement — 50 "in §2.10" plus 60 "beyond §2.10, each
 with a justification" — that made the criterion true by construction against 110 exports. A boundary the
 Phase 2 server and the Phase 4 native app are written against cannot be "110 against 50, enumerated".
 
@@ -10022,7 +10047,8 @@ would make every internal public. The un-export pass therefore rewrites some pro
 index to the module path; that is the expected shape of the change, not a regression.
 
 ```
-packages/core/src/index.ts re-exports exactly this and nothing else — 86 runtime symbols:
+packages/core/src/index.ts re-exports exactly this and nothing else.
+(No count on this line: the number is counted, never quoted — ROADMAP criterion E has the command.)
 
   model (8)      LOCAL_OWNER · SCHEMA_VERSION · sequentialIds · formatRange · costFromDisplay
                  TripParseError · ForeignDocumentError

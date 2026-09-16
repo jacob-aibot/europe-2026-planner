@@ -2124,7 +2124,11 @@ plainly what does and does not gate it. **Sequencing rule 14** is new.
 - **Live location stays refused and now has a mechanism** (§12.3, §12.8): a committed check over
   `db/migrations/*.sql` refusing any coordinate-shaped **column**, written **before** the first migration.
   A `SharedTrace` needs no Phase 3 schema, which is exactly why deferring it is safe.
-- **Two things stated rather than papered over.** **`I-30` is unbuilt and is the last Phase 2 increment**;
+- **Two things stated rather than papered over.** **⚠ The first half is superseded — see revision 83 and
+  Phase 3 entry condition 1. It was true at revision 80 and is false now**: `I-30` is built, revision 82
+  added `I-45` after it, and `I-45` is the last Phase 2 increment. *(Stated in place rather than rewritten:
+  a ledger entry records what a revision said. What is corrected is the entry condition it fed, which is
+  the sentence a reader acts on.)* **`I-30` is unbuilt and is the last Phase 2 increment**;
   by sequencing rule 2 it gates Phase 3's **code** and it does **not** gate this ruling. **`R72-1`** —
   `country_count`'s scope gate — shares no file with Phase 3 and gates neither; whether it gates Phase 2's
   SHIP verdict is the manager's call and not mine. And **`P2-8`/`A-2` is NOT ruled in this pass**,
@@ -2214,6 +2218,57 @@ which is still fenced by the unresolved visual direction and by nothing else.
   no `.tsx`, no `apps/web`, no `qa/`, no `docs/design/`, no golden byte and no new dependency in this
   revision.**
 
+**Revision 83, 2026-09-16.** **The manager's `I-30` / Phase 2 gate verdict, architect half — and it is
+CORRECTIONS TO A SHIP GATE, not a ruling about the product.** `I-30` is **BUILT** and returned **SHIP**;
+**Phase 2 returned SEND BACK**, and one of the three things holding it is that **four of Phase 2's own exit
+criteria were false about the artefact Phase 2 shipped** (**MGR-10**, **MGR-12**, **MGR-13**). Nothing in
+this revision changes what the product does. **No code file except one docstring line, no `.tsx`, no
+`apps/web`, no `qa/`, no `docs/design/`, no golden byte, no version constant — §2.10 stays at 91, measured
+rather than quoted.** Six things move.
+
+- **Three stale counts, removed rather than corrected** (criterion 13, the revision-40 2d criterion).
+  `ROW_PATHS` was stated **24** and is **26**; `ROW_KEYS` **14** and is **15**; `ROW_COUNT_FIELDS`
+  **eight** and is **nine** — each re-derived from `test/stats-storage.test.ts` at `1adc706`, whose 77
+  tests are green. **All three widenings were ruled and recorded** (`:7297`, `:7360`, `:7526` — the last
+  already wrote *"the identity still holds at nine"*) and none reached the criteria block. The criterion now
+  names the three assertions and states no number, which is criterion rule 6's own instruction.
+- **Criterion E and §2.10 stop stating an export count.** Criterion E said **86**; the command returns
+  **91**. The same stale 86 was live in three further places at `1adc706` and all three are corrected here:
+  `packages/core/src/index.ts:4`'s headline docstring (**MGR-12**), and **two in ARCHITECTURE §2.10 that
+  MGR-10 did not catch** — its contract sentence and its code-block header. The join genealogy at the top
+  of §2.10 was already current, which is why the value was not unknown to the document family; it was
+  unknown to the sentences a ship gate reads.
+- **Criterion 14 — the phase's PRIVACY criterion — is rewritten, because its exclusion could not be
+  evaluated** (**MGR-13**). R54-6 deliberately wrote the exclusion as a property rather than a filename;
+  the property it chose (*"carries `$generatedBy`, carries no `$source`"*) was **already non-discriminating
+  when written** — 19 of 19 goldens carry `$generatedBy` — and `I-30`'s CC BY 4.0 attribution obligation
+  falsified the other half, because `gazetteer-probes.json` is generated GeoNames data that **must** carry
+  `$source`. The replacement is two mechanical arms, the second of which discovers its needle set from the
+  reference trip document at run time. **No person's coordinate is in any golden and I re-derived that
+  rather than taking it** (510 needles; the two coordinate-bearing goldens score 0 hits; the seven goldens
+  carrying trip strings carry no coordinate). **R54-6's instruction is the one thing not touched.**
+- **Criterion 15's ceiling is scoped to what A-58 ruled on.** It forbade *any* `package.json` diff
+  **anywhere in the repo**, which forbade its own repair — a separately routed builder pass must add
+  `apps/web/test/*.test.ts` to the test glob, seven passing tests that have never run in CI. The ceiling is
+  now over `cairn/package.json`'s four dependency keys, `cairn/package-lock.json` and core/client's imports;
+  it permits a `scripts` edit and says so.
+- **Phase 3 entry condition 1 is corrected.** Revision 80's *"`I-30` … is unbuilt and is the last Phase 2
+  increment"* was superseded by revision 82's `I-45` and by `I-30`'s build, and stood through two revisions.
+  **What gates Phase 3 is the phase verdict, never a named increment.**
+- **A sixth stale criterion, found by going through the block criterion by criterion rather than only
+  through the four that were routed: criterion 6 part a′.** It said the leaf-path union is over **three**
+  rows (`UNION_ROWS()` is **five**) and that the count-shaped set is **eight** (**nine**) — the same
+  movement as criterion 13's, one bullet away from it in the same block. Two more corrections ride with it:
+  **criterion 2's second clock is now named** (`FIXTURE_TODAY`) on criterion rule 8, because *"move `today`
+  back before `startDate`"* also admits 2026-01-01, which returns **7** findings against the original
+  **17**; and **criterion 8 says where it is evaluated**, because `qa/r54-gate.mjs` declares a section for
+  it and for the phase attack list and implements **neither**, while reporting `gaps=0`.
+- **Two new rules, and the second is ruled on a measurement.** **Criterion rule 13** puts the re-derivation
+  obligation on the increment that *moves* a value. **Sequencing rule 15** rules that **no new detection
+  mechanism is warranted**: `qa/r54-gate.mjs` already goes red on five of the six recurrences, runs in
+  **3 seconds** against `npm test`'s 48, and was consulted **once in twenty increments**. It moves from the
+  step boundary to every increment's ship gate.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -2241,8 +2296,9 @@ trips has a travel history.
 
 ## How a criterion is written
 
-Twelve rules. They apply to every phase in this document, and a criterion that breaks one is a defect
-routed to me, not to whoever failed to meet it. **Rule 12 is revision 82's and it is the newest**; rule 11 is
+Thirteen rules. They apply to every phase in this document, and a criterion that breaks one is a defect
+routed to me, not to whoever failed to meet it. **Rule 13 is revision 83's and it is the newest**; rule 12 is
+revision 82's; rule 11 is
 revision 81's; rule 10 is
 revision 79's; rule 9 is
 revision 76's; rule 8 is revision 70's; rule 7 is revision 69's; rule 6 is revision 53's; the other five are
@@ -2391,6 +2447,36 @@ the user's data (rule 8). This is rule 11's sibling: rule 11 is about text the p
 **type**, rule 12 about text the product **says**. **Generalise it before reaching for it**: the standalone
 `1` is one class, and the shape to copy is *find the one string every path produces and assert over it*, not
 *add a second regex*.
+
+**13. A measured value is re-derived by the increment that MOVES it, in that increment's own pass, and every
+artefact carrying it is updated in the same commit** (revision 83, manager findings **MGR-10**/**MGR-12**;
+`ARCHITECTURE.md` §2.10). Rule 6 says where a measured value may not be written. **This is the other half,
+and without it rule 6 is unenforceable**: rule 6 addresses whoever *writes* a criterion, and every recurrence
+of this defect has been committed by somebody who never opened that criterion at all. **The evidence is six
+recurrences in one document family** — R28-8 (criterion E, stale through two increments), R54-7 (the same
+entry's own block quote, stale inside the revision that fixed it), and the four MGR-10 found at once
+(`ROW_PATHS`, `ROW_KEYS`, `ROW_COUNT_FIELDS` and criterion E again, plus `index.ts`'s docstring as MGR-12).
+Every one is the same movement: a value was widened, the widening was **correctly ruled and correctly
+recorded in the increment entry**, and the sentence quoting it two thousand lines away was not touched.
+Three consequences.
+
+**(a) The obligation is the mover's, because the moment a value moves is the only moment anyone knows all
+of its carriers.** An increment that adds or removes an export, a row key, a leaf path, a count field, a
+version constant or a corpus row **runs the command that derives it, in its own pass**, updates every
+artefact that carries it, and **names the command in its ship gate as run**. An increment that moves such a
+value and does not do this has not met its own gate, whatever else is green.
+
+**(b) The carriers are enumerated in the ruling that owns the value, not discovered by the next reader.**
+§2.10's export count has four carriers and revision 60 named all four — the command, `surface.test.ts`'s
+`THE_LIST`, §2.10's prose and `index.ts`'s docstring — and three of the four were stale at `1adc706`
+anyway, because naming them was not the same as obliging anyone to visit them. A ruling that introduces a
+value a document will quote **lists its carriers in the ruling**, and (a) is what makes the list get used.
+
+**(c) Where a value has a standing re-derivation, the criterion cites the instrument and states nothing.**
+That is rule 6's form and it is the one that cannot recur. The residual risk this rule accepts, stated
+plainly: a value with **no** standing re-derivation is still held by (a) alone, which is a human obligation
+and will eventually be missed. The answer to that is not a longer rule — it is **sequencing rule 15**, which
+makes the instrument that already detects every one of these run often enough to be worth having.
 
 ---
 
@@ -2802,17 +2888,35 @@ not decoration.
 - **`cli export` refuses any path that normalises outside `cairn/`** `[stated]`
 - **The dependency-direction test exists and passes**, including "nothing under `apps/` imports
   `tools/extract-legacy.mjs`" `[stated]`
-- **`packages/core/src/index.ts`'s runtime exports equal §2.10's list exactly — 86 symbols** (69 in revision
-  5; `reassertRetirements` joins in revision 6 under P1, §2.7 A-5; `lifecycle` joins in revision 10 under
-  P2, §8.1/§8.9, counted in Phase 2 I-1's own pass; `countryOf` under P2 and `COUNTRY_INDEX` under P1,
-  §8.4 clause 1, counted in Phase 2 I-5's own pass; **`SUMMARY_VERSION` under P1 at I-6** — the client's
-  rescan compares against it — **and `travelStats` under both P1 and P2 at I-7**, §8.4 clause 2 / A-31;
-  `clusterPoints` at I-8d, `isIsoDate` at I-8e, `countryKeyPoint` at I-8g and `countryParts` at I-8h take it
-  to **79**; **`addPhoto`, `removePhoto`, `updatePhoto` and `readExif` at I-13** under §10.1/§10.2, A-57
-  Part 6, take it to **83**; **`addParticipant`, `updateParticipant` and `removeParticipant` at I-9** under
-  §8.3/§8.9 take it to **86**, re-counted in I-9's own pass and written into §2.10 and this line in the same
-  commit),
-  **one list, set equality in both directions** `[stated]`. *(**Revision 25, QA R28-8.** This number said
+- **`packages/core/src/index.ts`'s runtime exports equal §2.10's list exactly — one list, set equality in
+  both directions, and this criterion states no count.** *(Rewritten at revision 83 — see the note below;
+  the value this line used to carry had been stale through three increments.)* The count is not a fact this
+  document owns. It is obtained by **counting**, with one command, in `cairn/`:
+
+  > `node --experimental-strip-types -e "import('./packages/core/src/index.ts').then(m => console.log(Object.keys(m).length))"`
+
+  and it is **held** by `packages/core/test/surface.test.ts`'s `THE_LIST` — the single array of symbol
+  names, asserted set-equal to the index's runtime exports in both directions. That assertion is the oracle;
+  every number anywhere else is a copy of it. **The relationship, which is what a contract document may
+  state and what does not go stale:** the command's output, `THE_LIST.length`, §2.10's transcribed list and
+  `index.ts`'s own docstring are **four views of one set and must agree**, and the assertion checks two of
+  the four — so the two it cannot check (§2.10's prose, the docstring) are the two that drift, and they are
+  exactly where every recurrence of this defect has landed. Type-only exports are outside the set by
+  construction (they do not exist at runtime) and this criterion says so rather than leaving a tester to
+  discover it. **What re-arms the pin — criterion rule 13, and it is a rule and not a habit:** an increment
+  that adds or removes an export **runs the command in that increment's own pass and updates §2.10's list
+  and `index.ts`'s docstring in the same commit**, and its ship gate names the command as run. An increment
+  that adds an export and does not do this has not met its own gate, whatever else is green `[stated]`
+  *(**The join history, labelled as history and depended on by nothing**: 69 in revision 5;
+  `reassertRetirements` in revision 6 under P1, §2.7 A-5; `lifecycle` in revision 10 under P2, §8.1/§8.9, at
+  Phase 2 I-1; `countryOf` under P2 and `COUNTRY_INDEX` under P1, §8.4 clause 1, at I-5; `SUMMARY_VERSION`
+  under P1 at I-6 and `travelStats` under both at I-7, §8.4 clause 2 / A-31; `clusterPoints` at I-8d,
+  `isIsoDate` at I-8e, `countryKeyPoint` at I-8g, `countryParts` at I-8h; the photo four at I-13, §10.1 and
+  §10.2 / A-57 Part 6; the participant three at I-9, §8.3 and §8.9; `searchGazetteer` at I-21, §8.4 A-82
+  Part 9; `cityPickFromRow` at I-22a, §8.4 A-84 Part 3 clause 4; and `ask`, `matchQuestion` and
+  `askableQuestions` at I-35, §11.9. **Measured at `1adc706`: 91.** §2.10 carries the same genealogy with
+  its reasons.)*
+  *(**Revision 25, QA R28-8.** This number said
   **73** from I-5 until now: the count was not updated in I-6's commit or I-7's, which the increment
   sequence's own rule — *"an increment that adds an export updates §2.10's list and criterion E's count in
   the same commit"* — makes mandatory. §2.10's list was corrected to 75 at ARCHITECTURE revision 24 and is
@@ -2824,14 +2928,36 @@ not decoration.
   *(**Revision 60, QA R54-7 — the R28-8 class recurring, fifth time in this document family, and this time
   it recurred INSIDE the entry that fixed it.** The block quote below said **75** while the criterion two
   paragraphs above it said **86**, so a reader who implemented the mechanism implemented the wrong number.
-  **86 is correct** and was re-derived at revision 60 by running the command — `node
+  **86 was correct at revision 60 and is history now — see revision 83 below**; it was re-derived there by running the command — `node
   --experimental-strip-types -e "import('./packages/core/src/index.ts').then(m =>
   console.log(Object.keys(m).length))"` from `cairn/` — which printed **86**, matching §2.10, `index.ts`'s
   docstring and `surface.test.ts`'s `THE_LIST`. The block quote is corrected. **The lesson this entry
   already stated is now stated about itself:** a contract document may state a **design** count and must
   never carry the same count twice, because the second copy is the one that goes stale — §4.2 **A-70 Part 7
   item 3**'s count rule. The block quote no longer restates a number the criterion above it owns; it points
-  at it.)* Rewritten in revision 5, because the criterion as met was
+  at it.)*
+  *(**Revision 83, manager findings MGR-10 and MGR-12 — the R28-8 class recurring, SIXTH time in this
+  document family, and the third time the recurrence is inside the machinery built to stop it.** The
+  criterion said **86 symbols**. Re-derived at `1adc706` by running the command above: **91**. Three
+  increments moved it and none of them carried the move here — `searchGazetteer` at `I-21` (86 → 87),
+  `cityPickFromRow` at `I-22a` (87 → 88) and the answer engine's three at `I-35` (88 → 91) — and §2.10's own
+  join genealogy records all three correctly, so the number was not unknown to the document family. It was
+  unknown to **the sentence a ship gate reads**. **The same stale 86 was found in three further places at
+  the same commit and all three are corrected in this pass or routed by it:**
+  `packages/core/src/index.ts`'s headline docstring (**MGR-12** — the file whose comments at its own join
+  sites, `:121`, `:144` and `:231`, each record their increment correctly, so only the headline was wrong);
+  and **two in `ARCHITECTURE.md` §2.10 that MGR-10 did not catch** — its contract sentence (*"the list below
+  is the whole contract: 86 runtime symbols"*) and the header of its own code block (*"re-exports exactly
+  this and nothing else — 86 runtime symbols"*). Both are corrected at ARCHITECTURE revision 83 and both now
+  point at the command instead of restating a value. **Revision 60 diagnosed this exactly right and its
+  remedy was too small**: it said a contract document *"must never carry the same count twice, because the
+  second copy is the one that goes stale"*, and then left the **first** copy stated — so there was still a
+  number to go stale, and it did, in three of the four artefacts the same entry named. **Revision 83's
+  remedy is that no copy is stated at all**, in this criterion or in §2.10, and criterion **rule 13** makes
+  the re-count an obligation of the increment that moves the surface rather than a habit of whoever
+  remembers. The measured value at a fixed commit stays available, in the join-history note above, where no
+  criterion depends on it.)*
+  Rewritten in revision 5, because the criterion as met was
   satisfied by construction: the test asserted equality against the **union** of `SECTION_2_10` (50) and
   `BEYOND_2_10` (60), which is 110 = 110 for any 110 exports, and QA found 42 of the 60 per-symbol
   justifications did not hold (R2-12, KD-19). So, mechanically:
@@ -11142,9 +11268,16 @@ first.
 - **Injected fault — the rule class does what it claims.** Evaluate the *same* reference trip at a `today`
   **after** `endDate`: every finding returned is from an `integrity` rule, the golden states the exact
   count and lists one line per finding, and **zero** findings come from `impossible_transfer`, `overlap`,
-  `missing_lodging`, `unbooked_ticketed` or `booking_vs_plan`. Then move `today` back before `startDate`
-  and assert the original set returns **exactly**. A rule that is silent at both clocks has been deleted,
-  not classified `[stated]`
+  `missing_lodging`, `unbooked_ticketed` or `booking_vs_plan`. Then move `today` back **to the goldens'
+  fixed clock, `FIXTURE_TODAY`** — which is before `startDate` — and assert the original set returns
+  **exactly**. A rule that is silent at both clocks has been deleted, not classified `[stated]`
+  *(**Revision 83, criterion rule 8.** This said *"move `today` back before `startDate`"*, which names a
+  population rather than a clock and admits two implementations that disagree: measured at `1adc706`,
+  `FIXTURE_TODAY` (2026-08-01) reproduces the original 17 findings byte-identically, and 2026-01-01 — also
+  before `startDate` — returns **7**, because `unbooked_ticketed` fires inside a horizon of `today` and ten
+  findings are outside it. Both clocks satisfy the sentence as it was written and only one satisfies its
+  intent, which is rule 8's *"one number over two populations"*. The clock is now named. **No rule, no
+  golden and no classification moves** — the shipped answer at the named clock is what it always was.)*
 - **A past trip is silent.** Build a 21-day, one-city, zero-stop trip ending in 2019 with
   `datePrecision:'month'`: `detectConflicts` returns **zero** findings of any severity and `validateTrip`
   returns **zero** issues — a ceiling, not a floor — while `days` is dense over the range and
@@ -11249,13 +11382,26 @@ first.
   block-quoted above is unchanged and is still the point; what follows replaces the mechanism.)*
   - **a′. The row's key set is pinned in full — every field, not the count-shaped ones.** A compile-time
     `Record<keyof TripSummaryRow, true>` map, a runtime top-level key-set assertion against a minted row,
-    and a runtime **leaf-path** assertion over the union of three rows (the reference trip; a trip with one
-    city whose `countryCode` is `null`; a trip with no city, place or stop). Adding **any** field to the row
-    fails the run, and widening the list is an architect's ruling — a field on the row is a field in
-    storage and `SUMMARY_VERSION` moves with it. The count-shaped eight survive as an assertion *about* the
-    pinned set, not as the filter that decides it. **Injected fault:** `daysAbroad: number` on the row,
-    minted — a count whose name carries no counting suffix and no plural domain noun, which the
-    revision-24 classifier passed `[stated]`
+    and a runtime **leaf-path** assertion over the **union of `UNION_ROWS()`** — the fixture set in
+    `test/stats-storage.test.ts`, which is the population and which **grows with the design**: it must
+    contain the reference trip, a trip with one city whose `countryCode` is `null`, a trip with no city,
+    place or stop, and one row per nullable branch any later ruling adds (a city occupying no day; a city
+    with no `centre`), **and a test beside it asserts the rows are genuinely different, so the union is not
+    one row counted repeatedly**. Adding **any** field to the row fails the run, and widening the list is an
+    architect's ruling — a field on the row is a field in storage and `SUMMARY_VERSION` moves with it. The
+    count-shaped subset survives as an assertion *about* the pinned set, **never as the filter that decides
+    it** — `ROW_COUNT_FIELDS` is a transcription, `countShaped` is the classifier, and the criterion is that
+    the two agree. **This part states no count** (criterion rule 6; see criterion 13). **Injected fault:**
+    `daysAbroad: number` on the row, minted — a count whose name carries no counting suffix and no plural
+    domain noun, which the revision-24 classifier passed `[stated]`
+    *(**Revision 83, the sixth stale criterion, found by going through this block criterion by criterion
+    rather than only through the four the manager routed.** This part said the union was over **three**
+    rows and that the count-shaped set was **eight**. Measured at `1adc706`: `UNION_ROWS()` is **five**
+    — A-56 Part 6 added a city occupying no day, and A-83/A-85 a city with no `centre` — and
+    `ROW_COUNT_FIELDS` is **nine**. Both widenings were ruled; neither reached here. It is the same movement
+    as criterion 13's and it was **one bullet away from it in the same block**, which is the clearest
+    argument there is for sequencing rule 15: a 3-second instrument that re-derives all of this was
+    available the whole time.)*
   - **b′. Every `StoragePort` implementation the census names is EXECUTED, written through and read back.**
     *(Rewritten at revision 26, §8.4 **A-36**, QA R29-1. The revision-25 form said "a real port" and meant
     the memory port; the web port was covered by b″'s grep, and a one-line variant of the fault that grep
@@ -11326,6 +11472,17 @@ first.
   asserted as a literal; and its document bytes are unchanged.** Injected fault, and it is the mutation
   whose absence let R26-6 ship: restore the `saveIfVersion` document rewrite in `runRescan` and this goes
   red while every clause above it stays green. §4.3 **A-30**.)*
+
+  *(**Revision 83 — where this criterion is evaluated, because it is NOT in the phase gate.**
+  `qa/r54-gate.mjs`'s section index declares a section **H** for this criterion and a section **Q** for the
+  phase attack list, and **neither is implemented** — the probe runs A–G and I–P, and its own `gaps`
+  counter reports **0**, so a declared-and-absent section is invisible in the only line anyone quotes
+  (`COMPLETE fails=N gaps=N`). The criterion itself **is** evaluable and green, in
+  `packages/client/test/summary-rescan.test.ts` — sixteen tests including revision 23's cost half and four
+  named ATTACK rows — which runs in `npm test`. **Routed to the breaker with the rest of the re-cut:**
+  build H and Q, or delete them from the index and count them as gaps. A section index that promises a
+  section it does not run is the phase gate reporting success for doing nothing, which is criterion rule 9's
+  shape applied to the instrument instead of to a fault.)*
 - **Participation grants nothing, asserted mechanically.** Run the §6.2 access conformance set twice, once
   with participants added to every trip and once without, over every (principal × relationship ×
   operation) cell: **the two runs are identical**, and a participant who is not also a member or a share
@@ -11354,41 +11511,147 @@ first.
 
 **Added at revision 40, for step 2d.** Three criteria, and each is a ceiling rather than a floor:
 
-- **A summary row is exactly what the allow-list says and no more.** `ROW_PATHS` is exactly the 24 leaves
-  §8.4 **A-56** Part 6 transcribes, `ROW_KEYS` is exactly the 14 top-level keys A-33 Part 2 transcribes, and
-  `ROW_PATHS.filter(countShaped)` is exactly the **eight** entries of `ROW_COUNT_FIELDS`. **Injected fault:**
-  add `cities[].dayCount` to the minted row and every one of the three goes red — a count that could have
-  been derived does not get to be stored, which is A-31 Part 6's rule with a value-shaped check behind it
+- **A summary row is exactly what the allow-list says and no more.** The three lists that decide what a row
+  may carry are `ROW_PATHS` (every leaf path), `ROW_KEYS` (the top-level keys) and `ROW_COUNT_FIELDS`, all
+  three in **`test/stats-storage.test.ts`**, and **that file is the source of truth: this criterion states
+  none of the three numbers** (criterion rule 6 — §8.4 **A-33** Part 2's own banner says the same of the
+  ARCHITECTURE transcription, and has since revision 66). What the criterion asserts is the three
+  **identities**, each already owned by a named assertion in that file:
+  - a minted row's top-level key set is exactly `Object.keys(ROW_KEYS)`, and `ROW_KEYS` is typed
+    `Record<keyof TripSummaryRow, true>`, so a field typed but not listed is a **`tsc`** error — the
+    earliest this can fail (`exit 6a: a minted row's TOP-LEVEL keys are exactly the type's`);
+  - the union of the fixture rows' leaf paths is exactly `ROW_PATHS`, over rows asserted to be genuinely
+    different so the union is not one row counted repeatedly (`exit 6a: the union of … LEAF PATHS is
+    exactly ROW_PATHS`, with its own non-vacuity test beside it);
+  - `ROW_PATHS.filter(countShaped)` is exactly `ROW_COUNT_FIELDS` — **an assertion about the pinned set,
+    never the filter that decides it**.
+
+  **The ceiling is the one a reviewer actually checks: widening any of the three is an architect's ruling
+  and `SUMMARY_VERSION` moves in the same commit** (§8.4 clause 3). A build that widens a list without a
+  ruling has failed this criterion even if all three identities still hold. **Injected fault:** add
+  `cities[].dayCount` to the minted row and every one of the three goes red — a count that could have been
+  derived does not get to be stored, which is A-31 Part 6's rule with a value-shaped check behind it
   `[stated]`
-- **No coordinate leaves the device's own storage.** Grep **every `fixtures/golden/*.json` that carries
-  trip data**, every emitted asset under `apps/web/dist/`, and the full output of every `cli.ts` command
-  for a coordinate-shaped float pair: expect **zero**. Two new fields can violate this —
-  `TripSummaryCity.centre` and `PhotoAsset.at` — and they share one assertion rather than having one each.
-  **Injected fault:** print `centre` from `cli.ts stats` and the grep goes red `[stated]`
-  - **The one exclusion, and it is earned rather than granted:** `fixtures/golden/forgiveness-drops.json`
-    is **generated Natural Earth admin-0 ring geometry and nothing else** — the rings criterion 4e's own
-    injected faults need in order to run. It is excluded from the grep, **and the exclusion is asserted,
-    not asserted-by-omission**: the file must carry `$generatedBy: "cairn/tools/gen-countries.mjs"`, must
-    carry **no `$source`** (every trip-data golden does), and must contain **zero** occurrences of any trip
-    id, stop id, place id, day date, title or note. A golden that wants this exclusion has to satisfy that
-    test; a golden that is simply large does not get it. **Second injected fault, required:** paste one
-    `{"lat":…,"lng":…}` pair from the reference trip into `forgiveness-drops.json` and the exclusion's own
-    assertion goes red — otherwise the exclusion is a hole rather than a boundary `[stated]`
-    *(**Revision 60, QA R54-6.** The criterion stated no exclusion and was therefore **red on an artefact
-    that carries no trip data at all** — 1,110 coordinate-shaped pairs of ring geometry, none of them about
-    a person or a place anyone went. Round 54 ran the criterion's **intent** over the eleven trip-data
-    goldens and it is green, and ran the criterion's **letter** and it is red, which is a defect in the
-    sentence and not in the product. What is corrected is the sentence's subject: this criterion is about
-    *a coordinate a user's device recorded*, never about a bundled dataset — the whole country index is
-    geometry, shipped deliberately, and §8.4 clause 1's *"on-device, from a bundled dataset, never by a
-    network geocoder"* is the reason it is. The exclusion is written as a **property with its own fault**
-    rather than as a filename, because a criterion that names a file to skip is one commit away from being
-    a criterion that names three.)*
+  *(**Revision 83, manager finding MGR-10.** This criterion stated `ROW_PATHS` **24**, `ROW_KEYS` **14** and
+  `ROW_COUNT_FIELDS` **eight**. Re-derived from the code at `1adc706` they are **26**, **15** and **nine**,
+  and the suite that owns them is green: `I-22a`/`I-24` widened `cities[]` and §8.4 **A-85** Part 3 made the
+  first top-level widening (`placeCount`, `SUMMARY_VERSION` 7 → 8). **Every one of those widenings was ruled
+  and recorded** — `ROADMAP.md:7297`, `:7360` and `:7526` say so in as many words, and `:7526` already wrote
+  *"the identity still holds at **nine**"*. None of them reached this block, so the phase's own ship gate
+  carried three sentences that were false about the artefact it was gating, through ten increments. **The
+  numbers are not corrected here — they are removed**, which is criterion rule 6's own instruction and the
+  only form that cannot go stale a seventh time. **Measured at `1adc706` and stated as history, with no
+  criterion depending on it: 26 / 15 / 9.** Two copies of the old figures survive outside this file and are
+  routed rather than edited here: `qa/r54-gate.mjs`'s section **M** and row **F1a** (the breaker's), and the
+  *name* of the count-fields assertion in `test/stats-storage.test.ts`, which still reads *"exactly the
+  eight"* while its own body asserts **9** — a stale sentence one line above a correct number, which is this
+  class in miniature.)*
+- **No coordinate belonging to a person leaves the device's own storage.** Grep **every
+  `fixtures/golden/*.json`**, every emitted asset under `apps/web/dist/`, and the full output of every
+  `cli.ts` command for a coordinate-shaped float pair: expect **zero**, except in an artefact that has
+  **earned** the exclusion below. Two fields can violate this — `TripSummaryCity.centre` and
+  `PhotoAsset.at` — and they share one assertion rather than having one each. **Injected fault:** print
+  `centre` from `cli.ts stats` and the grep goes red `[stated]`
+  - **The one exclusion, and it is earned rather than granted: a property, computed, never a list of
+    filenames.** *(Rewritten at revision 83. Revision 60's discriminant — "carries `$generatedBy`, carries
+    **no `$source`**" — is **withdrawn as unevaluable**, not reinterpreted; the note below has the
+    measurement.)* **The excluded set is whatever passes the test, and the probe may not contain a filename
+    set.** For every golden that carries a coordinate-shaped pair, both arms must hold:
+
+    **(i) Stated provenance.** The file declares `$generatedBy` naming a generator that **exists under
+    `cairn/tools/`**. A coordinate whose producer cannot be pointed at is not excused.
+
+    **(ii) Nothing of a user's trip is in it.** The file contains **zero** occurrences of any string drawn
+    from the reference trip document, and **the needle set is discovered from that document at run time,
+    never listed in the probe**: every `Trip.id`, `Day.id`, `Day.date`, `Stop.id`, `Place.id`, `Photo.id`,
+    `Trip.title`, `Stop.title` and every `note`. **`City.key` and `Place.name` are deliberately not
+    needles, and the exclusion of each is part of the ruling** — a place name is what a public gazetteer is
+    made of, so treating one as private makes the test fire on the dataset it exists to permit (measured at
+    `1adc706`: the city key `split` matches the word *split* inside `gazetteer-probes.json`'s own `$what`
+    prose). **The file's own provenance header is not its data**: a value under a `$`-prefixed top-level key
+    (`$generatedBy`, `$source`, `$fetched`, `$sourceSha256`, `$what`) is outside the search, because it
+    describes where the file came from rather than what is in it — without that scoping a re-pin dated on
+    one of the trip's sixteen days would redden the privacy criterion for a reason that has nothing to do
+    with privacy.
+
+    **Two things this exclusion may not be built out of, both of them because they were tried.** It may not
+    turn on **`$source`** — a CC BY 4.0 artefact is *obliged* to carry attribution, so absence of `$source`
+    selects for a licence violation. And it may not grep for the **field name** `"centre"` — that asserts
+    which words a file contains (criterion rule 7), and `gazetteer-probes.json` carries 81 `centre` objects
+    that are GeoNames rows' published coordinates and nobody's device's.
+
+    **The probe records the earned set by name as a note**, so a reviewer sees which files qualified and
+    can see the set move; the **assertion** never names one. **Injected fault, required and kept:** paste
+    one `{"lat":…,"lng":…}` pair **and one `stop-` id** from the reference trip into an excluded golden and
+    arm (ii) goes red **naming the needle and the file** — otherwise the exclusion is a hole rather than a
+    boundary. **What this criterion does not claim:** it bounds coordinates about *this* repository's
+    reference trip, which is the only user data that exists before Phase 3; the day a second person's
+    document is in the tree, the needle set is taken over every document, not over one `[stated]`
+    *(**Revision 60, QA R54-6** — its reasoning stands and only its mechanism is replaced. The criterion
+    stated no exclusion at all and was therefore **red on an artefact that carries no trip data** — 1,110
+    coordinate-shaped pairs of ring geometry, none of them about a person or a place anyone went. Round 54
+    ran the criterion's **intent** over the trip-data goldens and it was green, and its **letter** and it
+    was red, which is a defect in the sentence and not in the product. The sentence's subject is corrected
+    once and stays corrected: this criterion is about *a coordinate a user's device recorded*, never about a
+    bundled dataset — the whole country index is geometry, shipped deliberately, and §8.4 clause 1's
+    *"on-device, from a bundled dataset, never by a network geocoder"* is the reason it is. **R54-6's core
+    instruction is the one thing revision 83 does not touch**: the exclusion is a property with its own
+    fault, because a criterion that names a file to skip is one commit away from naming three.)*
+    *(**Revision 83, manager finding MGR-13 — and the criterion that could not be evaluated is this
+    phase's PRIVACY criterion, which is why it is rewritten rather than annotated.** R54-6 wrote the
+    property form to prevent exactly what then happened, and **the discriminant it chose was already
+    non-discriminating when it was written**. Measured at `1adc706` over all 19 goldens: **19 of 19 carry
+    `$generatedBy`** — every golden in this repository is generated, so that arm admits everything and
+    selects nothing — and **17 of 19 carry `$source`**, the two without being `forgiveness-drops.json` and
+    `gazetteer-source-log.json`. So *"`$generatedBy` and no `$source`"* never meant *"this is a bundled
+    dataset"*; it meant *"this is one of two particular files"*, spelled as a property. **`I-30`'s
+    attribution obligation is what made that visible**: `fixtures/golden/gazetteer-probes.json` is generated
+    GeoNames data — no user, no trip, no device — and it carries `$source` **because a CC BY 4.0 artefact
+    must**, so the exclusion cannot admit it and the phase's privacy criterion is red on it. **The intent
+    was never in doubt and I re-derived it rather than taking it**: the trip-derived needle set is 510
+    strings at `1adc706`; the two coordinate-bearing goldens score **0 hits each**, and the seven goldens
+    that do carry trip strings (42, 32, 145, 20, 34, 11 and 17 hits) carry **no coordinate at all**. The two
+    axes are orthogonal on the shipped artefact, which is what makes the intent true and the new arms
+    checkable. **`qa/r54-gate.mjs:904`'s `new Set(['countries.json','forgiveness-drops.json'])` is deleted
+    rather than extended** — it is R54-6's own predicted failure, arrived, and it is also wrong in the other
+    direction: `countries.json` carries no coordinate-shaped pair at all, so one of the two names it
+    hard-codes was never needed.)*
 - **The photo subsystem is exercisable, and refusable, with no browser.** A-57 Part 7's **P1–P13** all run
   under `node --test` against `memoryPhotos()`, each is recorded with its measured result, and each was red
-  before its fix. **Ceiling:** `npm test` and `npm run typecheck` are green with **no `package.json` diff
-  and no lockfile movement** anywhere in the repo — which is A-58's *"no dependency"* verdict expressed as
-  something a machine checks rather than something a reviewer remembers `[stated]`
+  before its fix. **Ceiling — A-58's *"no dependency"* verdict, expressed as something a machine checks
+  rather than something a reviewer remembers:** `npm test` and `npm run typecheck` are green, **and no
+  dependency enters the bare-Node half of the repo**. The ceiling has a stated subject, three arms, and it
+  is scoped to that subject and to nothing else:
+  - **`cairn/package.json`'s four dependency keys** — `dependencies`, `devDependencies`,
+    `optionalDependencies`, `peerDependencies` — carry **zero runtime dependencies**, and the two type-only
+    devDependencies they do carry are the pre-existing set. A new entry under any of the four is the
+    failure this arm exists for.
+  - **`cairn/package-lock.json` does not move.** It is the repository's only lockfile; the assertion is over
+    that file, and it is checked against **`HEAD`'s committed bytes**, not against a clean working tree — a
+    diff that is zero because nothing is uncommitted measures nothing (criterion rule 9).
+  - **Nothing under `packages/core/src` or `packages/client/src` imports anything that is not relative or
+    `node:`.** This is the arm that actually holds the property when the other two are quiet, because a
+    dependency that is never declared is still a dependency.
+
+  **What the ceiling permits, stated because as written it forbade its own repair:** a **`scripts`** edit.
+  Adding `apps/web/test/*.test.ts` to `test` and `test:tap`, adding a `qa` runner, adding a `typecheck`
+  project — none of these is a dependency, none changes what the suite may import, and A-58 ruled on
+  **dependencies**, not on how the suite is invoked. A criterion that forbids widening the test glob is
+  forbidding the suite from growing, which is the opposite of what it is for. **What it still forbids:** any
+  new entry under the four dependency keys, any movement of `cairn/package-lock.json`, and any non-relative,
+  non-`node:` import in core or client. **What it does not cover, said so nobody reads it back in:**
+  `apps/web/package.json`, which carries React, Leaflet, `d3-geo` and Vite **by design** — the browser app
+  was never on A-58's bare-Node path, and the `anywhere in the repo` phrasing this criterion used to carry
+  was false about the tree on the day it was written `[stated]`
+  *(**Revision 83, manager finding MGR-10 item (c).** The ceiling said *"no `package.json` diff and no
+  lockfile movement **anywhere in the repo**"*, which is three defects in one clause. It **forbade a
+  `scripts` edit** — and a separately routed builder pass must make exactly one, to put
+  `apps/web/test/*.test.ts` into the test glob: seven tests that pass and that **have never once run in
+  CI**, because the glob has never named them. It **named the wrong subject**: `apps/web/package.json`
+  carries four runtime dependencies and always has, so *"anywhere in the repo"* was already false. And its
+  probe read it as a **working-tree** diff against `HEAD`, which on a clean tree is green for any artefact
+  whatsoever — a row that reports success for doing nothing, which is criterion rule 9's own shape. The
+  arms above are what A-58 actually ruled, scoped to what A-58 was actually about.)*
 
 ### What the tester should attack (plain `node`, no network)
 
@@ -11571,11 +11834,20 @@ one increment earlier.
 
 ### Entry conditions — stated plainly, including the two that do not gate
 
-1. **Phase 2 shipped, with a manager verdict of SHIP** (sequencing rule 2). **`I-30` — the picker screen —
-   is unbuilt and is the last Phase 2 increment, blocked on a visual direction that is not in this
-   repository.** It therefore **gates Phase 3's code** through rule 2, and it **does not gate revision 80's
-   design ruling**, which is what ROADMAP's own entry condition has always required to happen *before* the
-   first line of Phase 3 code. Stated rather than left ambiguous.
+1. **Phase 2 shipped, with a manager verdict of SHIP** (sequencing rule 2). **⚠ Corrected at revision 83.**
+   **`I-45` is the last Phase 2 increment and it is unbuilt** (`ROADMAP.md` I-45, revision 82, against
+   `ARCHITECTURE.md` §11.14 **A-99**); it carries QA round 73's unrepaired **SEND BACK** and the live
+   regression **R73-1**. **`I-30` — the picker — is BUILT**, and QA round 74 plus the manager gate of
+   2026-09-16 returned **SHIP** on it as an increment. Phase 2 as a phase has a manager verdict of **SEND
+   BACK**, so rule 2 binds and **Phase 3's code does not begin**; it does **not** gate revision 80's design
+   ruling, which is what this entry has always required to happen *before* the first line of Phase 3 code.
+   *(Revision 80 wrote *"`I-30` … is unbuilt and is the last Phase 2 increment"*, which was true when it was
+   written; **revision 82 superseded the second half by scheduling `I-45` after it**, and `I-30`'s build
+   superseded the first. The stale sentence stood through two revisions and cost a manager a re-derivation
+   and a brief a false premise, which is the whole reason a superseded entry condition is corrected rather
+   than left for a reader to notice. **What gates Phase 3 is the phase verdict, never a named increment** —
+   an entry condition that names one increment goes stale every time the sequence grows, and this one has
+   now done so twice.)*
 2. **`R72-1` gates Phase 3 by DIRECTION, not by dependency, and the distinction is kept visible.**
    **⚠ Amended at revision 81.** Technically it shares **no file** with anything below and nothing in Phase 3
    reads `ask/`; that has not changed, and this entry said so. **What changed is that Jacob directed it close
@@ -12181,3 +12453,35 @@ built.
    (§12.7). **(e)** Where a decision genuinely depends on a **vendor**, the increment says which vendor
    decision and what it cannot change, rather than assuming one. Nothing in Phase 3's design requires a
    purchase before `I-41`, and `I-41` requires a **local** database, not a hosted one.
+
+15. **The phase gate is a per-increment instrument, not a per-phase one; an increment that reddens a row it
+   did not touch reports it** (revision 83, manager findings **MGR-10**/**MGR-11**). This is the routing half
+   of criterion rule 13, and it is ruled on a measurement rather than on a principle. **No new detection
+   mechanism is warranted, because the one that exists already detects five of the six recurrences and was
+   simply not consulted.** At `1adc706`, `node qa/r54-gate.mjs` reports `COMPLETE fails=11`; **four of the
+   eleven are MGR-10's stale counts and three more are MGR-12's**, so the probe has been correctly red on
+   this defect since `I-24` landed — ten increments ago for the row counts, and since `I-21` for the export
+   count. **It runs in 3 seconds.** `npm test` runs in 48. There is no cost argument, and there never was
+   one; there was a **granularity** argument, and it is wrong. Three consequences.
+
+   **(a) The standing obligation moves from the step boundary to the increment.** ROADMAP's carried-forward
+   items already say *"the breaker runs the WHOLE board at each step boundary, not only the probes in the
+   round's scope"*. Phase 2 has had three step boundaries and twenty-odd increments, so *step boundary* was
+   never often enough to be a tripwire — it is a **report**. `qa/r54-gate.mjs` specifically, being the
+   instrument that re-derives the phase's own exit criteria from live source, **runs at every increment's
+   ship gate**, by the builder, and its `COMPLETE fails=N` line goes in the increment's record.
+
+   **(b) A row an increment did not touch going red is a ROUTED FINDING, not a build note and not a
+   silence.** It is sequencing rule 12 (b)'s shape one level out: a builder who measures a document false is
+   doing the architect's job and the report comes back. What may never happen again is what happened here —
+   a red row standing for nineteen rounds because every round's scope was something else.
+
+   **(c) A gate consulted once per phase reports twenty increments of drift at the moment it is most
+   expensive to act on**, which is the ship verdict itself. That is the cost this rule exists to avoid, and
+   it has now been paid once: Phase 2's SEND BACK is four false sentences and a probe, none of which is a
+   defect in the product.
+
+   **What this rule does NOT do, stated so nobody builds it:** it does not add a sweep over criterion prose
+   looking for bare numerals. That would be a heuristic over English with an allow-list behind it — the
+   exact shape rules 7, 8 and 12 have each had to narrow after it misfired — and it is unnecessary, because
+   the values in question already have a re-derivation and the re-derivation already goes red.
