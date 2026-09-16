@@ -35,9 +35,12 @@
  *     answered it with `ATTRIBUTION_PROBE`: *a query that is known to resolve stands in for the
  *     corpus that was not searched*. This screen does the same, once, on mount. It loads the meta
  *     document and one shard — **exactly what a single search loads** — so A-83 Part 6's boundary
- *     is unchanged: one shard per query, never the corpus. `test/attribution.test.ts` asserts the
- *     probe still resolves, so a re-pin that broke it would redden a test rather than silently
- *     empty one of the three states.
+ *     is unchanged: one shard per query, never the corpus. **Two different things can break it
+ *     and they need two different instruments** (QA **R74-5**): a **re-pin** that makes the query
+ *     stop resolving reddens `test/attribution.test.ts`, which measures the committed corpus; a
+ *     **404 on the probe's shard at runtime** is invisible to any node test, so the probe is a
+ *     list landing on different shards and `qa/i30-attribution.mjs` **phase 6** kills the first
+ *     shard and requires the credit to survive.
  *
  * Once learned, `source` is **not cleared** — not on a new query, not below two characters, not
  * on a failed load. Clearing it is how the credit went missing in the first place.
@@ -60,11 +63,19 @@ import type { CityInit, GazetteerHit } from '@cairn/core';
 export type SelectedCity = Pick<CityInit, 'name' | 'pick'>;
 
 /**
- * The query the picker asks once, on mount, purely to learn the corpus's own attribution string
- * for the states in which nothing was searched. Same act, same reason and same shape as
- * `cli.ts`'s constant of the same name. **It is not a search and its rows are discarded.**
+ * The queries the picker asks on mount, purely to learn the corpus's own attribution string for
+ * the states in which nothing was searched. Same act, same reason and same shape as `cli.ts`'s
+ * constant of the same name. **They are not searches and their rows are discarded.**
+ *
+ * **It is a list, and each entry resolves to a DIFFERENT shard — QA R74-5.** This was one query,
+ * `'zurich'`, whose failure was swallowed; a 404 on that one shard therefore left *"keep typing"*
+ * — the state A-91 names third — with no credit at all, while every other state was fine. The
+ * first query that answers wins and the rest are never fetched, so the healthy path is unchanged:
+ * A-83 Part 6's boundary is still the meta document plus **one** shard on mount.
+ * `test/attribution.test.ts` holds both properties (every probe resolves; they are not all on the
+ * same shard) and `qa/i30-attribution.mjs` **phase 6** holds the rendered consequence.
  */
-export const ATTRIBUTION_PROBE = 'zurich';
+export const ATTRIBUTION_PROBES = ['zurich', 'oslo', 'kyoto'];
 
 /** The licence the corpus is under. The one half of the credit that is not readable off it. */
 export const LICENCE_URL = 'https://creativecommons.org/licenses/by/4.0/';
@@ -90,13 +101,25 @@ export function CitySelector({ value, onChange, required = false, initialQuery =
   const trimmed = query.trim();
   const open = trimmed.length >= 2 && (busy || hits.length > 0 || !!message);
 
-  // A-91 item 3, the "keep typing" state. One query, on mount, discarded except for its `source`.
+  // A-91 item 3, the "keep typing" state. One query, on mount, discarded except for its `source`
+  // — and, if that query's shard cannot be fetched, the next one (QA R74-5). A dead shard is a
+  // runtime fact about the network, not about what Cairn is allowed to credit, and the credit is
+  // owed in this state too. What is NOT done here is invent a fallback string: if no probe
+  // answers, Cairn has read no provenance and states none.
   useEffect(() => {
     let live = true;
-    void import('@cairn/core/gazetteer')
-      .then(({ loadGazetteerFor }) => loadGazetteerFor(ATTRIBUTION_PROBE))
-      .then((gazetteer) => { if (live && gazetteer) setSource(gazetteer.source); })
-      .catch(() => { /* the search path reports a load failure; this one is silent by design */ });
+    void (async () => {
+      try {
+        const { loadGazetteerFor } = await import('@cairn/core/gazetteer');
+        for (const probe of ATTRIBUTION_PROBES) {
+          if (!live) return;
+          try {
+            const gazetteer = await loadGazetteerFor(probe);
+            if (gazetteer) { if (live) setSource(gazetteer.source); return; }
+          } catch { /* this shard did not load; the next probe is on a different one */ }
+        }
+      } catch { /* the corpus entry point itself is unreachable; the search path reports that */ }
+    })();
     return () => { live = false; };
   }, []);
 

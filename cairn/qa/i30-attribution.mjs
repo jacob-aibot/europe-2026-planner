@@ -24,7 +24,7 @@
  *     query that IS a corpus split prefix, whose true answer is that prefix's whole subtree.
  *     Below two characters `loadGazetteerFor` answers `null` *before* it reads the meta document,
  *     so this is the state that has no `source` of its own and the one the picker's
- *     `ATTRIBUTION_PROBE` exists for.
+ *     `ATTRIBUTION_PROBES` exist for.
  *
  * **phase 4** loads the licence link itself — root `CLAUDE.md`'s ticket rule applied to a licence:
  * *every ticketed thing gets a link that was actually loaded and confirmed to resolve*.
@@ -36,12 +36,20 @@
  * `countryCode` has to outrank `countryOf(centre)` for `CH` to survive — §8.4 **A-84** Part 3.
  * A city the index agrees with would pass this phase without exercising it.
  *
- * The injected faults N1, N2, N3 and N4 are `qa/i30-faults.sh`, which mutates the real sources,
- * runs this probe and `test/boundaries.test.ts` against each mutation, and restores.
+ * **phase 6** is the RUNTIME half of the "keep typing" state (**QA R74-5**): the shard the
+ * picker's first attribution probe resolves to is answered **404**, and the credit must still be
+ * on screen. `test/attribution.test.ts` holds the re-pin path — *does the probe query still
+ * resolve against the committed corpus* — and by construction cannot see a shard that fails in
+ * the browser. Only a browser can.
+ *
+ * The injected faults N1, N2, N3, N3b and N4 are `qa/i30-faults.sh`, which applies each mutation
+ * inside a throwaway `git worktree` (never the checkout you run it from — QA R74-4) and runs this
+ * probe and `test/boundaries.test.ts` against it.
  */
 import pw from '/opt/node22/lib/node_modules/playwright/index.js';
 import { spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { createServer } from 'node:net';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
@@ -64,21 +72,80 @@ const head = (s) => console.log(`\n== ${s} ==`);
 
 /* ------------------------------------------------------------------ the server under attack */
 
+/**
+ * **A run that never started must not look like a run that failed** — QA **R74-2**.
+ *
+ * This used to pick one random port in 5100-5499, pass `--strictPort`, and have no retry. An
+ * occupied port was therefore a 90 s timeout and a **non-zero exit with zero assertions run** —
+ * and `qa/i30-faults.sh`'s `probe()`, which scored a row by exit code alone, read that as *the
+ * injected fault fired*. Vite's own default port, 5173, is inside that range. Two halves, and
+ * both are needed:
+ *
+ *  1. the port is one the **kernel** says is free (bind `:0`, read it back, release it), and a
+ *     start that fails anyway is retried on a fresh port rather than giving up;
+ *  2. a run that could not start prints a `FAIL` line, exits non-zero and **never prints the
+ *     `i30-attribution: <url>` line below** — which is the marker `probe()` now requires before
+ *     it will call a non-zero exit a fired fault.
+ */
+const freePort = () => new Promise((res, rej) => {
+  const s = createServer();
+  s.on('error', rej);
+  s.listen(0, '127.0.0.1', () => { const { port } = s.address(); s.close(() => res(port)); });
+});
+
+async function startServer() {
+  const attempts = 6;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    let port;
+    try { port = await freePort(); } catch (e) { console.log(`  note no free port from the kernel: ${e}`); break; }
+    // The vite binary directly rather than through `npx`: npx forks rather than execs, so
+    // `child.kill()` reaped the wrapper and left the dev server running. Same process group as
+    // this probe, deliberately — Ctrl-C at a terminal must reach it.
+    const bin = resolve(CAIRN, 'node_modules/.bin/vite');
+    const direct = existsSync(bin);
+    const flags = ['--port', String(port), '--host', '127.0.0.1', '--strictPort'];
+    const proc = spawn(direct ? bin : 'npx', direct ? flags : ['vite', ...flags], {
+      cwd: resolve(CAIRN, 'apps/web'),
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let noise = '';
+    const started = await new Promise((res) => {
+      const t = setTimeout(() => res(false), 60_000);
+      proc.stdout.on('data', (b) => { noise += b; if (/ready in/.test(String(b))) { clearTimeout(t); res(true); } });
+      proc.stderr.on('data', (b) => { noise += b; process.stderr.write(`  vite: ${b}`); });
+      proc.on('exit', () => { clearTimeout(t); res(false); });
+      proc.on('error', () => { clearTimeout(t); res(false); });
+    });
+    if (started) return { child: proc, url: `http://127.0.0.1:${port}/` };
+    proc.kill('SIGKILL');
+    console.log(`  note vite did not start on port ${port} (attempt ${attempt}/${attempts})${/in use/i.test(noise) ? ' — the port was taken between the check and the spawn' : ''}`);
+  }
+  return null;
+}
+
 let child = null;
 let url = flag('url');
 if (url === null) {
-  const port = 5100 + Math.floor(Math.random() * 400);
-  url = `http://127.0.0.1:${port}/`;
-  child = spawn('npx', ['vite', '--port', String(port), '--host', '127.0.0.1', '--strictPort'], {
-    cwd: resolve(CAIRN, 'apps/web'),
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-  const ready = new Promise((res, rej) => {
-    const t = setTimeout(() => rej(new Error('vite did not start within 90s')), 90_000);
-    child.stdout.on('data', (b) => { if (/ready in/.test(String(b))) { clearTimeout(t); res(); } });
-    child.stderr.on('data', (b) => process.stderr.write(`  vite: ${b}`));
-  });
-  await ready;
+  const server = await startServer();
+  if (server === null) {
+    failures++;
+    console.log('  FAIL the dev server never started, so THIS RUN MEASURED NOTHING.');
+    console.log('       Zero assertions ran. A non-zero exit here is not a fired fault — it is the');
+    console.log('       absence of a measurement. Use --url=http://host:port to attack a running server.');
+    process.exit(1);
+  }
+  ({ child, url } = server);
+} else {
+  // The same rule for an injected server: if it does not answer, say so rather than dying
+  // inside phase 1 with an exit code that reads like a fired fault.
+  try {
+    const res = await fetch(url, { redirect: 'manual' });
+    if (res.status >= 500) throw new Error(`the server answered ${res.status}`);
+  } catch (e) {
+    failures++;
+    console.log(`  FAIL ${url} does not answer, so THIS RUN MEASURED NOTHING: ${String(e).slice(0, 160)}`);
+    process.exit(1);
+  }
 }
 console.log(`i30-attribution: ${url}`);
 
@@ -86,16 +153,21 @@ const { chromium } = pw;
 const browser = await chromium.launch();
 const stop = async () => {
   await browser.close();
-  if (child) child.kill('SIGTERM');
+  if (child) {
+    child.kill('SIGTERM');
+    await new Promise((res) => { const t = setTimeout(res, 3000); child.on('exit', () => { clearTimeout(t); res(); }); });
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+  }
 };
 
 /** A fresh origin-scoped page with the map tiles cut off; the picker needs neither. */
-async function freshPage() {
+async function freshPage(opts = {}) {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   page.on('pageerror', (e) => { failures++; console.log(`  FAIL pageerror: ${e.message.slice(0, 200)}`); });
   if (has('keep')) page.on('console', (m) => console.log(`  console.${m.type()}: ${m.text().slice(0, 160)}`));
   await page.route('**tile.openstreetmap.org/**', (r) => r.abort());
+  if (opts.block404) await page.route(opts.block404, (r) => r.fulfill({ status: 404, body: 'nope' }));
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(1500);
   return page;
@@ -111,7 +183,15 @@ async function openPicker(page) {
 
 /**
  * **The assertion A-91 item 3 actually makes, in one place so all three states make the same
- * one.** The exact `Gazetteer.source` string, and a link to the licence, both on screen.
+ * one.** The exact `Gazetteer.source` string, and a link to the licence, both **on screen**.
+ *
+ * **"On screen" is measured, not inferred — QA R74-3.** This used to stop at `count()` and
+ * `innerText()`, and neither of them is about the screen: `count()` counts hidden nodes and
+ * `innerText()` returns the text of a `display:none` element. The whole three-state set therefore
+ * passed **35/35 with the credit invisible** (`qa/r74-vacuity.sh` **V1** plants exactly that).
+ * The visibility half below is lifted from the breaker's own probe — `qa/r74-i30.mjs` **§C** —
+ * rather than invented a second time and weaker: visible, a non-zero box, opacity above 0.1, and
+ * a licence link that is itself visible, named and at least 24 px tall.
  */
 async function attributionIsOnScreen(page, state) {
   const node = page.getByTestId('gazetteer-attribution');
@@ -125,11 +205,27 @@ async function attributionIsOnScreen(page, state) {
     `rendered: ${JSON.stringify(text.slice(0, 160))}\n         expected to contain: ${JSON.stringify(SOURCE.slice(0, 160))}`,
   );
   const link = node.locator(`a[href="${LICENCE}"]`);
+  const linked = (await link.count()) === 1;
   ok(
-    (await link.count()) === 1,
+    linked,
     `${state}: a link to ${LICENCE}`,
     `hrefs found: ${JSON.stringify(await node.locator('a').evaluateAll((as) => as.map((a) => a.getAttribute('href'))))}`,
   );
+
+  // --- the screen, not the DOM (R74-3; qa/r74-i30.mjs §C) ---------------------------------
+  ok(await node.isVisible(), `${state}: the credit is VISIBLE`, 'innerText() returns text for a display:none node too');
+  const box = await node.boundingBox();
+  ok(box !== null && box.width > 0 && box.height > 0, `${state}: the credit has a non-zero box`, JSON.stringify(box));
+  const style = await node.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { display: s.display, visibility: s.visibility, opacity: s.opacity, fontSize: s.fontSize };
+  });
+  ok(parseFloat(style.opacity) > 0.1, `${state}: the credit is not transparent`, JSON.stringify(style));
+  if (!linked) return;
+  ok(await link.isVisible(), `${state}: the licence link is visible`);
+  ok((await link.innerText()).trim().length > 0, `${state}: the licence link has an accessible name`);
+  const lbox = await link.boundingBox();
+  ok(lbox !== null && lbox.height >= 24, `${state}: the licence link is a touchable target (>=24px)`, JSON.stringify(lbox));
 }
 
 /* --------------------------------------------------------------------------------- phase 1 */
@@ -289,6 +385,36 @@ head(`phase 5 — Geneva, saved, reloaded, Switzerland`);
   ok(/Switzerland/.test(world), 'World names Switzerland after the reload', JSON.stringify(world.slice(0, 200)));
   ok(/\bCH\b/.test(world), 'World carries the CH code after the reload');
   await page.context().close();
+}
+
+/* --------------------------------------------------------------------------------- phase 6 */
+
+head(`phase 6 — one dead shard: the credit survives a RUNTIME probe failure`);
+{
+  // **QA R74-5.** The picker learns `source` by asking one query on mount. While that was a
+  // single query whose failure was swallowed, a 404 on that one shard left the *"keep typing"*
+  // state — the state A-91 names third — with **no attribution node at all**, and nothing went
+  // red: `test/attribution.test.ts` holds the RE-PIN path (does the probe still resolve against
+  // the committed corpus?) and cannot see a runtime failure. This phase is that path.
+  //
+  // The shard is derived rather than spelled: the picker exports its probe queries, and the
+  // loader says which shard a query resolves to, so this stays true across a re-pin.
+  const pickerSrc = readFileSync(resolve(CAIRN, 'apps/web/src/views/CitySelector.tsx'), 'utf8');
+  const declared = /ATTRIBUTION_PROBES\s*=\s*\[([^\]]*)\]/.exec(pickerSrc);
+  const probes = declared ? [...declared[1].matchAll(/'([^']+)'/g)].map((m) => m[1]) : [];
+  ok(probes.length >= 2, 'the picker declares more than one attribution probe', JSON.stringify(probes));
+  const { loadGazetteerFor } = await import('@cairn/core/gazetteer');
+  const first = probes.length === 0 ? null : await loadGazetteerFor(probes[0]);
+  const shard = first === null ? null : first.shard;
+  ok(shard !== null, 'the first probe resolves to a shard this phase can kill', JSON.stringify(probes[0] ?? null));
+  if (shard !== null) {
+    const page = await freshPage({ block404: `**/geo/gazetteer/${shard}.json*` });
+    const input = await openPicker(page);
+    await page.waitForTimeout(2400);
+    ok((await input.inputValue()) === '', 'the form opens with an empty city input');
+    await attributionIsOnScreen(page, `keep typing, ${shard}.json 404 at runtime`);
+    await page.context().close();
+  }
 }
 
 /* ------------------------------------------------------------------------------------ done */
