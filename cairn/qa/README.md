@@ -4940,3 +4940,44 @@ defect** — the regex forbade the comparison its own label permits. The **three
 findings**: §D ×1 is **R73-2** (8 malformed `24:00` clocks over 1,800 fuzzed answers, where round 72
 measured 0) and §E ×2 is **R73-4** (R72-5 is half fixed; the `1e9` case and the missing production
 reader both stand).
+
+**Round 74** is the adversarial pass over **`I-30`**'s gate evidence, on branch
+`review/i30-picker` at `e890d50`. The builder's own two probes (`i30-attribution.mjs`,
+`i30-faults.sh`) had had no independent attack; these four ask what those two do **not** measure.
+
+```bash
+# with `(cd apps/web && npx vite --port 5399 --host 127.0.0.1 --strictPort)` in another shell:
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r74-i30.mjs        # 7 sections, 37 assertions
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers bash qa/r74-vacuity.sh     # 5 mutations, ~4 min
+# no server of their own:
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers bash qa/r74-faults-safety.sh   # 6 rows, ~20 min
+node qa/r74-allowlist.mjs                                            # 7 planted reaches, ~40 s
+```
+
+`r74-i30.mjs`'s sections: **A** the corpus cost on the wire, counted by `page.on('request')` under
+six typing patterns (mount, a settled query, 25 ms/key, 400 ms/key, a paste, nine backspaces, a
+bare split prefix); **B** the five states `source` could be lost in; **C** the attribution's
+**visibility**, which the builder's probe never asks; **D** phase 5 attacked for staleness;
+**E** KD-39's stated residue, read back off IndexedDB; **F** A-82 Part 6's *no auto-match* fence at
+blur and at submit; **G** the `Library.tsx` half of the wiring, driven end to end for the first
+time. **One FAIL, §B3, and it is R74-5.**
+
+`r74-vacuity.sh` is the complement of `i30-faults.sh`: five mutations chosen because they could
+plausibly go **un**caught. **V1** (`display:none` on the credit) is **not caught** — R74-3. **V2**
+(a partial hard-code of the string's head) is not caught by N3's re-pin but **is** caught by
+`test/attribution.test.ts` — R74-6. **V3** (the complementary half), **V4** (N3's control, measured
+in the DOM rather than inferred from an exit code) and **V5** (the pick dropped on selection, which
+reddens 8 of phase 5's assertions) all behave.
+
+`r74-faults-safety.sh` attacks `i30-faults.sh`'s guard rails, and **S0 builds the worktree the
+script says cannot work** — it works, which is R74-4. S1 (SIGINT) is R74-1, S3 (two at once) is
+R74-7, S5 (a probe that never ran) is R74-2; **S2 and S4 behave** — a hard kill leaves the tree
+mutated, which no trap can cover and which the row states, and an absent mutation target is
+correctly reported stale with a non-zero exit.
+
+**Do not re-derive these from round 74:** mounting the picker really does fetch `meta.json` plus
+exactly one shard and nothing else, and no typing pattern tried costs more than one shard per
+settled query; `countryOf({46.2022, 6.1457}, COUNTRY_INDEX)` really is **`"FR"`** while Geneva's
+pick says `CH`, so phase 5's row is the disagreeing one it claims to be; and the CC BY 4.0 deed
+really answers **200 with no redirect**. Those were measured independently of the builder's
+assertions and agreed.
