@@ -1,12 +1,13 @@
 # Cairn — manager reviews
 
-**Seven verdicts live in this file, newest first.** The **I-8b (Profile)** gate is the current
-one; the **I-8f + I-8j**, **I-8i**, **I-8a**, **2b (data layer)**, **2a** and **Phase 1** verdicts
-below it are **closed and kept for the record**, not superseded — their routing discharged and
-their carried items re-placed downstream.
+**Eight verdicts live in this file, newest first.** The **I-30 / Phase 2 gate** is the current
+one; the **I-8b (Profile)**, **I-8f + I-8j**, **I-8i**, **I-8a**, **2b (data layer)**, **2a** and
+**Phase 1** verdicts below it are **closed and kept for the record**, not superseded — their
+routing discharged and their carried items re-placed downstream.
 
 | Verdict | Scope | Commit reviewed | Date | Result |
 |---|---|---|---|---|
+| **I-30 — the city picker, and the Phase 2 ship gate** | `ROADMAP.md` Phase 2 increment **I-30** against `ARCHITECTURE.md` §8.4 **A-91**, plus **Phase 2's whole exit-criteria block** re-derived at HEAD | `8a8a36d` on `review/i30-picker` (`e890d50` + `c3a503b` + `8a8a36d`; `master` at `86692af`) | 2026-09-16 | **I-30: SHIP — the increment closes.** **Phase 2: SEND BACK.** 0 blockers in the picker. The phase is held by three things that are not I-30: **`I-45` is scheduled and unbuilt** and carries round 73's unrepaired **SEND BACK**; **four of Phase 2's own exit criteria are false about the shipped artefact**; and the phase-gate probe has not been run in 19 rounds and is **11 red** at HEAD. **Phase 3 does not begin** |
 | **I-8b — Profile: the first UI proof of `DESIGN.md` and the mobile-first responsive contract** | `ROADMAP.md` Phase 2 increment **I-8b** (revision 27/38) against `DESIGN.md` §5 (composition) and §6 (the rendered acceptance standard), plus the five bounded shell items §5.6 enumerates | `dac9595` (build `adcce5e`+`ade9d42`+`652c2c3`, record `dac9595`) | 2026-09-02 | **SHIP.** 0 blockers, 0 MAJOR. **3 MINOR routed to builder (R42-1, R42-2, R42-3), 1 MINOR to architect (MGR-8)** — none gating. Real-iOS residue listed separately |
 | **I-8f + I-8j — the manager-gated prerequisites for I-8b** (closes MGR-1, MGR-2 and R39-1 from the I-8i gate) | `ROADMAP.md` Phase 2 increments **I-8f** (`359234b`) against `ARCHITECTURE.md` §2.9 **A-47**, and **I-8j** (`3044bdd`) against §4.4 **A-54** — **I-8b is not included and does not ship here** | `3044bdd` (record `f622ab9`) | 2026-09-01 | **I-8f SHIP · I-8j SHIP.** **I-8b is permitted to open.** 5 items routed, **0 gate I-8b** |
 | **I-8i — the world-map lifetime framing rewrite** (the A-41 → A-53 atlas-frame arc, seven rounds) | `ROADMAP.md` Phase 2 increment **I-8i** (revisions 35–36) against `ARCHITECTURE.md` §4.4 **A-51**, **A-52**, **A-53** — **I-8b is not included** | `10455b9` (record `6ee6bf5`) | 2026-09-01 | **SHIP** (10 items routed; **3 gate I-8b**). **The frame's geometry closes as a track; A-51 G7's layout does not** — **all three discharged at the gate above** |
@@ -17,9 +18,452 @@ their carried items re-placed downstream.
 
 ---
 
+# I-30 — the city picker, and the Phase 2 ship gate
+
+> **Status: CURRENT.** Manager, stage 4. Reviewed `review/i30-picker` @ `8a8a36d`
+> (`e890d50` → `c3a503b` → `8a8a36d`, on top of `4940630` and the `bdee7c7` merge of `master`);
+> `master` untouched at `86692af`. 2026-09-16. Every claim below has a command in **§ Verified**
+> and I ran it in this session.
+>
+> ## **VERDICT — `I-30`: SHIP, the increment closes. Phase 2: SEND BACK. Phase 3 does not begin.**
+>
+> **These are two different answers and the split is the finding.** The picker is good work and it
+> closes; what is not done is the *gate*. Phase 2 is held by three things, **none of which is
+> `I-30`**:
+>
+> 1. **`I-45` is scheduled and unbuilt, and it carries an unrepaired SEND BACK.** QA round 73's
+>    verdict on `I-44` was **SEND BACK** (`08c4696`), its MAJOR **R73-1** is a *regression in
+>    shipped behaviour*, `ARCHITECTURE.md` revision 82 **§11.14 A-99** is the ruling and ROADMAP
+>    revision 82 queues **`I-45`** as *"its whole code consequence"*. Nobody built it. **The brief I
+>    was given says *"`I-30` is the last Phase 2 increment"*; that premise is refuted by the
+>    ROADMAP's own revision-82 ledger and by `I-45`'s entry at `ROADMAP.md:10986`, and by the code:
+>    `runEndsAt` — which A-99 deletes — is still at `packages/core/src/ask/ask.ts:663`.** ROADMAP
+>    revision 80 wrote *"`I-30` … is the last Phase 2 increment"* **at revision 80**; revision 82
+>    added one after it.
+> 2. **Four of Phase 2's own exit criteria are false about the artefact Phase 2 shipped.** Not
+>    stale prose — stated counts that the repo's own tests assert differently, which is sequencing
+>    rule 5's founding case verbatim.
+> 3. **The phase gate has not been run.** `qa/r54-gate.mjs` — the sixteen-section probe that *is*
+>    `I-11`'s *"all exit criteria below, each re-derived"* — was last run at **QA round 55**. Two
+>    whole capabilities have landed since (the gazetteer and picker, `I-21`…`I-34`; the answer
+>    engine, `I-35`…`I-44`). At HEAD it reports **`COMPLETE fails=11`**.
+>
+> A SHIP verdict on a phase is an assertion that the phase's exit criteria were re-derived and met.
+> I cannot make that assertion today, and I will not make it by reading four criteria as
+> superseded — `ROADMAP.md`'s own R54-4 correction says in as many words that this is *"exactly the
+> state a ship gate must never be in."*
+>
+> **What I am not saying.** Nothing here is a defect in the picker, a privacy leak, or a
+> data-loss path. Round 74 did its job on `I-30` and the builder's repair is clean. The shortest
+> path to SHIP is four bounded passes, all of them already specified by the architect or by me
+> below, and **none of them touches a `.tsx` or waits on Jacob's visual direction.**
+
+---
+
+## 1. Does `I-30` close? — **YES.**
+
+**What the increment actually delivers.** Type a city into either trip form — the upcoming-trip
+form in `Library.tsx:400` and the past-journey form in `PastTripForm.tsx:217` both render the one
+`CitySelector` — get real rows out of the real sharded corpus through the real
+`loadGazetteerFor`, pick one, and the pick is written whole through `cityPickFromRow` so the
+country on the lifetime map is read off the pick and nothing on the screen types a country. That
+is `ROADMAP.md` I-30's *Built* items 1 and 2, and it is the thing Jacob has been waiting for since
+`I-21`. The CC BY 4.0 credit renders in all three loader states from the corpus's own `$source`
+(`CitySelector.tsx:177`), which is item 3 and the increment's stated gate.
+
+**All four gate items hold, and two of them I re-derived rather than read:**
+
+| Gate item | Standing instrument | State |
+|---|---|---|
+| The attribution on screen in all three states, with a resolving licence link | `qa/i30-attribution.mjs` (now measures **visibility**, not the DOM — R74-3), `test/attribution.test.ts` (in `npm test`) | **ESTABLISHED.** Link independently re-`curl`ed by me: `http_code=200 redirects=0 final=https://creativecommons.org/licenses/by/4.0/`, body carries *Attribution 4.0 International* ×3 |
+| N1/N2/N3 fire, and N3's control is a real measurement | `qa/i30-faults.sh` (N3's re-pin now replaces the **whole** `$source`; new row **N3b**) | **ESTABLISHED** (session manager re-ran: *"every fault fired"*, exit 0, porcelain identical before and after) |
+| N4 — the consumer allowlist is the denominator | `test/boundaries.test.ts` (in `npm test`) | **ESTABLISHED.** I re-ran `node qa/r74-allowlist.mjs`: **6 of 7** planted reaches redden the boundaries test naming `apps/web/src/format.ts`; the one that does not is **R74-9**, inside the predicate's own stated claim, correctly routed `none` |
+| Geneva → save → reload → Switzerland, and not vacuous | `qa/i30-attribution.mjs` phase 5, `qa/r74-vacuity.sh` V5 | **ESTABLISHED** by round 74 (`countryOf` returns `FR` at Geneva's coordinate while the pick says `CH`, so `countrySource:'picked'` cannot be coming from `countryOf`) |
+
+**What it claims that it does not deliver, stated so nobody reads more into it.**
+
+- **No visual approval of any kind.** Jacob's fence holds: `8a8a36d`'s `.tsx` diff is a constant,
+  an effect body and docstrings — **zero JSX**. The screen Jacob will see is Codex's WIP, which he
+  has not approved, and this verdict is **not** a judgement on how it looks.
+- **`[rendered]` map-bug criterion: N/A.** The picker draws no map, so `cairn-constraints` §8's
+  two inherited bugs are unfired, not passed.
+- **The picker is a component inside two forms, not a screen.** `ROADMAP.md` says *"one picker,
+  wherever `DESIGN.md` puts it"* — that is satisfied, but there is no standalone city-search
+  surface and nobody should describe one.
+- **A city the corpus cannot match is still addable**, through an explicit *"Use … without a map
+  match"* option that stores `centre: null` and no `pick`, and the chip says *May not appear on
+  World*. That is A-82 Part 6's shape and it is correct — it is also the answer to *"why did my
+  city not light up the globe."*
+- **The ordering gate held.** `I-33` landed before it; `searchGazetteer` returns `{source, hits}`
+  and the picker reads `result.source`.
+
+**One product fix rode along and it was the right call.** R74-5: `ATTRIBUTION_PROBE = 'zurich'`
+became `ATTRIBUTION_PROBES = ['zurich','oslo','kyoto']` on three different shards, so one dead
+shard can no longer empty the credit out of *"keep typing"*. The builder refused to add a fallback
+string, which would have been a hard-coded credit — exactly what N3 exists to catch. **Refusing it
+is the correct reading of A-90 clause 3** and I endorse it in writing so the next reader does not
+"fix" it.
+
+## 2. Does Phase 2 ship? — **NO. SEND BACK.**
+
+I re-derived the exit criteria rather than accepting them. Here is what came back.
+
+### MGR-9 (MAJOR) — `I-45` is unbuilt, and the last QA verdict on a Phase 2 increment is SEND BACK
+
+`ARCHITECTURE.md` §11.14 **A-99** answers round 73 with three deletions and one parameter;
+`ROADMAP.md` **`I-45`** (line 10986) is the code; **it does not exist.** The live defect **R73-1**
+is a regression `I-44` introduced: `journeyModeWord` emits the mode from `arrival.mode` beside a
+clock taken from `durationMins`, so a stop stating both renders *"you are on a flight from 16:45
+until 20:05"* about a flight the same document says takes 660 minutes. It is reachable through the
+shipped `updateStop` door. A second finding, **R73-5**, is reachable with **no patching at all** —
+I reproduced it in one command (§ Verified, row 7): `node cli.ts ask "what countries do I visit"`
+answers *"This trip accounts for 7 countries"* about a present-simple, habitual question that
+A-99 has already withdrawn from the accept set.
+
+**The architect wrote *"Nothing here gates `I-30` or Phase 3"* in revision 82's ledger. I am
+overruling the second half of that sentence, and the ROADMAP gives me the authority to: entry
+condition 2 reserves the gating call to the manager, and sequencing rule 2 is about *phases*, not
+about rulings.** An architect may say a ruling does not gate; an architect cannot make a phase
+ship with one of its own increments scheduled, unbuilt, and carrying a MAJOR regression it ruled
+on four days ago. Phase 3 builds a server that projects `Trip` documents; `ask/` shares no file
+with it, and that is exactly why finishing `I-45` is cheap now and annoying later.
+
+### MGR-10 (MAJOR) — four of Phase 2's exit criteria are false about the shipped artefact
+
+All four are `[stated]` counts in a contract document, measured by me at HEAD:
+
+| Criterion | States | Is | Why it moved |
+|---|---|---|---|
+| Phase 2, revision 40, *"A summary row is exactly what the allow-list says"* | `ROW_PATHS` is **24** leaves | **26** | `I-24`/A-85 added `attribution.*` and `cities[].countrySource`, ruled and recorded in the increment entries (`ROADMAP.md:7297`, `:7360`) — and never carried into the exit-criteria block |
+| same criterion | `ROW_KEYS` is **14** top-level keys | **15** | same (`ROW_KEYS` **14 → 15**, `SUMMARY_VERSION` 7 → 8) |
+| same criterion | `ROW_PATHS.filter(countShaped)` is the **eight** `ROW_COUNT_FIELDS` | **nine** | same; `ROADMAP.md:7526` already says *"the identity still holds at **nine**"* |
+| Criterion **E**, inherited by Phase 2 exit criterion 1 (*"every number in §A–§F re-derived"*) | the core surface is **86** symbols | **91** | `I-21` → 87, `I-22a` → 88, `I-35` → 91. §2.10's prose **is** current and says 91; criterion E and `packages/core/src/index.ts`'s own docstring both still say 86 |
+
+The last one is the **R28-8 class recurring for at least the sixth time in this document family**,
+and this time it recurred in `index.ts` itself — the file whose docstring revision 60 named as one
+of the four artefacts that must agree. `I-11`'s own *Architecture* bullet says the surface total is
+*"pinned by counting in this pass and written into §2.10 and criterion E together"*; that pass has
+not happened since the surface was 86.
+
+This is **sequencing rule 5** (*"a criterion that breaks one of the twelve rules is a design
+defect routed to the architect"*) applied to **criterion rule 6** (*"no criterion states the value
+a command returns over live source"*). All four criteria predate rule 6 and were never brought
+into conformance.
+
+### MGR-11 (MAJOR) — the phase-gate probe has not been run since round 55, and it is 11 red
+
+`node qa/r54-gate.mjs` at HEAD: **`COMPLETE fails=11 gaps=0 notes=35`**. Four are MGR-10 above
+(`F1a`, `M1`, `M2`, `M3`) and three more are MGR-12 (`P1a`, `P2`, `P5c`). The other four are
+**probe rot the breaker owns**:
+
+- `D-c2v` (*"Vatican City returns `IT` at every scale"*) and `J3` (*"`fromJSON` rejects a duplicate
+  participant id"*) are the criterion text **ROADMAP revision 60 already corrected** (R54-5, R54-4).
+  The probe still asserts the withdrawn sentences.
+- `N1`/`N1a` are MGR-13 below.
+
+`ROADMAP.md`'s own standing obligation — *"the breaker runs the WHOLE board at each step boundary,
+not only the probes in the round's scope … eight consecutive scoped rounds is how a probe stayed
+broken for seven commits"* — is 19 rounds unhonoured on the one probe that is the phase gate. Round
+55 recorded that this exact probe once aborted early and reported a **false green**; nobody has
+looked since. `cairn/CLAUDE.md`'s own cost map says of revision 60: *"**The gate has RUN**; `I-11`'s
+*Dependencies / blockers* bullet is now history rather than a precondition, and the SHIP/SEND BACK
+verdict is the manager's."* **That is true of round 54 and of the tree round 54 measured.** Twenty
+increments have landed on `master` since — `I-15`…`I-21`, the whole gazetteer arc `I-21`…`I-34`, and
+the whole answer engine `I-35`…`I-44` — and the gate has not been re-run against any of them. A gate
+run twenty increments before the verdict is a gate run against a different product.
+
+### MGR-12 (MINOR, folds into MGR-10) — `index.ts`'s docstring is the fourth stale copy of 86
+
+`packages/core/src/index.ts:4` — *"**86 runtime symbols**, one list, set equality in both
+directions"* — while `Object.keys(m).length` is **91**. The in-file comments at `:121`, `:144` and
+`:231` correctly record each join; only the headline is stale. `surface.test.ts`'s `THE_LIST` is
+current (the gate's `P5b` is green), so nothing is broken — but this is the number a future session
+re-derives *from*.
+
+### MGR-13 (MAJOR) — Phase 2's privacy criterion is red, and its exclusion test has the wrong discriminant
+
+Exit criterion 14, *"No coordinate leaves the device's own storage"*, is the one criterion in this
+phase that is about the brief's *"treat every one of them as data that must not leak"*. Revision 60
+gave it an exclusion written deliberately as **a property with its own injected fault** rather than
+a filename: the excluded golden *"must carry `$generatedBy: "cairn/tools/gen-countries.mjs"`, must
+carry **no `$source`** (every trip-data golden does)"*.
+
+**That discriminant is now false**, and the thing that falsified it is the attribution obligation
+`I-30` just shipped. `fixtures/golden/gazetteer-probes.json` is generated GeoNames data — no user,
+no trip, no device — and it carries a `$source`, **because a CC BY 4.0 artefact must**. So the
+criterion's own exclusion property cannot admit it, and the criterion is red as written on two
+files. The probe's implementation is worse than the criterion: `qa/r54-gate.mjs:904` is a
+hard-coded `new Set(['countries.json','forgiveness-drops.json'])`, which is precisely the *"one
+commit away from being a criterion that names three"* failure R54-6 wrote the property form to
+prevent. It is now three.
+
+**No coordinate belonging to a person is in any golden** — the criterion's intent holds and I
+checked it — but a privacy criterion that cannot be evaluated is not a privacy criterion.
+
+### MGR-14 (MINOR, architect, non-blocking) — the gazetteer allowlist's denominator has been diluted
+
+`GAZETTEER_CONSUMERS` now carries **nine** `apps/web` modules, including `App.tsx` and `main.tsx`,
+seven of them justified as *"reaches the shared city-search consumer through the relative module
+graph"*. This is **mechanically correct** — the predicate deliberately closes over relative imports
+— and I am not filing it against Codex or the builder. It is a design consequence that arrived with
+the first rendered consumer, which is the increment A-91 item 2 was written for: the list no longer
+distinguishes *"renders gazetteer data and owes attribution"* from *"is reachable from the app
+root"*, and every future view will need a boilerplate entry. The obligation A-91 item 2 exists to
+carry — *"the entry beside the new name is where the obligation is stated"* — is now stated nine
+times, eight of them saying nothing. **Trigger: before Phase 3's share pages add rendered
+consumers (`I-42`).**
+
+## 3. `R72-1` — ruled. **It does not gate Phase 2's SHIP verdict.**
+
+`ROADMAP.md` entry condition 2 reserves this to me and I am ruling it closed as a gate item.
+**R72-1 is closed on measurement, not on report**: round 73 regenerated the accept set from A-98
+Part 3's own 43 published fragments rather than from the implementation, and all thirteen lifetime
+phrasings refuse, none of them a member of the accept set — structural, not lucky.
+`TRIP_SCOPE_MARKERS` is gone. Jacob's direction (*the `country_count` scope arc closes before
+Phase 3 code*) is **satisfied**: §11.13 A-98 is the ruling, `I-44` is the code, round 73 is the
+confirmation.
+
+**Keep the distinction visible, because it will be misread:** what gates Phase 2 is **not** R72-1.
+It is round 73's *other* two findings — R73-1 and R73-5 — and the unbuilt `I-45` that answers them
+(MGR-9). Anyone reading *"R72-1 does not gate"* as *"the `ask` arc is clear"* has read it wrong.
+
+## 4. The two pieces of instrument residue — ruled. **Neither gates `I-30`.**
+
+### (a) The builder declining to edit `qa/r74-*` — **correct, and I endorse it.**
+
+A breaker's evidence board is the record of what one round measured; a builder who edits it edits
+the evidence against himself. The consequence — `bash qa/r74-faults-safety.sh` printing **4 FAIL
+rows that are stale verdicts** (S0 asserting against a header claim R74-8 deleted; S1/S2/S3 each
+waiting for a mutation that after R74-4 never appears in the checkout, so they time out and report
+*unmeasured*) — is the correct output of a hazard whose surface was removed. The builder replaced
+the evidence rather than arguing about it: `qa/i30-faults-safety.sh` F1 (SIGTERM), F2 (the refused
+concurrent run), F3 (SIGINT where no trap can install). **That is the right shape and I am not
+sending it back.** *(I did not re-run either safety script; the session manager re-ran
+`i30-faults.sh` and I verified the sibling instrument's residue directly — see (b).)*
+
+**Ruling on the board: it gets re-cut by the BREAKER, in the next round it runs, not before.**
+Specifically: retire S0 (its subject is gone), and re-point S1/S2/S3 at the worktree — a mutation
+that must now appear *in the worktree* and be gone afterwards — or retire them in favour of
+`i30-faults-safety.sh` F1/F2/F3 with a line in `QA-FINDINGS.md` saying which evidence replaced
+which. **It does not gate `I-30`** and it does not earn a pass of its own.
+
+### (b) `qa/r74-vacuity.sh` still reports a run that never started as the fault firing — **I verified this myself, and it is a BREAKER finding.**
+
+Reproduced in one command with no server running (§ Verified, row 6). `r74-vacuity.sh` V1 printed:
+
+```
+   V1 attribution display:none                  exit=1 ok=0   FAIL=1
+      red: http://127.0.0.1:5399/ does not answer, so THIS RUN MEASURED NOTHING: TypeError: fetch failed
+...
+=== every mutation was caught
+```
+
+exit **0**. The builder's R74-2 fix works — `i30-attribution.mjs` correctly announces that it
+measured nothing — and the breaker's wrapper scores it CAUGHT anyway, because `probe()`
+(`qa/r74-vacuity.sh:52-68`) decides a red row on `code -ne 0` alone. **That is R74-2's exact
+failure mode, live in the instrument the breaker used to file R74-2 against the builder.**
+
+**Ruling: the session manager's read is right and I checked rather than agreed.** It **does not
+gate `I-30`**, because the standing gates are `qa/i30-faults.sh`, `qa/i30-attribution.mjs`,
+`test/attribution.test.ts` and `test/boundaries.test.ts` — all four hardened, and the last two
+inside `npm test` where they run on every commit. `qa/r74-*` is one round's evidence.
+**It is still a finding against the breaker** (**MGR-15**, MINOR), and it is the more serious of
+the two residues because it is a *double standard*, not rot: the same three-part rule the builder
+was made to implement (started · ran ≥1 assertion · finished, and `FAIL ≥ 1` for a red row) belongs
+in `probe()`, or V1/V3/V4/V5 fold into `i30-faults.sh` as standing rows and the script is deleted.
+
+## 5. The known carry-overs — where each stands
+
+| Carry-over | State at HEAD, measured | Gates? |
+|---|---|---|
+| **`apps/web/test/*.test.ts` never runs** | **Confirmed.** `package.json`'s `test`/`test:tap` glob `packages/core/test`, `packages/client/test` and `test/` only. I ran the two files directly: **7 tests, 7 pass** — so nothing is broken, and nothing would tell us if it were. Codex's tests are invisible to every gate | **Does not gate `I-30`.** **Must land before Phase 3's first commit** — `I-39`…`I-43` add test roots, and a root the suite cannot see is a hole that grows. **builder**, one line |
+| **~102 Codex ride-along files unreviewed** | **Confirmed and larger than reported.** `4940630` is **103 files, +5,047**; `git diff --stat master...HEAD` is **115 files, +7,405**. It adds a **runtime dependency** (`d3-geo`, +45 lockfile lines) with two importers (`views/CroatiaPreview.tsx`, `world/globeGeometry.ts`), it edits `test/boundaries.test.ts`, and round 74 says in writing *"`World.tsx`'s globe was not opened by the builder and was not tested by me"* | **Does not gate `I-30`. It gates the MERGE TO `master`.** See *For Jacob* |
+| **Does `d3-geo` belong in `apps/web`** | Jacob's call, and I am not taking it. The measurement he needs: it is **new on this branch**, it is a **runtime** dependency, two `src` modules import it, and Phase 2 exit criterion 15 currently states *"no `package.json` diff and no lockfile movement anywhere in the repo"* as A-58's *"no dependency"* verdict made machine-checkable | **Jacob** |
+
+---
+
+## Routing — each item, its agent, and exactly what it must do
+
+**The order matters: 1 and 2 can run in parallel; 3 needs 2; 4 needs 1 and 3.**
+
+1. **BUILDER — build `I-45`.** `ROADMAP.md:10986`, against `ARCHITECTURE.md` **§11.14 A-99**.
+   Read **A-99 first, then A-98 whole, then A-97 Parts 2 and 5, then §11.3, §11.5 and §11.7** —
+   §11 whole and nothing else in `ARCHITECTURE.md`, per the cost map. The four parts are A-99's,
+   not mine: withdraw the four present-simple bare fragments; replace the six hand-written `… on
+   <np>` frames with a generated twin per bare frame (**1,272 sentences from 25 fragments**);
+   delete `runEndsAt` (`packages/core/src/ask/ask.ts:663`, three wrong values and zero readers);
+   and give `journeyModeWord` the interval it is labelling as a parameter, which is **R73-1**, the
+   regression. **This pass must establish:** `node cli.ts ask "what countries do I visit"` no
+   longer answers about this trip, and a journey stating both `durationMins` and `arrival` never
+   renders a mode word beside a clock the other field contradicts. **Then one confirmation round
+   over `I-45` as one subject** — `I-45`'s own route, already written, and A-99 Part 10's
+   pre-committed narrowing applies to it.
+
+2. **ARCHITECT — one correction pass over Phase 2's exit-criteria block. No code.**
+   Four criteria, all at `ROADMAP.md:11132`–`11330` plus criterion **E** at `:2805`:
+   - **(a)** the revision-40 2d criterion's **24 / 14 / eight** become the shipped **26 / 15 /
+     nine**, *or* — preferably, and this is criterion rule 6's own instruction — stop stating the
+     values and name the assertion that owns them (`test/stats-storage.test.ts`'s `ROW_PATHS`,
+     `ROW_KEYS`, `ROW_COUNT_FIELDS`), with the numbers moved to BUILD-NOTES labelled as history
+     against a fixed commit.
+   - **(b)** criterion **E**'s *"86 symbols"* → the same treatment. `I-11`'s *Architecture* bullet
+     (*"pinned by counting in this pass and written into §2.10 and criterion E together"*) is the
+     rule that was not applied at `I-21`, `I-22a` or `I-35`; say what re-arms it.
+   - **(c)** criterion 15's ceiling — *"no `package.json` diff and no lockfile movement anywhere in
+     the repo"* — is A-58's **no-dependency** verdict and it currently also forbids a **script**
+     edit. Routing item 5 below is exactly such an edit. Scope the ceiling to `dependencies` /
+     `devDependencies` / the lockfile, or it blocks its own fix.
+   - **(d)** criterion 14's exclusion property (MGR-13). The discriminant *"carries `$generatedBy`
+     and **no `$source`**"* is refuted by `fixtures/golden/gazetteer-probes.json`, which is
+     generated data that **must** carry `$source` under CC BY 4.0. Rule the replacement — the
+     honest property is about whether the artefact contains a **trip id, stop id, place id, day
+     date, title or note**, which the existing second half of the test already checks and which
+     both generated goldens pass. **Keep the injected fault.** **This pass must establish:** every
+     criterion in Phase 2's block is evaluable, as written, against the artefact at HEAD.
+   - **(e)** One sentence somewhere a reader will hit: revision 80's *"`I-30` … is the last Phase 2
+     increment"* is superseded by revision 82's `I-45`. It cost me a re-derivation and it will cost
+     the next reader one.
+
+3. **BREAKER — re-cut `qa/r54-gate.mjs` and run the `I-11` phase gate at HEAD.**
+   This is the round that has not happened, not a favour. Specifically:
+   - re-cut `D-c2v` and `J3` against ROADMAP revision 60's corrected criteria (both pin *both*
+     answers now — Vatican `IT` **and** `VA`; `fromJSON` **opens** and `validateTrip` reports);
+   - replace `qa/r54-gate.mjs:904`'s hard-coded `GENERATED_GEOMETRY` filename set with the
+     **property** the architect rules in 2(d), and keep R54-6's injected fault (paste one
+     reference-trip `{lat,lng}` into a generated golden; the exclusion's own assertion must redden);
+   - re-cut `M1`/`M2`/`M3`/`F1a`/`P1a`/`P2`/`P5c` against the corrected criteria — `P5c`'s
+     `THE_LIST` extraction is also parsing comment text and needs fixing regardless;
+   - then **run the whole `qa/` board**, not the scoped set, and record its state — the standing
+     obligation at `ROADMAP.md`'s *carried-forward items*.
+   **This pass must establish one thing:** `node qa/r54-gate.mjs` completes with **every row either
+   green or explicitly ruled**, at HEAD, with Phase 2's attack list run end to end. Until that
+   output exists there is no evidence Phase 2 met its gate.
+   **Also yours, in the same pass or the next round, whichever comes first:**
+   - **MGR-15** — `qa/r74-vacuity.sh:52-68`'s `probe()` scores a run that never started as CAUGHT;
+     give it the started · ran · finished · `FAIL ≥ 1` rule, or fold V1/V3/V4/V5 into
+     `qa/i30-faults.sh` as standing rows and delete the script. Repro: `bash qa/r74-vacuity.sh V1`
+     with nothing listening on 5399.
+   - **the round-74 board** — retire `qa/r74-faults-safety.sh` S0 and re-point or retire S1/S2/S3
+     (4(a) above), with a line in `QA-FINDINGS.md` naming which evidence replaced which.
+
+4. **BUILDER — `package.json`: add `apps/web/test/*.test.ts` to `test` and `test:tap`.**
+   One line in each. Needs routing item 2(c) first so it does not violate criterion 15 on the day
+   it lands. **This pass must establish:** `npm run test:tap` reports **1,976** (1,969 + the 7 that
+   exist and pass today), and a deliberately broken assertion in `apps/web/test/globeGeometry.test.ts`
+   turns `npm test` red.
+
+5. **ARCHITECT — MGR-14, `GAZETTEER_CONSUMERS`'s denominator.** Not now; **at `I-42`**, before
+   Phase 3's share pages add rendered consumers. The question to rule: A-91 item 2's census closes
+   over relative imports, so the first rendered consumer put the application root on the list; is
+   the obligation *"this module renders gazetteer data and states the credit"* or *"this module can
+   reach the loader"*, and if the former, what carries it.
+
+6. **Owed, and I am naming it rather than silently skipping it:** `cairn/CLAUDE.md`'s *Keep the
+   visual roadmap in sync* requires `docs/CAIRN_VISUAL_ROADMAP.md` **and** its `.html` twin to be
+   updated in the same pass whenever a phase-boundary decision is made. This verdict is one. **I
+   did not update them** — at 304k + 363k they are the two most expensive files in the repo and
+   this session's budget went into re-deriving the gate, which was the job. **The pass that lands
+   routing item 1 updates both**, with the three-way distinction the board already uses: `I-30`
+   moves to **shippable**, Phase 2 stays **verified, not shippable**, and `I-45` appears as
+   **built: no**.
+
+---
+
+## Verified — what I personally ran, and what happened
+
+All from `/home/user/europe-2026-planner/cairn` at `8a8a36d`, working tree clean
+(`git status --porcelain` → **0 lines**, before and after).
+
+| # | Command | Result |
+|---|---|---|
+| 1 | `npm run test:tap` | `# tests 1969 / # pass 1969 / # fail 0`, exit 0. **BUILD-NOTES' figure is true** |
+| 2 | `npm run typecheck` | exit **0**, both projects (root and `apps/web` — so the Codex `.tsx` compiles) |
+| 3 | `node qa/r54-gate.mjs` | **`COMPLETE fails=11 gaps=0 notes=35`**, exit 1. Failing: `D-c2v`, `F1a`, `J3`, `M1`, `M2`, `M3`, `N1`, `N1a`, `P1a`, `P2`, `P5c`. **This is MGR-10, MGR-11, MGR-13** |
+| 4 | `node --experimental-strip-types -e "import('./packages/core/src/index.ts').then(m => console.log(Object.keys(m).length))"` — criterion E's own command | **91**, against criterion E's *"86 symbols"* and `index.ts:4`'s *"86 runtime symbols"* |
+| 5 | `node qa/r74-allowlist.mjs` | **6 of 7** planted reaches redden `test/boundaries.test.ts` naming `apps/web/src/format.ts`; row 4 (computed key on a concatenated dynamic specifier) green — **R74-9, routed `none`, unchanged** |
+| 6 | `bash qa/r74-vacuity.sh V1` **with no server on 5399** | probe: `ok=0 FAIL=1`, *"does not answer, so THIS RUN MEASURED NOTHING"*; wrapper: **`=== every mutation was caught`**, **exit 0**. **MGR-15** |
+| 7 | `node cli.ts ask "what countries do I visit"` | *"I read this as: how many countries **this trip** visits. This trip accounts for 7 countries…"* — **R73-5 live from the CLI with no patched document** |
+| 8 | `grep -n runEndsAt packages/core/src/ask/ask.ts` | `:663` — A-99 deletes it. **`I-45` is unbuilt** |
+| 9 | `node --test apps/web/test/*.test.ts` | **7 pass / 0 fail** — green, and invisible to `npm test`, whose script globs three roots and not this one |
+| 10 | `curl -sS -o … -w … https://creativecommons.org/licenses/by/4.0/` | `http_code=200 redirects=0 final=https://creativecommons.org/licenses/by/4.0/`; body carries *Attribution 4.0 International* ×3 |
+| 11 | `git show --stat e890d50 c3a503b 8a8a36d` | 6 / 6 / 6 files. `8a8a36d`'s only `.tsx` is `CitySelector.tsx` (+47/−… ), and its diff is a constant, an effect body and docstrings — **no JSX** |
+| 12 | `git show --stat 4940630`; `git diff --stat master...HEAD` | **103 files / +5,047** and **115 files / +7,405**. `4940630` adds `d3-geo` to `apps/web/package.json` and **+45** lockfile lines; `master`'s `apps/web/package.json` has no `d3-geo` |
+| 13 | `grep -rn "d3-geo" apps/web/src` | two importers: `views/CroatiaPreview.tsx:2`, `world/globeGeometry.ts:2-3` |
+| 14 | `git ls-files apps/web/dist` | **0** — `dist/` is correctly untracked, so no build artefact is on the branch |
+
+**What I did not run, stated rather than implied.** `qa/i30-faults.sh`, `qa/i30-faults-safety.sh`
+and `qa/r74-faults-safety.sh` (the session manager re-ran the first and reported the porcelain
+identity that is R74-4's whole point; I verified the residue described in the other two by reading
+their mechanism and by reproducing the identical defect in the sibling instrument). No browser run
+of my own — I did not re-render the picker, and **this verdict contains no judgement about how it
+looks.** I did not review the 103 Codex files beyond their dependency, boundary-test and import
+surface; that is routing item below and is not mine to absorb silently.
+
+---
+
+## For Jacob — where this actually stands
+
+**The city picker works, and it closes.** You can type a city into either trip form, get a real
+match out of the bundled map database with a real coordinate and a real country, and the country
+lights up on your World from the pick itself rather than from a guess. The GeoNames credit and its
+licence link are on screen in every state, read out of the data rather than typed in — that is a
+legal obligation we now meet, and it is tested by something that goes red if it stops being true.
+**This says nothing about how the screen looks.** That is still yours to decide and nothing in
+this pass touched it.
+
+**Phase 2 is not finished, and it is not the picker's fault.** Three things:
+
+1. **One increment is still owed.** The last quality round found a real bug in the
+   "ask a question about your trip" feature — it can describe a flight with the wrong landing time
+   — and the fix was designed but never built. It is a few hours of work, not a rethink.
+2. **Four of the phase's own pass/fail tests are out of date.** They state numbers that the code
+   moved past months ago. The code is right; the checklist is wrong. Nobody had run the checklist
+   in nineteen rounds, which is how it drifted.
+3. **The checklist needs running once, at the current code.** Until it is, "Phase 2 passed" is
+   something we believe rather than something we measured — and the whole point of this pipeline is
+   the difference between those two.
+
+**Three decisions I need from you:**
+
+- **The 103 unreviewed files.** The branch carries a large batch of Codex's work — new globe and
+  first-run screens — sitting *underneath* the picker commits. Nobody in this pipeline has reviewed
+  them and the quality round said so explicitly. **If we merge this branch, all of it lands on
+  `master` together.** Do you want (a) the picker work separated out and merged alone, (b) the
+  Codex batch reviewed first, or (c) all of it in, with the understanding that the globe screens
+  are unverified? **My recommendation is (a) or (b)** — not because the code looks bad, but because
+  "it looks finished" and "it was checked" are the two things we are supposed to keep apart.
+- **`d3-geo`.** Those Codex files add our first new runtime dependency in `apps/web` since the
+  project started, for map projection maths on the globe. We have been deliberately dependency-free
+  outside React and Leaflet. Keep it, or ask for it to be written out?
+- **Sequencing.** The Phase 3 server work is designed and ready to start. I am holding it, because
+  our own rule says a phase never starts on top of an unverified one. **If you would rather we
+  start Phase 3 now and close Phase 2's three items in parallel, say so and I will re-issue this
+  verdict** — it is your call to overrule, not the pipeline's, and I would rather you make it
+  knowingly than have me quietly make it for you.
+
+---
+
+## Phase 3 entry conditions — exactly which are satisfied, and which are not
+
+Against `ROADMAP.md:11572`–`11600`.
+
+| # | Condition | State |
+|---|---|---|
+| **1** | **Phase 2 shipped, with a manager verdict of SHIP** (sequencing rule 2) | **NOT SATISFIED.** This verdict is SEND BACK. It is satisfied when routing items 1, 2 and 3 land and the re-issued verdict is SHIP. *(Note the condition's own text — *"`I-30` … is the last Phase 2 increment"* — is out of date: `I-45` is)* |
+| **2** | **`R72-1`, by direction not dependency** | **SATISFIED, and ruled non-gating.** A-98 is the ruling, `I-44` the code, round 73 the confirmation (13/13 lifetime phrasings refuse, accept set regenerated from the ruling's own fragments). Jacob's direction is met. **It does not gate Phase 2's SHIP verdict** — §3 above. **But round 73's other findings do**, through `I-45` |
+| **3** | **`A-2`/`P2-8` ruled by the architect before `I-42`** | **NOT YET DUE and NOT SATISFIED — and it does not block `I-39`.** `I-39`, `I-40` and `I-41` contain no share, friend or public-link code, so it binds at `I-42`. Architect owes it before then |
+| **4** | **Nothing purchased before `I-41`** | **SATISFIED.** Nothing has been purchased. `I-39` and `I-40` need no vendor; `I-41` needs a **local** Postgres |
+
+**So: `I-39` does not start today**, on condition 1 alone. When it does, its read is
+`ARCHITECTURE.md` **§12 whole and nothing else in that document**, and §12 Part 3 (the never-list)
+and Part 4 (what a share page may contain) come before any other Phase 3 decision.
+
+---
+
 # I-8b — Profile: the first surface built to the design contract
 
-> **Status: CURRENT.** Manager, stage 4. Reviewed `master` @ `dac9595`, 2026-09-02, Node v22.22.2,
+> **Status: CLOSED for the record** *(superseded as the current gate by the I-30 / Phase 2 verdict
+> above, 2026-09-16; its own routing is unchanged and was discharged downstream).* Manager, stage 4. Reviewed `master` @ `dac9595`, 2026-09-02, Node v22.22.2,
 > Playwright 1.56.1 at `/opt/node22/lib/node_modules/playwright`,
 > `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`. **This session is root and
 > `/opt/pw-browsers` carries `webkit-2215` as well as `chromium-1194`, so I ran the surface on
