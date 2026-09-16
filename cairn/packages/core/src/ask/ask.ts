@@ -54,6 +54,7 @@ import { cityRange, daysForCity, orderedCities, tripSummary, weekdayOf } from '.
 import { lifecycle } from '../derive/lifecycle.ts';
 import { stopLatLng } from '../derive/geo.ts';
 import { clockOf } from '../derive/occupancy.ts';
+import type { OccupiedInterval } from '../derive/occupancy.ts';
 import { countryOf } from '../derive/country.ts';
 import { detectConflicts } from '../conflict/detect.ts';
 import { UNBOOKED_HORIZON_DAYS } from '../conflict/rules/unbookedTicketed.ts';
@@ -95,6 +96,63 @@ function citesOf(facts: readonly AnswerFact[], extra: readonly AnswerCite[]): An
 
 function caveat(code: AnswerCaveatCode, message: string, params: Record<string, string | number>): AnswerCaveat {
   return { code, message, params };
+}
+
+/**
+ * **The one place a count becomes prose — §11.14 A-99 Part 8 (QA R73-3), and criterion rule 12.**
+ *
+ * > **No count reaches prose as a bare numeral.** Every number this module interpolates into an
+ * > `Answer.text` goes through one of these two, and a population of one is rendered as a word or
+ * > as a definite description, **never as `1`**.
+ *
+ * The numeral-for-one defect had **six known sites across three rounds**, one of them inside the
+ * sentence R72-6 fixed. R71-6 (d) fixed one of three; R72-6 fixed two and predicted the return of
+ * a third; it returned with three more. **A fourth enumeration would be wrong too** — §0 position
+ * 10 and position 5's revision-50 clause both forbid resting the claim on a list a builder must
+ * remember — so the claim rests on the one boundary every answer passes through instead, and the
+ * criterion behind it sweeps `Answer.text` for the standalone token `1` over a generated
+ * population rather than checking six addresses.
+ *
+ * Pure. Never throws.
+ */
+function countWord(n: number): string {
+  return n === 1 ? 'one' : String(n);
+}
+
+/**
+ * A population named with its scope: `the only day in Split`, `the 16 days on this trip`.
+ *
+ * `theDays` and `everyOne` used to spell this as two local ternaries and the loose `scope` string
+ * they read from was reachable by four other sentences — which is exactly where *"across 1 day"*
+ * and *"Of the 1 day"* leaked (A-99 Part 8). It stops existing as a separate string: the only way
+ * to name a population here is through this function, and this function cannot say `1`.
+ *
+ * `preposition` may be empty, for a scope that is a relative clause (*"the only day it
+ * occupies"*). Pure. Never throws.
+ */
+function countNoun(n: number, singular: string, preposition: string, scope: string): string {
+  const tail = [preposition, scope].filter((s) => s !== '').join(' ');
+  return n === 1 ? `the only ${singular} ${tail}`.trimEnd() : `the ${n} ${plural(singular)} ${tail}`.trimEnd();
+}
+
+/**
+ * An **indefinite** population with its noun: `one day`, `16 days`, `one pooled idea`.
+ *
+ * A-99 Part 8 names two renderers and this is a third, built **on** `countWord` rather than beside
+ * it — it is the same rule with the noun attached, for the many sentences that count something
+ * without naming a scope (*"On it are 8 scheduled stops, 31 pooled ideas…"*). Factoring it here is
+ * the same move as the other two: the noun and the number agree because one function decides both,
+ * and there is no site at which a builder can pluralise one and not the other. Pure.
+ */
+function countOf(n: number, singular: string): string {
+  return `${countWord(n)} ${n === 1 ? singular : plural(singular)}`;
+}
+
+/** English plural for the handful of nouns this module counts. Pure. */
+function plural(singular: string): string {
+  if (/[^aeiou]y$/.test(singular)) return `${singular.slice(0, -1)}ies`;
+  if (/(s|sh|ch|x|z)$/.test(singular)) return `${singular}es`;
+  return `${singular}s`;
 }
 
 /** `a, b and c`. Pure formatting over values that are already facts. */
@@ -193,7 +251,7 @@ function answerOverview(question: Question, ctx: AskCtx): Answer {
     const cityWord = cityProse(trip, c.key);
     clauses.push(range === null
       ? `${cityWord} (no days recorded)`
-      : `${cityWord} ${range} (${days.length} day${days.length === 1 ? '' : 's'})`);
+      : `${cityWord} ${range} (${countWord(days.length)} day${days.length === 1 ? '' : 's'})`);
   }
 
   // **QA R70-1.** The empty arm used to fire when EITHER count was zero and then render *"no
@@ -228,14 +286,17 @@ function answerOverview(question: Question, ctx: AskCtx): Answer {
       `It records ${list(missing)} yet` +
       (nothingAtAll
         ? ', so there is nothing more I can tell you about it.'
-        : `, so this is partial: ${row.dayCount} days, ${row.cityCount} cities, ${row.stopCount} scheduled stops, ` +
-          `${row.poolCount} pooled ideas, ${row.placeCount} places and ${trip.bookings.length} bookings.` +
+        : `, so this is partial: ${countOf(row.dayCount, 'day')}, ${countOf(row.cityCount, 'city')}, ` +
+          `${countOf(row.stopCount, 'scheduled stop')}, ${countOf(row.poolCount, 'pooled idea')}, ` +
+          `${countOf(row.placeCount, 'place')} and ${countOf(trip.bookings.length, 'booking')}.` +
           (clauses.length > 0 ? ` It covers ${list(clauses)}.` : ''))
-    : `This trip runs ${trip.startDate} → ${trip.endDate}: ${row.dayCount} days, ${stage} as of ${today}. ` +
-      `It covers ${row.cityCount} cities — ${list(clauses)}. ` +
-      `On it are ${row.stopCount} scheduled stops, ${row.poolCount} pooled ideas, ${row.placeCount} places and ` +
-      `${trip.bookings.length} bookings. ` +
-      `A day that spans two cities counts for both, so those per-city day counts do not add up to ${row.dayCount}.`;
+    : `This trip runs ${trip.startDate} → ${trip.endDate}: ${countOf(row.dayCount, 'day')}, ` +
+      `${stage} as of ${today}. ` +
+      `It covers ${countOf(row.cityCount, 'city')} — ${list(clauses)}. ` +
+      `On it are ${countOf(row.stopCount, 'scheduled stop')}, ${countOf(row.poolCount, 'pooled idea')}, ` +
+      `${countOf(row.placeCount, 'place')} and ${countOf(trip.bookings.length, 'booking')}. ` +
+      `A day that spans two cities counts for both, so those per-city day counts do not add up to ` +
+      `${countWord(row.dayCount)}.`;
 
   return {
     question,
@@ -316,9 +377,9 @@ function answerCityEdge(question: Extract<Question, { kind: 'city_edge' }>, ctx:
   const time = journey && journey.placement.kind === 'scheduled' ? journey.placement.time : null;
   const text = journey
     ? (leaving
-        ? `You leave ${said} on ${dated(edgeDay.date)} — the last of the ${days.length} day${days.length === 1 ? '' : 's'} it occupies.${spans} ` +
+        ? `You leave ${said} on ${dated(edgeDay.date)} — the last of ${countNoun(days.length, 'day', '', 'it occupies')}.${spans} ` +
           `The first journey recorded on that day ${time === null ? 'states no time' : `starts at ${time}`}, and it is cited below.`
-        : `You arrive in ${said} on ${dated(edgeDay.date)} — the first of the ${days.length} day${days.length === 1 ? '' : 's'} it occupies.${spans} ` +
+        : `You arrive in ${said} on ${dated(edgeDay.date)} — the first of ${countNoun(days.length, 'day', '', 'it occupies')}.${spans} ` +
           `The first journey recorded on that day ${time === null ? 'states no time' : `starts at ${time}`}, and it is cited below.`)
     : (leaving
         ? `The last day ${said} occupies is ${dated(edgeDay.date)}.${spans} No stop on that day is recorded as a journey, ` +
@@ -385,9 +446,9 @@ function answerUnbooked(question: Question, ctx: AskCtx): Answer {
     `Both rules behind this answer look ${UNBOOKED_HORIZON_DAYS} days ahead and stop asking once a ` +
     'date has passed, so this is what is reachable now rather than a complete audit of the trip.';
   const text = open.length > 0
-    ? `As of ${today}, ${open.length} thing${open.length === 1 ? '' : 's'} on this trip ${open.length === 1 ? 'is' : 'are'} not booked: ` +
-      `${ticketed.length} ticketed stop${ticketed.length === 1 ? '' : 's'} that carry a booking link with no booking behind ` +
-      `${ticketed.length === 1 ? 'it' : 'them'}, and ${lodging.length} stretch${lodging.length === 1 ? '' : 'es'} of nights with no lodging on file. ` +
+    ? `As of ${today}, ${countOf(open.length, 'thing')} on this trip ${open.length === 1 ? 'is' : 'are'} not booked: ` +
+      `${countOf(ticketed.length, 'ticketed stop')} that ${ticketed.length === 1 ? 'carries' : 'carry'} a booking link with no booking behind ` +
+      `${ticketed.length === 1 ? 'it' : 'them'}, and ${countOf(lodging.length, 'stretch')} of nights with no lodging on file. ` +
       `Each one is listed below with the record it came from. ${horizon}`
     : stage === 'completed'
       ? `Nothing — but that is because this trip is over. Cairn stops asking you to book things for a trip you have ` +
@@ -470,7 +531,7 @@ function answerCountryCount(question: Question, ctx: AskCtx): Answer {
     const records = evidence.get(code) ?? [];
     const cities = cityEvidence.get(code) ?? [];
     facts.push(fact('country_code', code, { code, recordCount: records.length, cityCount: cities.length }, [...records, ...cities]));
-    byCode.push(`${code} ${records.length}`);
+    byCode.push(`${code} ${countWord(records.length)}`);
   }
   const placeSeen = row.placeCount;
   const stopSeen = trip.days.reduce((n, d) => n + d.stops.length, 0) + trip.pool.length;
@@ -483,19 +544,21 @@ function answerCountryCount(question: Question, ctx: AskCtx): Answer {
   const noCountries = row.countryCodes.length === 0;
 
   const census =
-    `That comes from ${placeSeen} place records (${row.attribution.places.located} carry a coordinate, ` +
-    `${row.attribution.places.attributed} of which resolved to a country) and ${stopSeen} stops ` +
-    `(${row.attribution.stops.located} located, ${row.attribution.stops.attributed} resolved). ` +
+    `That comes from ${countOf(placeSeen, 'place record')} (${countWord(row.attribution.places.located)} ` +
+    `${row.attribution.places.located === 1 ? 'carries' : 'carry'} a coordinate, ` +
+    `${countWord(row.attribution.places.attributed)} of which resolved to a country) and ` +
+    `${countOf(stopSeen, 'stop')} (${countWord(row.attribution.stops.located)} located, ` +
+    `${countWord(row.attribution.stops.attributed)} resolved). ` +
     `By records: ${byCode.join(', ')}.`;
+  const accounts = `This trip accounts for ${countOf(row.countryCodes.length, 'country')}: ${row.countryCodes.join(', ')}.`;
   const text = noCountries
     ? 'I cannot place this trip in any country. Nothing on it carries a coordinate I could resolve, so the ' +
       'honest answer is that there is nothing to count rather than that the answer is zero.'
     : holes
-      ? `This trip accounts for ${row.countryCodes.length} countries: ${row.countryCodes.join(', ')}. ${census} ` +
-        `${lostPlaces} place${lostPlaces === 1 ? '' : 's'} and ${lostStops} stop${lostStops === 1 ? '' : 's'} carry a ` +
+      ? `${accounts} ${census} ` +
+        `${countOf(lostPlaces, 'place')} and ${countOf(lostStops, 'stop')} carry a ` +
         'coordinate I could not place in any country, so treat this as a floor rather than a ceiling.'
-      : `This trip accounts for ${row.countryCodes.length} countries: ${row.countryCodes.join(', ')}. ${census} ` +
-        'Every located record resolved, so nothing is missing from that list.';
+      : `${accounts} ${census} Every located record resolved, so nothing is missing from that list.`;
 
   return {
     question,
@@ -528,35 +591,71 @@ function answerCountryCount(question: Question, ctx: AskCtx): Answer {
 // ------------------------------------------------------------------------------------ free_time
 
 /**
- * **The mode word a busy day's run clause may use — §11.13 A-98 Part 8 (QA R72-8).**
+ * **The mode word a busy day's run clause may use — §11.14 A-99 Part 1 (QA R73-1).**
  *
- * > **`OccupancySource` says which field of the document stated the run length. It is not a
- * > statement about the stop's role, and no renderer may read it as one.**
+ * > **A clause that states a fact and a number in one breath takes both from the same statement
+ * > in the document.** The mode word is admissible only where the interval being rendered **was
+ * > measured from the field that names the mode**.
  *
- * A-97 Part 5 item 2 gated this on `interval.source === 'journey_run'`, whose stated reason —
- * *"for `source === 'stated_duration'` there is no mode"* — is false for a journey stop that
- * states **both** `durationMins` and `arrival`: `stopOccupancy` takes its first branch, `source`
- * says `'stated_duration'`, and `stop.arrival.mode` is sitting right there. **That is A-97 Part
- * 2's own sibling rule failing inside A-97's own fix, one item later** — *a renderer branches on
- * the same discriminant the classifier branched on, never on a field that merely correlates with
- * it.* The renderer's question is not *"which field stated the run length"*; it is *"is this
- * interval a journey the stop itself makes"*, which is `stopOccupancy`'s own journey test with
- * the `durationMins` precedence removed.
+ * A-98 Part 8 emitted the mode wherever `stop.travelRole === 'journey' && stop.arrival !== null`.
+ * Both conjuncts are right, and the predicate was nonetheless wrong, **because it never asked
+ * about the thing it was labelling**: `stopOccupancy` takes `durationMins` where it is set, so on
+ * a journey stating **both** fields this rendered `arrival.mode` beside a clock derived from the
+ * other one — *"on 2026-08-07 you are on a flight from 16:45 until 20:05"* about a flight the same
+ * stop says is in the air for eleven hours. **A-98 made a true sentence false**, inside the fix
+ * for the very rule A-97 Part 2 had written one ruling earlier.
  *
- * **Two conjuncts, and the second one is the trap.** §2.5 and A-96 Part 2 make `arrival` on a
+ * **§0 position 13 (g) is the shape of the repair, not a slogan**: *where a renderer must not mix
+ * two fields, the function that renders takes both of them.* `journeyModeWord(stop)` could not
+ * check the rule its own doc comment stated, because the value it had to agree with was not in its
+ * parameter list — so no reviewer, test or type could ask it the question. **The signature is the
+ * mechanism.**
+ *
+ * **Three conjuncts, and each has a trap behind it.** §2.5 and A-96 Part 2 make `arrival` on a
  * NON-journey stop the leg *into* the stop — a journey that already finished — and **60 of the
- * reference trip's 112 scheduled stops are that shape**. `stop.arrival !== null` alone would
- * render *"you are on a bus from 16:30 until 18:30"* about a bus that arrived hours ago.
+ * reference trip's 112 scheduled stops are that shape**, which is why `travelRole` is tested.
+ * `source === null` is not a run at all and falls to `''`, which is the arm the disagreeing shape
+ * now also takes: *"something that starts at 16:45 runs until 20:05"*, true of the document,
+ * exactly as it read before A-98. A-98's motivating shape — a journey whose `durationMins`
+ * **agrees** with `arrival.mins` — keeps its mode word.
  *
- * `''` where no mode word may be used, which is what the clause builder tests. **No new field on
- * `OccupiedInterval`** (A-97 Part 3 decision 3: two fields for one quantity is how the next
- * caller picks the wrong one silently). Pure.
+ * `OccupancySource` still names a field and is still not a statement about the stop's role. What
+ * changed is that the renderer now asks *"which field is the number I am about to print?"*, which
+ * is a question `source` is the right answer to. **No new field on `OccupiedInterval`** (A-97 Part
+ * 3 decision 3). `''` where no mode word may be used, which is what the clause builder tests.
+ * Pure.
  *
  * @throws nothing.
  */
-export function journeyModeWord(stop: Stop): string {
-  return stop.travelRole === 'journey' && stop.arrival !== null ? stop.arrival.mode : '';
+export function journeyModeWord(stop: Stop, interval: OccupiedInterval): string {
+  if (stop.travelRole !== 'journey' || stop.arrival === null) return '';
+  // The interval was measured from `arrival` — either because `stopOccupancy` read it, or because
+  // `durationMins` states the same number and the two readings are the same instant.
+  const fromArrival =
+    interval.source === 'journey_run'
+    || (interval.source === 'stated_duration' && stop.durationMins === stop.arrival.mins);
+  return fromArrival ? stop.arrival.mode : '';
 }
+
+/**
+ * The end of a run, as a wall clock — **or the word `midnight` for the one value a wall clock has
+ * no spelling for (QA R73-2).**
+ *
+ * R72-3 correctly made `endMin === 1440` **not** `crossesDay`: a run that ends at exactly midnight
+ * does not outlive its day. That moved one value out of the *"still on it at midnight"* arm into
+ * the clock arm, which had no case for it — `clockOf(1440)` is `"24:00"`, an hour no wall clock
+ * shows and the one value this file's own comment promises is never rendered. A 17:00 flight of
+ * 7h00 read *"you are on a flight from 17:00 until 24:00"*.
+ *
+ * **"Until midnight", and deliberately not *"still on it at midnight"***, which is the other arm's
+ * and is false of a flight that has landed. Pure.
+ */
+function endClock(interval: OccupiedInterval): string {
+  return interval.endMin === MIDNIGHT_MIN ? 'midnight' : clockOf(interval.endMin);
+}
+
+/** Minutes since midnight at the end of a day — the one instant `clockOf` cannot spell. */
+const MIDNIGHT_MIN = 24 * 60;
 /**
  * §11.7 rule 3 — **nothing is defaulted into existence, and nothing the document DOES state is
  * ignored** (§11.11 A-96 Part 3). This is the worked example.
@@ -650,19 +749,26 @@ function answerFreeTime(question: Extract<Question, { kind: 'free_time' }>, ctx:
       startsInWindow: v.starts.length,
       runsIntoWindow: v.runsInto.length,
       lastStartBeforeWindow: v.lastUncertainBefore ?? '',
-      // **A-97 Part 4 — the structured half keeps the number the prose refuses to state.** The
-      // uncapped wall clock of the day's own evidence run (`'27:45'` on 2026-08-07), `''` where
-      // the day has no run. A clock string is not a coordinate and §11.8 clause 1 is untouched;
-      // a surface that wants the instant has it under its own §6.6 obligations.
-      // **QA R72-5 — the guard.** `clockOf` of a number is not a wall clock: `fromJSON` accepts
-      // a negative `durationMins` and no build door refuses one, so an interval can end before
-      // it starts and this field carried `"-2:00"` (and, at -2000, `"-16:-20"`). A-97 Part 4
-      // kept this field so a surface could have the instant the prose refuses to state; an
-      // instant that runs backwards is not that instant, and `''` is what this field already
-      // means by *"this day has no run"*.
-      runEndsAt: evidence !== null && evidence.interval.source !== null
-        && evidence.interval.endMin >= evidence.interval.startMin
-        ? clockOf(evidence.interval.endMin) : '',
+      // **The end-of-run clock string A-97 Part 4 added here is DELETED — §11.14 A-99 Part 9 (QA
+      // R73-4, R72-5, half of R73-2).** Its name is not written here, deliberately: the ceiling
+      // over this deletion is a `grep` across `packages/`, and only a ruling brings the name back.
+      //
+      // The field produced three wrong values in two rounds (`"-16:-20"` at a negative
+      // `durationMins`, `"16666684:40"` at 1e9, `"24:00"` at the exact midnight lander) and
+      // **zero production readers**: `cli.ts` prints the first four non-empty params of a fact
+      // and this was the seventh, so neither its correct value nor any of its three wrong ones
+      // was ever shown to anybody. A-97 Part 4 justified it by *"a surface that wants the
+      // instant"*, which is the speculative consumer criterion rule 10 exists to refuse.
+      //
+      // > **A field whose only reader is imagined does not ship, and a derived string in `params`
+      // > is a second copy of a computation that already has one home.**
+      //
+      // Nothing user-visible changes. **The cites are the path to the instant**: every occupying
+      // stop of the day is cited below, and a consumer that wants an end instant resolves a cite
+      // and calls `occupiedInterval`, which is the one definition A-96 Part 2 built. Reinstating
+      // it is a design question, not a memory: the first surface that renders an end instant
+      // needs the instant, `crossesDay` and the stop the run belongs to — three values, not one
+      // string — and gets a designed shape in the ruling that adds the surface.
       stopsWithoutOccupancy: v.withoutOccupancy.length,
       stopsWithoutTime: v.withoutTime.length,
       stopsOnDay: v.stopCount,
@@ -677,12 +783,12 @@ function answerFreeTime(question: Extract<Question, { kind: 'free_time' }>, ctx:
       } else {
         busyRuns.push({
           date: day.date,
-          // **A-98 Part 8 (QA R72-8): gated on the STOP's role, not on which field stated the
-          // run length.** `source` merely correlates with *"is this a journey the stop itself
-          // makes"*, and the correlation ended for a journey that states both fields.
-          mode: journeyModeWord(evidence.stop),
+          // **A-99 Part 1 (QA R73-1): the mode word and the clock come out of the SAME FIELD.**
+          // The interval is a parameter, which is the fix — a predicate that cannot see the value
+          // it must agree with cannot be audited for agreement (§0 position 13 (g)).
+          mode: journeyModeWord(evidence.stop, evidence.interval),
           from: clockOf(evidence.interval.startMin),
-          to: clockOf(evidence.interval.endMin),
+          to: endClock(evidence.interval),
           crossesDay: evidence.interval.crossesDay,
         });
       }
@@ -700,23 +806,27 @@ function answerFreeTime(question: Extract<Question, { kind: 'free_time' }>, ctx:
   // "16 days ON this trip" / "4 days IN Split" — the preposition follows the scope, because a
   // sentence a user reads twice a week is not a place to save a branch.
   const preposition = question.cityKey === null ? 'on' : 'in';
-  const scope = `${n} day${n === 1 ? '' : 's'} ${preposition} ${said}`;
-  // QA R71-6 (d): *"on every one of the 1 day in Split"*. One day is not a population.
-  // **QA R72-6**: the same numeral survived in the `Yes.` arm's *"Of the 1 day in Split"*, which
-  // reads off this same `n`, so the phrase itself is named once and used at both sites.
-  const theDays = n === 1 ? `the only day ${preposition} ${said}` : `the ${scope}`;
-  const everyOne = n === 1 ? theDays : `every one of the ${scope}`;
+  // **A-99 Part 8 — the loose `scope` string is GONE.** It was `${n} day${s} ${prep} ${said}`, it
+  // was read by four sentences, and it is where *"across 1 day"* and *"Of the 1 day"* leaked
+  // (R71-6 (d), R72-6, R73-3). The only way to name this population now is `countNoun`, and
+  // `countNoun` cannot say `1`.
+  const theDays = countNoun(n, 'day', preposition, said);
+  const everyOne = n === 1 ? theDays : `every one of ${theDays}`;
   // The census, with its denominator (§11.7 rule 6) — 20 of 28 across Split, 91 of 112 trip-wide,
-  // and never "28 stops say nothing" when 8 of them do (QA R70-3).
+  // and never "28 stops say nothing" when 8 of them do (QA R70-3). **Verb agreement follows the
+  // same value the count does** (A-99 Part 8): *"one of the 2 stops … states"*, never *"1 … state"*.
+  // Only rendered where `stopsWithoutOccupancy > 0`, which is why the subject has no zero arm.
+  const stopsAcross = countNoun(stopsInScope, 'stop', 'across', theDays);
   const census =
-    `${stopsWithoutOccupancy} of the ${stopsInScope} stop${stopsInScope === 1 ? '' : 's'} across ${scope} ` +
-    `state no run length${stopsWithoutOccupancy === 0 ? '' : ', and Cairn does not invent a duration for a stop that states none'}.`;
+    `${stopsInScope === 1 ? stopsAcross : `${countWord(stopsWithoutOccupancy)} of ${stopsAcross}`} ` +
+    `state${stopsWithoutOccupancy === 1 ? 's' : ''} no run length` +
+    `${stopsWithoutOccupancy === 0 ? '' : ', and Cairn does not invent a duration for a stop that states none'}.`;
   // **QA R71-6 (a).** A day can also be `unknown` because a stop states no TIME, and the arm
   // offered the run-length census as its reason regardless — so the sentence read *"but 0 of the
   // 28 stops … state no run length"*, which is the opposite of a reason. The reason given is now
   // the hole that is actually there; the other one stays in its own caveat.
   const timeCensus =
-    `${stopsWithoutTime} scheduled stop${stopsWithoutTime === 1 ? '' : 's'} across ${scope} ` +
+    `${countWord(stopsWithoutTime)} scheduled stop${stopsWithoutTime === 1 ? '' : 's'} across ${theDays} ` +
     `state${stopsWithoutTime === 1 ? 's' : ''} no time at all, so I cannot place ` +
     `${stopsWithoutTime === 1 ? 'it' : 'them'} in or out of the window.`;
   const whyUnknown = stopsWithoutOccupancy > 0 ? census : timeCensus;
@@ -726,8 +836,8 @@ function answerFreeTime(question: Extract<Question, { kind: 'free_time' }>, ctx:
     coverage = 'partial';
     const one = unknownDays[0];
     text =
-      `I can't tell. Of the ${scope}, ${busy} ${busy === 1 ? 'is' : 'are'} busy in the ${windowText}` +
-      `${open > 0 ? `, ${open} ${open === 1 ? 'is' : 'are'} clear` : ''}, and ${unknownDays.length} I cannot judge. ` +
+      `I can't tell. Of ${theDays}, ${countWord(busy)} ${busy === 1 ? 'is' : 'are'} busy in the ${windowText}` +
+      `${open > 0 ? `, ${countWord(open)} ${open === 1 ? 'is' : 'are'} clear` : ''}, and ${countWord(unknownDays.length)} I cannot judge. ` +
       // QA R70-8: only a time BEFORE the window is evidence about the window. Where the day
       // offers none, the sentence says so rather than quoting a start time that comes after it.
       `On ${one.date}, nothing I can place runs into the ${question.part}` +
@@ -748,10 +858,10 @@ function answerFreeTime(question: Extract<Question, { kind: 'free_time' }>, ctx:
     // QA R71-6 (e): `.trim()` bound to the second template literal rather than to the
     // concatenation, so an answer whose second half is empty ended in a trailing space.
     text = (
-      `Yes. Of ${theDays}, ${open} ${open === 1 ? 'is' : 'are'} clear in the ${windowText}: ${list(because)}. ` +
+      `Yes. Of ${theDays}, ${countWord(open)} ${open === 1 ? 'is' : 'are'} clear in the ${windowText}: ${list(because)}. ` +
       // QA R72-6: *"The other 1 is busy then."* — a remainder of one is not a count either, and
       // `busyStarts`' own *"one has something starting at…"* already spells it this way.
-      `${busy > 0 ? `The other ${busy === 1 ? 'one is' : `${busy} are`} busy then.` : ''}`
+      `${busy > 0 ? `The other ${countWord(busy)} ${busy === 1 ? 'is' : 'are'} busy then.` : ''}`
     ).trim();
   } else {
     coverage = 'complete';
@@ -771,7 +881,7 @@ function answerFreeTime(question: Extract<Question, { kind: 'free_time' }>, ctx:
         return `on ${r.date} ${subject} ${ending}`;
       }),
       busyStarts.length > 0
-        ? `${busyRuns.length > 0 ? 'the other ' : ''}${busyStarts.length === 1 ? 'one has' : `${busyStarts.length} have`} ` +
+        ? `${busyRuns.length > 0 ? 'the other ' : ''}${countWord(busyStarts.length)} ${busyStarts.length === 1 ? 'has' : 'have'} ` +
           `something starting at ${list(busyStarts.map((b) => b.time))}`
         : '',
     ].filter((s) => s !== '');

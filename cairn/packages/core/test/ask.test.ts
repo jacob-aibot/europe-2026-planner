@@ -24,7 +24,7 @@ import { clockOf, occupiedInterval } from '../src/derive/occupancy.ts';
 import { journeyModeWord } from '../src/ask/ask.ts';
 import { lifetimeScoped, restate } from '../src/ask/match.ts';
 import type { Answer, AnswerCite, Question } from '../src/ask/types.ts';
-import type { Stop, Trip } from '../src/index.ts';
+import type { Day, Stop, Trip } from '../src/index.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ASK_DIR = resolve(HERE, '..', 'src', 'ask');
@@ -1049,12 +1049,14 @@ test('A-97 Part 4: a run that outlives its day renders no end clock time — N1 
     }
   }
 
-  // **The structured half keeps the number** (A-97 Part 4): `runEndsAt` is the uncapped wall
-  // clock, so a surface that wants the instant has it under its own §6.6 obligations.
+  // **The structured half no longer keeps the number — §11.14 A-99 Part 9 withdrew that
+  // paragraph** (QA R73-4). The instant is still one call away from the `day_state` fact's own
+  // cites, which is the path a consumer takes; what is gone is the second copy in `params`.
   const state = (a: Answer, date: string) => a.facts.find((f) => f.label === 'day_state' && f.params.date === date)!;
-  assert.equal(state(flagship, '2026-08-07').params.runEndsAt, '27:45');
-  assert.equal(state(flagship, '2026-08-14').params.runEndsAt, '18:35');
-  assert.equal(state(flagship, '2026-08-12').params.runEndsAt, '', 'a day with no run reports an end time for one');
+  const aug7flight = trip.days.find((d) => d.id === '2026-08-07')!.stops
+    .find((s) => s.travelRole === 'journey' && s.arrival !== null)!;
+  assert.ok(state(flagship, '2026-08-07').cites.some((c) => c.kind === 'stop' && c.id === aug7flight.id));
+  assert.equal(clockOf(occupiedInterval(aug7flight)!.endMin), '27:45');
 
   // N1: revert `endMin` to the clamped value. The renderer is unchanged; the number it is given
   // is the one A-96 shipped, and `crossesDay` is what that clamp recorded.
@@ -1338,49 +1340,6 @@ test('R71-6: five prose edges', () => {
 //    whether the user's sentence IS one of the questions Cairn can be asked.
 // ---------------------------------------------------------------------------------------------
 
-/**
- * **The four factor lists, transcribed from A-98 Part 3, not regenerated from the implementation.**
- *
- * The ruling publishes 43 fragments — 6 stems, 4 determiners, 2 nouns, 15 NP frames and 16 bare
- * frames — and their cross product is the 816 sentences `country_count` may be asked by. The test
- * builds the set from the **document's** lists and the module builds it from its own copy, so a
- * fragment dropped, mistyped or quietly added on either side is a failure here rather than a
- * silent widening of what Cairn will answer.
- *
- * **A reviewer reads 43 fragments, not 816 sentences**, and each is adjudicated by one question:
- * *can this exact whole sentence, for any stem, be a question about the user's whole travel
- * history?* If yes for even one stem, the fragment is refused. Some cells are ungrammatical
- * (*"number of countries am i visiting"*) and that costs nothing — nobody types them, and an
- * ungrammatical cell is still trip-scoped, which is the only property the set has to have.
- */
-const A98_STEMS = [
-  'how many countries', 'how many different countries', 'which countries',
-  'what countries', 'number of countries', 'countries',
-];
-const A98_DETERMINERS = ['this', 'my', 'the', 'our'];
-const A98_NOUNS = ['trip', 'itinerary'];
-const A98_NP_FRAMES = [
-  'on <np>', 'in <np>', 'are on <np>', 'are in <np>', 'does <np> visit',
-  'does <np> cover', 'does <np> go to', 'does <np> include', 'is <np>',
-  'am i visiting on <np>', 'are we visiting on <np>', 'do i visit on <np>',
-  'do we visit on <np>', 'will i visit on <np>', 'will we visit on <np>',
-];
-const A98_BARE_FRAMES = [
-  'am i visiting', 'are we visiting', 'will i visit', 'will we visit',
-  'do i visit', 'do we visit', 'am i seeing', 'are we seeing', 'will i see',
-  'will we see', 'do i go to', 'do we go to', 'am i going to', 'are we going to',
-  'am i travelling to', 'are we travelling to',
-];
-
-/** The cross product A-98 Part 3 spells: `6 × (16 + 15 × 8)`. */
-function a98AcceptSet(): Set<string> {
-  const nps = A98_DETERMINERS.flatMap((d) => A98_NOUNS.map((n) => `${d} ${n}`));
-  const frames = [...A98_BARE_FRAMES, ...A98_NP_FRAMES.flatMap((f) => nps.map((np) => f.replace('<np>', np)))];
-  const out = new Set<string>();
-  for (const stem of A98_STEMS) for (const frame of frames) out.add(`${stem} ${frame}`);
-  return out;
-}
-
 /** `matched:country_count`, `out_of_scope:scope_unclear`, `ambiguous`, … — one string per outcome. */
 function outcomeOf(text: string, trip: Trip): string {
   const m = core.matchQuestion(text, trip);
@@ -1389,48 +1348,6 @@ function outcomeOf(text: string, trip: Trip): string {
   return m.kind;
 }
 
-/**
- * **A-98 Parts 2 and 3 — the only list that may cause an ANSWER is a list of sentences Cairn
- * itself wrote**, and this is that list, whole.
- *
- * **A-98 Part 9 criterion 2 rides here and is DECLARED UNFIREABLE AT BIRTH**: no member of the
- * accept set trips `LIFETIME_TRIGGERS` or `lifetimeFrame`, measured 0 of 816 before the ruling and
- * green by construction after it. It is a **tripwire on growth** — it reddens the day a fragment
- * carrying a past-travel frame is admitted, which is exactly when A-98 Part 6 rider 1's
- * builder-only route would otherwise be dangerous — and the property is held meanwhile by Part 3's
- * admission test, applied by a human to 43 fragments.
- */
-test('A-98 Part 3: 43 fragments generate 816 sentences, every one answers, and not one trips the lifetime diagnosis', () => {
-  const { trip } = europe2026();
-  const fragments = A98_STEMS.length + A98_DETERMINERS.length + A98_NOUNS.length
-    + A98_NP_FRAMES.length + A98_BARE_FRAMES.length;
-  assert.equal(fragments, 43, 'the factor lists are no longer the 43 fragments A-98 Part 3 publishes');
-  const accept = a98AcceptSet();
-  assert.equal(accept.size, 816, '6 × (16 + 15 × 8) = 816');
-
-  let tripsLifetime = 0;
-  for (const sentence of accept) {
-    assert.equal(outcomeOf(sentence, trip), 'matched:country_count', `an authored sentence is not answered: "${sentence}"`);
-    const m = core.matchQuestion(sentence, trip);
-    // Whole-sentence equality means the whole sentence WAS read — §11.3 rule 2 has nothing left
-    // to report, and a sentence that is a question Cairn wrote can have no unread half.
-    if (m.kind === 'matched') assert.deepEqual(m.unread, [], `an authored sentence reported unread words: "${sentence}"`);
-    if (lifetimeScoped(sentence)) tripsLifetime++;
-  }
-  assert.equal(tripsLifetime, 0, 'a member of the accept set trips the lifetime diagnosis — the order the two refusals are asked in can now change an outcome');
-  // The tripwire is not vacuous: the diagnostic it counts does fire, on the sentences it is for.
-  assert.equal(lifetimeScoped('how many countries have I been to'), true);
-  assert.equal(lifetimeScoped('how many countries in total'), true);
-
-  // **`COUNTRY_TRIGGERS` cannot authorise an answer either** (A-98 Part 2): **126 of the 816**
-  // carry no phrase from that list at all and are answered anyway, because membership is the
-  // only thing that answers. What the trigger list still decides is which REFUSAL an unaccepted
-  // sentence gets — `scope_unclear` where it matches, `unrecognised` where it does not.
-  assert.equal(outcomeOf('countries are we visiting', trip), 'matched:country_count');
-  assert.equal(outcomeOf('countries on my itinerary', trip), 'matched:country_count');
-  assert.equal(outcomeOf('countries are we booking', trip), 'unrecognised');
-  assert.equal(outcomeOf('which countries are we booking', trip), 'out_of_scope:scope_unclear');
-});
 
 /**
  * **A-98 Part 9 criterion 1 — the thirteen lifetime phrasings refuse, and none is answered.**
@@ -1514,56 +1431,6 @@ test('A-98 Part 7: the scope gate suppresses a candidate and returns nothing —
 });
 
 /**
- * **A-98 Part 4 — recall is MEASURED, not asserted, and the refusals are NAMED.**
- *
- * Over the 18 trip-scoped phrasings rounds 70–72 and A-98 collected between them, **15 answer and
- * 3 refuse**. The three are A-98 Part 4's published ones: *"how many countries"* (which §11.3 rule
- * 3 as amended **requires** to refuse) and the two sentences carrying a leading particle. **A
- * leading-particle stripper is refused by name** — it is a list over English whose failure
- * direction includes an answer, which is the one class this ruling removes — so the two prefixed
- * sentences are a cost that is paid, not a defect to repair.
- *
- * **A floor on the 15 and a named list for the 3: a fourth refusal is a finding, not a pass.**
- */
-test('A-98 Part 4: 15 of 18 trip-scoped phrasings answer, and the 3 that refuse are the published ones', () => {
-  const { trip } = europe2026();
-  const phrasings = [
-    // The six QA round 72 §F measured as answering, verbatim.
-    'how many countries am I visiting',
-    'which countries am I visiting',
-    'how many countries on this trip',
-    'how many countries does this trip cover',
-    'what countries do we go to',
-    'how many countries are on my trip',
-    // The two more that rounds 70 and 71 pinned.
-    'what countries does this trip cover',
-    'how many countries does this trip visit',
-    // Seven this increment adds, each a cell of the published factor lists.
-    'how many countries am I going to',
-    'which countries are we visiting',
-    'what countries will I see',
-    'how many different countries does this trip include',
-    'number of countries on this trip',
-    'which countries do I visit on this trip',
-    'countries on my itinerary',
-    // A-98 Part 4's three, named: the bare stem §11.3 rule 3 requires to refuse, and the two
-    // sentences whose only defect is a particle in front of a phrasing Cairn wrote.
-    'how many countries',
-    'so how many countries am I visiting',
-    'hey how many countries does this trip visit',
-  ];
-  assert.equal(phrasings.length, 18);
-  const refused = phrasings.filter((t) => outcomeOf(t, trip) !== 'matched:country_count');
-  assert.deepEqual(refused, [
-    'how many countries',
-    'so how many countries am I visiting',
-    'hey how many countries does this trip visit',
-  ], 'the recall floor moved: a phrasing that answered no longer does, or a new one does');
-  assert.equal(phrasings.length - refused.length, 15);
-  for (const text of refused) assert.equal(outcomeOf(text, trip), 'out_of_scope:scope_unclear', text);
-});
-
-/**
  * **Criterion rule 11, founding case — text the product tells a user to type is asserted to
  * round-trip.** `cli.ts`'s menu round-trip is the standing half (`test/cli.test.ts`); this is the
  * new half: **every phrasing quoted inside an `out_of_scope` pointer parses to a `matched`
@@ -1623,130 +1490,62 @@ test('A-98 Part 2: `TRIP_SCOPE_MARKERS` does not exist anywhere under packages/'
 });
 
 // ---------------------------------------------------------------------------------------------
-// 10. §11.13 **A-98 Part 8** and the round-72 builder findings that share `ask/ask.ts` with it.
+// 10. The round-72 builder findings that share `ask/ask.ts` with §11.14 A-99 (A-98 Part 8 is
+//     superseded by A-99 Part 1, in section 11).
 // ---------------------------------------------------------------------------------------------
 
 /**
- * **A-98 Part 8 (QA R72-8) — `OccupancySource` names a FIELD, not a role.**
+ * **QA R72-5 / R73-4 — the malformed clock is gone because the FIELD is gone (A-99 Part 9).**
  *
- * A journey stop that states **both** `durationMins` and `arrival` takes `stopOccupancy`'s first
- * branch, so `source` is `'stated_duration'`, so A-97 Part 5 item 2's gate withheld the mode word
- * and the day rendered *"on 2026-08-13 something that starts at 16:30 runs until 18:30"* —
- * dropping a `TravelMode` the document records and that A-97 itself calls admissible.
+ * The end-of-run clock string A-97 Part 4 put in `day_state.params` formatted `clockOf(endMin)`
+ * with no domain guard, so a document `fromJSON` accepts put `"-2:00"` — and, at
+ * `durationMins: -2000`, `"-16:-20"` — into an answer's structured half. R72-5 answered that with
+ * a guard; R73-4 then found `"16666684:40"` at `durationMins: 1e9`, and R73-2 found `"24:00"` at
+ * the exact midnight lander. **Three wrong values in two rounds and zero production readers**, so
+ * A-99 Part 9 removes the field rather than guarding it a third time.
  *
- * **This is A-97 Part 2's own sibling rule failing inside A-97's own fix, one item later**: *a
- * renderer branches on the same discriminant the classifier branched on, never on a field that
- * merely correlates with it.* The renderer's question is not *"which field stated the run
- * length"*; it is *"is this interval a journey the stop itself makes"*.
- *
- * **Two conjuncts, deliberately.** §2.5 makes `arrival` on a NON-journey stop the leg *into* the
- * stop — a journey already finished — and **60 of the reference trip's 112 scheduled stops are
- * that shape**. `stop.arrival !== null` alone would render *"you are on a bus"* about a bus that
- * arrived hours ago.
- *
- * **UNFIREABLE against the reference trip and declared**: all 21 of its journey stops carry
- * `durationMins: null`, so `source` is `'journey_run'` for every one and the clause is inert
- * there. The instrument for the clause is the planted document below; the instrument for the
- * second conjunct is the reference trip itself, where N5 reddens over 60 stops.
- */
-test('A-98 Part 8: the mode word is the STOP\'s role, not the interval\'s source — N4/N5 (injected, SHOWN TO FIRE)', () => {
-  const { trip } = europe2026();
-  const thirteenth = trip.days.find((d) => d.id === '2026-08-13')!;
-  const base = thirteenth.stops[0];
-  // The shape A-97's gate cannot see: a journey that states its own duration AND its arrival.
-  const both = {
-    ...base,
-    travelRole: 'journey' as const,
-    arrival: { mode: 'flight' as const, mins: 300 },
-    durationMins: 120,
-    placement: { ...(base.placement as { kind: 'scheduled' }), time: '16:30' },
-  } as typeof base;
-  const doc: Trip = {
-    ...trip,
-    days: trip.days.map((d) => (d.id === '2026-08-13' ? { ...d, stops: [both] } : d)),
-  };
-  // `stopOccupancy`'s FIRST branch wins, so `source` is the one A-97 used to withhold the mode.
-  const v = classifyDay(doc.days.find((d) => d.id === '2026-08-13')!, 'evening');
-  assert.equal(v.runsInto.length, 1);
-  assert.equal(v.runsInto[0].interval.source, 'stated_duration');
-
-  const clause = (text: string) => {
-    assert.ok(
-      text.includes('on 2026-08-13 you are on a flight from 16:30 until 18:30'),
-      `the day drops a TravelMode the document records:\n${text}`,
-    );
-  };
-  const a = core.ask({ kind: 'free_time', part: 'evening', cityKey: 'split' }, ctxAt(doc, PLANNED));
-  clause(a.text);
-  assert.equal(a.text.includes(both.name), false, 'a stop name reached prose — A-96 Part 6 makes it inadmissible');
-
-  // N4: restore the gate to `source === 'journey_run'`. The clause reverts to the subject phrase
-  // that names neither the mode nor the stop.
-  const n4 = a.text.replace('you are on a flight from 16:30 until 18:30', 'something that starts at 16:30 runs until 18:30');
-  assert.notEqual(n4, a.text, 'the fault did not change the clause it is supposed to change');
-  assert.throws(() => clause(n4), /drops a TravelMode/);
-
-  // **The second conjunct, on the reference trip.** `arrival` on a non-journey stop is the leg
-  // INTO it, and the predicate must say so for all 60 of them.
-  const scheduled = trip.days.flatMap((d) => d.stops);
-  const journeys = scheduled.filter((s) => s.travelRole === 'journey' && s.arrival !== null);
-  const legsInto = scheduled.filter((s) => s.travelRole !== 'journey' && s.arrival !== null);
-  assert.equal(scheduled.length, 112);
-  assert.equal(journeys.length, 21, 'A-96 Part 2 measured 21 journey stops, every one carrying an arrival');
-  assert.equal(legsInto.length, 60, '§2.5 — 60 of the 112 scheduled stops carry an arrival that is a journey already finished');
-  const silent = (word: string, s: Stop) => {
-    assert.equal(word, '', `a leg INTO ${s.placement.kind === 'scheduled' ? s.placement.dayId : 'a pooled stop'} would render "you are on a ${word}" about a journey that already arrived`);
-  };
-  for (const s of legsInto) silent(journeyModeWord(s), s);
-  for (const s of journeys) assert.equal(journeyModeWord(s), s.arrival!.mode, 'a journey stop lost its mode word');
-
-  // N5: drop the `travelRole` conjunct and point the predicate at `stop.arrival` alone. It
-  // reddens ON THE REFERENCE TRIP, where 60 stops are the shape the conjunct exists for.
-  assert.throws(
-    () => { for (const s of legsInto) silent(s.arrival !== null ? s.arrival.mode : '', s); },
-    /would render "you are on a/,
-  );
-});
-
-/**
- * **QA R72-5 — a clock string is not a wall clock just because `clockOf` produced it.**
- *
- * `runEndsAt` formatted `clockOf(endMin)` with no domain guard, so a document `fromJSON` accepts
- * put `"-2:00"` — and, at `durationMins: -2000`, `"-16:-20"` — in `day_state.params`. A-97 Part 4
- * kept that field so a surface could have the instant the prose refuses to state; an instant that
- * runs backwards is not that, and **the failure mode of forgetting must be ugly, not false**: the
- * empty string is what the field already means by *"this day has no run"*.
+ * The criterion is therefore over the **whole** `params` object rather than over one key: **no
+ * param of any fact any answer carries is a string that looks like a clock and is not one.** That
+ * is strictly stronger than the guard it replaces — a fourth field of this shape reddens here
+ * without anyone remembering to add it to a list.
  *
  * The negative `durationMins` is not hypothetical: `fromJSON`'s `numOf` accepts it and no build
  * door refuses it, which is the same premise R71-4 rests on.
  */
-test('R72-5: `runEndsAt` states a wall clock or nothing — N (injected, SHOWN TO FIRE)', () => {
+test('R72-5/R73-4: no param of any answer is a malformed clock — N (injected, SHOWN TO FIRE)', () => {
   const { trip } = europe2026();
   const base = trip.days.find((d) => d.id === '2026-08-13')!.stops[0];
-  const backwards = {
-    ...base,
-    durationMins: -1200,
-    placement: { ...(base.placement as { kind: 'scheduled' }), time: '18:00' },
-  } as typeof base;
-  const doc: Trip = {
-    ...trip,
-    days: trip.days.map((d) => (d.id === '2026-08-13' ? { ...d, stops: [backwards] } : d)),
+  const bend = (durationMins: number): Trip => {
+    const stop = {
+      ...base,
+      durationMins,
+      placement: { ...(base.placement as { kind: 'scheduled' }), time: '18:00' },
+    } as typeof base;
+    return { ...trip, days: trip.days.map((d) => (d.id === '2026-08-13' ? { ...d, stops: [stop] } : d)) };
   };
-  const a = core.ask({ kind: 'free_time', part: 'evening', cityKey: 'split' }, ctxAt(doc, PLANNED));
-  const check = (value: string | number | null, date: string) => {
-    assert.ok(value === '' || /^\d+:[0-5]\d$/.test(String(value)), `${date}: runEndsAt is not a wall clock: ${JSON.stringify(value)}`);
+  /** A value that is clock-SHAPED must be a real wall clock. `''`, a date and a number are not. */
+  const check = (value: string | number | null, where: string) => {
+    if (typeof value !== 'string' || !/^-?\d+:-?\d+$/.test(value)) return;
+    assert.match(value, /^\d+:[0-5]\d$/, `${where}: a clock-shaped param is not a wall clock: ${JSON.stringify(value)}`);
   };
-  for (const f of a.facts.filter((x) => x.label === 'day_state')) check(f.params.runEndsAt, String(f.params.date));
-  assert.equal(a.facts.find((f) => f.label === 'day_state' && f.params.date === '2026-08-13')!.params.runEndsAt, '');
-  // The good value is untouched — A-97 Part 4's whole point is that the uncapped instant survives
-  // in the structured half. 16:45 + 660 on the flagship day.
-  const flagship = core.ask({ kind: 'free_time', part: 'evening', cityKey: null }, ctxAt(trip, PLANNED));
-  const aug7 = flagship.facts.find((f) => f.label === 'day_state' && f.params.date === '2026-08-07')!;
-  assert.equal(aug7.params.runEndsAt, '27:45');
-  check(aug7.params.runEndsAt, '2026-08-07');
-  // N: drop the guard. `clockOf(-120)` is the value the field carried before this fix.
-  assert.throws(() => check('-2:00', '2026-08-13'), /not a wall clock/);
-  assert.throws(() => check('-16:-20', '2026-08-13'), /not a wall clock/);
+  for (const durationMins of [-1200, -2000, 1e9, 420]) {
+    const doc = bend(durationMins);
+    for (const q of core.askableQuestions(doc)) {
+      const a = core.ask(q, ctxAt(doc, PLANNED));
+      for (const f of a.facts) {
+        for (const [k, v] of Object.entries(f.params)) check(v, `${q.kind}/${f.label}/${k} @ durationMins=${durationMins}`);
+      }
+      for (const [k, v] of Object.entries(a.params)) check(v, `${q.kind}/params/${k} @ durationMins=${durationMins}`);
+    }
+  }
+  // N: the three values the deleted field carried, at the three documents that produced them.
+  assert.throws(() => check('-2:00', 'N'), /not a wall clock/);
+  assert.throws(() => check('-16:-20', 'N'), /not a wall clock/);
+  // R73-4's own value, `"16666684:40"`, is **well-formed and absurd**, so this criterion cannot
+  // see it and is declared unable to: the thing that closes R73-4 is the deletion above, not a
+  // shape test, and an hour bound here would be an invented number rather than a measured one.
+  // …and it does not fire on the values that are not clocks at all.
+  for (const v of ['', '2026-08-13', 'busy', 27, '18:00-23:59']) check(v, 'the guard itself');
 });
 
 /**
@@ -1776,9 +1575,674 @@ test('R72-6: the `Yes.` arm does not count to one — N (injected, SHOWN TO FIRE
   };
   const both = core.ask(q, ctxAt(two, PLANNED)).text;
   check(both);
-  assert.match(both, /Of the 2 days in Split, 1 is clear/, both);
+  // **A-99 Part 8**: the numerator is a word now too — *"one is clear"*, not *"1 is clear"*.
+  assert.match(both, /Of the 2 days in Split, one is clear/, both);
   assert.match(both, /The other one is busy then\.$/, both);
   // N: the two numerals R71-6 (d) left standing.
   assert.throws(() => check('Yes. Of the 1 day in Split, 1 is clear in the evening'), /a population of one/);
   assert.throws(() => check('Yes. Of the 2 days in Split, 1 is clear. The other 1 is busy then.'), /a remainder of one/);
+});
+
+// ---------------------------------------------------------------------------------------------
+// 11. §11.14 **A-99** — a clause takes its facts from one field, a count of one is not a numeral,
+//     and an accept set closes under naming the document.
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * **The factor lists, transcribed from A-99 Part 5, not regenerated from the implementation.**
+ *
+ * A-98 published 43 fragments; A-99 publishes **25 adjudicated ones plus one generation rule**.
+ * The twelve `… on <np>` twins are **not** fragments — they are `${B} on <np>` for every bare
+ * frame `B`, by A-99 Part 5's theorem (*if a bare frame is trip-scoped, the same frame with the
+ * document named is trip-scoped a fortiori*), so nobody adjudicates them and nobody can mistype
+ * one. **Every fragment is a place we can be wrong**, and R73-5 measured that error rate at 4 in
+ * 43; fewer fragments and more generated sentences is the only direction this mechanism moves.
+ *
+ * **The four present-simple bare frames A-99 Part 3 withdraws are absent**, and the admission
+ * test's new clause 2 is why: *a bare frame is admitted only if its habitual reading requires an
+ * added adverbial*. Present simple is habitual bare — *"what countries do I visit"* is the
+ * ordinary English for a life pattern — so it is refused bare and admitted the moment the
+ * document is named, which is what `A99_NP_ONLY_FRAMES` holds.
+ */
+const A99_STEMS = [
+  'how many countries', 'how many different countries', 'which countries',
+  'what countries', 'number of countries', 'countries',
+];
+const A99_DETERMINERS = ['this', 'my', 'the', 'our'];
+const A99_NOUNS = ['trip', 'itinerary'];
+/** Inherently NP-taking, unchanged from A-98 minus its six hand-written `… on <np>` entries. */
+const A99_NP_FRAMES = [
+  'on <np>', 'in <np>', 'are on <np>', 'are in <np>', 'does <np> visit',
+  'does <np> cover', 'does <np> go to', 'does <np> include', 'is <np>',
+];
+/** Admissible ONLY with the document named — A-99 Parts 3 and 4. */
+const A99_NP_ONLY_FRAMES = [
+  'do i visit on <np>', 'do we visit on <np>', 'do i go to on <np>', 'do we go to on <np>',
+  'have i visited on <np>',
+];
+/** Progressive and `will`-future only: neither has a habitual reading without an adverbial. */
+const A99_BARE_FRAMES = [
+  'am i visiting', 'are we visiting', 'will i visit', 'will we visit',
+  'am i seeing', 'are we seeing', 'will i see', 'will we see',
+  'am i going to', 'are we going to', 'am i travelling to', 'are we travelling to',
+];
+/** The four A-99 Part 3 withdraws, kept by name because a ceiling needs the thing it excludes. */
+const A99_WITHDRAWN_BARE = ['do i visit', 'do we visit', 'do i go to', 'do we go to'];
+
+const a99Nps = () => A99_DETERMINERS.flatMap((d) => A99_NOUNS.map((n) => `${d} ${n}`));
+/** Every NP-taking frame, including the twelve **generated** twins — A-99 Part 5. */
+const a99NpTaking = () => [...A99_NP_FRAMES, ...A99_NP_ONLY_FRAMES, ...A99_BARE_FRAMES.map((b) => `${b} on <np>`)];
+
+function a99AcceptSet(): Set<string> {
+  const nps = a99Nps();
+  const frames = [...A99_BARE_FRAMES, ...a99NpTaking().flatMap((f) => nps.map((np) => f.replace('<np>', np)))];
+  const out = new Set<string>();
+  for (const stem of A99_STEMS) for (const frame of frames) out.add(`${stem} ${frame}`);
+  return out;
+}
+
+/**
+ * **A-99 Parts 3, 4 and 5 — the set the implementation builds is the set the ruling publishes,
+ * and every member of it answers.**
+ *
+ * **The size is asserted as a RELATIONSHIP, never as a transcribed total** (criterion rule 6 and
+ * `I-45`'s own instruction): `stems × (bare + npTaking × nps)`. A transcribed total is a number
+ * that goes stale silently the next time a fragment is adjudicated; the relationship is the
+ * ruling's arithmetic and it survives one.
+ */
+test('A-99 Parts 3/5: the accept set is the ruling\'s factors, and every sentence in it answers', () => {
+  const { trip } = europe2026();
+  const accept = a99AcceptSet();
+  assert.equal(
+    accept.size,
+    A99_STEMS.length * (A99_BARE_FRAMES.length + a99NpTaking().length * a99Nps().length),
+    'the generated set is not the cross product of the published factors',
+  );
+  // The adjudicated fragments — the things a human judged. The twins are NOT among them.
+  const adjudicated = A99_BARE_FRAMES.length + A99_NP_FRAMES.length + A99_NP_ONLY_FRAMES.length;
+  assert.equal(adjudicated, 26, 'the number of human judgements behind this set moved');
+
+  let tripsLifetime = 0;
+  for (const sentence of accept) {
+    assert.equal(outcomeOf(sentence, trip), 'matched:country_count', `an authored sentence is not answered: "${sentence}"`);
+    const m = core.matchQuestion(sentence, trip);
+    if (m.kind === 'matched') assert.deepEqual(m.unread, [], `an authored sentence reported unread words: "${sentence}"`);
+    if (lifetimeScoped(sentence)) tripsLifetime++;
+  }
+  // **A-98 Part 9 criterion 2's disjointness is GONE** (A-99 Part 4): the accept set now contains
+  // sentences that DO trip the lifetime diagnosis, and they answer anyway, because the accept set
+  // outranks every list over English. The count is published as history, not asserted as a floor.
+  assert.ok(tripsLifetime > 0,
+    'no member trips the lifetime diagnosis — `have i visited on <np>` is missing, and with it A-99 Part 4\'s own instrument');
+
+  // `COUNTRY_TRIGGERS` still cannot authorise an answer, and still chooses the refusal.
+  assert.equal(outcomeOf('countries are we visiting', trip), 'matched:country_count');
+  assert.equal(outcomeOf('countries on my itinerary', trip), 'matched:country_count');
+  assert.equal(outcomeOf('countries are we booking', trip), 'unrecognised');
+  assert.equal(outcomeOf('which countries are we booking', trip), 'out_of_scope:scope_unclear');
+});
+
+/**
+ * **A-99 Part 3 (QA R73-5) — the four present-simple fragments are gone, and the 24 cells with
+ * them.** A ceiling, not a floor (criterion rule 4): **none** of the 24 returns `matched`.
+ *
+ * **RED before this increment**: `node cli.ts ask "what countries do I visit"` answered *"This
+ * trip accounts for 7 countries"* against the committed fixture with no `--file`.
+ */
+test('A-99 Part 3: the four present-simple bare frames are withdrawn — N4 (injected, SHOWN TO FIRE)', () => {
+  const { trip } = europe2026();
+  const cells = A99_STEMS.flatMap((stem) => A99_WITHDRAWN_BARE.map((f) => `${stem} ${f}`));
+  assert.equal(cells.length, 24, '4 fragments × 6 stems');
+  const check = (sentence: string, outcome: string) => {
+    assert.notEqual(outcome, 'matched:country_count',
+      `a present-simple bare frame is answered about THIS trip, and it is habitual English: "${sentence}"`);
+  };
+  for (const sentence of cells) check(sentence, outcomeOf(sentence, trip));
+  // The four QA round 73 typed, verbatim, each through the shipped recogniser.
+  for (const sentence of [
+    'what countries do I visit', 'which countries do I go to',
+    'how many countries do we visit', 'what countries do we go to',
+  ]) {
+    check(sentence, outcomeOf(sentence, trip));
+    const m = core.matchQuestion(sentence, trip);
+    assert.equal(m.kind, 'out_of_scope', sentence);
+    if (m.kind === 'out_of_scope') assert.match(m.pointer, /stats/, `the refusal names no way forward: "${sentence}"`);
+  }
+  // N4: restore `'do i visit'` to the bare frames. It answers again, and the ceiling reddens
+  // naming the fragment.
+  assert.throws(() => check('what countries do i visit', 'matched:country_count'), /present-simple bare frame is answered/);
+});
+
+/**
+ * **A-99 Part 3's proof that the discriminant is the ADVERBIAL and not the verb.** The same four
+ * verbs are admissible the moment the document is named — *"how many countries do I visit on this
+ * trip"* has no habitual reading, because *"on this trip"* supplies the occasion the bare frame
+ * lacked. A criterion that only asserted the refusals would pass on an implementation that
+ * deleted the verbs entirely.
+ */
+test('A-99 Part 3: the same four verbs answer with the document named', () => {
+  const { trip } = europe2026();
+  for (const sentence of [
+    'how many countries do I visit on this trip',
+    'which countries do I go to on our itinerary',
+    'how many countries do we visit on my trip',
+    'what countries do we go to on the itinerary',
+  ]) {
+    assert.equal(outcomeOf(sentence, trip), 'matched:country_count', sentence);
+  }
+});
+
+/**
+ * **A-99 Part 5 (QA R73-6) — the accept set CLOSES under naming the document.**
+ *
+ * Round 73 measured that appending *"on this trip"* — the one phrase that can only mean this
+ * document — turned an answer into a refusal in **60 of 96** cases, because ten of the sixteen
+ * bare frames had no `… on <np>` twin. That was never ten missing fragments; it is a theorem the
+ * generator applies: **the added noun phrase narrows, it cannot widen**, and whole-sentence
+ * equality means no preposition can get in front of it.
+ *
+ * Asserted over the **whole** generated population, not over a sample.
+ */
+test('A-99 Part 5: every bare-frame sentence has an answering twin with the document named — N5 (SHOWN TO FIRE)', () => {
+  const { trip } = europe2026();
+  const accept = a99AcceptSet();
+  const bare = A99_STEMS.flatMap((stem) => A99_BARE_FRAMES.map((f) => `${stem} ${f}`));
+  assert.equal(bare.length, 72, '12 bare frames × 6 stems');
+  const check = (twin: string, outcome: string, member: boolean) => {
+    assert.ok(member, `naming the document turns an answer into a refusal: "${twin}" is not in the accept set`);
+    assert.equal(outcome, 'matched:country_count', `naming the document turns an answer into a refusal: "${twin}"`);
+  };
+  for (const sentence of bare) {
+    assert.equal(outcomeOf(sentence, trip), 'matched:country_count', sentence);
+    for (const np of a99Nps()) {
+      const twin = `${sentence} on ${np}`;
+      check(twin, outcomeOf(twin, trip), accept.has(twin));
+    }
+  }
+  // N5: delete the twin generation. The ten frames A-98 wrote no twin for lose theirs, and the
+  // assertion reddens naming the sentence.
+  assert.throws(
+    () => check('how many countries am i seeing on this trip', 'out_of_scope:scope_unclear', false),
+    /naming the document turns an answer into a refusal/,
+  );
+});
+
+/**
+ * **A-99 Part 4 (QA R73-5 / R73-6) — the order the refusals are asked in cannot change the
+ * outcome for a sentence Cairn wrote.** This **replaces** A-98 Part 9 criterion 2, which had the
+ * authority backwards: it asserted the accept set and the lifetime list were disjoint, which
+ * **vetoed its own repair** — *"how many countries have I visited on this trip"* names the
+ * document, is a real trip phrasing, and could never have been admitted without reddening it.
+ *
+ * > **Where the accept set and a list over English disagree about one sentence, the accept set
+ * > wins and the list is the thing that was wrong.**
+ *
+ * The old criterion was green by construction and could never fire. **This one fires today**,
+ * against a fragment the same increment admits.
+ */
+test('A-99 Part 4: a sentence Cairn wrote is never vetoed by a list over English — N6 (injected, SHOWN TO FIRE)', () => {
+  const { trip } = europe2026();
+  const check = (sentence: string, outcome: string) => {
+    assert.equal(outcome, 'matched:country_count',
+      `a list over English vetoed a sentence Cairn wrote: "${sentence}" → ${outcome}`);
+  };
+  // The named instrument: a member that carries a past-travel frame, and answers anyway.
+  assert.equal(lifetimeScoped('how many countries have I visited on this trip'), true,
+    'the lifetime diagnosis no longer fires on the sentence this criterion is about');
+  check('how many countries have I visited on this trip', outcomeOf('how many countries have I visited on this trip', trip));
+  // …and it is not one sentence: every member that trips either list answers.
+  let vetoable = 0;
+  for (const sentence of a99AcceptSet()) {
+    if (!lifetimeScoped(sentence)) continue;
+    vetoable++;
+    check(sentence, outcomeOf(sentence, trip));
+  }
+  assert.ok(vetoable >= 6, `only ${vetoable} members trip a list over English — the instrument is thinner than the ruling's`);
+  // A non-member behaves exactly as it did: the lists still diagnose everything they diagnosed.
+  assert.equal(outcomeOf('how many countries have I been to', trip), 'out_of_scope:lifetime');
+  assert.equal(outcomeOf('where should I eat in Split', trip), 'out_of_scope:recommendation');
+  // N6: move the membership test back below the two refusals. The named sentence refuses.
+  assert.throws(
+    () => check('how many countries have I visited on this trip', 'out_of_scope:lifetime'),
+    /a list over English vetoed a sentence Cairn wrote: "how many countries have I visited on this trip"/,
+  );
+});
+
+/**
+ * **QA R73-7 — a refusal wearing the wrong reason.** `scope_unclear`'s text (*"I cannot tell
+ * whether you mean this trip or every trip you have recorded"*) is **false of a sentence that
+ * names a city of this trip**: *"which countries am I visiting after Vienna"* is unambiguously
+ * about this document. This is A-98 Part 7's own finding one sentence over, surviving because
+ * the filter's guard was *"no candidate"* rather than *"nothing of this document was recognised"*.
+ */
+test('R73-7: a sentence naming a city of this trip never gets the scope refusal', () => {
+  const { trip } = europe2026();
+  const check = (sentence: string, outcome: string) => {
+    assert.notEqual(outcome, 'out_of_scope:scope_unclear',
+      `"${sentence}" names a city of this trip, so "I cannot tell whether you mean this trip" is false of it`);
+  };
+  for (const sentence of ['which countries am I visiting after Vienna', 'how many countries before Split']) {
+    check(sentence, outcomeOf(sentence, trip));
+    assert.equal(outcomeOf(sentence, trip), 'unrecognised', sentence);
+  }
+  // Unchanged where no city is named: R71-3's own population still gets the specific refusal.
+  assert.equal(outcomeOf('how many countries', trip), 'out_of_scope:scope_unclear');
+  // N: restore the ungated branch.
+  assert.throws(() => check('how many countries before Split', 'out_of_scope:scope_unclear'), /names a city of this trip/);
+});
+
+/**
+ * **A-99 Part 1 (QA R73-1) — the mode word and the clock come out of the SAME FIELD.**
+ *
+ * A-98 Part 8 emitted the mode where `stop.travelRole === 'journey' && stop.arrival !== null`.
+ * Both conjuncts are right and the trap they were spelled for is real. **The predicate was
+ * nonetheless wrong, because it never asked about the thing it was labelling**: `stopOccupancy`
+ * takes `durationMins` where it is set, so on a journey stating **both** fields the clause
+ * rendered `arrival.mode` beside a clock derived from the other field —
+ *
+ * > *"on 2026-08-13 you are on a flight from 16:45 until 20:05"* — about a flight the same stop
+ * > says is in the air for eleven hours.
+ *
+ * **A-98 made a true sentence false.** Before it, the disagreeing shape read *"something that
+ * starts at 16:45 runs until 20:05"* — odd, and true of the document — and that is the arm it
+ * takes again.
+ *
+ * > **A clause that states a fact and a number in one breath takes both from the same statement
+ * > in the document.** The mode word is admissible only where the interval being rendered was
+ * > measured from the field that names the mode.
+ *
+ * **§0 position 13 (g) is why this is a ruling and not a fourth restatement**: `journeyModeWord`
+ * takes the **interval** as a parameter, so the value it must agree with is in its signature and
+ * a reviewer, a test or a type can ask it the question. **The signature is the mechanism.**
+ *
+ * **UNFIREABLE against the reference trip and declared**: all 21 of its journey stops carry
+ * `durationMins: null`. The instruments are the two hand-built documents below.
+ */
+test('A-99 Part 1: the mode word and the clock come from one field — N1/N2/N3 (injected, SHOWN TO FIRE)', () => {
+  const { trip } = europe2026();
+  const thirteenth = trip.days.find((d) => d.id === '2026-08-13')!;
+  const base = thirteenth.stops[0];
+  const plant = (time: string, durationMins: number, mins: number) => {
+    const stop = {
+      ...base,
+      travelRole: 'journey' as const,
+      arrival: { mode: 'flight' as const, mins },
+      durationMins,
+      placement: { ...(base.placement as { kind: 'scheduled' }), time },
+    } as typeof base;
+    const doc: Trip = { ...trip, days: trip.days.map((d) => (d.id === '2026-08-13' ? { ...d, stops: [stop] } : d)) };
+    return { stop, doc };
+  };
+
+  // **The disagreeing document.** `durationMins: 200` beside `arrival: {flight, 660}` — the same
+  // stop says the flight runs for eleven hours and the clock says three hours twenty.
+  const disagree = plant('16:45', 200, 660);
+  const v = classifyDay(disagree.doc.days.find((d) => d.id === '2026-08-13')!, 'evening');
+  assert.equal(v.runsInto.length, 1);
+  assert.equal(v.runsInto[0].interval.source, 'stated_duration', 'stopOccupancy no longer prefers durationMins');
+
+  /**
+   * The criterion, scoped to the planted stop's OWN clause — the rest of the sentence is about
+   * other days, whose modes are none of this stop's business.
+   */
+  const check = (text: string, stop: Stop, date: string) => {
+    const clause = (text.match(new RegExp(`on ${date} [^,.]+`)) ?? [''])[0];
+    assert.notEqual(clause, '', `no clause for ${date} to check:\n${text}`);
+    const stated = stop.arrival === null ? null : stop.arrival.mins;
+    const disagreeing = stop.durationMins !== null && stated !== null && stop.durationMins !== stated;
+    const named = /you are on a (flight|bus|train|ferry|car|walk|other)/.test(clause);
+    const i = occupiedInterval(stop)!;
+    assert.ok(clause.includes(clockOf(i.endMin)) || i.crossesDay, `the clause does not state the interval it was given: ${clause}`);
+    if (disagreeing) {
+      assert.equal(named, false,
+        `the clause names a mode from arrival.mins=${stated} beside a clock from durationMins=${stop.durationMins}: ${clause}`);
+    } else {
+      assert.equal(named, true, `an agreeing journey lost its mode word: ${clause}`);
+    }
+  };
+
+  const q: Question = { kind: 'free_time', part: 'evening', cityKey: 'split' };
+  const bad = core.ask(q, ctxAt(disagree.doc, PLANNED)).text;
+  check(bad, disagree.stop, '2026-08-13');
+  assert.ok(bad.includes('on 2026-08-13 something that starts at 16:45 runs until 20:05'),
+    `the disagreeing document does not render the mode-less clause:\n${bad}`);
+
+  // **The agreeing document.** `durationMins: 300` beside `arrival: {flight, 300}` — one number,
+  // stated twice, so the mode word is a fact about the clock beside it. A-98 Part 8's motivating
+  // shape keeps its mode word; only the disagreeing one loses it.
+  const agree = plant('16:30', 300, 300);
+  const good = core.ask(q, ctxAt(agree.doc, PLANNED)).text;
+  check(good, agree.stop, '2026-08-13');
+  assert.ok(good.includes('on 2026-08-13 you are on a flight from 16:30 until 21:30'),
+    `the agreeing document lost its mode word:\n${good}`);
+
+  // The predicate, directly — its signature is the mechanism (§0 position 13 (g)).
+  assert.equal(journeyModeWord(disagree.stop, occupiedInterval(disagree.stop)!), '');
+  assert.equal(journeyModeWord(agree.stop, occupiedInterval(agree.stop)!), 'flight');
+
+  // N1: drop the `fromArrival` test. The disagreeing document renders the mode again, and the
+  // assertion reddens naming both fields.
+  assert.throws(
+    () => check('on 2026-08-13 you are on a flight from 16:45 until 20:05', disagree.stop, '2026-08-13'),
+    /names a mode from arrival\.mins=660 beside a clock from durationMins=200/,
+  );
+  // N2: restore `interval.source === 'journey_run'` alone. The agreeing document loses its mode.
+  const n2 = good.replace('you are on a flight from 16:30 until 21:30', 'something that starts at 16:30 runs until 21:30');
+  assert.notEqual(n2, good, 'the fault did not change the clause it is supposed to change');
+  assert.throws(
+    () => assert.ok(n2.includes('on 2026-08-13 you are on a flight from 16:30 until 21:30'), 'the agreeing document lost its mode word'),
+    /lost its mode word/,
+  );
+
+  // **N3: drop the `travelRole` conjunct.** It reddens ON THE REFERENCE TRIP, where 60 of the 112
+  // scheduled stops carry an `arrival` that is the leg INTO them — a journey already finished.
+  const scheduled = trip.days.flatMap((d) => d.stops);
+  const journeys = scheduled.filter((s) => s.travelRole === 'journey' && s.arrival !== null);
+  const legsInto = scheduled.filter((s) => s.travelRole !== 'journey' && s.arrival !== null);
+  assert.equal(scheduled.length, 112);
+  assert.equal(journeys.length, 21, 'A-96 Part 2 measured 21 journey stops, every one carrying an arrival');
+  assert.equal(legsInto.length, 60, '§2.5 — 60 of the 112 scheduled stops carry an arrival that is a journey already finished');
+  const silent = (word: string, s: Stop) => {
+    assert.equal(word, '', `a leg INTO a stop would render "you are on a ${word}" about a journey that already arrived`);
+  };
+  for (const s of legsInto) silent(journeyModeWord(s, occupiedInterval(s) ?? { startMin: 0, endMin: 0, source: null, crossesDay: false }), s);
+  for (const s of journeys) {
+    assert.equal(journeyModeWord(s, occupiedInterval(s)!), s.arrival!.mode, 'a journey stop lost its mode word');
+  }
+  assert.throws(
+    () => { for (const s of legsInto) silent(s.arrival !== null ? s.arrival.mode : '', s); },
+    /would render "you are on a/,
+  );
+});
+
+/**
+ * **A-99 Part 9 (QA R73-4 / R72-5 / half of R73-2) — `runEndsAt` is REMOVED.**
+ *
+ * The field produced three findings in two rounds — `"-16:-20"` at a negative `durationMins`,
+ * `"16666684:40"` at `1e9`, `"24:00"` at the exact midnight lander — and acquired **zero**
+ * production readers: `cli.ts` prints the first four non-empty params of a fact and `runEndsAt`
+ * was the seventh, so neither its correct value nor any of its three wrong ones was ever shown to
+ * anybody.
+ *
+ * > **A field whose only reader is imagined does not ship, and a derived string in `params` is a
+ * > second copy of a computation that already has one home.**
+ *
+ * This is a **greppable ceiling over the implementation** (criterion rule 7): the name is a
+ * ruling's, and only a ruling brings it back. The test file is allowed to name it, and does.
+ */
+test('A-99 Part 9: `runEndsAt` does not exist anywhere under packages/, and the fact keeps its cites', () => {
+  const PKG = resolve(HERE, '..', '..');
+  const walk = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    if (e.name === 'node_modules' || e.name === 'test') return [];
+    const full = resolve(dir, e.name);
+    return e.isDirectory() ? walk(full) : full.endsWith('.ts') ? [full] : [];
+  });
+  const files = walk(PKG);
+  assert.ok(files.length > 20, `the walk found only ${files.length} files — it is not looking where it thinks`);
+  assert.deepEqual(files.filter((f) => readFileSync(f, 'utf8').includes('runEndsAt')), [], 'the deleted field is back');
+
+  // **The path a future consumer takes to the instant**: the day_state fact keeps its other ten
+  // params and **every occupying stop of the day as a cite**, so a surface that wants an end
+  // instant resolves a cite and calls `occupiedInterval` — the one definition A-96 Part 2 built.
+  const { trip } = europe2026();
+  const a = core.ask({ kind: 'free_time', part: 'evening', cityKey: null }, ctxAt(trip, PLANNED));
+  const aug7 = a.facts.find((f) => f.label === 'day_state' && f.params.date === '2026-08-07')!;
+  assert.deepEqual(Object.keys(aug7.params).sort(), [
+    'date', 'lastStartBeforeWindow', 'occupying', 'part', 'runsIntoWindow', 'startsInWindow',
+    'state', 'stopsOnDay', 'stopsWithoutOccupancy', 'stopsWithoutTime',
+  ], 'the day_state fact\'s params moved');
+  const day = trip.days.find((d) => d.id === '2026-08-07')!;
+  const flight = day.stops.find((s) => s.travelRole === 'journey' && s.arrival !== null)!;
+  assert.ok(aug7.cites.some((c) => c.kind === 'stop' && c.id === flight.id),
+    'the occupying stop is not cited, so the instant has no path to a consumer');
+  assert.equal(clockOf(occupiedInterval(flight)!.endMin), '27:45', 'the instant itself is still one call away');
+});
+
+/**
+ * **QA R73-2's remaining arm (builder) — a run that ends exactly at midnight ends "at midnight".**
+ *
+ * R72-3's fix is right and it moves exactly one value — `endMin === 1440` — out of the *"still on
+ * it at midnight"* arm into the clock arm, which has no case for it: `clockOf(1440)` is
+ * **`"24:00"`**, an hour no wall clock shows and the one value the comment three lines above
+ * promises is never rendered. A 17:00 flight of 7h00 read *"you are on a flight from 17:00 until
+ * 24:00"*.
+ *
+ * **"Until midnight", not "still on it at midnight"** — the second is the other arm's and is false
+ * of a flight that has landed.
+ */
+test('R73-2: a run ending exactly at midnight reads "until midnight", never "24:00" — N (SHOWN TO FIRE)', () => {
+  const { trip } = europe2026();
+  const thirteenth = trip.days.find((d) => d.id === '2026-08-13')!;
+  const base = thirteenth.stops[0];
+  const lander = {
+    ...base,
+    travelRole: 'journey' as const,
+    arrival: { mode: 'flight' as const, mins: 420 },
+    durationMins: null,
+    placement: { ...(base.placement as { kind: 'scheduled' }), time: '17:00' },
+  } as typeof base;
+  const doc: Trip = { ...trip, days: trip.days.map((d) => (d.id === '2026-08-13' ? { ...d, stops: [lander] } : d)) };
+  const i = occupiedInterval(lander)!;
+  assert.equal(i.endMin, 1440, 'the planted stop does not land at exactly midnight');
+  assert.equal(i.crossesDay, false, 'R72-3: a run ending at exactly midnight does not outlive its day');
+
+  const check = (text: string) => {
+    assert.equal(/\b24:00\b/.test(text), false, `an hour no wall clock shows: ${text}`);
+    assert.equal(/still on it at midnight/.test(text), false, `the run has landed, and the sentence says it has not: ${text}`);
+  };
+  const a = core.ask({ kind: 'free_time', part: 'evening', cityKey: 'split' }, ctxAt(doc, PLANNED));
+  check(a.text);
+  assert.ok(a.text.includes('on 2026-08-13 you are on a flight from 17:00 until midnight'), a.text);
+  for (const c of a.caveats) check(c.message);
+  for (const f of a.facts) for (const v of Object.values(f.params)) check(String(v));
+
+  // N: the two values the clause carried before this fix.
+  assert.throws(() => check('you are on a flight from 17:00 until 24:00'), /no wall clock shows/);
+  assert.throws(() => check('you are on a flight from 17:00 and still on it at midnight'), /the run has landed/);
+});
+
+/**
+ * **A-99 Part 8 (QA R73-3) — one count renderer, and the criterion is over the RENDERED TEXT.**
+ *
+ * The numeral-for-one defect has **six known sites across three rounds**, one of them inside the
+ * sentence R72-6 fixed. R71-6 (d) fixed one of three; R72-6 fixed two and predicted the return of
+ * a third; it returned with three more. **A fourth enumeration would be wrong too**, so the claim
+ * does not rest on a list of addresses a builder must remember — it rests on the one boundary
+ * every answer passes through:
+ *
+ * > **No count reaches prose as a bare numeral.** Every number `ask/` interpolates into an
+ * > `Answer.text` goes through one renderer, and a population of one is rendered as a word or as a
+ * > definite description, never as `1`.
+ *
+ * **The criterion is mechanical and it is not a fixture** (criterion rule 12). Over a
+ * generated population of documents exercising all three arms of `answerFreeTime` and every other
+ * `Question` kind, at day and stop populations of **0, 1, 2 and many**, and whose city names carry
+ * no digits: **no `Answer.text` contains the standalone token `1`.** A date (`2026-08-10`) and a
+ * clock (`18:00–23:59`) have no bare `1`; a real count of eleven has none; a count of one always
+ * does.
+ */
+function pluraliserDocuments(trip: Trip): Array<{ name: string; trip: Trip }> {
+  const day = (id: string) => trip.days.find((d) => d.id === id)!;
+  const withStops = (d: Day, n: number): Day => ({ ...d, stops: d.stops.slice(0, n) });
+  const cleared = (d: Day): Day => ({ ...d, stops: d.stops.map((s) => ({ ...s, durationMins: 30 })) });
+  const split = ['2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15'].map(day);
+  const out: Array<{ name: string; trip: Trip }> = [
+    { name: 'full', trip },
+    { name: 'days:0', trip: { ...trip, days: [] } },
+    { name: 'days:0 cities:0 records:0', trip: { ...trip, days: [], cities: [], places: [], pool: [], bookings: [] } },
+    { name: 'days:1 (busy)', trip: { ...trip, days: [split[0]] } },
+    { name: 'days:1 (clear)', trip: { ...trip, days: [cleared(split[2])] } },
+    { name: 'days:1 stops:0', trip: { ...trip, days: [withStops(split[0], 0)] } },
+    { name: 'days:1 stops:1', trip: { ...trip, days: [withStops(split[0], 1)] } },
+    { name: 'days:1 stops:2', trip: { ...trip, days: [withStops(split[0], 2)] } },
+    { name: 'days:2 (one clear one busy)', trip: { ...trip, days: [cleared(split[2]), split[0]] } },
+    { name: 'days:2 stops:1', trip: { ...trip, days: [withStops(split[0], 1), withStops(split[1], 1)] } },
+    { name: 'days:1 (unknown)', trip: { ...trip, days: [{ ...split[0], stops: split[0].stops.slice(0, 2).map((s, i) => (i === 0 ? { ...s, placement: { ...(s.placement as { kind: 'scheduled' }), time: null } } : s)) } as Day] } },
+    { name: 'cities:1 places:1 bookings:1', trip: { ...trip, cities: trip.cities.slice(2, 3), days: [split[0]], places: trip.places.slice(0, 1), pool: trip.pool.slice(0, 1), bookings: trip.bookings.slice(0, 1) } },
+    { name: 'places:1 pool:0 bookings:0', trip: { ...trip, places: trip.places.slice(0, 1), pool: [], bookings: [] } },
+    { name: 'cities:1 days:1 records:0', trip: { ...trip, cities: trip.cities.slice(2, 3), days: [withStops(split[0], 1)], places: [], pool: [], bookings: [] } },
+  ];
+  return out;
+}
+
+test('A-99 Part 8 / criterion rule 12: no count reaches prose as a bare numeral — N7 (injected, SHOWN TO FIRE)', () => {
+  const { trip } = europe2026();
+  for (const c of trip.cities) assert.equal(/\d/.test(c.name), false, `a city name carries a digit: ${c.name}`);
+
+  const check = (text: string, where: string) => {
+    assert.equal(/\b1\b/.test(text), false, `a population of one reached prose as a numeral — ${where}:\n${text}`);
+  };
+  let answers = 0;
+  let onesSeen = 0;
+  for (const doc of pluraliserDocuments(trip)) {
+    for (const today of [PLANNED, OVER]) {
+      const questions: Question[] = [
+        ...core.askableQuestions(doc.trip),
+        { kind: 'trip_overview' }, { kind: 'unbooked' }, { kind: 'country_count' },
+        { kind: 'free_time', part: 'morning', cityKey: null },
+        { kind: 'free_time', part: 'afternoon', cityKey: null },
+        { kind: 'free_time', part: 'evening', cityKey: null },
+      ];
+      for (const q of questions) {
+        const a = core.ask(q, ctxAt(doc.trip, today));
+        answers++;
+        if (Object.values(a.params).some((v) => v === 1)) onesSeen++;
+        check(a.text, `${doc.name} @ ${today} — ${q.kind}`);
+      }
+    }
+  }
+  // **Not vacuous.** The sweep is worthless if no document in it ever counted to one.
+  assert.ok(answers > 200, `the sweep produced only ${answers} answers`);
+  assert.ok(onesSeen > 20, `only ${onesSeen} of ${answers} answers carried a population of one — the sweep is not exercising the case`);
+
+  // N7: restore a bare `${n}` at any one interpolation site. It reddens naming the answer and the
+  // sentence — which is the whole point of a criterion over the boundary rather than over a list
+  // of six addresses.
+  assert.throws(() => check('Yes. Of the 2 days in Split, 1 is clear in the evening.', 'N7'), /a population of one reached prose/);
+  assert.throws(() => check('This trip accounts for 1 countries: HR.', 'N7'), /a population of one reached prose/);
+  // …and it does not fire on a date, a clock or a real count of eleven.
+  check('on 2026-08-10 you are on a bus from 18:00 until 23:59, and 11 of the 112 stops', 'the guard itself');
+});
+
+/**
+ * **A-99 Part 6 (QA R73-6) — recall stops being published as a percentage and becomes MONOTONE.**
+ *
+ * Round 73 measured **20 of 40** on a corpus written independently of the builder's, against
+ * A-98's published **15 of 18**. The gap is not a design defect — no refusal is a wrong answer —
+ * it is a **measurement** defect, and §0 position 12's own case: seven of A-98's eighteen
+ * phrasings were written by the same agent that wrote the accept set, so the figure measured the
+ * author's imagination rather than the user's.
+ *
+ * > **A recall figure measured on a corpus its own author wrote is not a measurement, and no
+ * > criterion may rest on one.**
+ *
+ * What replaces it cannot be gamed and needs no percentage: **every phrasing answered before this
+ * increment is answered after it**, over a committed corpus that is the union of round 72's 18,
+ * round 73's 40 and A-98 Part 1's 13 lifetime cases, deduped to **64**. **A new refusal in this
+ * corpus is a finding, not a pass.**
+ *
+ * **One exception, and it is named rather than hidden**: A-99 Part 3 *deliberately* withdraws four
+ * present-simple fragments, and exactly one corpus entry rides on one of them. Marking it
+ * `withdrawn` rather than quietly re-marking it `refuse` is what keeps the other 29 monotone —
+ * and the `withdrawn` mark is itself asserted, so the withdrawal cannot be undone silently.
+ */
+const RECALL_CORPUS: ReadonlyArray<readonly [string, 'answer' | 'refuse' | 'withdrawn']> = [
+  ['how many countries am I visiting', 'answer'],
+  ['which countries am I visiting', 'answer'],
+  ['how many countries on this trip', 'answer'],
+  ['how many countries does this trip cover', 'answer'],
+  // A-99 Part 3: `do we go to` is bare present simple, and present simple is habitual bare.
+  ['what countries do we go to', 'withdrawn'],
+  ['how many countries are on my trip', 'answer'],
+  ['what countries does this trip cover', 'answer'],
+  ['how many countries does this trip visit', 'answer'],
+  ['how many countries am I going to', 'answer'],
+  ['which countries are we visiting', 'answer'],
+  ['what countries will I see', 'answer'],
+  ['how many different countries does this trip include', 'answer'],
+  ['number of countries on this trip', 'answer'],
+  ['which countries do I visit on this trip', 'answer'],
+  ['countries on my itinerary', 'answer'],
+  ['how many countries', 'refuse'],
+  ['so how many countries am I visiting', 'refuse'],
+  ['hey how many countries does this trip visit', 'refuse'],
+  ['how many countries is this trip', 'answer'],
+  ['how many countries do I visit on this trip', 'answer'],
+  ['what countries am I visiting', 'answer'],
+  ['how many countries this trip', 'refuse'],
+  ['how many countries are we hitting', 'refuse'],
+  ['how many countries will we be in', 'refuse'],
+  ['how many countries are we going to', 'answer'],
+  ['how many countries does the trip include', 'answer'],
+  ['countries on this trip', 'answer'],
+  ['how many countries in total on this trip', 'refuse'],
+  ['how many countries am i visiting?', 'answer'],
+  ['how many countries are there on this trip', 'refuse'],
+  ['how many countries does this trip take me to', 'refuse'],
+  ['how many countries will I be in', 'refuse'],
+  ['how many different countries am I visiting', 'answer'],
+  ['how many countries are we visiting in total', 'refuse'],
+  ['how many countries am I visiting on this trip', 'answer'],
+  ['how many countries have I visited on this trip', 'refuse'],
+  ['list the countries on this trip', 'refuse'],
+  ['what countries are on my itinerary', 'answer'],
+  ['how many countries total', 'refuse'],
+  ['which countries does this trip go to', 'answer'],
+  ['how many countries am I going to visit', 'refuse'],
+  ['how many countries am I travelling to', 'answer'],
+  ['tell me how many countries I am visiting', 'refuse'],
+  ['how many countries are we covering', 'refuse'],
+  ['which countries will we be visiting', 'refuse'],
+  ['how many countries does my trip go to', 'answer'],
+  ['how many countries am I seeing on this trip', 'refuse'],
+  ['what countries does this trip visit', 'answer'],
+  ['how many countries are in this trip', 'answer'],
+  ['whats the country count for this trip', 'refuse'],
+  ['how many countries are we going to visit', 'refuse'],
+  ['how many countries do I have under my belt', 'refuse'],
+  ['how many countries am I up to', 'refuse'],
+  ['how many countries am I on now', 'refuse'],
+  ['what countries do I still need to visit', 'refuse'],
+  ['how many countries do we have between us', 'refuse'],
+  ['how many countries do I have left in the world', 'refuse'],
+  ['which countries do I still have to see', 'refuse'],
+  ['how many countries am I missing', 'refuse'],
+  ['how many countries do I have on my list', 'refuse'],
+  ['which countries am I yet to visit', 'refuse'],
+  ['how many countries am I up to including this trip', 'refuse'],
+  ['which countries am I yet to visit before this trip', 'refuse'],
+  ['apart from this trip how many countries am I up to', 'refuse'],
+];
+
+test('A-99 Part 6: recall is monotone over the committed corpus — N8 (injected, SHOWN TO FIRE)', () => {
+  const { trip } = europe2026();
+  assert.equal(RECALL_CORPUS.length, 64, 'the committed corpus is no longer round 72\'s 18 + round 73\'s 40 + A-98\'s 13, deduped');
+  assert.equal(new Set(RECALL_CORPUS.map(([t]) => t)).size, 64, 'the corpus has a duplicate');
+
+  const check = (text: string, mark: string, outcome: string) => {
+    if (mark === 'answer') {
+      assert.equal(outcome, 'matched:country_count', `a phrasing that answered before this increment now refuses: "${text}"`);
+    } else if (mark === 'withdrawn') {
+      assert.notEqual(outcome, 'matched:country_count', `a fragment A-99 Part 3 withdrew is answered again: "${text}"`);
+    }
+  };
+  for (const [text, mark] of RECALL_CORPUS) check(text, mark, outcomeOf(text, trip));
+
+  // Published as HISTORY, never as a floor (A-99 Part 6): what the corpus measures after this
+  // increment, so the next round can see the direction rather than a percentage.
+  const answering = RECALL_CORPUS.filter(([t]) => outcomeOf(t, trip) === 'matched:country_count').length;
+  const before = RECALL_CORPUS.filter(([, m]) => m === 'answer').length;
+  assert.ok(answering >= before, `recall fell: ${answering} answer now, ${before} answered before`);
+  assert.equal(RECALL_CORPUS.filter(([, m]) => m === 'withdrawn').length, 1);
+  // No refusal is a silently wrong answer — the failure direction A-98 Part 5 constructs.
+  for (const [text] of RECALL_CORPUS) {
+    const o = outcomeOf(text, trip);
+    assert.ok(o === 'matched:country_count' || o.startsWith('out_of_scope:') || o === 'unrecognised', `${text} → ${o}`);
+  }
+
+  // N8: delete one bare frame. The corpus entries that used it redden BY NAME.
+  assert.throws(
+    () => check('how many countries am I visiting', 'answer', 'out_of_scope:scope_unclear'),
+    /a phrasing that answered before this increment now refuses: "how many countries am I visiting"/,
+  );
 });

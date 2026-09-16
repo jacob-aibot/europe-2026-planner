@@ -13,16 +13,20 @@
  *
  * **Four of its five rules are refusals**, and the order they are asked in is itself a decision:
  *
- *  1. **Lifetime scope first** (§11.3 rule 3). *"How many countries have I been to"* and *"how
- *     many countries am I visiting"* differ by one word and by an entire data set. The rule is
- *     written unconditionally — *text carrying a lifetime pattern returns
- *     `out_of_scope: 'lifetime'`* — so it is asked before any intent can consume the sentence.
- *     Answering the trip-scoped version would be **right about the wrong question**.
+ *  0. **Membership FIRST — §11.14 A-99 Part 4.** `ACCEPTED_COUNTRY_QUESTIONS.has(tokens.join(' '))`
+ *     is computed at the top and guards both refusals below. **A sentence Cairn wrote is never
+ *     vetoed by a list over English**, because the accept set is adjudicated sentence by sentence
+ *     against a published test and a denylist is a heuristic over an open set.
+ *  1. **Lifetime scope next** (§11.3 rule 3). *"How many countries have I been to"* and *"how
+ *     many countries am I visiting"* differ by one word and by an entire data set. Answering the
+ *     trip-scoped version would be **right about the wrong question**.
  *     **§11.13 A-98 Part 2 makes that list PROVABLY a diagnosis**: it cannot cause an answer,
- *     because the only thing that can is membership of `ACCEPTED_COUNTRY_QUESTIONS` — the 816
- *     sentences Cairn itself wrote — and no member of that set trips it (0 of 816, asserted).
- *     So the order these two are asked in cannot change any outcome; it only chooses which
- *     refusal a refused sentence gets.
+ *     because the only thing that can is membership of `ACCEPTED_COUNTRY_QUESTIONS` — the
+ *     sentences Cairn itself wrote. A-98 held that by asserting the two sets were **disjoint**,
+ *     which vetoed its own repair; A-99 holds it by asking membership first, so the order these
+ *     are asked in cannot change any outcome for a sentence we wrote — and the accept set may now
+ *     contain a sentence the diagnosis fires on (`have i visited on <np>`), which is the
+ *     instrument that makes the property fireable rather than green by construction.
  *  2. **Recommendation next** (rule 4). Jacob's own fence, made a feature of the recogniser
  *     rather than left to produce a bad answer.
  *  3. Then the intents. **Two readings is a refusal, never a choice** (rule 1): picking the first
@@ -188,11 +192,13 @@ function lifetimeFrame(tokens: readonly string[]): boolean {
  * chooses only which *refusal* a sentence gets: the specific `'lifetime'` one rather than
  * `'scope_unclear'`.
  *
- * **Exported for the A-98 Part 9 criterion 2 tripwire and for nothing else** (§11.9: it is not on
- * §2.10's surface). That criterion asserts **no member of the accept set trips this** — 0 of 816 —
- * so the order the two refusals are asked in cannot change any outcome. It is green by
- * construction today and reddens the day a fragment carrying a past-travel frame is admitted,
- * which is exactly when A-98 Part 6 rider 1's builder-only route would otherwise be dangerous.
+ * **Exported for §11.14 A-99 Part 4's criterion and for nothing else** (§11.9: it is not on
+ * §2.10's surface). A-98 asserted **no member of the accept set trips this** (0 of 816) — a
+ * criterion that was green by construction, could never fire, and **vetoed its own repair**:
+ * *"how many countries have I visited on this trip"* names the document, is a real trip phrasing,
+ * and trips this predicate. **A-99 replaces disjointness with order-independence**: every member
+ * of the accept set answers **with this list in place**, membership being decided first. That
+ * criterion fires today, against a fragment the same increment admits.
  *
  * Pure. Never throws.
  */
@@ -261,13 +267,18 @@ const COUNTRY_TRIGGERS = [
  * question about a life: **the word that decides the scope is the preposition in front of the
  * marker**, and a token-containment test has no notion of scope to see that with.
  *
- * So the gate is **whole-sentence token equality** against a set generated from 43 adjudicated
- * fragments: `tokenize(text).join(' ')` is a member, or `country_count` is not a candidate. One
- * spelling, no second reading (criterion rule 8).
+ * So the gate is **whole-sentence token equality** against a set generated from the adjudicated
+ * fragments below: `tokenize(text).join(' ')` is a member, or `country_count` is not a candidate.
+ * One spelling, no second reading (criterion rule 8).
  *
  * **The admission test for a new fragment** (A-98 Part 3, and a builder may apply it without an
  * architect round — Part 6 rider 1): *can this exact whole sentence, for any stem, be a question
  * about the user's whole travel history?* **If yes for even one stem, the fragment is refused.**
+ *
+ * > **Clause 2 — §11.14 A-99 Part 3: a bare frame (one that names no document) is admitted only
+ * > if its habitual reading requires an added adverbial.** Present simple is refused bare;
+ * > progressive and `will`-future are admitted bare. A frame that names the document is not
+ * > subject to this clause at all, **because the noun phrase IS the adverbial.**
  * Some cells are ungrammatical (*"number of countries am i visiting"*) and that costs nothing —
  * nobody types them, and an ungrammatical cell is still trip-scoped, which is the only property
  * the set has to have. **The set grows by a fragment, never by a sentence.**
@@ -283,31 +294,83 @@ const COUNTRY_STEMS = [
 ];
 const DOC_DETERMINERS = ['this', 'my', 'the', 'our'];
 const DOC_NOUNS = ['trip', 'itinerary'];
-/** Frames that take a noun phrase naming the document; `<np>` is one of the eight. */
+/**
+ * Frames that are **inherently** NP-taking; `<np>` is one of the eight. A-98 wrote six more here
+ * by hand (`am i visiting on <np>`, `do i visit on <np>`, …) and **§11.14 A-99 Part 5 deletes
+ * them**: four are now generated below and two moved to `NP_ONLY_FRAMES`.
+ */
 const NP_FRAMES = [
   'on <np>', 'in <np>', 'are on <np>', 'are in <np>', 'does <np> visit',
   'does <np> cover', 'does <np> go to', 'does <np> include', 'is <np>',
-  'am i visiting on <np>', 'are we visiting on <np>', 'do i visit on <np>',
-  'do we visit on <np>', 'will i visit on <np>', 'will we visit on <np>',
 ];
-/** Frames that name no document and are trip-scoped by their own tense (A-98 Part 3). */
+/**
+ * **Admissible ONLY with the document named — §11.14 A-99 Parts 3 and 4.**
+ *
+ * The four `do …` frames are the present-simple ones withdrawn from `BARE_FRAMES` below, and this
+ * list is the proof that the discriminant is the **adverbial** rather than the verb: *"how many
+ * countries do I visit"* is habitual English about a life, and *"how many countries do I visit on
+ * this trip"* has no habitual reading at all, because *"on this trip"* supplies the occasion the
+ * bare frame lacked.
+ *
+ * `have i visited on <np>` is here for the same reason and it is A-99 Part 4's own instrument: it
+ * is a real trip phrasing, it names the document, and it **trips `lifetimeFrame`**. A-98's
+ * disjointness criterion would have vetoed it — which is why that criterion is replaced by
+ * order-independence and this fragment is admitted.
+ */
+const NP_ONLY_FRAMES = [
+  'do i visit on <np>', 'do we visit on <np>', 'do i go to on <np>', 'do we go to on <np>',
+  'have i visited on <np>',
+];
+/**
+ * **Frames that name no document — and the admission test's clause 2 is what they satisfy**
+ * (§11.14 A-99 Part 3, QA R73-5).
+ *
+ * > **A bare frame is admitted only if its habitual reading requires an added adverbial.**
+ * > Present simple is refused bare. Progressive and `will`-future are admitted bare.
+ *
+ * A-98 justified this list as *"trip-scoped by their own tense"* and **that names the wrong
+ * grammatical feature**: the discriminant is **aspect**, not tense. `do i visit`, `do we visit`,
+ * `do i go to` and `do we go to` are bare **present simple**, whose unmarked reading with an
+ * eventive verb is **habitual** — *"what countries do I visit"* is the ordinary English for a life
+ * pattern, and R73-5 measured all four answered *"This trip accounts for 7 countries"*. They are
+ * withdrawn, with their 24 cells, and re-admitted above the moment the document is named.
+ *
+ * Every frame left is **progressive** or **`will`-future**, neither of which has a habitual
+ * reading without an added adverbial: *"how many countries am I visiting"* becomes habitual only
+ * as *"…**these days**"*, and *"how many countries will I visit"* becomes a life question only as
+ * *"…**ever**"*. Bare present simple needs nothing added. That is the line, and it is a property
+ * of the fragment rather than a judgement about it.
+ */
 const BARE_FRAMES = [
   'am i visiting', 'are we visiting', 'will i visit', 'will we visit',
-  'do i visit', 'do we visit', 'am i seeing', 'are we seeing', 'will i see',
-  'will we see', 'do i go to', 'do we go to', 'am i going to', 'are we going to',
-  'am i travelling to', 'are we travelling to',
+  'am i seeing', 'are we seeing', 'will i see', 'will we see',
+  'am i going to', 'are we going to', 'am i travelling to', 'are we travelling to',
 ];
 
 /**
- * `6 × (16 + 15 × 8)` = **816** sentences, generated at module load and **module-private**
- * (§11.9). Not exported, not on §2.10's surface, and not reachable by a caller: a caller that can
- * reach a trigger table is a caller that will grow a second.
+ * **The set CLOSES under naming the document, by GENERATION — §11.14 A-99 Part 5 (QA R73-6).**
+ *
+ * Round 73 measured that appending *"on this trip"* — the one phrase that can only mean this
+ * document — turned an answer into a refusal in **60 of 96** cases, because ten of A-98's sixteen
+ * bare frames had no `… on <np>` twin. That was never ten missing fragments. It is a theorem:
+ *
+ * > **If a bare frame is trip-scoped, the same frame with the document named is trip-scoped a
+ * > fortiori.** The added noun phrase narrows; it cannot widen, and whole-sentence equality means
+ * > no preposition can get in front of it. **So the twin is generated, never authored.**
+ *
+ * `6 × (12 + 26 × 8)`, generated at module load and **module-private** (§11.9). Not exported, not
+ * on §2.10's surface, not reachable by a caller: a caller that can reach a trigger table is a
+ * caller that will grow a second. **More recall from fewer human judgements** is the only
+ * direction this mechanism moves — every fragment is a place we can be wrong, and R73-5 measured
+ * that error rate at 4 in 43.
  */
 const ACCEPTED_COUNTRY_QUESTIONS: ReadonlySet<string> = (() => {
   const nps: string[] = [];
   for (const d of DOC_DETERMINERS) for (const n of DOC_NOUNS) nps.push(`${d} ${n}`);
+  // The twelve twins are the generation rule; nobody adjudicates them and nobody can mistype one.
+  const npTaking = [...NP_FRAMES, ...NP_ONLY_FRAMES, ...BARE_FRAMES.map((b) => `${b} on <np>`)];
   const frames = [...BARE_FRAMES];
-  for (const f of NP_FRAMES) for (const np of nps) frames.push(f.replace('<np>', np));
+  for (const f of npTaking) for (const np of nps) frames.push(f.replace('<np>', np));
   const out = new Set<string>();
   for (const stem of COUNTRY_STEMS) for (const f of frames) out.add(tokenize(`${stem} ${f}`).join(' '));
   return out;
@@ -419,8 +482,23 @@ export function matchQuestion(text: string, trip: Trip): MatchOutcome {
   const tokens = tokenize(typeof text === 'string' ? text : '');
   if (tokens.length === 0) return { kind: 'unrecognised' };
 
+  // **0 — membership is decided FIRST, and it outranks both lists over English** (§11.14 A-99
+  // Part 4, QA R73-5/R73-6).
+  //
+  // > **Where the accept set and a list over English disagree about one sentence, the accept set
+  // > wins and the list is the thing that was wrong.** The accept set is adjudicated sentence by
+  // > sentence against a published test; a denylist is a heuristic over an open set. A-98 Part 2's
+  // > own rule read the other way round — a list over English may *diagnose* a refusal, so it may
+  // > never overrule an answer either.
+  //
+  // A-98 asked `lifetimeTokens` first, which let the weaker mechanism hold a veto over an authored
+  // sentence: *"how many countries have I visited on this trip"* is a real trip phrasing that
+  // names the document, and it refused as `lifetime`. **Nothing else about either refusal moves,
+  // and a non-member behaves exactly as it did.**
+  const authored = ACCEPTED_COUNTRY_QUESTIONS.has(tokens.join(' '));
+
   // 1 & 2 — the two scope refusals, asked before any intent can consume the sentence.
-  if (lifetimeTokens(tokens)) {
+  if (!authored && lifetimeTokens(tokens)) {
     return {
       kind: 'out_of_scope',
       reason: 'lifetime',
@@ -430,7 +508,7 @@ export function matchQuestion(text: string, trip: Trip): MatchOutcome {
         'where the only records are this trip\'s.',
     };
   }
-  if (firstOf(tokens, RECOMMENDATION_TRIGGERS) !== null) {
+  if (!authored && firstOf(tokens, RECOMMENDATION_TRIGGERS) !== null) {
     return {
       kind: 'out_of_scope',
       reason: 'recommendation',
@@ -471,7 +549,7 @@ export function matchQuestion(text: string, trip: Trip): MatchOutcome {
   // still be a perfectly good question for another intent. The sentence-level refusal is at the
   // bottom of this function, where `unrecognised` would otherwise be returned.
   const countries = firstOf(tokens, COUNTRY_TRIGGERS);
-  if (ACCEPTED_COUNTRY_QUESTIONS.has(tokens.join(' '))) {
+  if (authored) {
     candidates.push({ kind: 'country_count' });
     // The WHOLE sentence is consumed, because the whole sentence is what matched. §11.3 rule 2
     // reports what the recogniser did not read, and under equality there is nothing it did not
@@ -525,7 +603,15 @@ export function matchQuestion(text: string, trip: Trip): MatchOutcome {
     // **`scope_unclear` is a better `unrecognised`, never a replacement for a reading** (A-98
     // Part 7). It fires only here: a country trigger is present, the sentence is not one Cairn
     // wrote, and no other intent produced a reading — so nothing is being discarded to say it.
-    if (countries !== null) {
+    //
+    // **…and only where nothing of THIS DOCUMENT was recognised — QA R73-7.** *"I cannot tell
+    // whether you mean this trip or every trip you have recorded"* is **false** of a sentence that
+    // names a city of this trip: *"which countries am I visiting after Vienna"* is unambiguously
+    // about this document, whatever else Cairn failed to read in it. That is A-98 Part 7's own
+    // finding one sentence over, surviving because the guard was *"no candidate"* rather than
+    // *"nothing of this document was recognised"*. A city hit is that recognition, and where there
+    // is one the true statement is `unrecognised` with the menu behind it.
+    if (countries !== null && cityHits.length === 0) {
       return {
         kind: 'out_of_scope',
         reason: 'scope_unclear',
