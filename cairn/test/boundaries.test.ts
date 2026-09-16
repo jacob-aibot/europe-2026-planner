@@ -53,7 +53,7 @@ const UNITS: Unit[] = [
   {
     name: 'apps/web',
     dir: resolve(CAIRN, 'apps/web/src'),
-    allowBare: ['@cairn/core', '@cairn/client', '@cairn/tokens', 'react', 'react-dom', 'react-dom/client', 'react/jsx-runtime', 'leaflet'],
+    allowBare: ['@cairn/core', '@cairn/client', '@cairn/tokens', 'react', 'react-dom', 'react-dom/client', 'react/jsx-runtime', 'leaflet', 'd3-geo'],
     allowNodeBuiltins: false,
     relativeEscapeHatches: [],
   },
@@ -260,6 +260,42 @@ test('no type in packages/client/src/ports/types.ts restates a core export — A
  * the repository a consumer and the census would mean nothing.
  */
 const GAZETTEER_CONSUMERS: ReadonlyArray<{ file: string; why: string }> = [
+  {
+    file: 'apps/web/src/views/CitySelector.tsx',
+    why: 'The shared upcoming and past-journey city picker; it renders the exact loaded source and a resolving CC BY 4.0 licence link on hits and misses.',
+  },
+  {
+    file: 'apps/web/src/views/Library.tsx',
+    why: 'Owns the upcoming-trip form that renders the shared CitySelector and passes its selected CityPick records to createTrip.',
+  },
+  {
+    file: 'apps/web/src/views/PastTripForm.tsx',
+    why: 'Owns the past-journey form that renders the shared CitySelector and requires one selected city for attribution.',
+  },
+  {
+    file: 'apps/web/src/views/Profile.tsx',
+    why: 'Imports Library for its lifecycle display and therefore reaches the shared city-search consumer through the relative module graph.',
+  },
+  {
+    file: 'apps/web/src/views/World.tsx',
+    why: 'Imports the travel surface graph that reaches the shared city-search consumer through the relative module graph.',
+  },
+  {
+    file: 'apps/web/src/views/WorldMap.tsx',
+    why: 'Imports Library for lifecycle labels and therefore reaches the shared city-search consumer through the relative module graph.',
+  },
+  {
+    file: 'apps/web/src/views/TripView.tsx',
+    why: 'Imports Library for lifecycle labels and therefore reaches the shared city-search consumer through the relative module graph.',
+  },
+  {
+    file: 'apps/web/src/App.tsx',
+    why: 'Composes the Trips, World and You surfaces and therefore reaches their shared city-search consumer through relative imports.',
+  },
+  {
+    file: 'apps/web/src/main.tsx',
+    why: 'Bootstraps App and therefore reaches the shared city-search consumer through the application relative-import graph.',
+  },
   {
     file: 'cli.ts',
     why:

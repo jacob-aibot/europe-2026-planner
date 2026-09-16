@@ -139,7 +139,8 @@ test('every exemption\'s justification holds: no Day can carry an attribution', 
 test('I-4: PastTripForm dispatches only createTrip + setTripMeta + setDayMeta', () => {
   const src = readFileSync(resolve(VIEWS, 'PastTripForm.tsx'), 'utf8');
   const storeCalls = [...new Set([...src.matchAll(/store\.(\w+)\(/g)].map((m) => m[1]))].sort();
-  assert.deepEqual(storeCalls, ['createTrip', 'dispatch'], `store calls: ${storeCalls.join(', ')}`);
+  // Flush makes the completed memory visible to World before its success action is offered.
+  assert.deepEqual(storeCalls, ['createTrip', 'dispatch', 'flush'], `store calls: ${storeCalls.join(', ')}`);
   const actions = [...new Set([...src.matchAll(/type:\s*'(\w+)'/g)].map((m) => m[1]))].sort();
   assert.deepEqual(actions, ['setDayMeta', 'setTripMeta'], `dispatched actions: ${actions.join(', ')}`);
 });
@@ -482,7 +483,7 @@ test('I-8a: the tab shell registers only tabs that have content — no empty slo
   const ids = [...registry[1].matchAll(/id: '([a-z]+)'/g)].map((m) => m[1]);
   // I-8a registered two and said the third was *"a registration, not a second shell"*. I-8b is
   // the registration. Three is also the ceiling: I-8's "no DISCOVER tab" is asserted below.
-  assert.deepEqual(ids, ['trips', 'map', 'profile'], 'the shell registers Trips, Map and Profile, and nothing else');
+  assert.deepEqual(ids, ['map', 'trips', 'profile'], 'World-first: the shell registers World, Trips and You, with no empty slot');
   for (const id of ids) {
     assert.match(
       registry[1],
@@ -595,7 +596,7 @@ test('I-8c / A-44: no view calls core.lifecycle directly — the gate is the cli
  */
 test('I-8c / A-44: an unreadable row gets a chip that says so, not silence and not a stage', () => {
   const src = stripComments(readFileSync(resolve(VIEWS, 'Library.tsx'), 'utf8'));
-  const chip = /export function LifecycleChip\(([\s\S]*?)\n}\n/.exec(src);
+  const chip = /export function LifecycleChip\(([\s\S]*?)\r?\n}\r?\n/.exec(src);
   assert.ok(chip, 'LifecycleChip is no longer a top-level function in Library.tsx');
   const body = chip[1];
   assert.ok(!/return null/.test(body), 'the chip omits itself for an unreadable row');
@@ -621,7 +622,7 @@ test('I-8c / A-44: an unreadable row gets a chip that says so, not silence and n
  */
 test('I-8c / BLD-3: the tab boundary can be reset and offers a recovery outside the failed tab', () => {
   const src = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/App.tsx'), 'utf8'));
-  const cls = /class TabBoundary([\s\S]*?)\n}\n/.exec(src);
+  const cls = /class TabBoundary([\s\S]*?)\r?\n}\r?\n/.exec(src);
   assert.ok(cls, 'App.tsx has no TabBoundary class');
   const body = cls[1];
   assert.match(body, /setState\(\{\s*message:\s*null\s*\}\)/, 'the boundary has no reset — the banner outlives its cause');
@@ -746,7 +747,7 @@ test('I-8e / A-46 / R34-4: an unreadable row prints its stored strings, a readab
     'the meta line is gated on the WIDE predicate — A-47 Part 4: a readable row must keep its proper label',
   );
   const fmt = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/format.ts'), 'utf8'));
-  const fn = /export function storedDatesLabel\(([\s\S]*?)\n}\n/.exec(fmt);
+  const fn = /export function storedDatesLabel\(([\s\S]*?)\r?\n}\r?\n/.exec(fmt);
   assert.ok(fn, 'format.ts has no storedDatesLabel');
   for (const banned of [/MONTHS/, /datePrecision/, /split\(/]) {
     assert.ok(!banned.test(fn[1]), `storedDatesLabel matches ${banned} — it must print what is stored, nothing else`);
@@ -851,7 +852,7 @@ test('R34-2 (builder half): opening a trip that will not parse reports a sentenc
  */
 test('R34-1: the boundary clears its banner only after the recovery has actually landed', () => {
   const src = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/App.tsx'), 'utf8'));
-  const cls = /class TabBoundary([\s\S]*?)\n}\n/.exec(src);
+  const cls = /class TabBoundary([\s\S]*?)\r?\n}\r?\n/.exec(src);
   assert.ok(cls, 'App.tsx has no TabBoundary class');
   const body = cls[1];
   // The shipped bug, verbatim: run() and the clear in one synchronous statement list.
@@ -1475,9 +1476,8 @@ test('I-8b / QA R41-9: the refusal path keeps the surface\'s own type register',
   const refused = src.slice(src.indexOf('profile--refused'), src.indexOf('const stats'));
   assert.ok(!/eyebrow/.test(refused),
     'the refusal prints `Travel record` above `Your travel record` — the same two words twice');
-  assert.match(refused, /<h1 className="profile__kicker">/,
-    'the refusal\'s `h1` falls through to the global display rule where the healthy path\'s is '
-    + 'an 11 px tracked mono micro-label — one surface, two headers');
+  assert.match(refused, /\{identityHero\}/,
+    'unreadable travel history must retain the same personal identity header and editing path');
 });
 
 test('I-8b / QA R41-3, R41-11: free text wraps, and no flex line floors a 320 px phone', () => {
@@ -1507,7 +1507,7 @@ test('I-8b / QA R41-2, R41-16: the trip rows inside an expanded country are hair
     '§5.3 rules this screen card-free and this is the one bordered card on it (R41-16)');
 });
 
-test('I-8b: `WorldMap.tsx` is a zero-line diff, and `packages/` is untouched by this surface', () => {
+test('I-8b: Profile keeps its original boundary; World-first adds only its ruled web dependency', () => {
   // §5.6's *"Explicitly not in I-8b"* list, as far as a test in this repo can see it: the Profile
   // imports the map's renderer nowhere, adds no dependency, and bumps no version.
   const src = stripComments(PROFILE());
@@ -1516,6 +1516,6 @@ test('I-8b: `WorldMap.tsx` is a zero-line diff, and `packages/` is untouched by 
   const pkg = JSON.parse(readFileSync(resolve(CAIRN, 'apps/web/package.json'), 'utf8')) as {
     dependencies?: Record<string, string>;
   };
-  assert.deepEqual(Object.keys(pkg.dependencies ?? {}).sort(), ['leaflet', 'react', 'react-dom'],
-    'a runtime dependency was added to apps/web — that is an architect decision (A-55 Part 0)');
+  assert.deepEqual(Object.keys(pkg.dependencies ?? {}).sort(), ['d3-geo', 'leaflet', 'react', 'react-dom'],
+    'the web dependency surface changed beyond the World-first d3-geo ruling');
 });

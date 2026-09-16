@@ -30,8 +30,10 @@
 import { useState } from 'react';
 import type { DatePrecision } from '@cairn/core';
 import { store } from '../store.ts';
+import { CitySelector } from './CitySelector.tsx';
+import type { SelectedCity } from './CitySelector.tsx';
 
-type Props = { onClose: () => void; onError: (m: string) => void };
+type Props = { onClose: () => void; onError: (m: string) => void; onCreated?: (title: string, countryCode: string | undefined, tripId: string) => void; initialCityQuery?: string };
 
 const PRECISIONS: Array<{ value: DatePrecision; label: string; hint: string }> = [
   { value: 'exact', label: 'Exact dates', hint: 'I know the days' },
@@ -77,31 +79,25 @@ export function rangeFor(
   return { startDate: `${input.year}-01-01`, endDate: `${input.year}-12-31` };
 }
 
-export function PastTripForm({ onClose, onError }: Props) {
+export function PastTripForm({ onClose, onError, onCreated, initialCityQuery = '' }: Props) {
   const [title, setTitle] = useState('');
   const [precision, setPrecision] = useState<DatePrecision>('month');
   const [exactStart, setExactStart] = useState('');
   const [exactEnd, setExactEnd] = useState('');
   const [month, setMonth] = useState('');
   const [year, setYear] = useState('');
-  const [cities, setCities] = useState('');
+  const [cities, setCities] = useState<SelectedCity[]>([]);
   const [busy, setBusy] = useState(false);
 
   const range = rangeFor(precision, { exactStart, exactEnd, month, year });
-  // Same shape the new-trip form already uses: names, comma separated, in order. A city's
-  // centre is not asked for on either screen and `createTrip` supplies its default of
-  // `{0,0}` — pre-existing on both forms, not new here. See BUILD-NOTES KD-39.
+  // Both forms preserve the selected map match and journey order.
   //
   // **No `key`** (ARCHITECTURE §2.2 A-10, QA P2-2). This form used to slug the name, which
   // deleted every character outside ASCII alphanumerics — so 東京 and 京都 both became `"-"`
   // and "日本 2019" recorded as one city with `primaryCity: "-"` on all 30 days. A `CityKey`
   // is a minted opaque id like every other id here; `createTrip` mints it, no caller outside
   // `packages/core` constructs one, and the name is what a person is ever shown.
-  const cityList = cities
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .map((name, i) => ({ name, order: i }));
+  const cityList = cities.map((city, order) => ({ ...city, order }));
   const valid = !!title.trim() && !!range && cityList.length > 0 && !busy;
 
   async function submit(e: React.FormEvent) {
@@ -134,6 +130,10 @@ export function PastTripForm({ onClose, onError }: Props) {
           store.dispatch({ type: 'setDayMeta', dayId: day.id, patch: { primaryCity: key, cities: [key] } });
         }
       }
+      await store.flush();
+      // The shell retains this candidate through a failed write, and only reveals it when
+      // this exact trip is clean and persistence is idle. Retry can then complete the journey.
+      if (created.doc) onCreated?.(title.trim(), cities.find((city) => city.pick)?.pick?.countryCode ?? undefined, created.doc.id);
       onClose();
     } catch (err) {
       onError((err as Error).message);
@@ -214,10 +214,7 @@ export function PastTripForm({ onClose, onError }: Props) {
         </label>
       )}
 
-      <label>
-        Cities <span className="hint">comma separated, in order — at least one</span>
-        <input value={cities} onChange={(e) => setCities(e.target.value)} placeholder="Tokyo, Kyoto" data-testid="past-cities" />
-      </label>
+      <CitySelector value={cities} onChange={setCities} required initialQuery={initialCityQuery} />
       {/*
         Say why, rather than just refusing to submit: the city is what puts the trip on the
         map of where you have been. Days are assigned to the first one and can be changed

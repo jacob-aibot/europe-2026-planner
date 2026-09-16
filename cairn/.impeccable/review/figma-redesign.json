@@ -1,0 +1,12 @@
+{
+  "fileKey": "ni4enXsWxhFHa5pqIEknAl",
+  "url": "https://www.figma.com/design/ni4enXsWxhFHa5pqIEknAl",
+  "pageId": "0:1",
+  "mobile": {"World": "4:2", "Trips": "4:273", "You": "4:305"},
+  "desktop": {"World": "5:55", "Trips": "5:336", "You": "5:377"},
+  "components": {"Primary": "3:258", "Secondary": "3:262"},
+  "colorCollection": "VariableCollectionId:3:243",
+  "fonts": ["DM Serif Display Regular", "Public Sans Regular", "Public Sans SemiBold"],
+  "assets": {"dubrovnik": "2:2", "globe": "3:2"},
+  "status": "Implemented locally; visual approval pending; no commit or push"
+}

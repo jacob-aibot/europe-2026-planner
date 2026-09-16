@@ -3,42 +3,39 @@
  *
  * No domain logic. Every mutation goes through `store.dispatch` — §4.2 rule 1.
  *
- * **The shell is a registry** (ROADMAP I-8a). Navigation is sized for **Trips · Map ·
- * Profile** and no fourth slot — I-8's *"no DISCOVER tab: a slot that exists to promise
- * something is the opposite of what this product's conventions say about presenting things
- * that are not yet true."* By the same rule, only tabs that have content are registered here.
- * **I-8b registers the third**, which is the registration I-8a said it would be: one entry in
- * `TABS`, not a second shell.
+ * **The shell is a registry.** The user-approved World-first slice keeps three real surfaces:
+ * **World · Trips · You**. There is still no empty Discover slot. World replaces Map as the
+ * label and opening surface while retaining the internal `map` id, the existing atlas, and
+ * the country-to-trip drill-down.
  *
  * **Navigation is bottom-anchored on phones — `docs/DESIGN.md` §3.3 R1**, and it is a CSS
- * reposition rather than a second navigation: **same DOM, same `role="tablist"`, same three
- * buttons, same order**. The reason is measured rather than asserted — the shipped bar sat at
- * `top: 2.7rem` on a 390 × 664 viewport, which is the least reachable region of a phone held
- * one-handed, and it is this product's only top-level navigation. From **split** (≥ 900) the bar
- * returns above the content, inside the one sticky stacking context R2 rules (`.chrome` below),
- * which is what removes the hardcoded `top: 2.7rem` the tab bar used to carry.
+ * reposition rather than a second navigation: same DOM, same `role="tablist"`, same three
+ * buttons, same order. At the desktop split the World treatment composes it into the masthead.
  *
- * **The tablist takes arrow keys** (§3.4). It was click-only, which is a real WAI-ARIA tabs gap,
- * and §3.4 puts it in *"the increment that next opens `App.tsx`"* — this one. Roving tabindex,
- * automatic activation, `Home`/`End`, and the arrows wrap.
+ * **The tablist takes arrow keys** (§3.4). Roving tabindex, automatic activation,
+ * `Home`/`End`, and the arrows wrap.
  *
- * **Every registered panel stays mounted, and the inactive ones are `hidden`.** That is
- * deliberate on both maps. The trip map's Leaflet instance keeps its handle and its
- * `ResizeObserver`, so hiding and showing it costs an `invalidateSize` rather than a mount —
- * §4.4's contract, unchanged. And it puts the world map in exactly the state CLAUDE.md's
- * first map bug is about: mounted inside a `display:none` container. It survives because
- * A-40 Part 4 made that bug inexpressible there, not because the shell avoids the case.
+ * **Every registered panel stays mounted, and the inactive ones are `hidden`.** The trip map's
+ * Leaflet instance keeps its handle and ResizeObserver. The orthographic globe uses a fixed SVG
+ * viewBox, so hidden-tab activation needs no measurement or re-fit. The existing atlas remains
+ * measurement-free under A-40…A-54 and is available from World as an explicit secondary view.
  */
-import { Component, useEffect, useState } from 'react';
+import { Component, useEffect, useRef, useState } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
 import { registerPageExit } from '@cairn/client';
 import type { AppState, DerivedCache } from '@cairn/client';
 import { store, useAppState, useDerived } from './store.ts';
 import { Library } from './views/Library.tsx';
 import { TripView } from './views/TripView.tsx';
-import { WorldMap } from './views/WorldMap.tsx';
+import { World } from './views/World.tsx';
+import { NavIcon } from './views/NavIcon.tsx';
+import './world.css';
+import './immersive.css';
 import { Profile } from './views/Profile.tsx';
 import { hasSample, sampleTrip } from './sample.ts';
+import { EMPTY_IDENTITY, identityInitials, readIdentity, writeIdentity } from './localIdentity.ts';
+import type { LocalIdentityV1 } from './localIdentity.ts';
+import type { LibraryIntent } from './views/Library.tsx';
 
 type TabId = 'trips' | 'map' | 'profile';
 
@@ -47,6 +44,13 @@ type TabContext = {
   derived: DerivedCache | null;
   onError: (m: string) => void;
   go: (tab: TabId) => void;
+  identity: LocalIdentityV1;
+  saveIdentity: (identity: LocalIdentityV1) => boolean;
+  startLibrary: (kind: LibraryIntent['kind'], cityQuery?: string) => void;
+  libraryIntent: LibraryIntent | null;
+  clearLibraryIntent: () => void;
+  onPastCreated: (title: string, countryCode: string | undefined, tripId: string) => void;
+  worldReveal: { id: number; countryCode: string | null } | null;
 };
 
 type TabSpec = {
@@ -58,22 +62,17 @@ type TabSpec = {
 
 const TABS: TabSpec[] = [
   {
-    id: 'trips',
-    label: 'Trips',
-    render: ({ state, derived, onError }) =>
-      state.doc ? (
-        <TripView state={state} derived={derived} onError={onError} />
-      ) : (
-        <Library state={state} onError={onError} sample={hasSample ? sampleTrip : null} />
-      ),
-  },
-  {
     id: 'map',
-    label: 'Map',
-    render: ({ state, onError, go }) => (
-      <WorldMap
+    label: 'World',
+    render: ({ state, onError, go, identity, saveIdentity, startLibrary, worldReveal }) => (
+      <World
+        reveal={worldReveal}
+        onOpenLibrary={() => { void store.closeTrip().then(() => go('trips')).catch((e: Error) => onError(e.message)); }}
         state={state}
         onError={onError}
+        identity={identity}
+        onSaveIdentity={saveIdentity}
+        onStartLibrary={startLibrary}
         onOpenTrip={(id) => {
           go('trips');
           void store.openTrip(id).catch((e: Error) => onError(e.message));
@@ -82,12 +81,25 @@ const TABS: TabSpec[] = [
     ),
   },
   {
+    id: 'trips',
+    label: 'Trips',
+    render: ({ state, derived, onError, libraryIntent, clearLibraryIntent, onPastCreated }) =>
+      state.doc ? (
+        <TripView state={state} derived={derived} onError={onError} />
+      ) : (
+        <Library state={state} onError={onError} sample={hasSample ? sampleTrip : null} intent={libraryIntent} onIntentHandled={clearLibraryIntent} onPastCreated={onPastCreated} />
+      ),
+  },
+  {
     id: 'profile',
-    label: 'Profile',
-    render: ({ state, onError, go }) => (
+    label: 'You',
+    render: ({ state, onError, go, identity, saveIdentity, startLibrary }) => (
       <Profile
         state={state}
         onError={onError}
+        identity={identity}
+        onSaveIdentity={saveIdentity}
+        onStartLibrary={startLibrary}
         onOpenTrip={(id) => {
           go('trips');
           void store.openTrip(id).catch((e: Error) => onError(e.message));
@@ -201,7 +213,38 @@ export function App() {
   const derived = useDerived(state);
   const [error, setError] = useState<string | null>(null);
   const [booting, setBooting] = useState(true);
-  const [tab, setTab] = useState<TabId>('trips');
+  const [tab, setTab] = useState<TabId>('map');
+  const [identity, setIdentity] = useState<LocalIdentityV1>(EMPTY_IDENTITY);
+  const [libraryIntent, setLibraryIntent] = useState<LibraryIntent | null>(null);
+  const libraryIntentId = useRef(0);
+  const [completion, setCompletion] = useState<{ title: string; countryCode?: string; tripId: string } | null>(null);
+  const [worldReveal, setWorldReveal] = useState<TabContext['worldReveal']>(null);
+
+  useEffect(() => {
+    try { setIdentity(readIdentity()); }
+    catch (e) { setError((e as Error).message); }
+  }, []);
+
+  const saveIdentity = (next: LocalIdentityV1): boolean => {
+    try { setIdentity(writeIdentity(next)); setError(null); return true; }
+    catch (e) { setError(`Could not save your profile: ${(e as Error).message}`); return false; }
+  };
+  const startLibrary = (kind: LibraryIntent['kind'], cityQuery?: string) => {
+    const id = ++libraryIntentId.current;
+    setLibraryIntent(null);
+    void (async () => {
+      try {
+        if (state.doc) {
+          const closed = await store.closeTrip();
+          if (closed.doc) throw new Error('The current trip is still open. Resolve its save message and try again.');
+        }
+        if (id !== libraryIntentId.current) return;
+        setCompletion(null);
+        setLibraryIntent({ id, kind, cityQuery });
+        setTab('trips');
+      } catch (e) { setError(`Could not open the journey form: ${(e as Error).message}`); }
+    })();
+  };
 
   // Boot: read the library, then bring every row minted by an older build up to the current
   // `SUMMARY_VERSION` (ARCHITECTURE §8.4 clause 3). The two are deliberately separate calls —
@@ -306,7 +349,7 @@ export function App() {
   };
 
   return (
-    <div className="app">
+    <div className={"app cairn-shell" + (tab === 'map' ? " app--world" : "")}>
       {/*
         **R2 — one sticky stacking context.** The topbar and the tab bar are sticky *together*,
         as a single `position: sticky; top: 0` wrapper, so the second element's offset is the
@@ -319,10 +362,9 @@ export function App() {
         <button
           className="topbar__brand"
           onClick={() => {
-            setTab('trips');
-            run(store.closeTrip());
+            setTab('map');
           }}
-          title={state.doc ? 'Back to all trips' : 'Cairn'}
+          title="Your world"
         >
           {/*
             A flat-ink mark, drawn rather than filled with a gradient: three stacked stones,
@@ -335,9 +377,10 @@ export function App() {
           </svg>
           Cairn
         </button>
-        {state.doc && <span className="topbar__title">{state.doc.title}</span>}
+        {state.doc && tab !== 'map' && <span className="topbar__title">{state.doc.title}</span>}
         <span className="topbar__spacer" />
-        {state.doc && <SaveState />}
+        {state.doc && tab !== 'map' && <SaveState />}
+        <button className="world-profile-button" aria-label="Your travel profile" onClick={() => setTab('profile')}>{identity.displayName ? <span>{identityInitials(identity.displayName)}</span> : <NavIcon kind="profile"/>}</button>
       </header>
 
       {/*
@@ -363,7 +406,7 @@ export function App() {
             onKeyDown={(e) => onTabKey(e, i)}
             onClick={() => setTab(t.id)}
           >
-            {t.label}
+            <NavIcon kind={t.id}/><span>{t.label}</span>
           </button>
         ))}
       </nav>
@@ -375,6 +418,12 @@ export function App() {
           <button onClick={() => setError(null)} aria-label="Dismiss">×</button>
         </div>
       )}
+
+      {completion && state.doc?.id === completion.tripId && state.persistence.status === 'idle' && !store.isDirty() && <section className="journey-completion" aria-label="Journey added" role="status">
+        <div><strong>{completion.title} is part of your story.</strong><p>{completion.countryCode ? 'Your journey now has a place on World.' : 'Your journey is recorded. Open the journey and add a stop with a location to put it on World.'}</p></div>
+        <button className="world-primary" onClick={() => { setWorldReveal({ id: ++libraryIntentId.current, countryCode: completion.countryCode ?? null }); setTab('map'); setCompletion(null); window.scrollTo(0, 0); }}>See it on World</button>
+        <button className="world-text-button" aria-label="Dismiss journey confirmation" onClick={() => setCompletion(null)}>Dismiss</button>
+      </section>}
 
       {/*
         A refused or failed write blocks every trip switch (§4.2 rule 6b), so these two
@@ -419,7 +468,7 @@ export function App() {
             hidden={t.id !== tab}
           >
             <TabBoundary label={t.label} recovery={recovery}>
-              {t.render({ state, derived, onError: setError, go: setTab })}
+              {t.render({ state, derived, onError: setError, go: setTab, identity, saveIdentity, startLibrary, libraryIntent, clearLibraryIntent: () => setLibraryIntent(null), onPastCreated: (title, countryCode, tripId) => setCompletion({ title, countryCode, tripId }), worldReveal })}
             </TabBoundary>
           </div>
         ))

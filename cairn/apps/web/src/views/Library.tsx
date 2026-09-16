@@ -10,13 +10,18 @@
  * skeleton (§4.5). Duplicate and rename are the two things the roadmap allows to be
  * stubbed, and they are — BUILD-NOTES §1, KD-13, which lists all four Phase 1 stubs.
  */
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { AppState } from '@cairn/client';
 import { rowDatesReadable, rowLifecycle, rowUnopenable, summaryScan } from '@cairn/client';
 import type { IsoDate, Lifecycle, Trip } from '@cairn/core';
 import { clock, store } from '../store.ts';
 import { dateRangeLabel, lifecycleLabel, storedDatesLabel } from '../format.ts';
 import { PastTripForm } from './PastTripForm.tsx';
+import { CitySelector } from './CitySelector.tsx';
+import type { SelectedCity } from './CitySelector.tsx';
+import { ExampleJourney } from './ExampleJourney.tsx';
+
+export type LibraryIntent = { id: number; kind: 'new' | 'past' | 'sample'; cityQuery?: string };
 
 /**
  * The lifecycle chip — ARCHITECTURE §8.1, ROADMAP Phase 2 I-4; the read gate is §8.4 **A-44**,
@@ -89,11 +94,16 @@ type Props = {
   state: AppState;
   onError: (m: string) => void;
   sample: (() => Trip | null) | null;
+  intent?: LibraryIntent | null;
+  onIntentHandled?: () => void;
+  onPastCreated?: (title: string, countryCode: string | undefined, tripId: string) => void;
 };
 
-export function Library({ state, onError, sample }: Props) {
+export function Library({ state, onError, sample, intent, onIntentHandled, onPastCreated }: Props) {
   const [creating, setCreating] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [formSeed, setFormSeed] = useState({id:0,cityQuery:''});
+  const example = useMemo(() => sample?.() ?? null, [sample]);
   // Read once per render, from the app's single clock port (`ports/env.ts` is the only place
   // `Date` is called). Every chip below is derived against the same value.
   const today = clock.today();
@@ -146,11 +156,20 @@ export function Library({ state, onError, sample }: Props) {
     return run(store.adoptTrip(trip));
   }
 
+  useEffect(() => {
+    if (!intent) return;
+    setFormSeed({id:intent.id,cityQuery:intent.cityQuery??''});
+    if (intent.kind === 'new') { setRecording(false); setCreating(true); }
+    else if (intent.kind === 'past') { setCreating(false); setRecording(true); }
+    else void loadSample();
+    onIntentHandled?.();
+  }, [intent?.id]);
+
   return (
-    <main className="library">
+    <main className={`library library--warm${state.library.length === 0 && !creating && !recording ? ' library--first-journey' : ''}`}>
       <div className="library__head">
-        <h1>Your trips</h1>
-        <div className="row">
+        <div><h1>Your trips</h1><p className="library__lede">{state.library.length === 0 ? 'Somewhere new. Somewhere you remember.' : 'Your plans, your memories, and everywhere in between.'}</p></div>
+        {state.library.length > 0 && <div className="row">
           <button
             className="btn"
             aria-label="Restore from a backup (Import JSON)"
@@ -159,28 +178,34 @@ export function Library({ state, onError, sample }: Props) {
           >
             Restore from a backup
           </button>
-          {sample && <button className="btn" onClick={() => void loadSample()}>Load Europe 2026</button>}
+          {sample && <button className="btn" aria-describedby="sample-disclosure" onClick={() => void loadSample()}>Add Europe 2026 example</button>}
           <button
             className="btn"
             data-testid="record-past-trip"
             title="A trip you have already taken — dates only, no day-by-day required."
             onClick={() => { setCreating(false); setRecording(true); }}
           >
-            Record a past trip
+            Add a past journey
           </button>
-          <button className="btn btn--primary" onClick={() => { setRecording(false); setCreating(true); }}>New trip</button>
-        </div>
+          <button className="btn btn--primary" onClick={() => { setRecording(false); setCreating(true); }}>Plan a new trip</button>
+        </div>}
       </div>
 
       <ScanNote scan={scan} />
+      {state.library.length > 0 && sample && <p id="sample-disclosure" className="local-note">The Europe 2026 example adds a removable example trip to this device.</p>}
 
-      {creating && <NewTrip onClose={() => setCreating(false)} onError={onError} />}
-      {recording && <PastTripForm onClose={() => setRecording(false)} onError={onError} />}
+      {creating && <NewTrip key={formSeed.id} initialCityQuery={formSeed.cityQuery} onClose={() => {setCreating(false);setFormSeed({id:0,cityQuery:''});}} onError={onError} />}
+      {recording && <PastTripForm key={formSeed.id} initialCityQuery={formSeed.cityQuery} onClose={() => {setRecording(false);setFormSeed({id:0,cityQuery:''});}} onError={onError} onCreated={onPastCreated} />}
 
       {state.library.length === 0 && !creating && !recording && (
-        <p className="empty">
-          Nothing here yet. {sample ? 'Load Europe 2026 to see a real trip, or start' : 'Start'} a new one.
-        </p>
+        <div className="library-empty">
+          <div className="journey-actions">
+            <button className="journey-action journey-action--primary" onClick={() => setCreating(true)}><span><strong>Plan a new trip</strong></span><span aria-hidden="true">→</span></button>
+            <button className="journey-action" onClick={() => setRecording(true)}><span><strong>Add a past journey</strong><small>Keep a place you remember.</small></span><span aria-hidden="true">→</span></button>
+          </div>
+          {example && <ExampleJourney trip={example} onLoad={() => void loadSample()} />}
+          <div className="library-utilities"><button className="btn btn--quiet" onClick={() => void onImport()}>Restore from a backup</button><p>Bring back a journey you previously exported from Cairn.</p></div>
+        </div>
       )}
 
       <ul className="triplist">
@@ -328,17 +353,19 @@ export function Library({ state, onError, sample }: Props) {
   );
 }
 
-function NewTrip({ onClose, onError }: { onClose: () => void; onError: (m: string) => void }) {
+function NewTrip({ onClose, onError, initialCityQuery = '' }: { onClose: () => void; onError: (m: string) => void; initialCityQuery?: string }) {
   const [title, setTitle] = useState('');
   const [startDate, setStart] = useState('');
   const [endDate, setEnd] = useState('');
-  const [cities, setCities] = useState('');
+  const [cities, setCities] = useState<SelectedCity[]>([]);
+  const [busy, setBusy] = useState(false);
 
   const valid = title.trim() && /^\d{4}-\d{2}-\d{2}$/.test(startDate) && /^\d{4}-\d{2}-\d{2}$/.test(endDate) && endDate >= startDate;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!valid) return;
+    if (!valid || busy) return;
+    setBusy(true);
     try {
       await store.createTrip({
         title: title.trim(),
@@ -346,16 +373,12 @@ function NewTrip({ onClose, onError }: { onClose: () => void; onError: (m: strin
         endDate,
         // **No `key`** — §2.2 A-10 / QA P2-2. The slug this used to compute collapsed every
         // non-Latin name to `"-"`; `createTrip` mints an opaque id and the name is the label.
-        cities: cities
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-          .map((name, i) => ({ name, order: i })),
+        cities: cities.map((city, order) => ({ ...city, order })),
       });
       onClose();
     } catch (err) {
       onError((err as Error).message);
-    }
+    } finally { setBusy(false); }
   }
 
   return (
@@ -374,14 +397,11 @@ function NewTrip({ onClose, onError }: { onClose: () => void; onError: (m: strin
           <input type="date" value={endDate} onChange={(e) => setEnd(e.target.value)} />
         </label>
       </div>
-      <label>
-        Cities <span className="hint">comma separated, in order</span>
-        <input value={cities} onChange={(e) => setCities(e.target.value)} placeholder="Tokyo, Kyoto, Osaka" />
-      </label>
+      <CitySelector value={cities} onChange={setCities} initialQuery={initialCityQuery} />
       {startDate && endDate && endDate < startDate && <p className="hint hint--warn">The end date is before the start date.</p>}
       <div className="row row--end">
         <button type="button" className="btn btn--quiet" onClick={onClose}>Cancel</button>
-        <button type="submit" className="btn btn--primary" disabled={!valid}>Create</button>
+        <button type="submit" className="btn btn--primary" disabled={!valid || busy}>Create</button>
       </div>
     </form>
   );

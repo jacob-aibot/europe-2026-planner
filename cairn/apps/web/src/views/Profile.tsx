@@ -1,47 +1,4 @@
-/**
- * **Profile — a travel identity.** ROADMAP Phase 2 **I-8b**, built to `docs/DESIGN.md` §5,
- * which `ARCHITECTURE.md` §9.1 makes binding: where this file and that document disagree, that
- * document is the spec and this file is the defect.
- *
- * §5.2: the screen is not *"your stats"*. It is **a person's travel life, stated in their own
- * numbers, with the holes admitted** — one editorial page in four movements:
- *
- *   1. **The claim** — the identity line, the largest type on the screen. `.statrow`'s three
- *      boxes are **replaced by one typographic statement** (§5.3), which is the P1/P4 proof:
- *      *"a number appears because it is part of a person's travel identity, never because a
- *      metric needed a home."*
- *   2. **The record** — one hairline-separated row per country, the ISO code in mono at h2
- *      scale as the leading element, its cities grouped **under** it as text. **No card, no
- *      border box, no chevron.**
- *   3. **Its shape over time** — first and last visit across the whole record, and the trip
- *      lifecycle counts with `completed` **first and at full strength** (P3: *"the past is
- *      alive, not archived"* — a finished trip is this product's most valuable content).
- *   4. **What we do not know** — the unattributed count against its denominator,
- *      `unnamedCities`, and the I-6 rescan state, in the shipped `.worldmap__gap` idiom.
- *      §5.2: *"Movement 4 is not a footnote and not an error state. On this product it is a
- *      feature, and it is the single strongest anti-generic move available on this screen: no
- *      dashboard admits its own denominator."*
- *
- * **The data is `DESIGN.md` §5.1's list and nothing else** — `travelStats` through the
- * `travelHistory` gate, `state.library` for trip titles and dates, and `summaryScan` for the
- * rescan indicator. §0 rule B is the fence: *"a screen that looks thin because the product is
- * young is honest; a screen that looks rich because it invented content is a lie."* So there is
- * no photography here, no achievement shelf, no goal, no participant, no avatar, no distance,
- * and no map — `TripSummaryRow` carries no city coordinate (A-40 Part 5) and the map that does
- * exist is the Map tab's, which this screen does not duplicate.
- *
- * **Three things this file deliberately does not do:**
- *
- *  - **It computes no statistic.** Every number below is read off `TravelStats`. A count
- *    assembled here would be the stored-count failure of §8.4 clause 2 one layer up — and
- *    `state.library.length` is not the number of trips this record is made of, because a
- *    `planned` trip contributes nothing to it.
- *  - **It reads no clock but the port's** (`clock.today()`), and it never compares a date to
- *    today: the lifecycle comes from `LifecycleChip` → `rowLifecycle` → `core.lifecycle`, which
- *    is §8.4 **A-44**'s one gate, and `test/views.test.ts` holds both as greps.
- *  - **It measures no layout.** The two-column split at ≥ 900 and the two-column record at
- *    ≥ 1280 are CSS (§5.4); nothing here reads a rect, and the same DOM renders at every width.
- */
+/** Personal identity and real travel history. Approved scenic destination covers are decorative; they never imply a visit or a user-owned photo. Travel counts remain derived through the existing history gate. */
 import { useState } from 'react';
 import type { AppState } from '@cairn/client';
 import { summaryScan, travelHistory } from '@cairn/client';
@@ -50,17 +7,26 @@ import { clock } from '../store.ts';
 import { dateRangeLabel, monthYearLabel } from '../format.ts';
 import { LifecycleChip } from './Library.tsx';
 import { HistoryRefusal } from './Refusal.tsx';
+import { ProfileSetup } from './ProfileSetup.tsx';
+import { NavIcon } from './NavIcon.tsx';
+import { DestinationCredits } from './CroatiaPreview.tsx';
+import { identityInitials } from '../localIdentity.ts';
+import type { LocalIdentityV1 } from '../localIdentity.ts';
 
 type Props = {
   state: AppState;
   /** Opens a trip and hands the shell back to the Trips tab — the same drill-down as the map. */
   onOpenTrip: (id: string) => void;
   onError: (m: string) => void;
+  identity: LocalIdentityV1;
+  onSaveIdentity: (identity: LocalIdentityV1) => boolean;
+  onStartLibrary: (kind: 'new' | 'past' | 'sample') => void;
 };
 
-export function Profile({ state, onOpenTrip, onError }: Props) {
+export function Profile({ state, onOpenTrip, onError, identity, onSaveIdentity, onStartLibrary }: Props) {
   /** Which country row is expanded, or `null`. One at a time: the row IS the accordion (§5.5). */
   const [open, setOpen] = useState<string | null>(null);
+  const [editingIdentity, setEditingIdentity] = useState(false);
   const today = clock.today();
 
   // §8.4 A-37 Part 2 / A-31 Part 4, through the one selector that catches it — the same read
@@ -69,20 +35,14 @@ export function Profile({ state, onOpenTrip, onError }: Props) {
   // to degrade into, so the honest answer is a refusal with the offending row id, in the same
   // words the other surface uses (`Refusal.tsx` says why it is a component).
   const history = travelHistory(state, today);
-  if (!history.ok) {
-    // QA **R41-9**: one surface, one header. The refusal used to print `Travel record` as an
-    // eyebrow and `Your travel record` as an `h1` immediately under it — the same two words
-    // twice — and the `h1` fell through to the global 25 px display rule while the healthy
-    // path's is an 11 px tracked mono micro-label. The screen a user only sees when something
-    // is wrong is the last one that should change type register. Same `h1`, same class, no
-    // eyebrow — which is also what the world map's refusal does (§5.5).
-    return (
-      <main className="profile profile--refused">
-        <h1 className="profile__kicker">Your travel record</h1>
-        <HistoryRefusal refusal={history} />
-      </main>
-    );
-  }
+  const identityHero = editingIdentity ? <ProfileSetup headingLevel="h1" identity={identity} onSave={(next) => { const saved = onSaveIdentity(next); if (saved) setEditingIdentity(false); return saved; }} onCancel={() => setEditingIdentity(false)} /> : <header className="identity-hero identity-hero--scenic">
+    <div className="identity-hero__cover"><img src="/images/dubrovnik-port.jpg" alt="" width="1280" height="719"/><span>Dubrovnik · Destination cover</span></div>
+    <div className="identity-hero__initials" aria-hidden="true">{identity.displayName ? identityInitials(identity.displayName) : <NavIcon kind="profile" />}</div>
+    <div className="identity-hero__copy"><h1>{identity.displayName || 'Make this space yours'}</h1>{identity.homeCity && <p className="identity-hero__home">Home in {identity.homeCity}</p>}{identity.bio && <p className="identity-hero__bio">{identity.bio}</p>}<p className="local-note">Stored on this device.</p></div>
+    <button className="identity-hero__edit" onClick={() => setEditingIdentity(true)}>{identity.displayName ? 'Edit profile' : 'Set up profile'}</button>
+  </header>;
+
+  if (!history.ok) return <main className="profile profile--refused">{identityHero}<DestinationCredits /><HistoryRefusal refusal={history} /></main>;
 
   const stats = history.stats;
   // §8.4 clause 3 at the view layer: the record says *"recomputing"* while a rescan runs, and
@@ -90,8 +50,19 @@ export function Profile({ state, onOpenTrip, onError }: Props) {
   const scan = summaryScan(state);
   const travelled = stats.trips.completed + stats.trips.active;
 
+  if (travelled === 0) return <main className="profile profile--welcome" data-testid="profile">
+    {identityHero}
+    {scan.phase !== 'complete' && <p className="world-notice" role="status">{scan.phase === 'recomputing' ? 'Updating your travel history…' : 'Some trip files could not be read. Open Trips to review them.'}</p>}
+    <section className="profile-welcome"><h2>Your story starts with a place.</h2><p>Your travel history grows automatically from the journeys you add.</p>
+      <div className="journey-actions"><button className="journey-action journey-action--primary" onClick={() => onStartLibrary('past')}><span><strong>Add a past journey</strong></span><span aria-hidden="true">→</span></button><button className="journey-action" onClick={() => onStartLibrary('new')}><span><strong>Plan a new trip</strong></span><span aria-hidden="true">→</span></button></div>
+    </section>
+    <DestinationCredits />
+  </main>;
+
   return (
     <main className="profile" data-testid="profile" data-scan={scan.phase}>
+      {identityHero}
+      <DestinationCredits />
       <Claim stats={stats} travelled={travelled} />
 
       <div className="profile__body">
@@ -108,8 +79,7 @@ export function Profile({ state, onOpenTrip, onError }: Props) {
               illustration, no ghost row, no "coming soon".
             */
             <p className="empty" data-testid="profile-empty">
-              No travelled trip has a country on it yet. Record a past trip, or open one you have
-              already taken — this record fills itself from your library.
+              Your journeys are recorded. Add a stop with a location to a journey to give it a place on World.
             </p>
           ) : (
             /*
@@ -362,7 +332,7 @@ function Claim({ stats, travelled }: { stats: TravelStats; travelled: number }) 
   ];
   return (
     <header className="profile__claim">
-      <h1 className="profile__kicker">Your travel record</h1>
+      <h2 className="profile__kicker">Your travel record</h2>
       <dl className="claim" data-testid="profile-claim">
         {/*
           QA **R41-5**: the separator belongs to the pair that FOLLOWS it, never to the pair it
@@ -449,8 +419,8 @@ function Shape({ stats }: { stats: TravelStats }) {
  * nothing from either.
  */
 function Gap({ stats, scan }: { stats: TravelStats; scan: ReturnType<typeof summaryScan> }) {
-  const located = stats.located.places + stats.located.stops;
-  const holes = stats.unattributed.places + stats.unattributed.stops;
+  const located = stats.located.places + stats.located.stops + stats.located.cities;
+  const holes = stats.unattributed.places + stats.unattributed.stops + stats.unattributed.cities;
   const unplacedCities = stats.cities.filter((c) => c.countryCode === null);
   return (
     <section className="profile__gap" data-testid="profile-gap">
@@ -458,8 +428,7 @@ function Gap({ stats, scan }: { stats: TravelStats; scan: ReturnType<typeof summ
       <p data-testid="profile-attribution" data-located={located} data-unattributed={holes}>
         {located === 0 ? (
           <>
-            <b>No places yet.</b> Nothing in your library carries a coordinate, so there is
-            nothing here we could have put on a country.
+            <b>No map locations yet.</b> Your journeys are recorded; a map-matched city or a stop with a location is what puts them on a country.
           </>
         ) : holes === 0 ? (
           <>

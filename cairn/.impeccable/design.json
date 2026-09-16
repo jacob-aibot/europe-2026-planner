@@ -1,0 +1,365 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-14T21:10:09.177Z",
+  "title": "Design System: Cairn",
+  "extensions": {
+    "colorMeta": {
+      "world-ink": {
+        "role": "neutral",
+        "displayName": "Maritime ink",
+        "tonalRamp": [
+          "oklch(15% 0.0402 228.71)",
+          "oklch(26.43% 0.0402 228.71)",
+          "oklch(37.86% 0.0402 228.71)",
+          "oklch(49.29% 0.0402 228.71)",
+          "oklch(60.71% 0.0402 228.71)",
+          "oklch(72.14% 0.0402 228.71)",
+          "oklch(83.57% 0.0402 228.71)",
+          "oklch(95% 0.0402 228.71)"
+        ]
+      },
+      "world-muted": {
+        "role": "neutral",
+        "displayName": "Muted slate",
+        "tonalRamp": [
+          "oklch(15% 0.0335 234.25)",
+          "oklch(26.43% 0.0335 234.25)",
+          "oklch(37.86% 0.0335 234.25)",
+          "oklch(49.29% 0.0335 234.25)",
+          "oklch(60.71% 0.0335 234.25)",
+          "oklch(72.14% 0.0335 234.25)",
+          "oklch(83.57% 0.0335 234.25)",
+          "oklch(95% 0.0335 234.25)"
+        ]
+      },
+      "world-paper": {
+        "role": "neutral",
+        "displayName": "Limestone paper",
+        "tonalRamp": [
+          "oklch(15% 0.0054 95.10)",
+          "oklch(26.43% 0.0054 95.10)",
+          "oklch(37.86% 0.0054 95.10)",
+          "oklch(49.29% 0.0054 95.10)",
+          "oklch(60.71% 0.0054 95.10)",
+          "oklch(72.14% 0.0054 95.10)",
+          "oklch(83.57% 0.0054 95.10)",
+          "oklch(95% 0.0054 95.10)"
+        ]
+      },
+      "world-accent": {
+        "role": "secondary",
+        "displayName": "Terracotta",
+        "tonalRamp": [
+          "oklch(15% 0.1550 35.55)",
+          "oklch(26.43% 0.1550 35.55)",
+          "oklch(37.86% 0.1550 35.55)",
+          "oklch(49.29% 0.1550 35.55)",
+          "oklch(60.71% 0.1550 35.55)",
+          "oklch(72.14% 0.1550 35.55)",
+          "oklch(83.57% 0.1550 35.55)",
+          "oklch(95% 0.1550 35.55)"
+        ]
+      },
+      "world-amber": {
+        "role": "tertiary",
+        "displayName": "Warm amber",
+        "tonalRamp": [
+          "oklch(15% 0.1054 78.24)",
+          "oklch(26.43% 0.1054 78.24)",
+          "oklch(37.86% 0.1054 78.24)",
+          "oklch(49.29% 0.1054 78.24)",
+          "oklch(60.71% 0.1054 78.24)",
+          "oklch(72.14% 0.1054 78.24)",
+          "oklch(83.57% 0.1054 78.24)",
+          "oklch(95% 0.1054 78.24)"
+        ]
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "Light card",
+        "tonalRamp": [
+          "oklch(15% 0.0054 95.10)",
+          "oklch(26.43% 0.0054 95.10)",
+          "oklch(37.86% 0.0054 95.10)",
+          "oklch(49.29% 0.0054 95.10)",
+          "oklch(60.71% 0.0054 95.10)",
+          "oklch(72.14% 0.0054 95.10)",
+          "oklch(83.57% 0.0054 95.10)",
+          "oklch(95% 0.0054 95.10)"
+        ]
+      },
+      "sky": {
+        "role": "neutral",
+        "displayName": "Night sea",
+        "tonalRamp": [
+          "oklch(15% 0.0375 226.70)",
+          "oklch(26.43% 0.0375 226.70)",
+          "oklch(37.86% 0.0375 226.70)",
+          "oklch(49.29% 0.0375 226.70)",
+          "oklch(60.71% 0.0375 226.70)",
+          "oklch(72.14% 0.0375 226.70)",
+          "oklch(83.57% 0.0375 226.70)",
+          "oklch(95% 0.0375 226.70)"
+        ]
+      },
+      "primary-action": {
+        "role": "primary",
+        "displayName": "Deep navy action",
+        "tonalRamp": [
+          "oklch(15% 0.0494 223.47)",
+          "oklch(26.43% 0.0494 223.47)",
+          "oklch(37.86% 0.0494 223.47)",
+          "oklch(49.29% 0.0494 223.47)",
+          "oklch(60.71% 0.0494 223.47)",
+          "oklch(72.14% 0.0494 223.47)",
+          "oklch(83.57% 0.0494 223.47)",
+          "oklch(95% 0.0494 223.47)"
+        ]
+      },
+      "first-run-action": {
+        "role": "primary",
+        "displayName": "First-run navy",
+        "tonalRamp": [
+          "oklch(15% 0.0499 225.89)",
+          "oklch(26.43% 0.0499 225.89)",
+          "oklch(37.86% 0.0499 225.89)",
+          "oklch(49.29% 0.0499 225.89)",
+          "oklch(60.71% 0.0499 225.89)",
+          "oklch(72.14% 0.0499 225.89)",
+          "oklch(83.57% 0.0499 225.89)",
+          "oklch(95% 0.0499 225.89)"
+        ]
+      },
+      "first-run-action-hover": {
+        "role": "primary",
+        "displayName": "Lifted navy",
+        "tonalRamp": [
+          "oklch(15% 0.0621 224.70)",
+          "oklch(26.43% 0.0621 224.70)",
+          "oklch(37.86% 0.0621 224.70)",
+          "oklch(49.29% 0.0621 224.70)",
+          "oklch(60.71% 0.0621 224.70)",
+          "oklch(72.14% 0.0621 224.70)",
+          "oklch(83.57% 0.0621 224.70)",
+          "oklch(95% 0.0621 224.70)"
+        ]
+      },
+      "on-dark": {
+        "role": "neutral",
+        "displayName": "Warm light",
+        "tonalRamp": [
+          "oklch(15% 0.0142 84.58)",
+          "oklch(26.43% 0.0142 84.58)",
+          "oklch(37.86% 0.0142 84.58)",
+          "oklch(49.29% 0.0142 84.58)",
+          "oklch(60.71% 0.0142 84.58)",
+          "oklch(72.14% 0.0142 84.58)",
+          "oklch(83.57% 0.0142 84.58)",
+          "oklch(95% 0.0142 84.58)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Stone rule",
+        "tonalRamp": [
+          "oklch(15% 0.0150 115.07)",
+          "oklch(26.43% 0.0150 115.07)",
+          "oklch(37.86% 0.0150 115.07)",
+          "oklch(49.29% 0.0150 115.07)",
+          "oklch(60.71% 0.0150 115.07)",
+          "oklch(72.14% 0.0150 115.07)",
+          "oklch(83.57% 0.0150 115.07)",
+          "oklch(95% 0.0150 115.07)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Destination display",
+        "purpose": "Croatia hero title; desktop size is documented in Layout and Typography."
+      },
+      "headline": {
+        "displayName": "World welcome",
+        "purpose": "Mobile World first-run headline."
+      },
+      "body": {
+        "displayName": "Calm body",
+        "purpose": "Actions, explanatory copy and disclosures."
+      },
+      "label": {
+        "displayName": "Context label",
+        "purpose": "Source credits and supporting context; preserve the binding 11px floor."
+      }
+    },
+    "shadows": [
+      {
+        "name": "world-sheet",
+        "value": "0 -8px 32px #00000015",
+        "purpose": "Separates the overlapping World reading sheet from the Earth scene."
+      },
+      {
+        "name": "library-card",
+        "value": "0 14px 35px #17313b0d",
+        "purpose": "Quiet lift for library card containers."
+      },
+      {
+        "name": "city-results",
+        "value": "0 12px 28px #18313b1a",
+        "purpose": "Separates open place results from nearby fields."
+      }
+    ],
+    "motion": [
+      {
+        "name": "world-arrival",
+        "value": "320ms ease-out",
+        "purpose": "Bounded 10px rise with opacity from .86 to 1; history uses 360ms with an 80ms delay."
+      },
+      {
+        "name": "journey-action-arrival",
+        "value": "260ms ease-out",
+        "purpose": "World actions rise once, with 60ms and 120ms successive delays."
+      },
+      {
+        "name": "destination-sheet-arrival",
+        "value": "380ms ease-out",
+        "purpose": "Bounded 10px rise; only with no reduced-motion preference."
+      },
+      {
+        "name": "earth-arrival",
+        "value": "650ms ease-out",
+        "purpose": "Texture opacity .5 to 1; only with no reduced-motion preference."
+      },
+      {
+        "name": "selected-country",
+        "value": "650ms cubic ease-out",
+        "purpose": "Globe focus movement; reduced-motion selects the target immediately."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "animation: none !important; transition: none !important; scroll-behavior: auto !important",
+        "purpose": "Applied to the shell and descendants, including pseudo-elements."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "identity-compact",
+        "value": "560px"
+      },
+      {
+        "name": "desktop",
+        "value": "900px"
+      }
+    ],
+    "focus": {
+      "value": "3px solid #bc492b",
+      "offset": "3px",
+      "purpose": "Shared shell button, link and summary focus. Inputs retain their offset warm outline."
+    },
+    "scope": {
+      "surfaces": [
+        "World first run",
+        "Trips first run",
+        "You first run",
+        "Croatia destination preview",
+        "Shared navigation and identity"
+      ],
+      "sources": [
+        "apps/web/src/world.css",
+        "apps/web/src/immersive.css",
+        "apps/web/src/styles.css"
+      ],
+      "approval": "Richer concept selected; final rendered visual approval pending. Finish review ship disposition is scoped to the resolved new-label size issue.",
+      "historicalContract": "docs/DESIGN.md surviving truth and accessibility requirements remain binding.",
+      "ramps": "Synthesized panel swatch previews only; not implemented application tokens."
+    }
+  },
+  "components": [
+    {
+      "name": "Primary action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Navy action used by destination planning.",
+      "html": "<button class=\"ds-primary\">Plan a trip to Dubrovnik <span aria-hidden=\"true\">→</span></button>",
+      "css": ".ds-primary{display:flex;justify-content:space-between;gap:12px;background:var(--primary-action,#0b3441);color:var(--on-dark,#fffaf0);border:0;border-radius:9px;padding:13px 18px;min-height:48px;font:14px var(--font-body, \"Public Sans\", sans-serif);cursor:pointer}.ds-primary:hover{background:#214f5c}.ds-primary:focus-visible,.ds-first:focus-visible,.ds-text:focus-visible,.ds-nav button:focus-visible{outline:3px solid var(--world-accent,#bc492b);outline-offset:3px}"
+    },
+    {
+      "name": "First-run action",
+      "kind": "button",
+      "refersTo": "button-first-run",
+      "description": "Wide pill for optional identity setup.",
+      "html": "<button class=\"ds-first\">Set up my profile <span aria-hidden=\"true\">→</span></button>",
+      "css": ".ds-first{display:flex;justify-content:space-between;gap:12px;min-height:52px;width:100%;padding:12px 19px;border:0;border-radius:24px;background:var(--first-run-action,#07303e);color:var(--on-dark,#fffaf0);font:500 13px var(--font-body, \"Public Sans\", sans-serif);cursor:pointer}.ds-first:hover{background:var(--first-run-action-hover,#164b5d)}.ds-primary:focus-visible,.ds-first:focus-visible,.ds-text:focus-visible,.ds-nav button:focus-visible{outline:3px solid var(--world-accent,#bc492b);outline-offset:3px}"
+    },
+    {
+      "name": "Text action",
+      "kind": "button",
+      "description": "Quiet secondary action with a full-height target.",
+      "html": "<button class=\"ds-text\">Skip for now</button>",
+      "css": ".ds-text{border:0;background:transparent;color:#315865;font:12px var(--font-body, \"Public Sans\", sans-serif);min-height:44px;padding:8px 0;cursor:pointer}.ds-text:hover{text-decoration:underline;text-underline-offset:4px}.ds-primary:focus-visible,.ds-first:focus-visible,.ds-text:focus-visible,.ds-nav button:focus-visible{outline:3px solid var(--world-accent,#bc492b);outline-offset:3px}"
+    },
+    {
+      "name": "Identity field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Device-local optional display-name input.",
+      "html": "<label class=\"ds-label\">Name <input class=\"ds-input\" placeholder=\"Your name\" autocomplete=\"off\"></label>",
+      "css": ".ds-label{display:grid;gap:6px;color:var(--world-ink,#112d39);font:700 12px var(--font-body, \"Public Sans\", sans-serif)}.ds-input{border:1px solid #cdd3cf;border-radius:9px;background:var(--card,#fffefa);color:var(--world-ink,#112d39);padding:11px 12px;min-height:44px;font:16px var(--font-body, \"Public Sans\", sans-serif);caret-color:var(--world-accent,#bc492b)}.ds-input::placeholder{color:var(--world-muted,#526875);opacity:1}.ds-input:focus{outline:3px solid #da754d;outline-offset:2px;border-color:transparent}"
+    },
+    {
+      "name": "Travel status",
+      "kind": "chip",
+      "description": "Written states remain distinct; current and upcoming use dashed borders.",
+      "html": "<span class=\"ds-status\">Visited</span> <span class=\"ds-status ds-current\">Current</span> <span class=\"ds-status ds-upcoming\">Upcoming</span>",
+      "css": ".ds-status{display:inline-block;padding:4px 9px;border-radius:6px;background:#e3eee3;color:#24614e;font:11px var(--font-body, \"Public Sans\", sans-serif)}.ds-current{background:#e1edf0;color:#235465;border:1px dashed #507784}.ds-upcoming{background:#e9edf8;color:#405782;border:1px dashed #7186aa}"
+    },
+    {
+      "name": "World sheet",
+      "kind": "card",
+      "refersTo": "world-sheet",
+      "description": "Limestone reading surface overlapping the dark scene.",
+      "html": "<section class=\"ds-sheet\"><h2>Make this world yours.</h2><p>Start with a place you love.</p></section>",
+      "css": ".ds-sheet{background:var(--world-paper,#faf9f5);color:var(--world-ink,#112d39);border-radius:30px 30px 0 0;padding:24px;box-shadow:0 -8px 32px #00000015}.ds-sheet h2{margin:0;font:400 30px/1.08 var(--world-display,\"DM Serif Display\",Georgia,serif);letter-spacing:-.025em;text-align:center}.ds-sheet p{margin:6px 0 14px;text-align:center;color:var(--world-muted,#526875);font:14px/1.5 var(--font-body, \"Public Sans\", sans-serif)}"
+    },
+    {
+      "name": "World / Trips / You navigation",
+      "kind": "nav",
+      "description": "Labelled line icons; selected World uses terracotta on the mobile paper bar.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Main\"><button aria-current=\"page\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><ellipse cx=\"12\" cy=\"12\" rx=\"4\" ry=\"9\"/><path d=\"M3 12h18\"/></svg>World</button><button><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Zm6-2v16m6-14v16\"/></svg>Trips</button><button><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"7\" r=\"3\"/><path d=\"M5 21v-3a7 7 0 0 1 14 0v3\"/></svg>You</button></nav>",
+      "css": ".ds-nav{display:flex;background:var(--card,#fffefa);border-top:1px solid #e6e7e2;padding-top:5px}.ds-nav button{display:flex;flex:1;flex-direction:column;align-items:center;gap:5px;min-height:60px;padding:8px;border:0;background:transparent;color:var(--world-muted,#526875);font:11px var(--font-body, \"Public Sans\", sans-serif);cursor:pointer}.ds-nav button[aria-current]{color:var(--world-accent,#bc492b);font-weight:650}.ds-nav button:hover{background:#f2f0e9}.ds-nav svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.ds-primary:focus-visible,.ds-first:focus-visible,.ds-text:focus-visible,.ds-nav button:focus-visible{outline:3px solid var(--world-accent,#bc492b);outline-offset:3px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Earth, coast and limestone",
+    "overview": "This is an extraction of the implemented immersive web direction: a textured Earth, sourced destination photographs and warm sheets over deep navy. Serif headings give destinations and personal history presence; calm body text keeps actions and disclosures legible. The user selected the richer concept in `artifacts/visual-direction/cairn-immersive-concept.png` after rejecting an overly spare direction. The phrase above describes that implementation; it is not a separate brand decision.\n\nScope is World, Trips and You first-run surfaces, the Croatia destination preview, and their shared components. Source authority is `apps/web/src/world.css`, followed by `apps/web/src/immersive.css`, with the body font inherited from `styles.css`. This does not claim completion of all thirteen reference views. Final rendered visual approval remains pending; the finish review's ship disposition covers the resolved new-label size issue, not a general acceptance claim.\n\nThe surviving product-truth and accessibility requirements in `docs/DESIGN.md` remain binding. This extraction does not replace that historical contract. Durable product context remains in `docs/BRIEF.md` and `docs/PRODUCT-VISION.md`.",
+    "keyCharacteristics": [
+      "Earth and destination imagery provide scale and atmosphere.",
+      "Limestone sheets overlap navy scenes, with readable text on stable surfaces.",
+      "Personal identity is optional and device-local; travel history reflects actual records.",
+      "Amber and terracotta mark selected states and actions without replacing written status."
+    ],
+    "rules": [
+      {
+        "name": "The Truth Rule",
+        "body": "A scenic cover is destination imagery, never proof of a visit or a user-owned photograph. Keep its label and accessible credits.",
+        "section": "colors"
+      },
+      {
+        "name": "The Readable Label Rule",
+        "body": "The binding text floor is (11px). Preserve it when adding labels; this documentation is not a claim that every legacy selector has been audited.",
+        "section": "typography"
+      }
+    ],
+    "dos": [
+      "**Do** use sourced destination imagery with visible context and credits.",
+      "**Do** preserve authentic visits, distinct planned/current states and readable provenance.",
+      "**Do** use the existing serif/sans pairing, warm paper and navy scene relationship.",
+      "**Do** preserve the 11px text floor, usable touch targets, keyboard access and visible focus.",
+      "**Do** provide reduced-motion alternatives and retain the SVG geographic fallback."
+    ],
+    "donts": [
+      "**Don't** invent avatars, social activity, personal photographs, visits or example statistics.",
+      "**Don't** let exploration, an optional home city or a scenic cover imply travel history.",
+      "**Don't** use this scoped extraction as evidence that every reference surface is implemented or visually approved."
+    ]
+  }
+}

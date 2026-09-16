@@ -1,0 +1,13 @@
+{
+  "passed": [
+    "Skip is remembered; inviting actions remain",
+    "Profile write failure preserves draft; retry, reload and no-trip identity work",
+    "City minimum length, stale visible hits, loading Enter, keyboard, focus, multiple cities, removal and attribution",
+    "Matched past city persists CityPick and illuminates Croatia through completion; home city never becomes travel",
+    "Upcoming-only country choice opens Japan by keyboard",
+    "Upcoming form persists CityPick; upcoming-only World; failed close leaves no deferred form and allows retry",
+    "Unmatched fallback records honestly and gives a concrete next step",
+    "Corrupt local profile surfaces an error and can be replaced explicitly",
+    "Light surfaces under OS dark mode, mobile/desktop layout, 200% desktop reflow and reduced motion on all three tabs"
+  ]
+}

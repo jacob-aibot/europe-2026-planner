@@ -1,0 +1,32 @@
+[
+  {
+    "size": "mobile",
+    "tab": "World",
+    "errors": []
+  },
+  {
+    "size": "mobile",
+    "tab": "Trips",
+    "errors": []
+  },
+  {
+    "size": "mobile",
+    "tab": "You",
+    "errors": []
+  },
+  {
+    "size": "desktop",
+    "tab": "World",
+    "errors": []
+  },
+  {
+    "size": "desktop",
+    "tab": "Trips",
+    "errors": []
+  },
+  {
+    "size": "desktop",
+    "tab": "You",
+    "errors": []
+  }
+]
