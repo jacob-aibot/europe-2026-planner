@@ -25,7 +25,13 @@ const CAIRN = resolve(HERE, '..');
 const QA = resolve(CAIRN, 'qa');
 
 /** Files that may cite a probe phase as their evidence. Sources, not documents. */
-const CITING = ['apps/web/src/ports/storage.ts'];
+const CITING = [
+  'apps/web/src/ports/storage.ts',
+  // I-30 / §8.4 A-91 item 3: the attribution criterion is `[rendered]`, and `test/` may not
+  // import `apps/web`, so the picker's own docstring cites the browser probe that holds it. A
+  // `[rendered]` criterion whose instrument nobody can find is a criterion nobody re-runs.
+  'apps/web/src/views/CitySelector.tsx',
+];
 
 /**
  * `qa/x.mjs phase 4`, `` `qa/x.mjs` **phase 4** `` — the shapes a source uses to cite a

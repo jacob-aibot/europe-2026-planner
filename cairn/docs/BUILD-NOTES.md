@@ -1,5 +1,35 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — ROADMAP `I-30`, the four gate checks, on branch `review/i30-picker` at `bdee7c7` →
+> this commit. NOT on `master` and NOT merged to it.** Jacob lifted the `.tsx` fence **narrowly**:
+> *"only for completing and integrating I-30's city picker, including necessary form wiring and
+> tests. This is not approval of the current visual design or a broader UI rewrite"*, and *"keep
+> visual polish deferred"*. **Four files touched, one of them a `.tsx`**:
+> `apps/web/src/views/CitySelector.tsx`, `test/attribution.test.ts` (new), `test/qa-probes.test.ts`
+> (one list entry), `docs/BUILD-NOTES.md`; plus two new `qa/` probes. **Zero `packages/core/src`,
+> zero `packages/client/src`, zero `docs/design/`, zero `ARCHITECTURE.md`, zero `ROADMAP.md`, zero
+> corpus byte, zero golden byte, zero lockfile change, zero new dependency of my own.**
+> `SCHEMA_VERSION` (5) and `SUMMARY_VERSION` (8) do not move; §2.10's export count is untouched.
+> **`World.tsx`, `Globe.tsx`, `ProfileSetup.tsx`, `CroatiaPreview.tsx`, `ExampleJourney.tsx`,
+> `NavIcon.tsx`, `immersive.css`, `world.css`, `world/` and the fonts were not opened** — they ride
+> along on this branch for Jacob to review separately. **No aesthetic change anywhere.**
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact commands** | From `cairn/`: `npm run typecheck` → **exit 0 on both projects**. `npm run test:tap` → **1,968 tests, 1,968 pass / 0 fail** (branch baseline before I started: 1,964 / 1,963 pass / **1 fail**). The rendered gate: `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/i30-attribution.mjs` → **35 assertions, all green** (it spawns its own Vite dev server; `--url=…` attacks a running one). The injected faults: `bash qa/i30-faults.sh` → **every fault fired**, exit 0. Also run green against the **production** build (`npm run web:build` then `vite preview`, probe with `--url=`). |
+> | **Gate 1 — the attribution in "keep typing" — PASSED** | Measured before: with **0–1 characters** typed there was no attribution at all (`source` cleared at `CitySelector.tsx:27`, the panel gated at two characters on `:23`, the credit rendered only inside the panel on `:64`). Now the credit renders **outside** the results panel and `source` is **never cleared** once learned. |
+> | **How "keep typing" gets a `source` without loading the corpus, and why it is not a hard-coded string** | `loadGazetteer` returns `null` for a folded query under two characters **before it reads the meta document**, so the empty input has nothing to read. The answer is the one `cli.ts cities` already shipped and wrote the reason for: **`ATTRIBUTION_PROBE`** — *a query known to resolve stands in for the corpus that was not searched*. The picker asks `'zurich'` once, on mount, keeps its `source` and discards its rows. **Measured in Chromium, by resource**: mounting the picker fetches `meta.json` (75,601 B) and **one** shard, `zu.json` (9,322 B); typing `geneva` adds exactly one more, `ge.json` (35,108 B). **A-83 Part 6's boundary is unchanged — one shard per query, never the corpus.** What changes is *when* `meta.json` loads (at picker mount rather than at first keystroke) plus one extra 9 KB shard. The string is never written in the file: `test/attribution.test.ts` asserts the code, comments stripped, contains no fragment of it. |
+> | **Gate 2 — N1, N2 and N3 SHOWN TO FIRE — PASSED** | `bash qa/i30-faults.sh` mutates the real sources, confirms each mutation applied, runs the instrument, and restores. **N1** (attribution node deleted) → 7 red, including all five state assertions. **N2** (text kept, licence link dropped) → 7 red, and **only the link assertions** among the five states. **N3** (the string hard-coded *and* `meta.json`'s `$source` re-pinned underneath it) → **5 red, all of them "the rendered text is meta.json's exact `$source`"** — the text did not follow the data. **Its control row matters as much**: the *same* re-pin with the picker left honest is **green, 35/35**, which is what makes N3 a measurement rather than a tautology. A fourth row shows the standing node guard catches the hard-coding on its own. |
+> | **Gate 3 — N4, the consumer allowlist — PASSED** | `apps/web/src/format.ts` (not in `GAZETTEER_CONSUMERS`, imported by four modules that are also not on it) is made to `import { loadGazetteerFor }`. `test/boundaries.test.ts` reddens on *"exactly the modules in GAZETTEER_CONSUMERS reach the gazetteer corpus — A-91 item 2"* and **the failure message names `apps/web/src/format.ts`**. |
+> | **Gate 4 — Geneva → save → reload → Switzerland — PASSED, as specified** | `qa/i30-attribution.mjs` **phase 5**, driven from the screen. Geneva is the right subject precisely because the country index disagrees about that row (`node cli.ts cities geneva` prints the marker), so the pick's own code has to outrank `countryOf`. After a **reload**, off IndexedDB: `centre: {lat: 46.2022, lng: 6.1457}` (not `{0,0}`, not `null`), `pick.countryCode: 'CH'`, the city standing on a **copy** of the pick's centre, and the summary row `{countryCode: 'CH', countrySource: 'picked'}`. Rendered, World names **Switzerland** and carries **CH**. **Split/Croatia was not substituted for it.** |
+> | **KD-39 — CLOSED, with the reason, and the false comment NOT restored** | The branch's one failing test was `disclosure.test.ts:160` reporting KD-39 uncited, because Codex correctly deleted a comment that had become **false** (it claimed `createTrip` supplies `{0,0}`; it supplies `null`). Judged: **the UI half is now genuinely closed** — `CitySelector` is the coordinate input the entry said belonged with *"whatever gives cities coordinates"*, both forms mount it, and phase 5 measures the coordinate end to end. The entry is marked CLOSED in §1 with both halves named, and the citation now lives on `CitySelector.tsx`'s docstring, on the code that closes it, saying the true thing. The residue — a typed city the corpus cannot match gets **no pick at all** and `centre: null`, marked *"May not appear on World"* — is a shape A-82 Part 6 requires, not a hole. |
+> | **A behaviour fix that is not aesthetic, and I made it deliberately** | The picker printed **"No map matches found."** when `loadGazetteerFor` returned `null` — which is the *keep typing* case, not a miss. Typing `san` (a corpus split prefix) therefore told the user the corpus holds no San anything. `cli.ts` has always drawn this line and A-82's rule is explicit: *"I have not looked yet" is not a miss.* It now says **"Keep typing — that is not enough yet to search the map."** and phase 3 (c) asserts both halves. This is a false statement removed, not polish. |
+> | **`d3-geo` — FLAGGED, not adjudicated** | It is **Codex's** new dependency, already declared in `apps/web/package.json` and pinned in `package-lock.json`. `npm ci` installed it and **the lockfile is byte-identical afterwards** (`git status` clean, and diffed against a copy taken before). `npm run typecheck` then passes on both projects. `cairn-constraints` §2 permits an `apps/web` dependency only with narrow justification and says adding one needs Jacob; the two files that use it (`CroatiaPreview.tsx`, `world/globeGeometry.ts`) are outside my scope and I did not open them. **Whether `d3-geo` earns its place is Jacob's call.** |
+> | **Objection / disclosure — `qa/i30-faults.sh` mutates the CHECKOUT, not a worktree** | `qa/i5b-mutants.sh` uses a throwaway git worktree and says so for good reason. I could not: the probe needs a Vite dev server, which needs `node_modules`, and a worktree's `node_modules/@cairn/core` symlink resolves back to the **main** checkout's `packages/core` — so a worktree mutation of `meta.json` would not be the file the server serves, and N3 would silently measure nothing. Mitigations, all in the script: pristine copies taken up front, an `EXIT`/`INT`/`TERM` trap that restores, every mutation refused if its target text is absent, and a final byte-comparison of all three touched files against the pristine copies (**not** against git, which would report the operator's own uncommitted work as a surviving mutation). |
+> | **Disclosure — phase 4 loads the licence with Node's `fetch`, not with `page.goto`** | The criterion is *"actually loaded and confirmed to resolve"*. This container's egress proxy presents a CA that Node trusts (`NODE_EXTRA_CA_CERTS`) and Chromium's own store does not, so navigating the page to the href dies on `ERR_CERT_AUTHORITY_INVALID`. The alternative is `ignoreHTTPSErrors`, which turns *"loaded and confirmed to resolve"* into *"resolved to whatever answered"* — a weaker claim in the same words. **The href under test is the one read off the rendered DOM**, and the fetch returns **200 with no redirect** and a body containing *"Attribution 4.0 International"*. |
+> | **Disclosure — `apps/web/test/*.test.ts` DO NOT RUN** | Codex added `apps/web/test/globeGeometry.test.ts` and `apps/web/test/localIdentity.test.ts` on this branch. The root `test` script globs `packages/core/test`, `packages/client/test` and `test/` only, and `apps/web` has no `test` script, so **neither file is executed by `npm test` or `npm run test:tap`** and neither is counted in the 1,968. I did not wire them up: both are outside my scope and the fix is a decision about whether `apps/web` gets a test runner. Flagged so nobody reads the suite number as covering them. |
+> | **Not done, and not attempted** | No visual work of any kind — Jacob's fence. `World.tsx` and the rest of the ride-along set were read for context only. **Nothing pushed**; the branch is committed locally on `review/i30-picker` and `master` is untouched. The two `qa/` probes are mine and have had no breaker round. |
+
 > **Addendum — ROADMAP `I-44` (ARCHITECTURE **§11.13 A-98**), at `master` = `de9585f` → this
 > commit.** **QA round 72's builder half: the scope gate stops testing English and starts asking
 > whether the sentence is one Cairn wrote.** **Zero `.tsx`, zero `apps/web/`, zero
@@ -3864,11 +3894,41 @@ carrying forward:
    a trip that straddles `today` survives the gate by §8.2 ruling 1 (all-subjects) and names
    past days, which is correct and would have made that test measure two things at once.
 
-### KD-39 — a city's centre is `{0,0}` on both trip-creation screens
+### KD-39 — a city's centre is `{0,0}` on both trip-creation screens — CLOSED at `I-30`
+
+> **CLOSED, 2026-09-16, on `review/i30-picker`.** Both halves are now shut and each is shut by a
+> different thing, so this records which.
+>
+> **The model half** closed at `I-22a`: `createTrip` no longer invents `{0,0}`. A city with no
+> pick and no written `centre` stores `centre: null` — an honest hole rather than a coordinate in
+> the Gulf of Guinea — and a city carrying a `pick` stands on a **copy** of `pick.centre`, so the
+> shortest call a picker makes (`{name, pick}`, no `centre`) stores the real coordinate.
+>
+> **The UI half** closed here: `apps/web/src/views/CitySelector.tsx` is the coordinate input this
+> entry said *"belongs with whatever gives cities coordinates (a geocoder, or an autocomplete)"*.
+> Both forms now mount it — `Library.tsx`'s `NewTrip` and `PastTripForm` — and a picked city is
+> written whole through `cityPickFromRow`. Measured end to end, from the screen, in
+> `qa/i30-attribution.mjs` **phase 5**: picking *Geneva, Switzerland*, saving, reloading, and
+> reading the stored document back gives `centre: {lat: 46.2022, lng: 6.1457}`, a stored `pick`
+> carrying `CH`, and a summary row of `{countryCode: 'CH', countrySource: 'picked'}`.
+>
+> **The residue is a shape, not a hole, and it is in the file.** A city the user typed and the
+> corpus could not match is added with **no pick at all** — `centre: null` — because A-82 Part 6
+> forbids pairing a typed name with a row nobody chose, and `cityPickFromRow` takes a
+> `GazetteerRow` rather than a string precisely so that a caller cannot do it. The screen says so
+> in words on the chip (*"May not appear on World"*), which is `CLAUDE.md`'s rule that nothing
+> the system inferred is presented as the user's own claim.
+>
+> **The comment that used to cite this entry, at `PastTripForm.tsx:93`, was FALSE and is not
+> restored.** It said `createTrip` supplies `{0,0}`; it supplies `null`, and had done since
+> `I-22a`. The citation now lives in `CitySelector.tsx`'s docstring, on the code that closes the
+> entry, and says the true thing. A test going green is not a reason to re-assert a false
+> sentence.
 
 `apps/web/src/views/PastTripForm.tsx`, `Library.tsx` · **Phase 2, the KD-38 fix.** Not a new
 divergence — the pre-existing shape of the new-trip flow, recorded because KD-38's fix now makes
-it matter.
+it matter. *(The paragraphs below are the entry as originally written, kept because the reasoning
+is what dated — see the closing note above for what is now true.)*
 
 Both forms collect cities as **names only**, comma separated; `createTrip` fills
 `centre: {lat: 0, lng: 0}` (`createTrip.ts:68`) and `countryCode: ''`. The past-trip fix follows
