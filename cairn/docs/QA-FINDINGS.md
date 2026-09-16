@@ -1,4 +1,502 @@
-# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index), 23 (I-5b — A-27's forgiveness entry), 24 (I-5c — A-28's second arm for filter 2), 25 (the I-5 closure round), 26 (I-6 — the widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan), 27 (I-6a — A-29's stated-country gate and A-30's `refreshSummary`) 28 (I-7 — `travelStats` and the row's record census), 29 (I-7a — A-32's civil calendar, A-33's exit criterion 6, A-34's `provisional`) 30 (I-7b — A-35's span cap, A-36's executed port gate, A-37's row read gates) 31 (A-38 — the seeded double and `ensureReady`'s upcast) 32 (A-39 — the finite covering set and the boundary that closes the arc), 33 (I-8a — the tab shell, the world map, the token layer and the signal-collision fix), 34 (I-8c — A-45's calendar gate, A-44's lifecycle read gate, BLD-3's way out) 35 (I-8e — A-46's unreadable row, its rescue export, and R34-1's ordering fix) 36 (I-8d — A-41's atlas frame and A-42's withdrawn min-span claim; I-8d's first adversarial round) 37 (I-8g — A-48's `countryKeyPoint`, the connected-components partition, C9's paint order and the pane's `aspect`) 38 (I-8h — A-49's `countryParts`, C8′'s extent, C8″'s detached pane and A-50's symmetric pane box) 39 (I-8i — A-51's one-pane-per-cluster frame, A-52's ring filter and A-53's home/extent panes + I18) 40 (I-8f + I-8j together — A-47's `openFailures`/`rowUnopenable`, and A-54's G7′/G7″ layout, D/I19 ring guard and G5′ tie-break) 41 (I-8b — the Profile, the mobile-first shell, and `DESIGN.md` §5/§6's first rendered acceptance standard) 42 (I-8b's repair pass — the mandatory re-breaker over round 41's 3 MAJOR / 14 MINOR, `DESIGN.md` revision 2 §6.2's refusal-equivalence criterion, and the vacuous fault harness) and **43 (I-12 — A-56's `cities[].centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` 4 → 5, and `TravelStatsCity`'s city dates) 44 (I-12a — A-59's counted city-date fallback and nameable row, A-60's clamp-artefact fix) 45 (I-13 — the photo foundation: §10's record class, EXIF reader, byte stores and loading-state selectors, A-57/A-58/A-61) and **46 (I-13b — the confirmation round over the whole photo repair arc: A-62's `[tripId, photoId]` byte key, A-63's fourth `PhotoListing` phase, A-64's withdrawn provenance claim) 47 (I-13c — the confirmation round over the round-46 repair pass and revisions 45/46: A-62 Part 8 residue 4, A-65's refused deferred delete, A-66's five-armed failure union) 48 (I-13d — the confirmation round over §4.2 **A-67**, the store's generation guard, and revision 48's **Part 7a**) 49 (I-13e — the confirmation round over §4.2 **A-68**, the wiring at A-67's own call sites, and the required re-cut of `qa/r47-i13c.mjs`) 50 (I-13g + I-13h — the confirmation round over §4.2 **A-69**'s settling boundary and **A-70**'s sequence-stamped predicate, the required re-cut of `qa/r49-i13e.mjs`, and the close of the A-67…A-70 arc) 51 (I-13i — the confirmation round over §4.2 **A-71**'s subscriber-exception brand and one classifier, §10 **A-66 Part 11**'s `setBatch`, and the required re-cut of six assertions across three `qa/` probes)**** **52 (I-9 — participants in core: `Trip.participants`, the three build functions, the two validation codes, and the *participation grants nothing* invariant)** **53 (the confirmation-breaker pass over the participants arc)** **54 (I-11 — the PHASE 2 PHASE GATE: every exit criterion re-derived, the phase attack list run end to end, one cross-cutting scenario over everything the phase built, and the whole `qa/` board re-run)** and **55 (I-15 — the mandatory adversarial pass over §2.1 **A-76**, *a build door asks the parser what a record may hold*: KD-100, the TOCTOU window, the two standing censuses, and the hunt for the eleventh unguarded door)** and **56 (I-16 — the mandatory adversarial pass over §2.1 **A-77**, *a door does not say what it wrote; the document says what changed*: the identity diff itself, the eighth record class, the replaced door census, and the third attempt at one class of bug)** and **57 (I-17 — the mandatory adversarial pass over §2.1 **A-78**, *the census reads the tree, not a list of files*: the fourth round on one class after an explicit claim of structural closure, and the fifth face, which went inward)** and **58 (I-18 — the mandatory adversarial pass over §2.1 **A-79**, *the census asks whether a door is reachable, not how it is declared*: the fifth round on one class, run against A-79 Part 11's three named exceptions, and the sixth face — the type constructors the walk cannot descend through)** and **59 (I-19 — the mandatory adversarial pass over §2.1 **A-80**, *the predicate descends every type constructor, and the closure claim becomes coverage rather than a list of exceptions*: the sixth round on one class, run against A-80 Part 10's own statement of what a seventh finding must look like, and the seventh face — the door that IS the union member)** and **60 (I-21 — the mandatory adversarial pass over §8.4 **A-82**, *a bundled gazetteer gives a typed city a real coordinate and no shipped row may contradict the country index*: the invariant re-derived from the pinned source, the quantisation question answered, and the first measured coverage hit rate for the capability Jacob asked for)** and **61 (I-22 — the mandatory adversarial pass over §8.4 **A-83** Part 8, *`City.centre` may be `null` and a picked city carries the row it came from*: the `SCHEMA_VERSION` 3 → 4 migration attacked byte for byte, the near-Null-Island case constructed, the corpus regeneration diffed row by row against `dd19958`, and the browser read-back gate finally run)** and **62 (I-22a — the mandatory adversarial pass over §8.4 **A-84**, *a pick is a record, the country is read off it, and a stale pick is inert*: the exact-float staleness rule attacked over all 7,342 shipped rows, the parser past its own ceiling, the door census run rather than reasoned about, and the `SCHEMA_VERSION` 4 → 5 rung walked on the committed fixtures)** and **63 (I-24 — the mandatory adversarial pass over §8.4 **A-85**, *a pick lands on the point it names and the place census gains its denominator*: the door-level rule attacked at every door that can reach a `City`, the `SUMMARY_VERSION` 7 → 8 rescan driven end to end through the store, the covering table re-derived from the file's own text, and the five builder disclosures adjudicated one at a time)** and **64 (the round `2b54c67` owed, run over TWO commits as one subject — the four builder-routed fixes of QA round 63 **and** **I-25** / §8.4 **A-86**, *the door and the census after round 63*: `I-24`'s exit re-derived under both corrected criteria, the absorbed-row count attacked over sixteen non-array values and both lifecycles, KD-117's blast radius established, and the two test-shaped claims — the CLI source-lift and the `issuesForRef` tripwire — put under mutation)** and **65 (the round `e1e1973` owed, run over TWO commits as one subject — round 64's builder-routed fixes (`e1e1973`) **and** **I-26** (`ede933f`) / §8.4 **A-87**, *the read gate and the census after round 64*: the closure claim attacked at its own denominators rather than with a sixth shape, the reachability premise behind its stated scope limit tested rather than accepted, the reader's own read-once discipline measured with counting accessors, the five builder disclosures adjudicated one at a time, and eleven mutants run against the new assertions)** and **66 (the round **I-28** owes — §8.4 **A-88**, *a predicate widened in place names its callers, a coverage claim names its denominators, and the read-gate arc closes here*: the covering claim injected at all FOUR of its denominators, A-88 Part 2's *"throws exactly two ways"* premise searched over 405 plain-data row shapes, the residue's own trigger measured at the commit before A-45, and every mutation literal in every harness still in use audited for the one failure mode a mutant can have — reporting success for doing nothing)** and **67 (I-23 — the mandatory adversarial pass over §8.4 **A-83** Parts 1–7 and 10–11 with **A-84** Parts 5 and 6, *the gazetteer's filter becomes notability, the corpus is sharded, and a search fetches one shard*: the two broken probes re-cut off the committed shards with no loader hook and the coverage headline re-derived from them, KD-118 verified over 1,377,944 query prefixes rather than three examples, KD-119 adjudicated against the pinned 1:10m layer at its own sha256, and the fold's substitution table re-derived against the punctuation the new corpus actually spells its names with)**
+# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index), 23 (I-5b — A-27's forgiveness entry), 24 (I-5c — A-28's second arm for filter 2), 25 (the I-5 closure round), 26 (I-6 — the widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan), 27 (I-6a — A-29's stated-country gate and A-30's `refreshSummary`) 28 (I-7 — `travelStats` and the row's record census), 29 (I-7a — A-32's civil calendar, A-33's exit criterion 6, A-34's `provisional`) 30 (I-7b — A-35's span cap, A-36's executed port gate, A-37's row read gates) 31 (A-38 — the seeded double and `ensureReady`'s upcast) 32 (A-39 — the finite covering set and the boundary that closes the arc), 33 (I-8a — the tab shell, the world map, the token layer and the signal-collision fix), 34 (I-8c — A-45's calendar gate, A-44's lifecycle read gate, BLD-3's way out) 35 (I-8e — A-46's unreadable row, its rescue export, and R34-1's ordering fix) 36 (I-8d — A-41's atlas frame and A-42's withdrawn min-span claim; I-8d's first adversarial round) 37 (I-8g — A-48's `countryKeyPoint`, the connected-components partition, C9's paint order and the pane's `aspect`) 38 (I-8h — A-49's `countryParts`, C8′'s extent, C8″'s detached pane and A-50's symmetric pane box) 39 (I-8i — A-51's one-pane-per-cluster frame, A-52's ring filter and A-53's home/extent panes + I18) 40 (I-8f + I-8j together — A-47's `openFailures`/`rowUnopenable`, and A-54's G7′/G7″ layout, D/I19 ring guard and G5′ tie-break) 41 (I-8b — the Profile, the mobile-first shell, and `DESIGN.md` §5/§6's first rendered acceptance standard) 42 (I-8b's repair pass — the mandatory re-breaker over round 41's 3 MAJOR / 14 MINOR, `DESIGN.md` revision 2 §6.2's refusal-equivalence criterion, and the vacuous fault harness) and **43 (I-12 — A-56's `cities[].centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` 4 → 5, and `TravelStatsCity`'s city dates) 44 (I-12a — A-59's counted city-date fallback and nameable row, A-60's clamp-artefact fix) 45 (I-13 — the photo foundation: §10's record class, EXIF reader, byte stores and loading-state selectors, A-57/A-58/A-61) and **46 (I-13b — the confirmation round over the whole photo repair arc: A-62's `[tripId, photoId]` byte key, A-63's fourth `PhotoListing` phase, A-64's withdrawn provenance claim) 47 (I-13c — the confirmation round over the round-46 repair pass and revisions 45/46: A-62 Part 8 residue 4, A-65's refused deferred delete, A-66's five-armed failure union) 48 (I-13d — the confirmation round over §4.2 **A-67**, the store's generation guard, and revision 48's **Part 7a**) 49 (I-13e — the confirmation round over §4.2 **A-68**, the wiring at A-67's own call sites, and the required re-cut of `qa/r47-i13c.mjs`) 50 (I-13g + I-13h — the confirmation round over §4.2 **A-69**'s settling boundary and **A-70**'s sequence-stamped predicate, the required re-cut of `qa/r49-i13e.mjs`, and the close of the A-67…A-70 arc) 51 (I-13i — the confirmation round over §4.2 **A-71**'s subscriber-exception brand and one classifier, §10 **A-66 Part 11**'s `setBatch`, and the required re-cut of six assertions across three `qa/` probes)**** **52 (I-9 — participants in core: `Trip.participants`, the three build functions, the two validation codes, and the *participation grants nothing* invariant)** **53 (the confirmation-breaker pass over the participants arc)** **54 (I-11 — the PHASE 2 PHASE GATE: every exit criterion re-derived, the phase attack list run end to end, one cross-cutting scenario over everything the phase built, and the whole `qa/` board re-run)** and **55 (I-15 — the mandatory adversarial pass over §2.1 **A-76**, *a build door asks the parser what a record may hold*: KD-100, the TOCTOU window, the two standing censuses, and the hunt for the eleventh unguarded door)** and **56 (I-16 — the mandatory adversarial pass over §2.1 **A-77**, *a door does not say what it wrote; the document says what changed*: the identity diff itself, the eighth record class, the replaced door census, and the third attempt at one class of bug)** and **57 (I-17 — the mandatory adversarial pass over §2.1 **A-78**, *the census reads the tree, not a list of files*: the fourth round on one class after an explicit claim of structural closure, and the fifth face, which went inward)** and **58 (I-18 — the mandatory adversarial pass over §2.1 **A-79**, *the census asks whether a door is reachable, not how it is declared*: the fifth round on one class, run against A-79 Part 11's three named exceptions, and the sixth face — the type constructors the walk cannot descend through)** and **59 (I-19 — the mandatory adversarial pass over §2.1 **A-80**, *the predicate descends every type constructor, and the closure claim becomes coverage rather than a list of exceptions*: the sixth round on one class, run against A-80 Part 10's own statement of what a seventh finding must look like, and the seventh face — the door that IS the union member)** and **60 (I-21 — the mandatory adversarial pass over §8.4 **A-82**, *a bundled gazetteer gives a typed city a real coordinate and no shipped row may contradict the country index*: the invariant re-derived from the pinned source, the quantisation question answered, and the first measured coverage hit rate for the capability Jacob asked for)** and **61 (I-22 — the mandatory adversarial pass over §8.4 **A-83** Part 8, *`City.centre` may be `null` and a picked city carries the row it came from*: the `SCHEMA_VERSION` 3 → 4 migration attacked byte for byte, the near-Null-Island case constructed, the corpus regeneration diffed row by row against `dd19958`, and the browser read-back gate finally run)** and **62 (I-22a — the mandatory adversarial pass over §8.4 **A-84**, *a pick is a record, the country is read off it, and a stale pick is inert*: the exact-float staleness rule attacked over all 7,342 shipped rows, the parser past its own ceiling, the door census run rather than reasoned about, and the `SCHEMA_VERSION` 4 → 5 rung walked on the committed fixtures)** and **63 (I-24 — the mandatory adversarial pass over §8.4 **A-85**, *a pick lands on the point it names and the place census gains its denominator*: the door-level rule attacked at every door that can reach a `City`, the `SUMMARY_VERSION` 7 → 8 rescan driven end to end through the store, the covering table re-derived from the file's own text, and the five builder disclosures adjudicated one at a time)** and **64 (the round `2b54c67` owed, run over TWO commits as one subject — the four builder-routed fixes of QA round 63 **and** **I-25** / §8.4 **A-86**, *the door and the census after round 63*: `I-24`'s exit re-derived under both corrected criteria, the absorbed-row count attacked over sixteen non-array values and both lifecycles, KD-117's blast radius established, and the two test-shaped claims — the CLI source-lift and the `issuesForRef` tripwire — put under mutation)** and **65 (the round `e1e1973` owed, run over TWO commits as one subject — round 64's builder-routed fixes (`e1e1973`) **and** **I-26** (`ede933f`) / §8.4 **A-87**, *the read gate and the census after round 64*: the closure claim attacked at its own denominators rather than with a sixth shape, the reachability premise behind its stated scope limit tested rather than accepted, the reader's own read-once discipline measured with counting accessors, the five builder disclosures adjudicated one at a time, and eleven mutants run against the new assertions)** and **66 (the round **I-28** owes — §8.4 **A-88**, *a predicate widened in place names its callers, a coverage claim names its denominators, and the read-gate arc closes here*: the covering claim injected at all FOUR of its denominators, A-88 Part 2's *"throws exactly two ways"* premise searched over 405 plain-data row shapes, the residue's own trigger measured at the commit before A-45, and every mutation literal in every harness still in use audited for the one failure mode a mutant can have — reporting success for doing nothing)** and **67 (I-23 — the mandatory adversarial pass over §8.4 **A-83** Parts 1–7 and 10–11 with **A-84** Parts 5 and 6, *the gazetteer's filter becomes notability, the corpus is sharded, and a search fetches one shard*: the two broken probes re-cut off the committed shards with no loader hook and the coverage headline re-derived from them, KD-118 verified over 1,377,944 query prefixes rather than three examples, KD-119 adjudicated against the pinned 1:10m layer at its own sha256, and the fold's substitution table re-derived against the punctuation the new corpus actually spells its names with)** and **70 (I-35 — the mandatory adversarial pass over ARCHITECTURE **§11**, *a language model may parse a question; it may never answer one*)** and **71 (I-37 — the confirmation round over §11.11 **A-96**, *one definition of stop occupancy, and prose that is clean by construction*: the 48-verdict sweep re-derived cell by cell against revision 77's classifier, the redaction chokepoint attacked with a sentinel in every user-authored string field of the model rather than with one door code, a sixth phrasing of the lifetime refusal found by inserting one adverb, the `arrival.mins` fallback's boundary constructed at five malformed shapes, and `qa/r70-ask.mjs` re-cut from 4 FAIL + 1 crash to ALL CLEAR)** and **72 (I-38 — the confirmation round over §11.12 **A-97**, *a value computed to decide is not a value to state, and a scope is proved*: round 71's seven findings re-checked against the code, the uncapped `endMin`'s blast radius measured at its one consumer, the clamp exercised at the window it was kept for, the evidence partition fuzzed over 1,800 answers, and the default-deny scope gate measured for over-refusal AND for what it still answers)** and **73 (I-44 — the confirmation round over §11.13 **A-98**, *a scope gate asks whether the sentence is one Cairn wrote*: the 816-sentence accept set regenerated from the ruling's own 43 fragments rather than read out of the implementation, its EDGES adjudicated against Part 3's admission test, recall re-measured on an independent 40-phrase corpus, the candidate filter attacked in both directions, and A-98 Part 8's two-conjunct predicate walked to the shape where the mode word and the clock come from fields that disagree)**
+
+> **Status (as of `master` @ `465c200`, independently verified 2026-09-12 — round 72, the
+> confirmation round over **`I-38`** / ARCHITECTURE **§11.12 A-97**, *a value computed to decide is
+> not a value to state, and a scope is proved rather than assumed*).** One new script and one
+> re-cut, both run from `cairn/`: `node qa/r72-i38.mjs` (**9 sections, 82 assertions — 23 FAIL over
+> 8 findings**, offline, ~20 s, writes nothing) and `node qa/r71-i37.mjs` (**10 sections, 80 assertions — ALL
+> CLEAR**, re-cut at 4 sites; see below). **Zero product-code edits, zero `src`, zero `.tsx`, zero
+> `apps/web`, zero `packages/client`, zero `docs/design/`, zero corpus file, zero golden, zero
+> `tools/`, zero new dependency, zero lockfile.**
+>
+> **ASSESSMENT — SHIP. 0 BLOCKERS, 1 MAJOR, 7 MINOR.** The MAJOR (**R72-1**) is **not a regression**
+> — it measures the same at `d8f5a1e`, before this increment — and it is the residue A-97 Part 6's
+> own rider 4 defines as the trigger for the next ruling. `I-38` does what it was contracted to do,
+> at every one of the six places the brief pointed me at, and the seven round-71 findings are closed
+> against the code rather than against the report.
+>
+> **Round 71 is CLOSED. All seven, verified by running them, not by reading the diff.**
+> **R71-1** — `occupiedInterval(2026-08-07 16:45).endMin === 1665`, `clockOf` renders **`27:45`**,
+> and the flagship answer now reads *"on 2026-08-07 you are on a flight from 16:45 **and still on it
+> at midnight**"* with **no `23:59`, no `03:45`, no `27:45` and no `% 1440` anywhere in the prose**,
+> at `coverage: complete` with no caveat. The same-day bus keeps *"from 17:15 until 18:35"*, so the
+> discriminant is right in **both** directions. `crossesDay` has its first production reader
+> (`ask/ask.ts`), which closes criterion rule 10's own founding case. **R71-7** — the `arrival` gate
+> is gone and the partition holds: over **1,800 fuzzed answers** from 600 generated documents
+> (mixed journey runs, `durationMins` runs, in-window starts, `mins: 0`, negative `mins`, 24h and
+> 40h runs, untimed stops, empty days), **0** prose/verdict mismatches, **0** days named twice,
+> **0** days named that the facts do not call busy, **0** malformed clocks in prose, and the
+> three-arm census sums to the days in scope in every one. **R71-3** — marker-less country text
+> refuses `scope_unclear`; all thirteen phrasings round 71 measured now refuse as `'lifetime'`, the
+> better diagnosis. **R71-2** — the re-cut is correct in **both** directions and is not a weakening
+> (see below). **R71-4** — a stop that starts inside the window occupies it at `mins: 0` and at
+> every negative value tried. **R71-5** — `restate()` still redacts and the CLI prints the typeable
+> form only (`1. when do I leave London`). **R71-6** — all five sentences read correctly; two
+> **sibling sites of (d)** survive and are **R72-6**.
+>
+> **The six attack lines the brief named, each measured rather than argued.**
+> **(1) The uncapped `endMin`'s blast radius is one function, and I established that by census
+> rather than by grep alone.** `occupiedInterval` has **exactly one** production caller —
+> `ask/freeTime.ts`'s `classifyDay` — whose only use of `endMin` is the `intervalIntersects` call
+> that clamps it; `ask.ts` formats it and compares nothing; `conflict/rules/overlap.ts` does not
+> mention `occupiedInterval` or `endMin` at all and spells the same instant itself as
+> `clockOf(start + mins)`. **No consumer does arithmetic on `endMin`, sorts by it, or stores it.**
+> So **there is no document shape in which the uncapped value changes a conflict verdict** — not
+> because the goldens are byte-identical, but because no call path exists. Positively: clamped vs
+> unclamped over **112 intervals × 3 dayparts = 336 comparisons on the fixture, 0 differ**, and the
+> 48 verdicts are still 46 busy / 0 open / 2 unknown.
+> **(2) The clamp is correct where it now lives for every window this vocabulary can name, and
+> wrong for one shape it was explicitly kept for — R72-4.**
+> **(3) `crossesDay` as a rendering discriminant is right everywhere except the exact midnight
+> instant — R72-3.** The 40-hour run is *not* a finding: *"still on it at midnight"* is true of it,
+> and A-97 Part 4 (b) refuses `% 1440` for exactly that reason. The two-midnight case is understated
+> by design and A-97 Part 9 residue 1 already carries it.
+> **(4) The evidence partition is total by construction and I could not break it** — see the fuzz
+> above. A busy day in *neither* bucket requires `occupying.length === 0`, which contradicts `busy`;
+> a day in *both* requires `startsInWindow` to be two values at once. The disclosed `?? v.occupying[0]`
+> is unreachable and is disclosed as unreachable, which is what criterion rule 9 asks for.
+> **(5) The default-deny gate's over-refusal cost is as small as A-97 claimed, and its
+> under-refusal cost is not — R72-1.** Fourteen realistic *this-trip* phrasings all answer; six
+> marker-less ones refuse and that is the accepted cost. But **ten lifetime-intent phrasings still
+> reach an answer**, through markers that are not scope markers.
+> **(6) `runEndsAt` carries nothing inadmissible** — it is `clockOf` of a number, it cannot carry a
+> stop name or a coordinate, and I swept it over the fuzz. It can, however, be **malformed**
+> (`"-16:-20"`), and it has no production reader at all — **R72-5**.
+>
+> **The two disclosed items, adjudicated.**
+> **(1) The substitute evidence is as strong as the claim it replaces, and the brief's claim was
+> mine.** `overlap` returns **0** findings on the reference trip — I re-derived that here and
+> `qa/r71-i37.mjs` §H already measured it in round 71, *in the same report whose prose asserted that
+> `node cli.ts conflicts` prints `16:45–27:45` on that trip*. **It never did.** That sentence of my
+> round-71 write-up was illustrative, not measured, and it propagated into the round-72 brief; it is
+> corrected here for the record. The builder's two substitutes are both stronger than the original
+> would have been: a test pinning `endMin === 1665` is the identity itself rather than a rendering
+> of it, and the planted document is reproducible — I rebuilt it independently (one 20:00 stop with
+> a `durationMins`, added to `2026-08-07`) and got *"“Condor DE2081 → Frankfurt” runs **16:45–27:45**
+> but “probe” starts at 20:00"*, exactly once. Note for the next round: the planted stop must state
+> a duration of its own, because `overlap` only compares stops that `stopOccupancy` can measure.
+> **(2) The `ask.test.ts` re-cut is correct and is not a weakening.** The old assertion required
+> `coverage: 'none'` of a document carrying 31 pooled ideas, 95 places and 21 bookings — which is
+> R71-2 written as a requirement, the same shape as round 71's own §C re-cuts. Both directions are
+> now pinned: `'partial'` for that document (`ask.test.ts:948`) **and** `'none'` for the genuinely
+> empty one (`ask.test.ts:1260-1263`), so the arm is scoped rather than deleted. I drove the
+> boundary myself: adding **one** `Place` to the empty document flips it to `'partial'`, and the
+> sentence *"there is nothing more I can tell you about it"* survives only where the document holds
+> nothing at all.
+
+Every row says whether a **user** can meet it (sequencing rule 10). This capability has no screen, so
+*meetable* means **reachable through the shipped `cli.ts ask` command with realistic input**;
+`--file <document>` is a shipped, documented flag and is how a user opens a trip that is not the
+bundled fixture. Every repro is a section of `qa/r72-i38.mjs`, run from `cairn/`.
+
+| id | sev | file:line | defect | repro | user-meetable | route |
+|---|---|---|---|---|---|---|
+| **R72-1** | **MAJOR** | `packages/core/src/ask/match.ts:131-138` (`TRIP_SCOPE_MARKERS`) | Six of the twelve trip-scope markers — `am i`, `are we`, `do i`, `do we`, `will i`, `will we` — are **person and tense markers, not scope markers**: they occur just as naturally in a question about a lifetime. So the default-deny flip closes the boundary only for text carrying **no** marker, and a lifetime question that carries one is still answered about this trip: *"how many countries **am I** up to"*, *"how many countries **do I** have under my belt"*, *"which countries **do I** still have to see"* — **10 of 10 phrasings tried**, each answered *"This trip accounts for 7 countries…"*. By A-97 Part 6 rider 4's own taxonomy this is the MAJOR class (*"a phrasing that reaches an ANSWER means the gate itself is wrong"*). **Not a regression** — identical at `d8f5a1e`. | `node qa/r72-i38.mjs F` | **YES — `node cli.ts ask "how many countries am I up to"`, no `--file`, unmodified fixture.** Mitigated, as R70-5 and R71-3 were: the CLI prints *"I read this as: how many countries this trip visits"*, reports `am i up to` as unread, and the answer's own first words are *"This trip accounts for"*. Those mitigations existed at both prior rulings and did not settle either. | **architect** (design — A-97 Part 6's marker set; rider 4 routes it here explicitly) |
+| **R72-2** | MINOR | `packages/core/src/ask/match.ts:384-407` | The scope refusal `return`s from **inside** the candidate loop, discarding every reading collected before it. *"how many countries have I booked"* and *"which countries have a free evening"* were `ambiguous` at `d8f5a1e` — two typeable readings, each a way forward — and are now `scope_unclear`, whose text (*"I cannot tell whether you mean this trip or every trip"*) is false of a sentence containing *"free evening"*. A-97 Part 6 rider 3 says the gate is *"scoped to `country_count`"*; as implemented it is scoped to the whole sentence. **A regression of this increment**, though a refusal either way. | `node qa/r72-i38.mjs F` | YES — `node cli.ts ask "which countries have a free evening"`, no `--file`. | **builder** (implementation — suppress the `country_count` candidate rather than returning; refuse only when it is the only candidate) |
+| **R72-3** | MINOR | `packages/core/src/derive/occupancy.ts:96` | `crossesDay = endMin > DAY_END_MIN` is off by one against the half-open convention stated 40 lines below it (*"a leg landing at 18:00 does not occupy 18:00"*). A run ending **exactly at 24:00** does not reach into the next day, yet `crossesDay` is `true` and the prose says *"on 2026-08-10 you are on a flight from 17:00 **and still on it at midnight**"* about a flight the document says has landed. `endMin > DAY_END_MIN + 1` is the reading consistent with the rest of the file. | `node qa/r72-i38.mjs C` | YES through `--file` — an overnight leg that lands at 00:00 is an ordinary timetable entry (17:00 + 7h00). | **architect** (A-97 Part 3 decision 1 spells the formula verbatim; the fix is one character, the definition of `DAY_END_MIN` against a half-open end is the ruling's) |
+| **R72-4** | MINOR | `packages/core/src/derive/occupancy.ts:140-141` + `packages/core/test/occupancy.test.ts` (the fourth-daypart test) | The clamp's new home clamps to **1439** while the predicate is **end-exclusive** (`end > fromMin`), so a run that genuinely covers minute 23:59 tests **false** for any window beginning there: `intervalIntersects(i16:45+660, 1439, 1439) === false` for a flight that is provably in the air. A-97 Part 3 decision 2 keeps the clamp *"because a fourth daypart is cheaper to add against an explicit line"* — and the test BUILD-NOTES offers as proof the clamp still does something **pins exactly this false reading as the contract**. `Math.min(endMin, DAY_END_MIN + 1)` is day-closed *and* end-exclusive; 1439 is neither. **Unfireable today** and declared so: all three shipped `from` values are 300/720/1080, and clamped vs unclamped differ in **0** of 336 comparisons on the fixture. | `node qa/r72-i38.mjs B` | NO — no shipped daypart begins at 23:59. It fires the day a fourth daypart is added, which is the only reason the clamp was kept. | **architect** (the ruling names the expression and the test that pins it) |
+| **R72-5** | MINOR | `packages/core/src/ask/ask.ts:626` | `runEndsAt` formats `clockOf(endMin)` with **no domain guard**, so a document `fromJSON` accepts puts a malformed clock in `day_state.params`: `durationMins: -1200` at 18:00 → `"-2:00"`, `-2000` → **`"-16:-20"`**, `1e9` → `"16666684:40"`. And the field has **no production reader** — `cli.ts` prints the first four non-empty params of a fact and `runEndsAt` is the seventh, so neither the good value (`'27:45'`) nor the malformed one is ever shown. That is the shape criterion rule 10 exists for, and it is the same shape as `crossesDay` one ruling earlier: a field added to a returned type, correct-looking, unread, and already wrong in a case nobody would notice. | `node qa/r72-i38.mjs E` | NO — not through any shipped surface. The value reaches a caller of `core.ask` only. | **builder** for the guard (`runEndsAt` where `endMin < startMin` is not a wall clock); **architect** for whether A-97 Part 4's structured half needs a reader to be admissible under criterion rule 10 |
+| **R72-6** | MINOR | `packages/core/src/ask/ask.ts:709` and `:710` | R71-6 (d) replaced *"every one of the **1 day** in Split"* with *"the only day in Split"* in the `No.` arm and left the same numeral standing in its two sibling sentences: *"**Of the 1 day in Split**, 1 is clear in the evening…"* and *"**The other 1 is busy** then."* Both read off the same `scope`/`busy` values the fixed site reads. | `node qa/r72-i38.mjs G` | YES through `--file` — any one-day city scope, and any two-day scope with one clear day. | **builder** (implementation) |
+| **R72-7** | MINOR | `packages/core/src/ask/match.ts:400-403` | The `scope_unclear` pointer — printed verbatim to the user by `cli.ts` — ends *"…or `stats` for your whole library (**travelStats, §8.4**)."* An internal architecture section number is not a way forward for a person holding a phone. The two older pointers name `stats` and `travelStats` without citing a document. | `node qa/r72-i38.mjs F` | YES — `node cli.ts ask "how many countries"`, no `--file`. | **builder** (implementation) |
+| **R72-8** | MINOR | `packages/core/src/ask/ask.ts:644` | The mode word is gated on `interval.source === 'journey_run'`, so a journey stop that states **both** `durationMins` and `arrival` renders *"on 2026-08-10 **something that starts at** 16:30 runs until 18:30"* — dropping a `TravelMode` the document records and A-97 Part 5 item 2 itself calls admissible. The ruling's stated reason for withholding it (*"for `source === 'stated_duration'` there is no mode"*) is false for this shape: `stop.arrival.mode` is right there, and the code already reads `stop.arrival` in the same expression. Understated rather than false, hence MINOR. | `node qa/r72-i38.mjs G` | YES through `--file` — a Cairn-native flight with a recorded duration is the ordinary shape once a user edits a leg. | **architect** (A-97 Part 5 item 2 states the gate; the fix is to gate the mode on the *stop*, keeping `source` for the subject phrase) |
+
+**R72-1, in full, because the reasoning is the evidence and because it is the third round on this
+boundary.** A-97 Part 6's argument is an asymmetry-of-failure argument and it is correct as far as it
+goes: an unlisted *trip-scope* marker costs a refusal with the menu behind it, and an unlisted
+*totality* phrase cost a false statement about the user's life. What the flip actually changed,
+measured, is the behaviour of text carrying **no** marker — *"how many countries"*, *"number of
+countries"*, *"which countries are covered"* — which now refuses. That population is real and the
+refusal is right.
+
+But the marker list is doing two different jobs with one mechanism. `this trip`, `this itinerary`,
+`my trip`, `the trip`, `my itinerary`, `the itinerary` and `here` are **scope** markers: each one
+names the document in hand, and a sentence carrying one is about this trip whatever its tense. `am
+i`, `are we`, `do i`, `do we`, `will i`, `will we` are **person and tense** markers: they say who the
+subject is and when, and say nothing at all about which data set. English puts them in lifetime
+questions as readily as in trip questions — *"how many countries **am I** up to"* is the ordinary way
+a traveller asks their life count, and *"how many countries **do I** have under my belt"* is an idiom
+that can only mean the life count. Ten such phrasings, all answered about this trip with the trip's
+7-country figure:
+
+```
+matched:country_count   how many countries do I have under my belt
+matched:country_count   how many countries am I up to
+matched:country_count   how many countries am I on now
+matched:country_count   what countries do I still need to visit
+matched:country_count   how many countries do we have between us
+matched:country_count   how many countries do I have left in the world
+matched:country_count   which countries do I still have to see
+matched:country_count   how many countries am I missing
+matched:country_count   how many countries do I have on my list
+matched:country_count   which countries am I yet to visit
+```
+
+For that half of the list the safety mechanism is **still** the lifetime denylist — the very list
+A-97 Part 6 reclassified as *"a diagnosis, not a safety mechanism"* on the grounds that it has been
+measured short twice. It is load-bearing again for every marker-carrying sentence, and it will be
+measured short a third time on exactly these phrasings, because none of them contains a totality
+word (`up to`, `under my belt`, `left in the world`, `still` are not on any list and *"still"* is not
+a totality word in general — *"which countries do I still need to visit"* is trip-scoped half the
+time it is typed).
+
+**This is not a regression and I am not asking for it to be reverted.** Measured at `d8f5a1e`, the
+same ten are answered — the flip moved the boundary for marker-less text and left this half where it
+was. Nor is the fix obvious: `am i` is what carries the shipped menu line *"how many countries am I
+visiting"*, so deleting the six markers breaks the standing round-trip criterion, and adding
+`visiting`-style verb constraints rebuilds the enumeration A-97 Part 6 was written to escape. The
+shape that would close it is a **conjunction** — a first-person marker counts as trip scope only
+beside a present/future *travel* verb the trip can answer about (`visiting`, `going to`, `seeing on
+this trip`) — which is a different ruling with a different failure mode, not a phrase list. Rider 4
+routes it here; §11.12's own residue 3 names the trigger (*"a phrasing that carries a marker and is
+nonetheless answered at the wrong scope"*), and this is that trigger, ten times.
+
+**What I could not break, so that the next round does not spend its budget here.** The evidence
+partition (fuzzed, 1,800 answers, four separate invariants, 0 violations). The uncapped `endMin`
+reaching any consumer that would misuse it (one caller, no arithmetic, no sort, no storage, no
+serialization — `OccupiedInterval` is not on §2.10 and not in any golden). The redaction chokepoint
+under the new clause forms (no stop name reaches prose in any of the four; `restate()` still
+redacts). Determinism (36 menu answers byte-identical across two calls, no ambient input in any of
+the four changed files, nothing mutates the document). The `stated_duration` clause leaking a name.
+The `no_records` and `time_unknown` sentences. A day in two cities (`2026-08-10`, in both of its city scopes, through the 36-question menu sweep), a zero-day trip, a one-stop day,
+an empty day, a stop with no time, a stop with no run length, `mins: 0`, negative `mins`, 24-hour and
+40-hour runs, and a run starting at 00:00 — all render sentences that are true of the document.
+**Nothing in this increment touches email ingestion, location traces, photos, permissions or the
+social graph**; the four files it opens hold no coordinate, no mailbox content and no cross-user
+read, so the standing privacy attack list has no surface here and I did not manufacture one.
+
+**Probe re-cut — `qa/r71-i37.mjs`, four assertions, each recorded at its own site.** It was **4 FAIL**
+at `465c200` and is **ALL CLEAR** after the re-cut; **none of the four was a live defect**. §F ×1 and
+§I ×2 were superseded by the ruling: §F demanded that the restatement and the menu line beside it
+*agree* about showing a name, and A-97 Part 7 ruled the other way out (the menu line must stay
+typeable, so the redacted restatement is what leaves the line) — the old assertion would have been
+satisfied by redacting the menu line, which is the fix the ruling refuses; §I counted the days the
+prose accounts for as *"1 named + the other one"*, which was true of the broken renderer and is not a
+rule, and now asserts A-97 Part 5 item 3's actual identity (`named + counted === busy`, measured 2 +
+1 = 3). §E ×1 was **wrong when I wrote it**: it asserted *"Split's evenings are not reported clear"*
+over a document putting `durationMins: -600` on **every** Split stop, under which no Split stop
+starts inside the evening at all, so `Yes.` is the honest answer — R71-4's real invariant is asserted
+now where it belongs, on a stop that starts inside the window (`0` and `-600` at 20:00, both busy).
+
+---
+
+> **Status (as of `master` @ `e0fea87`, independently verified 2026-09-12 — round 71, the
+> confirmation round over **`I-37`** / ARCHITECTURE **§11.11 A-96**, *one definition of how long a
+> stop occupies the clock, and prose that is clean by construction*).** One new script and one
+> re-cut, both run from `cairn/`: `node qa/r71-i37.mjs` (**9 sections, 79 assertions — 27 FAIL**,
+> offline, ~6 s, writes nothing) and `node qa/r70-ask.mjs` (**10 sections, 40 assertions —
+> ALL CLEAR**, re-cut; see below). **Zero product-code edits, zero `src`, zero `.tsx`, zero
+> `apps/web`, zero `packages/client`, zero `docs/design/`, zero corpus file, zero golden, zero
+> `tools/`, zero new dependency, zero lockfile.**
+>
+> **ASSESSMENT — SEND BACK. 0 BLOCKERS, 3 MAJOR, 4 MINOR.**
+>
+> **What round 70 found is CLOSED. All five of its open MAJOR/named findings are fixed, verified
+> against the code rather than against the report:** R70-1 (two of three arms — see R71-2), R70-2,
+> R70-3, R70-4, R70-5 (for the five phrasings it named — see R71-3), R70-6…R70-10, R70-12.
+> `qa/r70-ask.mjs` went from **27 FAIL at `43315ef`** to **ALL CLEAR at `e0fea87`** once its five
+> stale assertions were re-cut, and **four of those five re-cuts are recorded as such at their own
+> sites** because a probe that is edited to go green is worthless.
+>
+> **The three claims I was asked to re-derive all hold, and I re-derived them rather than reading
+> them.**
+> **(1) The 48-verdict sweep is exactly right, cell by cell.** I transcribed revision 77's
+> `classifyDay` out of `git show 3bc5b3e` and ran both classifiers over all 16 days × 3 dayparts:
+> **44 busy / 0 open / 4 unknown → 46 / 0 / 2**, **exactly two movers**, both `unknown → busy`, both
+> the evenings A-96 Part 4 names (`2026-08-07`, `2026-08-14`), the two survivors the mornings of
+> `2026-08-07` and `2026-08-08`, **nothing moves the other way and every revision-77 `busy` is still
+> `busy`**. **No third cell moved.** (`qa/r71-i37.mjs` §A.)
+> **(2) The `overlap` identity is exact, and I did not take the golden on trust.** I re-implemented
+> the deleted module-private `occupancy` from `git show 3bc5b3e` and ran both over **858 stop
+> shapes** — every scheduled and pooled stop of the fixture, plus five mutations of each covering
+> both `travelRole` arms, a stated duration and a stripped `arrival`. `stopOccupancy` agrees on every
+> one, with `source === 'journey_run'` ≡ `derived`. `overlap` still returns **0** findings on the
+> reference trip. (§H5.)
+> **(3) The chokepoint holds, and I attacked it far past one door code.** I put a distinct sentinel
+> in **every user-authored string field the model has** — `trip.title`, `City.name`, `Place.name`,
+> `Place.note`, `Stop.name`, `Stop.note`, `Stop.flags`, `Day.title`, `Day.subtitle`,
+> `Booking.operator`, `Booking.reference`, `Booking.route.fromName`/`toName`, `Booking.seat`,
+> `Ticket.label`, `MoveOverride.label`, and the pool's names and notes — and swept all 36 menu
+> questions at both clocks over `answer.text`, every `caveat.message` **and** `restate()`. **Exactly
+> one field reaches prose: `City.name`, the one A-96 Part 6 makes admissible**, and it reaches it
+> **redacted**. Nothing else does, on any arm, at either clock. I also ran `LONDON`, `ABCDEF`,
+> `London door code 4821`, `ЛОНДОН`, fullwidth digits and a Greek-omicron homoglyph through it: the
+> chokepoint is faithful to §6.6 on every one. (§H1, §H2.)
+>
+> **The two disclosed judgement calls are both right, and I checked them rather than accepting them.**
+> **`stops_without_duration` → `stops_without_occupancy` is justified.** `AnswerFact.label` is a bare
+> `string` — no closed union, no migration, and **no golden pins one** (I grepped all 19). The number
+> it labels counts stops that state no run length **by any field**, re-derived independently as 20 of
+> 28 in Split and matching the shipped fact exactly; keeping a label saying *duration* over it would
+> have been R70-3's own defect one layer out, which is the builder's stated reason and it is correct.
+> A-96 Part 3's refusal to rename `AnswerCaveatCode.duration_unknown` does not transfer — that is a
+> closed union with a golden behind it and this is not. **The probe is what moves, and it has.**
+> **The `SOURCE_ALLOW` row widens nothing.** It is keyed `<path>::<name>` and scoped to
+> `packages/core/src/ask/freeTime.ts::stopCount`; `derive/summary.ts` declares a `stopCount` too and
+> is **not** covered by it; and the tripwire separately asserts every allow key is *seen*, so the row
+> cannot outlive its declaration. (§H3, §H4.)
+>
+> **What broke, in one sentence each.** The fix for R70-3 turned two `unknown` cells into `busy` —
+> and the sentence it now renders for one of them **states an end time the document contradicts**
+> (**R71-1**, MAJOR, and it is on the default output of `node cli.ts ask "do I have a free evening"`
+> with no `--file` and no mutation). The fix for R70-5 replaced six literal phrases with a class, and
+> the class is **adjacency-matched**, so *"how many countries have I **already** been to"* — one
+> adverb from a phrasing that is refused — is answered *"This trip accounts for 7 countries"*
+> (**R71-3**, MAJOR). R70-1's fix covers two of its conditional's three arms (**R71-2**). The new
+> `intervalIntersects` tests only the *end* of a stated run (**R71-4**). The one thing the builder
+> added beyond the ruling — `restate()` through the chokepoint — ships with **no test at all**
+> (**R71-5**). Five of I-37's own new sentences have rough edges (**R71-6**). And the same A-96
+> Part 3 feature that produced R71-1 — a stop whose *stated* run reaches into the window — is
+> rendered only for **journeys**, so an ordinary stop with a `durationMins` and no `arrival` makes a
+> day `busy` and contributes **no clause**, leaving a bare *"No."* with no evidence, or a prose count
+> that is simply wrong (**R71-7**, MAJOR).
+>
+> **What I attacked and could not break.** The `travelRole` boundary, which is where I expected to
+> find something: a missing `travelRole`, `travelRole: 'unknown'` and a `transfer` stop all refuse
+> the `arrival.mins` fallback and degrade to *"states no run length"* rather than to a wrong number,
+> exactly as A-96 Part 2's trap requires — and the three malformed `arrival.mins` shapes I built
+> (missing, `null`, a string) are all refused by `fromJSON`'s `numOf` before they can reach it, so
+> the only values that get through are the finite ones in R71-4. The redaction chokepoint under the
+> full-model sentinel sweep. `trip_overview`'s two one-zero arms. `city_edge`. `country_count` on a
+> zero-day trip. Determinism (36 answers, byte-identical across two calls), purity (`toJSON(trip)`
+> byte-identical after driving the whole menu), the zero-dependency ceiling and the no-ambient-input
+> ceiling over `ask/` **and** the new `derive/occupancy.ts`. The two `.tsx`/`apps/web` fences: the
+> diff touches neither.
+>
+> **What I could not test.** No rendered surface exists and the fence forbids building one, so every
+> claim here is a CLI or an in-process claim — R71-1 and R71-3 are both demonstrated through
+> `node cli.ts ask` on the **unmodified** fixture, which is the strongest reachability available.
+> I did not re-run the full suite, the typecheck, the fence or the golden regeneration — the
+> dispatching manager verified all four independently and I had no reason to doubt them; I did run
+> the suite twice inside throwaway `git worktree`s for fault injection (below). I did not attack
+> `tripSummary`, `detectConflicts` or `countryOf`: `ask` re-publishes them and §11.4 makes that
+> deliberate. I did not attack `restate()`'s behaviour under a `Question` the recogniser cannot
+> produce, because the union is closed and `matchQuestion` is total over it.
+>
+> **Two faults injected, each in a throwaway `git worktree` with a copied `node_modules`; the live
+> tree was never modified and `git status` is clean.**
+> **(a) `cityProse` returns the raw name.** `npm run test:tap` → **1,944 pass / 1 fail**, and the
+> failing test is `ask.test.ts:814`'s own sweep over the mutated document. **The R70-4 guard is real
+> and I confirmed it by mutation rather than by reading the builder's note.**
+> **(b) `restate()` reverted to `cityName`.** `npm run test:tap` → **1,945 pass / 0 fail**, typecheck
+> **exit 0**. That is R71-5.
+> A third, run for completeness: dropping the `travelRole === 'journey'` guard in `stopOccupancy` —
+> A-96 Part 2's named trap — reddens **five** tests including the two that name the trap. Well
+> guarded.
+
+### Round 71 — the findings
+
+Every row says whether a **user** can meet it (sequencing rule 10). This capability has no screen, so
+*meetable* means **reachable through the shipped `cli.ts ask` command with realistic input**;
+`--file <document>` is a shipped, documented flag and is how a user opens a trip that is not the
+bundled fixture. Every repro is a section of `qa/r71-i37.mjs`, run from `cairn/`.
+
+| id | sev | where | defect | repro | user-meetable | route |
+|---|---|---|---|---|---|---|
+| **R71-1** | **MAJOR** | `packages/core/src/ask/ask.ts:614` + `:668` (with `derive/occupancy.ts:78-85`) | `free_time` renders `OccupiedInterval.endMin` — a value **clamped to 23:59** — as a clock time, so the flagship answer says a flight ends at a time the document contradicts; `crossesDay`, the field A-96 Part 2 added to record the clamp, has **no production reader**. | `node qa/r71-i37.mjs B` | **YES — `node cli.ts ask "do I have a free evening"`, no `--file`, unmodified fixture.** | **builder** (implementation; see below for the one architect sentence it also costs) |
+| **R71-3** | **MAJOR** | `packages/core/src/ask/match.ts:134-148` (`lifetimeFrame`) | R70-5's lifetime class is matched on strict token adjacency (`tokens[i-1] === 'have' && past(tokens[i+1])`), so **one adverb defeats it**: *"how many countries have I already been to"*, *"…have I now visited"*, *"…have I actually visited"* are all answered against this trip. The `have I not <verb>` frame `match.ts:125`'s own comment claims is not implemented; first-person **plural** (*"have we visited"* — a shared trip) is not covered; *"to date"* is not a totality marker. **8 escapes found; the sixth phrasing the round was asked for, plus seven more.** | `node qa/r71-i37.mjs D` | **YES — `node cli.ts ask "how many countries have I already been to"`, no `--file`.** | **builder** (implementation), with a standing design question for the **architect** — see below |
+| **R71-2** | MINOR | `packages/core/src/ask/ask.ts:204-215` | R70-1's fix covers two of its conditional's **three** arms. With `dayCount === 0` **and** `cityCount === 0`, the answer still says *"there is nothing more I can tell you about it"* / *"there is nothing to summarise"* at `coverage: 'none'` while its own facts carry `pool_count=31`, `place_count=95`, `booking_count=21` — R70-1's exact defect, in the arm nobody drove. | `node qa/r71-i37.mjs C` | YES, through `--file` — a document with bookings and pooled ideas but no day skeleton yet. `createTrip` cannot produce it (it mints a dense skeleton); `fromJSON` accepts it. | **builder** (implementation) |
+| **R71-4** | MINOR | `packages/core/src/derive/occupancy.ts:113` (`intervalIntersects`) | When a run length is stated, the predicate tests **only** `endMin > fromMin` and never whether the stop *starts* inside the window. For `mins > 0` that is equivalent; for `mins === 0` at the window's first minute, and for any `mins < 0`, a stop that starts inside the window is reported as not occupying it — `classifyDay` returns `open`, and the answer is a confident **"Yes."** at `coverage: 'complete'` with no caveat. `fromJSON`'s `numOf` accepts both values (finite is its only test) and neither `validateTrip` nor `createStop` refuses a negative duration. This is also the **only** way the `open` arm has ever fired on real data (A-96 Part 5: 0 of 48), and the first thing it produces is false. | `node qa/r71-i37.mjs E` | YES through `--file`, but the input is not realistic — a user does not type a negative duration, and `durationMins: 0` at exactly `18:00` is a narrow coincidence. Recorded at MINOR for that reason, not because the output is mild. | **builder** (implementation) |
+| **R71-5** | MINOR | `packages/core/src/ask/match.ts:250-262` + `cli.ts:606-619` | BUILD-NOTES disclosure 3 — `restate()` through the chokepoint — is **correct and entirely unguarded**: reverting it to `cityName` leaves the suite at 1,945 pass / 0 fail and typecheck at exit 0 (injected, worktree). And at the only surface that prints a restatement, `cli.ts`'s `questionLine` interpolates the **raw** name on the same line: `1. when you leave [redacted]  —  ask it as: when do I leave LONDON`. | `node qa/r71-i37.mjs F` | YES — `node cli.ts ask "when do I leave for LONDON" --file <doc>` prints both forms on one line. | **builder** for the missing assertion; **architect** for whether §11.8 clause 2's criterion should name `restate()` (and what `questionLine` owes, given a menu line must stay typeable) |
+| **R71-6** | MINOR | `packages/core/src/ask/ask.ts:634-647, 692, 566, 675, 663-665, 678` | Five rough edges in I-37's own sentences. (a) When a day is `unknown` because a stop states no **time**, the *"I can't tell"* arm offers the run-length census as its reason and that census reads **zero**: *"…but **0 of the 28 stops** across 4 days in Split state no run length. So I cannot say the evening is free."* — the stated reason is the opposite of a reason, and the real one is only in the caveat. (b) *"**1 scheduled stop** in this range **carry** no time"* — the noun is pluralised and the verb is not. (c) The whole-trip `no_records` caveat reads *"No day of this trip is recorded for this trip."* (d) A one-day scope renders *"on every one of the **1 day** in Split"*. (e) `.trim()` binds to the second template literal rather than to the concatenation in **both** the `Yes.` and the `No.` arm, so an answer whose second half is empty ends in a trailing space. | `node qa/r71-i37.mjs G I` | (a) and (b) yes through `--file`; (c) yes on a zero-day trip; (d) yes on any one-day city; (e) yes on any trip with no unoccupied stops. | **builder** (implementation) |
+| **R71-7** | **MAJOR** | `packages/core/src/ask/ask.ts:612-617` | A-96 Part 3 introduced `runsInto` — a stop whose **stated** run reaches into the window — and the renderer handles only the **journey** half of it: `busyRuns` is gated on `run.stop.arrival`, so a stop that states its own `durationMins` and carries no `arrival` falls to the `starts` branch, where there is nothing to render. Two such days give a bare *"No. Something occupies the evening on every one of the 2 days in Split."* with **no evidence at all** at `coverage: complete`; mixed with one journey day and one in-window start, the prose says *"on 2026-08-12 you are on a bus … and **the other one** has something starting at 20:00"* over **three** busy days — the count is wrong and the third day is dropped, while its `day_state` fact says `runsInto=1` and its stop is in `cites`. | `node qa/r71-i37.mjs I` | YES through `--file`. This is the **ordinary** shape of a Cairn-native stop (a stated `durationMins`, no `arrival`); A-96 Part 5 says the fixture cannot reach it only because the legacy planner recorded no durations, so the first user to record one meets it. | **builder** (implementation) |
+
+**R71-1, in full, because the reasoning is the evidence.**
+
+`node cli.ts ask "do I have a free evening"` on the unmodified reference trip prints:
+
+> No. Something occupies the evening (18:00–23:59) on every one of the 16 days on this trip: **on
+> 2026-08-07 you are on a flight from 16:45 until 23:59**, on 2026-08-14 you are on a bus from 17:15
+> until 18:35 …
+
+The document says that stop is `travelRole: 'journey'` with `arrival: {flight, 660}`. 16:45 + 660
+minutes is **03:45 the next day**, and `cli.ts conflicts` on the same trip prints the same run
+correctly — *"Condor DE2081 → Frankfurt runs **16:45–27:45**"* — because `overlap` renders
+`start + mins` while `free_time` renders `interval.endMin`. **Two renderers of the same computation,
+promoted into one function by this very increment, disagree about what the document says.**
+
+The root cause is one value serving two purposes. `occupiedInterval` clamps `endMin` to 1439 and sets
+`crossesDay: true`, which is **right for the predicate** — A-96 Part 3 is explicit that the model
+makes no claim about the next day, and `intervalIntersects` must not. It is wrong as a *reported
+time*, and `answerFreeTime` reuses it as one and drops `crossesDay`. `crossesDay` has **zero
+production readers** across `packages/core/src`, `packages/client/src` and `cli.ts` (§B measures it);
+it exists only to be asserted in `occupancy.test.ts`.
+
+Three things make this MAJOR rather than a rough edge. It is a **false statement about the user's own
+booked flight**, in the capability whose entire selling point is *"every answer is checkable and true
+of the document"* (§11 opening). It is **new in I-37** — at `3bc5b3e` that cell was `unknown` and the
+sentence carried no end time at all (*"On 2026-08-07, nothing starts after 16:45"*), so the fix for
+R70-3 introduced it. And the clamped value is **23:59, which is the window's own end**, so the
+sentence is indistinguishable from *"busy right through the evening"* and a reader has no way to
+notice. The window where it is invisible is exactly where it is wrong.
+
+One sentence of this is the **architect's**, not the builder's: A-96 Part 8 residue 3 says of the
+clamp *"The answer is never false **about the document** — the document says exactly this — but it is
+imprecise about the world."* As shipped, the answer **is** false about the document. That residue
+needs correcting whichever way the renderer is fixed.
+
+**R71-7, and why it is a MAJOR beside R71-1 rather than folded into it.** R71-1 is a clause that is
+false; R71-7 is a clause that is *missing*, and one that takes the sentence's own arithmetic with it.
+`answerFreeTime` builds its evidence list day by day: `if (run && run.stop.arrival) … else if (start
+…)`. `runsInto` is A-96 Part 3's new population — *some stop's occupied interval intersects the
+window* rather than *some stop starts in it* — and it is reached by two different kinds of stop: a
+journey (which has an `arrival`) and any stop that states a `durationMins` (which has none). The
+first branch can only render the first kind; the second branch asks for a stop that **starts** in the
+window, which by construction this day has none of. So the day is counted in *"every one of the N
+days"*, its `day_state` fact is emitted with `runsIntoWindow=1`, its stop is in `cites` — and the
+sentence says nothing about it. With three days and one journey among them the prose reads *"… and
+**the other one** has something starting at 20:00"*, which is a count over two remaining days.
+It is reachable with a document a user would actually write; the reference trip cannot reach it only
+because the legacy planner recorded no durations at all, which A-96 Part 5 states in as many words
+while declaring the `open` arm unfireable for the same reason. **The fixture's one missing property
+is hiding two separate defects in the same branch.**
+
+**R71-3 — the standing pattern, named again.** This is the sixth time in this project that a rule has
+been written as an enumeration and the enumeration has been short (rounds 62–69 name the others).
+R70-5's fix was itself the move from six literal phrases to a class, which was the right direction —
+but the class is still positional, and *"have I already been to"* is not an exotic phrasing, it is
+the ordinary one. The builder-routed fix is to make `lifetimeFrame` scan for the participle within a
+short window after `have/had/did I|we` rather than at a fixed offset, and to widen the verb set. The
+**architect** question underneath it, which is not the builder's to decide: §11.3 rule 3 is written as
+*"text carrying a lifetime pattern refuses"*, i.e. a **denylist over an open set of English**, and
+that is unbounded by construction. The inverse — `country_count` answers only when the sentence
+carries a **trip-scope** marker (`this trip`, `am I`, `are we`, `does this trip`) and refuses
+otherwise — is a rule over a closed set and would close the whole class at once. That is a §11.3
+ruling, not a phrase list, and it should be made before a seventh phrase list is written.
+
+**Probe re-cut — `qa/r70-ask.mjs`, five assertions, each recorded at its site.** The builder flagged
+five; I verified all five rather than accepting the characterisation, and **found a sixth he did not
+flag**. §C ×2 asserted properties of the *fixture* that were R70-3's own evidence written as
+requirements (*no journey stop states a run length* — 21 do; *the 17:15 bus does not run into the
+evening* — it does): genuinely unpassable by construction, and their passing would have meant the
+finding was wrong. They now assert what I-37 made checkable. §C ×1 crashed on the renamed fact label;
+the rename is right (above) and the probe moved. §F ×1 required the same Cyrillic word to be both
+matched and unread — a matched span is consumed, so the pair could not both hold; confirmed by
+running it (`unread` is `do i have a in`), and re-cut to ask R70-7's property of a word the recogniser
+genuinely did not read. §I ×1 is R70-11, adjudicated by A-96 Part 7 in favour of the shipped code; it
+becomes a re-derivation of A-96 Part 7's own number rather than an assertion against a corrected
+ruling. **The sixth: §G1 was passing VACUOUSLY** — `DayVerdict.latestStart` became
+`lastUncertainBefore` at `e0fea87`, an **undisclosed** rename (BUILD-NOTES discloses
+`withoutDuration → withoutOccupancy` and the fact label, not this one), so the filter read `undefined`
+and could not fail. The builder's reported *"33 ok"* therefore included one dead assertion. The field
+is internal to `ask/`, so the rename itself costs nothing and is **not** a finding; the probe now
+names the live field with a guard above it so a future rename cannot make it pass by absence again.
+`qa/r70-ask.mjs` is **ALL CLEAR** at `e0fea87`, and that is the measurement, not the goal.
+
+---
+
+> **Status (as of `master` @ `43315ef`, independently verified 2026-09-12 — round 70, the mandatory
+> adversarial pass over **`I-35`** / ARCHITECTURE **§11**, *a language model may parse a question; it
+> may never answer one*).** One new script, run from `cairn/`: `node qa/r70-ask.mjs` (**10 sections,
+> 38 assertions — 27 FAIL**, offline, ~4 s, writes nothing). **Zero product-code edits, zero `src`,
+> zero `.tsx`, zero `apps/web`, zero `packages/client`, zero `docs/design/`, zero corpus file, zero
+> golden, zero `tools/`, zero new dependency, zero lockfile.**
+>
+> **ASSESSMENT — SEND BACK. 0 BLOCKERS, 5 MAJOR, 8 MINOR.** **Nothing is fixed yet; all thirteen are
+> open.** The boundary §11 exists to hold — *no LLM anywhere in the answer path* — **holds, and I
+> could not bend it**: `ask/` imports nothing outside `packages/core/src`, reaches for no clock, no
+> randomness, no `fetch`, no `fs`, no `Intl`, no `process`, and all 36 menu answers are byte-identical
+> across two calls. What broke is the *other* half of the same sentence — **every clause of every
+> answer is traceable to a cited fact**. Four of the five MAJORs are rendered prose that is false of,
+> or unsupported by, the document the answer claims to be about, and one of those four is the
+> increment's own flagship example.
+>
+> **The three disclosed items, each adjudicated rather than accepted.**
+> **(1) N7 — the builder's declaration is honest and the strengthening is real.** I re-derived both
+> halves independently. The pool's code set `{AT, CZ, GB, HR, HU}` is a strict subset of the rest's,
+> so the stated set-equality form **genuinely cannot fire** — confirmed, not taken on his word. And
+> the strengthened form's hand-typed faulty object is **exactly** what the real fault produces: I ran
+> the fault (drop `trip.pool` from the evidence walk) and got `AT 29, CZ 52, DE 2, GB 15, HR 55,
+> HU 44, US 2`, byte-for-byte the constant in `ask.test.ts:414`. **Accepted, no finding.**
+> **(2) KD-131 — the builder's call is right, and his own note under-measures it.** The literal
+> reading of §11.7 rule 4 would print *"No stop on that day is recorded as a journey"* about **two**
+> edge days that record one, not one: London's last day (`2026-08-22`, 14:30 *"Collect bags, head to
+> Heathrow"*) **and Vienna's arrival day** (`2026-08-08`, 14:30 *"Condor DE4345 → Vienna (VIE)"*). It
+> would also demote two `complete` answers to `partial`. The mechanical reading is the only one that
+> does not make Cairn lie; the prose in §11.7 is what needs fixing. **R70-11, architect, MINOR.**
+> **(3) The redaction claim is real and it is broken.** §11.8 clause 2's *"`[]` for every answer"* and
+> `ask.ts`'s *"the sentence stays clean by construction"* hold **only for the reference trip's own
+> strings**. `answer.text` interpolates `trip.title` and `City.name` **verbatim**, and neither is in
+> the header's own allow-list of *"dates, times, counts, city names and country codes"* for `title`.
+> A trip titled `EUROPE 2026` returns `['alnum_reference']`; a trip titled `Split flat (door code
+> 4821)` returns `['keyword_token','keyword_digits']` — a §6.6 credential class rendered into prose;
+> a city renamed `LONDON` fires on `trip_overview`, `city_edge` **and** `free_time`. **R70-4, MAJOR.**
+>
+> **The two arms the builder says are unfireable really are, and the hand-built documents are
+> honest.** 0 of 112 scheduled stops carry a null `time`; 0 of 6 cities fail to occupy a day. Both
+> confirmed from the fixture directly. The two test documents (`ask.test.ts:156`, `:338`) are real
+> `Trip` values driven through the real `ask` and are not weakened. **But the `time_unknown`
+> assertion built on one of them is** — it asserts only that the caveat *exists*, on a day that was
+> already `unknown` for another reason, so it never sees the combination that actually matters
+> (R70-2), which is the one where the answer says **"Yes."**
+>
+> **The `free_time` three-valued sweep holds.** All 48 day × daypart combinations of the reference
+> trip: **44 `busy`, 4 `unknown`, 0 `open`**. I could not construct a real trip shape where it should
+> say `open` and does not. I constructed two where it says `open` and should not (R70-2, R70-10).
+>
+> **The A-10 ship gate is real and would have caught the alternative.** Verified by planting
+> `split(/[^a-z0-9]+/)` in a throwaway file under `packages/core/src/ask/` and running
+> `node --test packages/core/test/cityKey.test.ts`: test 19 goes **RED naming the planted file**.
+> Removed; `git status` clean. The tokenizer comment in `match.ts:50-62` is honest.
+>
+> **What I could not test.** No rendered surface exists and the fence forbids building one, so every
+> claim here is a CLI or an in-process claim. I did not attack `tripSummary`, `detectConflicts`,
+> `countryOf` or the conflict rules themselves — `ask` re-publishes them and §11.4 makes that
+> deliberate, so a defect in one of them is not an `I-35` finding. I did not attack design (b): it
+> does not exist and §11.2 refuses to design it. I did not re-derive the suite count, the typecheck,
+> the fence or the export count of 91 — the dispatching manager verified all four and I had no reason
+> to doubt them.
+
+### Round 70 — the findings
+
+Every row says whether a **user** can meet it (sequencing rule 10). This capability has no screen, so
+*meetable* here means **reachable through the shipped `cli.ts ask` command with realistic input** —
+`--file <document>` is a shipped, documented flag on every command in that CLI, and it is how a user
+opens a trip that is not the bundled fixture. Every repro below is a section of one script.
+
+| id | sev | file:line | defect | user? | repro | routing |
+|---|---|---|---|---|---|---|
+| **R70-1** | **MAJOR** | `packages/core/src/ask/ask.ts:184`, `:190-192` | `trip_overview`'s empty arm fires when **either** `dayCount` or `cityCount` is zero but always renders *"Nothing else is recorded on it yet — **no days and no cities**"*, and always returns `coverage: 'none'`. On a trip with 16 days and no cities the sentence says *"no days"* while the answer's own `day_count` fact, printed four lines below it by the CLI, says **16**; on a trip with 6 cities and no days it says *"no cities"* while `city_count` says **6**. §11.5's *"every rendered clause corresponds to a fact"* fails inside a single `Answer`, and the `none` label hides a document the engine could have described. | **yes** — every brand-new trip is cities-without-days; `ask "what does my trip look like" --file t.json` | `node qa/r70-ask.mjs A` | **builder** |
+| **R70-2** | **MAJOR** | `packages/core/src/ask/ask.ts:568-573`, `:588-592`; test `packages/core/test/ask.test.ts:330-353` | `free_time` renders the confident **"Yes."** arm with `coverage: 'complete'` while emitting a `time_unknown` caveat whose own message says the untimed stops *"could not be placed in or out of the window"*. On a document where every stop states a `durationMins` and one scheduled stop on 2026-08-14 states no `time`, Cairn answers *"Yes. … 1 has nothing starting in the evening (18:00–23:59) and every stop on that day states how long it takes: 2026-08-14"* — about a day carrying a stop it cannot place. This is §11.7 rule 1 inverted: **an answer with an unresolvable hole labels itself complete and reads exactly like one that has none.** `coverage` is the field a surface will branch on, and here it is wrong in the only direction that matters. The shipped `time_unknown` test asserts the caveat's presence and nothing about `coverage` or the sentence, which is why this shipped. | **yes** — `ask "do I have a free evening in Split" --file f.json`; both ingredients (stated durations, an untimed stop) are ordinary Cairn-native data the model explicitly allows | `node qa/r70-ask.mjs B` | **builder** (drop to `partial`, and change the sentence — §11.7 rule 1) |
+| **R70-3** | **MAJOR** | `packages/core/src/ask/freeTime.ts:93`, `:95`; `ARCHITECTURE.md` §11.7 rule 3's table; `packages/core/src/model/types.ts:316-323` | **`free_time` calls a duration the document states "no duration."** `TravelRole` says that for `travelRole: 'journey'` *"`arrival` is the vehicle's own journey, `time` is when it DEPARTS"* — so `arrival.mins` **is** that stop's own run length. **21 of 21 journey stops on the reference trip state one.** `classifyDay` reads only `durationMins` and therefore counts all of them as stating nothing. The consequence lands on §11's own flagship example: the 14th's 17:15 *"FlixBus → Split"* is `travelRole: 'journey'` with `arrival: {bus, 80}` — the document says it runs to **18:35**, inside the 18:00–23:59 window — and the shipped answer is *"nothing starts after 17:15 … but 28 stops across 4 days in Split say nothing about how long they take, so I cannot say the evening is free."* **8 of those 28 are journeys that do say.** The `[stated]` oracle for the whole increment rests on ignoring evidence the document carries. | **yes** — `ask "do I have a free evening in Split"`, the shipped example, on the shipped fixture | `node qa/r70-ask.mjs C` | **architect** — §11.7 rule 3's table names `durationMins` and only `durationMins`; deciding whether `arrival.mins` is a stated duration for a journey stop is a ruling, not a patch. (§11.4's ceiling means the fix is *"a stop's occupied interval"* in `derive/`, not a third computation in `ask/`.) |
+| **R70-4** | **MAJOR** | `packages/core/src/ask/ask.ts:191`, `:193`, `:180-181`, `:270`, `:501`, `:556` | `answer.text` interpolates `trip.title` and `City.name` **verbatim**, so §11.8 clause 2's *"`redactionHits(answer.text)` is `[]` for every answer"* is a property of the reference trip's strings rather than of the renderer. Measured: `title: "EUROPE 2026"` → `['alnum_reference']`; `title: "Split flat (door code 4821)"` → `['keyword_token','keyword_digits']`, which is a §6.6 **credential** class in rendered prose; a city renamed `LONDON` fires on three of the five question kinds. `ask.ts`'s own header states the rule that would have prevented it — *"the renderer interpolates dates, times, counts, city names and country codes — never a record's free-text NAME"* — and `trip.title` is a record's free-text name that the rule's own list does not cover. Not a leak to a third party today (`ask` is pure, local and sends nothing), which is why it is MAJOR and not a BLOCKER; it is the property (b) would inherit, and §11.1 is explicit that the whole design exists so the day a model arrives it cannot touch the answer. | **yes** — `ask "what does my trip look like" --file p.json`; naming a trip in capitals is ordinary | `node qa/r70-ask.mjs D` (with the unmodified-fixture control, which passes) | **builder** (the header's own rule, applied to `title`) + **architect** (one sentence on whether a `City.name` may be interpolated at all, since it is user free text too) |
+| **R70-5** | **MAJOR** | `packages/core/src/ask/match.ts:95-98` | **The lifetime scope refusal is a six-phrase literal list, and the obvious neighbours fall straight through to the trip-scoped answer.** *"how many countries have I visited"*, *"…have I seen"*, *"…have I stayed in"*, *"which countries have I visited"*, *"how many countries did I visit"* and *"how many countries total"* all return `matched`/`country_count` and are answered **"This trip accounts for 7 countries"**. §11.3 rule 3's own argument is that these *"differ by one word and by an entire data set"*, and it is the reason `'have i been'` is in the list at all — but `'have i been'` is a **phrase**, not the pattern, so one verb away the refusal disappears. This is *right about the wrong question*, which the section names as the failure mode it is arranged against, and it is the most product-dangerous thing in this increment: a confidently wrong answer beats a refusal only in the wrong direction. The restatement (*"how many countries this trip visits"*) and `unread` (*"have i visited"*) are real mitigations and are why this is MAJOR rather than a BLOCKER. | **yes** — `node cli.ts ask "how many countries have I visited"` | `node qa/r70-ask.mjs E` | **builder** (the vocabulary is his, and §11.3 rule 3 names the *class* — a past-tense first-person frame — not the six phrases) |
+| **R70-6** | MINOR | `packages/core/src/ask/match.ts:251-256`, `:281` | *"when do I leave **for** Vienna"* is matched silently as `city_edge{vienna, leave}`. Both readings are expressible in the closed union (`leave vienna` and `arrive vienna`), so §11.3 rule 1 — *"two readings is a refusal, never a choice"* — should fire; instead the preposition that flips the meaning lands in `unread` (*"when do i **for**"*) under a delivered answer. The recogniser has no notion that a consumed edge verb can be negated by an unconsumed word beside it. | **yes** | `node qa/r70-ask.mjs F` | **builder** |
+| **R70-7** | MINOR | `packages/core/src/ask/match.ts:64-66` | `tokenize` keeps only `[a-z0-9]+` runs, so a word with none **cannot appear in `unread`** — §11.3 rule 2's *"a recogniser that silently ignores half the input is a classifier pretending to be a parser"* is unenforceable for exactly the input it was written for. Asking *"do I have a free evening in Сплит"* of a trip whose Split is named in Cyrillic is answered **about the whole trip**, `unread: do i have a in` — the user's own subject word is gone without trace. Same for *"…in 東京"*, a place not on the trip at all: silently widened rather than reported. The restatement (*"anywhere on this trip"*) is the only thing that discloses it. | **yes** — any non-Latin city name, which the model supports (`cityKey.test.ts:42` is two Japanese city names) | `node qa/r70-ask.mjs F` | **builder** |
+| **R70-8** | MINOR | `packages/core/src/ask/ask.ts:565`; `packages/core/src/ask/freeTime.ts:90` | The `unknown` arm offers the day's **day-wide** `latestStart` as the reason it cannot judge the asked window, so it can name a time **after** the window it is explaining. `ask "do I have a free morning"` returns *"On 2026-08-07, nothing starts after 16:45"* about the 05:00–11:59 window; 2 of the 4 `unknown` rows on the reference trip do this (2026-08-07 → 16:45, 2026-08-08 → 21:15). True of the document, irrelevant to the question, and read as evidence. | **yes** — `node cli.ts ask "do I have a free morning"` | `node qa/r70-ask.mjs G` | **builder** |
+| **R70-9** | MINOR | `packages/core/src/ask/ask.ts:511-513` | The no-days arm hard-codes *"That is a gap in the document, not a free **evening**"* for all three dayparts. `ask "do I have a free morning in Lisbon" --file g.json` → *"…there is no **morning** for me to look at. That is a gap in the document, not a free **evening**."* One clause of a two-clause sentence reads a field the other ignores. | **yes** — a city added before its days, which `askableQuestions` will offer | `node qa/r70-ask.mjs G` | **builder** |
+| **R70-10** | MINOR | `packages/core/src/ask/freeTime.ts:95`; `packages/core/src/ask/ask.ts:571-572` | A day with **zero stops** classifies `open` (documented as deliberate) and then renders *"…and every stop on that day states how long it takes: 2026-08-14"* — a positive claim about stops that do not exist, `coverage: 'complete'`, no caveat. The verdict is defensible; the justification clause is rendered from a vacuous truth rather than from a fact. | **yes** — an unplanned day is ordinary | `node qa/r70-ask.mjs G` | **builder** |
+| **R70-11** | MINOR | `ARCHITECTURE.md` §11.7 rule 4 vs §11.5's `no_departure_stop`; `docs/BUILD-NOTES.md` KD-131 | KD-131 adjudicated: **the builder is right and his note under-measures its own case.** §11.7 rule 4's prose gates the journey-stop search on a two-city day; §11.5's definition of `no_departure_stop` (*"the day carries no `travelRole: 'journey'` stop"*) does not. Taking the literal reading would print *"No stop on that day is recorded as a journey"* about **two** days that record one — London's last (`2026-08-22`, 14:30) **and Vienna's arrival day** (`2026-08-08`, 14:30 Condor DE4345) — and demote two `complete` answers to `partial`. KD-131 names only the first. Fix the sentence, not the code. | no — the shipped behaviour is the correct one | `node qa/r70-ask.mjs I` | **architect** |
+| **R70-12** | MINOR | `cli.ts:85-87` | `--file` is parsed and `core.fromJSON` called at **module scope with no `try`**, so `node cli.ts ask "…" --file broken.json` exits on a raw `TripParseError` **stack trace**. Pre-existing, but `ask` is now a command a user points at their own document, and this CLI's house style for input it will not act on is one line and a non-zero exit — stated forty lines above, in `todayIsValid`'s own comment, as the fix for exactly this shape of bug (R28-9). | **yes** | `node cli.ts ask "what does my trip look like" --file /dev/null; echo $?` | **builder** |
+| **R70-13** | MINOR | `ARCHITECTURE.md` §11.8 clause 2; `cli.ts:675-686` | **The rule is wider than the criterion that checks it.** §11.8 clause 2's headline is *"No credential reaches an `Answer`"*; its criterion checks `answer.text` only. The build deliberately routes record names into `AnswerFact.value`/`params` (`ask.ts:337` copies a conflict's `summary` and `params` wholesale) and `cli.ts` prints both. Nothing anywhere checks a fact. A door PIN in a stop `note`, or a reference in a stop name, reaches the rendered surface with no assertion between it and the terminal. Low severity today — the reader owns the document — but the sentence and the test should agree about which of them is the rule. | no (nothing on the reference trip fires it) | read `ask.ts:336-338` beside §11.8 clause 2 | **architect** (narrow the sentence or widen the criterion) |
+
+**What I attacked and could not break**, so nobody re-derives it:
+
+- **The §11.1 boundary itself.** No path in `ask/`, `match.ts` or `cli.ts` reaches a model, a network,
+  a vendor or a key; `ask/` imports **only** relative `packages/core/src` modules and `cli.ts ask`
+  calls exactly the three exported symbols. Every rendered clause I could find is interpolated from
+  a `fact`'s own value or from a `Trip` scalar — the five MAJOR/MINOR prose findings above are all
+  *wrong* facts or *missing* facts, none of them is invented prose with no fact behind it.
+- **Determinism and the zero-dependency ceiling, run rather than grepped.** All **36** menu answers
+  are byte-identical (`JSON.stringify`) across two calls in the same process; no `Date`, `new Date`,
+  `Math.random`, `crypto.`, `fetch(`, `node:`, `process.`, `Intl.` or `toLocale` anywhere in `ask/`.
+- **The grounding law.** I could not mint a dangling cite through any shipped door: every cite is
+  constructed from a record the resolver then finds by the same key, `resolveCite` is total, and
+  `citesOf` is a superset of every fact's cites by construction. A `city` cite for a key no city
+  carries is reachable only by hand-calling `ask` with a fabricated `Question`, which neither
+  `matchQuestion` nor `askableQuestions` can produce.
+- **`coverage` on the other three kinds.** `unbooked` is `partial` on every arm by design (§8.2) and
+  cannot be made to claim `complete`; `country_count`'s `complete` arm requires
+  `located === attributed` on **both** populations, and a country with no record evidence still
+  carries its city cite (verified with a stated-country city that owns no coordinate: `PT 0` prints
+  honestly). `trip_overview` outside R70-1's arm is always `complete`, which is defensible.
+- **Ambiguity in the direction that matters.** *"do I have free time"* correctly refuses with three
+  readings; two intents refuse; two city names refuse. The only silent pick I found is R70-6.
+- **The N9 redaction fault as stated.** It fires exactly as claimed on the reference trip; R70-4 is a
+  different fault on the same criterion, not a weakness in N9.
+
+---
+
+**Round 69's status block and findings follow, unchanged.**
 
 > **Status (as of `master` @ `0d757f4`, independently verified 2026-09-10 — round 69, the mandatory
 > adversarial pass over **`I-32`** / §8.4 **A-94**, *an abstention is not a vote*).** Three new
@@ -9722,3 +10220,186 @@ use. R32-2 is a change to `contentTrip('degenerate', …)` so the degenerate rep
 from a `revision: 0` document, still minted through core, with nothing added to `ageRow` and no
 hand-typed row literal. Neither needs an architect ruling, neither adds a table row, and neither
 touches the 15-state cover. **A-39's boundary holds; two of its cells were simply not wired up.**
+
+---
+
+## Round 73 — the confirmation round over **I-44** / ARCHITECTURE **§11.13 A-98**, *a scope gate asks whether the sentence is one Cairn wrote*
+
+> **Status (as of `master` @ `4142ecb`, independently verified 2026-09-15 — round 73, the
+> confirmation round over **`I-44`** / **§11.13 A-98**).** One new script and one re-cut, both run
+> from `cairn/`: `node qa/r73-i44.mjs` (**7 sections, 76 assertions — 13 FAIL over 6 findings**,
+> offline, ~15 s, writes nothing) and `node qa/r72-i38.mjs` (**9 sections — re-cut at 6 sites in
+> §B/§F/§G; 3 FAIL remain and they are findings, not staleness**). **Zero product-code edits, zero
+> `src`, zero `.tsx`, zero `apps/web`, zero `packages/client`, zero `docs/design/`, zero corpus
+> file, zero golden, zero `tools/`, zero new dependency, zero lockfile.** Suite re-run end to end:
+> **1,964 pass / 0 fail**.
+>
+> **ASSESSMENT — SEND BACK. 0 BLOCKERS, 2 MAJOR, 5 MINOR.** Nothing here is a privacy leak, a data
+> loss, or wrong-person's-data; **no finding is reachable on the reference trip through
+> `node cli.ts ask "…"` with no `--file`.**
+>
+> ### **R72-1 IS CLOSED.** Measured, not read off the diff.
+>
+> All **thirteen** lifetime phrasings — R72-1's ten plus A-98 Part 1's three preposition cases —
+> refuse, where **13 of 13 reached `matched: country_count`** before this increment. None of the
+> thirteen is a member of the accept set, which is what makes the refusal structural rather than
+> lucky. The accept set was **regenerated here from A-98 Part 3's own published fragments**, not
+> read out of the implementation: **43 fragments → 816 sentences, 816 distinct (no two fragment
+> pairs collide), every one `matched: country_count`, every one `unread: []`, 0 of 816 trip
+> `LIFETIME_TRIGGERS` or `lifetimeFrame`, 126 of 816 carry no `COUNTRY_TRIGGERS` phrase at all.**
+> `TRIP_SCOPE_MARKERS` is gone. `COUNTRY_TRIGGERS` is named exactly **twice** in `match.ts` — its
+> declaration and its one read, inside `if (candidates.length === 0)` — which is a stronger
+> statement than either count: **the trigger list has no path to an answer at all.** The 48
+> verdicts are still **46 busy / 0 open / 2 unknown**, `Object.keys(core).length` is still **91**,
+> neither internal export reaches `index.ts`, and the fence holds (`git diff --stat de9585f..4142ecb`
+> is six files, none of them `.tsx`, `apps/web/`, `docs/design/`, a golden or the lockfile).
+>
+> ### What sends it back, and it is not the scope gate
+>
+> **`R73-1` is a regression, and it is the worst thing in this round.** A-98 Part 8 emits the mode
+> word wherever `stop.travelRole === 'journey' && stop.arrival !== null`, **whatever `source` is**.
+> Both conjuncts are right and both are verified below. What the predicate does not ask is whether
+> the interval it is labelling **is** that journey. When a journey states *both* `durationMins` and
+> `arrival`, `stopOccupancy` takes `durationMins` — and the clause then renders the mode from
+> `arrival.mode` beside a clock from `durationMins`. Where the two fields disagree, the sentence
+> states something the same stop contradicts. On the reference trip's own flagship leg, after one
+> patch through the public `updateStop` door:
+>
+> ```
+> stop-2: time 16:45, arrival {mode:'flight', mins:660}, durationMins 200
+> → "on 2026-08-07 you are on a flight from 16:45 until 20:05"
+> ```
+>
+> The document says that flight lands at 03:45 the next morning. **This is R71-1's own failure —
+> *a value computed to decide is not a value to state* — re-created by A-98's fix**, and at
+> `de9585f` the same document rendered *"something that starts at 16:45 runs until 20:05"*, which
+> is odd and true. It is not a straw man: the shipped test that proves A-98 Part 8 plants
+> `durationMins: 120` beside `arrival: {mode:'flight', mins: 300}` and **asserts** the sentence
+> *"you are on a flight from 16:30 until 18:30"* about a flight the same stop says takes five
+> hours. The narrow predicate A-98 Part 8's own words describe — *"is this interval a journey the
+> stop itself makes"* — is the shipped one **and** `durationMins === null || durationMins ===
+> arrival.mins`. Routing is **architect**, because Part 8 rules the expression verbatim and says
+> `source` keeps nothing.
+>
+> **`R73-5` is A-98's own named residue class, live in 4 of our 43 fragments, and it is an
+> adjudication rather than a measurement — I say so plainly.** A-98 Part 5: *"rider 4's MAJOR class
+> can now occur in exactly one way: an authored phrasing is itself scope-ambiguous."* Four of the
+> sixteen `BARE_FRAMES` are **present simple** — `do i visit`, `do we visit`, `do i go to`, `do we
+> go to` — and the source justifies the whole list as *"frames that name no document and are
+> trip-scoped by their own TENSE"*. Present simple is not a tense that scopes to an occasion; it is
+> habitual, and a habitual question about travel resolves against the library `travelStats`
+> answers. *"What countries do I visit"* and *"which countries do I go to"* are both answered
+> **"This trip accounts for 7 countries"** today. The strongest evidence is A-98's own Part 1 item
+> 1, which kills the *"look at the verb"* repair because **first-person marker plus travel verb is
+> present on both sides of the boundary** — and `do i visit` is exactly that pair, admitted one
+> page later as a bare frame. If the architect adjudicates the four trip-scoped, the fix is to
+> **correct the justifying comment**, not the list; if not, four fragments and 24 cells withdraw.
+> Either way it is one ruling and it is Part 6 rider 3's own route.
+>
+> **The scope gate can close without either of them.** R73-1 lives in `ask/ask.ts` and shares no
+> file with the gate; R73-5 is a withdrawal of fragments from a list that is already correct in
+> mechanism. Parts 1–7 — the ruling Jacob directed to close before Phase 3 — are **done**.
+>
+> ### The three disclosures, adjudicated
+>
+> **1. R72-6's third site — the builder was right to stop and wrong about which rule applies, and
+> the fix is a mechanism, not a fifth site.** The builder left the third site because *"the finding
+> enumerated its sites and widening a prose fix is an architect's call"*. That is procedurally
+> correct. But the rule that governs is **§0 position 10** (*a claim is only as strong as the
+> mechanism that maintains it*) together with position 5's revision-50 clause (*not at a list of
+> sites a builder must remember, but at a boundary every path must pass through*). The
+> numeral-for-one defect has now been found at **six** sites across **three** rounds: R71-6 (d)
+> fixed one, R72-6 named and fixed two, and **four** are still standing — including one **inside
+> the sentence R72-6 fixed** (*"Of the only day in Split, **1** is clear"*). A fourth enumeration
+> will be wrong too. The ruling this needs is one pluraliser used by every arm plus a criterion
+> over the **rendered text** of every `free_time` answer. **R73-3**, architect.
+>
+> **2. The empty `unread` on an accepted sentence — the builder is right, and it is not a lost
+> signal.** Verified over all **816**: `unread` is `[]` for every member. Under whole-sentence
+> equality the key *is* the sentence, so there is no half that was not read, and no superset
+> sentence can match. The behaviour it replaces — printing *"I did not read: am i visiting"* about
+> words the recogniser had in fact used to decide — was the recogniser lying the other way about
+> its own comprehension. §11.3 rule 2 is satisfied, not weakened. **No finding.**
+>
+> **3. The country-trigger substitute — as strong as the claim it replaces, but only because the
+> other half is also asserted, and the strongest form is neither.** The brief's claim (*0 of 816
+> trip a country trigger*) is indeed **false by construction**: *"how many countries"* is both a
+> stem and a trigger. The builder's substitute (**126 of 816 carry no trigger and answer anyway**)
+> proves the list is **not necessary** for an answer; on its own that is weaker than the claim it
+> replaces. The shipped test also asserts the other half — *"which countries are we booking"*
+> carries a trigger and **refuses** — so the list is neither necessary nor sufficient, and the pair
+> is as strong. **The strongest form is neither count and nobody named it:** `COUNTRY_TRIGGERS`
+> appears exactly **twice** in `match.ts`, and its only read sits inside `if (candidates.length ===
+> 0)`, from which only an `out_of_scope` or an `unrecognised` can be returned. That is a structural
+> proof that the list cannot authorise an answer, and it is one `grep`. Asserted in
+> `qa/r73-i44.mjs` §C. **No finding; a recommendation to prefer the structural assertion.**
+>
+> ### The four things the brief pointed me at, each measured
+>
+> **(1) The two internal exports do not widen the surface, and the reasoning behind them holds.**
+> `Object.keys(core).length === 91`; neither `lifetimeScoped` nor `journeyModeWord` is on it; both
+> are reachable from their own modules, which is what makes criterion 2 and N5 assertions rather
+> than claims about private state. **BUILD-NOTES' reason for `journeyModeWord` is verified rather
+> than accepted**: over all 48 day×daypart cells of the reference trip, **0** of the `runsInto`
+> entries `answerFreeTime` renders from are non-journey stops, so N5 genuinely has no prose site
+> that reddens there. **Criterion 2 is weaker than it reads, and this is a note rather than a
+> finding**: it can only redden for a fragment carrying a past-travel frame — i.e. a fragment the
+> existing denylist *already* catches — so it cannot see the failure Part 5 says is the only one
+> left (R73-5). It also **blocks its own recall fix**: *"how many countries have I visited on this
+> trip"* is a real phrasing that names the document, refuses today as `lifetime`, and can never be
+> admitted without reddening criterion 2.
+>
+> **(2) Criterion rule 11 is green and its whole surface is one string.** Every `"…"`-quoted
+> phrasing inside every `out_of_scope` pointer, found by grep over `packages/core/src/ask/` rather
+> than by list: **exactly one**, *"how many countries am I visiting"*, and it is a member of the
+> accept set. `cli.ts`'s `questionLine` for `country_count` is the same string. R72-7 stays closed
+> — no pointer cites a `§`. `apps/web` has no ask surface at all, so there is no second place for
+> the pointer and the gate to drift.
+>
+> **(3) Part 3's occupancy fixes are right, and the test now pins the right contract.** R72-3 and
+> R72-4 are both correct at the boundary: `endMin === 1440` → `crossesDay === false`, `endMin ===
+> 1441` → `true`, and `intervalIntersects(i, 1439, 1439) === true` for the 16:45+660 flight with
+> `intervalIntersects(i, 1440, 1500) === false` beside it and `i.endMin > 1500` asserted so the
+> second is not vacuous. The 48-verdict sweep is unmoved. **But the fix moved exactly one value
+> into an arm that has no case for it — R73-2.**
+>
+> **(4) R72-5 is HALF fixed, and the half that shipped was the only half disclosed.** The finding
+> names three values; the guard `endMin >= startMin` catches two of them and not `durationMins: 1e9
+> → "16666684:40"`. The field still has **no production reader**, which was the finding's other
+> half and is routed to the architect under criterion rule 10. Both still red in
+> `qa/r72-i38.mjs E`. **R73-4.**
+>
+> ### What I could not test
+>
+> Nothing in `apps/web` (fenced, and it has no ask surface). Nothing in `I-30`/the picker (fenced).
+> No browser was started — this increment opens no rendered surface. I did not re-derive the
+> goldens or the typecheck: the manager verified both, and every product-visible number I do
+> report I re-derived myself. **I did not adjudicate R73-5's English with a second reader** — it is
+> one person's reading of four fragments and it is labelled as such.
+
+Every row says whether a **user** can meet it (sequencing rule 10). This capability has no screen,
+so *meetable* means **reachable through the shipped `cli.ts ask` command with realistic input**;
+`--file <document>` is a shipped, documented flag. Repros are sections of `qa/r73-i44.mjs` (and two
+of `qa/r72-i38.mjs`), run from `cairn/`.
+
+| id | sev | file:line | defect | repro | user-meetable | route |
+|---|---|---|---|---|---|---|
+| **R73-1** | **MAJOR** | `packages/core/src/ask/ask.ts:557` (`journeyModeWord`) + `:680` | The mode word is emitted on `travelRole === 'journey' && arrival !== null` **whatever `source` is**, so on a journey that states **both** `durationMins` and `arrival` the clause renders the mode from `arrival.mode` beside a clock from `durationMins`. Where the two disagree the answer states a landing time the same stop contradicts: `updateStop(trip, 'stop-2', {durationMins: 200})` on the reference trip's own LAX→VIE leg (`arrival.mins: 660`) yields *"on 2026-08-07 **you are on a flight from 16:45 until 20:05**"*. At `de9585f` the same document said *"something that starts at 16:45 runs until 20:05"* — odd, and true. The shipped test that proves Part 8 pins this shape (`durationMins: 120` vs `arrival.mins: 300`). The narrow predicate Part 8's own words describe is the shipped one **and** `durationMins === null \|\| durationMins === arrival.mins`. | `node qa/r73-i44.mjs D` | YES through `--file`, and through `core.updateStop`. **NOT** on the reference trip through `cli.ts ask` with no `--file` — all 21 of its journey stops carry `durationMins: null`. No `apps/web` surface writes `durationMins` today. | **architect** (§11.13 A-98 Part 8 rules the expression verbatim and says *"`source` keeps nothing"*) |
+| **R73-5** | **MAJOR** | `packages/core/src/ask/match.ts:294-299` (`BARE_FRAMES`) | Four of the sixteen bare fragments are **present simple** — `do i visit`, `do we visit`, `do i go to`, `do we go to` — which is habitual, not occasion-scoped, so **24 of the 816 authored sentences are scope-ambiguous in English**: *"what countries do I visit"* and *"which countries do I go to"* are both answered *"This trip accounts for 7 countries"*. The source justifies the whole list as *"trip-scoped by their own TENSE"*, which is false for these four, and A-98 Part 1 item 1 kills the *"look at the verb"* repair on exactly this pair of features one page earlier. **This is an adjudication of our own text, not a measurement** — A-98 Part 5 says it is the only remaining way rider 4's MAJOR class can occur, and Part 6 rider 3 routes it. | `node qa/r73-i44.mjs A` | YES — `node cli.ts ask "what countries do I visit"` answers, no `--file` needed. | **architect** (A-98 Part 6 rider 3: withdraw a fragment and say which cells went with it — or rule the four trip-scoped and correct the justifying comment) |
+| **R73-2** | MINOR | `packages/core/src/derive/occupancy.ts:105` + `packages/core/src/ask/ask.ts:768-770` | R72-3's fix is right, and it moves exactly one value — `endMin === 1440` — out of the *"still on it at midnight"* arm into the clock arm, which has no case for it: `clockOf(1440)` is **`"24:00"`**, an hour no wall clock shows and the one value the comment three lines above promises is never rendered (*"no next-day clock time is rendered anywhere"*). A 17:00 flight of 7h00 now reads *"you are on a flight from 17:00 **until 24:00**"*, and `day_state.params.runEndsAt` carries `"24:00"` too. Round 72 measured **0** malformed clocks over 1,800 fuzzed answers; the same unmodified assertion now measures **8**, all `24:00`. One minute either side is correct, so the defect is exactly one value wide. | `node qa/r73-i44.mjs F` and `node qa/r72-i38.mjs D` | YES through `--file` — an overnight leg landing at exactly 00:00 is an ordinary timetable entry. | **builder** (R72-3 was routed to the builder and this is its arm; `until midnight` is the clause the value wants) |
+| **R73-3** | MINOR | `packages/core/src/ask/ask.ts:751` (`1 is clear`), `:729` (`Of the 1 day`), `:712` (`across 1 day`, and `state` for a subject of one) | The numeral for a population of one survives at **four** more sites, one of them **inside the sentence R72-6 fixed**: *"Yes. Of the only day in Split, **1** is clear…"*, *"I can't tell. Of the **1 day** in Split…"*, *"1 of the 2 stops **across 1 day** in Split **state** no run length"*. Three rounds have now fixed this by enumerating sites (R71-6 (d): 1 of 3; R72-6: 2 more) and a fourth enumeration will be wrong too — **§0 position 10** and position 5's revision-50 clause both say the argument may not rest on a list of sites. The fix is one pluraliser used by every arm plus a criterion over the **rendered text** of every `free_time` answer. | `node qa/r73-i44.mjs E` | **NO on the reference trip** — none of its six cities is a single-day city (Vienna 3, Dubrovnik 3, Split 4, Prague 4, Budapest 4, London 2), and I verified all six through the shipped CLI. YES through `--file`, and on any trip with a one-night city, which is the ordinary case in a multi-trip product. `"I can't tell. Of the 3 days in Vienna, 2 are busy …, and **1** I cannot judge"` is the same class already visible on the fixture. | **architect** (the builder correctly declined to widen an enumerated prose fix; what it needs is the mechanism, which is a ruling) |
+| **R73-4** | MINOR | `packages/core/src/ask/ask.ts:663-665` | **R72-5 is half fixed and only the shipped half is disclosed.** The guard `endMin >= startMin` catches `durationMins: -1200` and `-2000`; it does not catch `1e9`, which still puts **`"16666684:40"`** in `day_state.params.runEndsAt` — a value the finding names explicitly. The field also still has **no production reader** (criterion rule 10), which was the finding's other half and was routed to the architect; A-98 Part 10 leaves it untouched. | `node qa/r72-i38.mjs E` | NO — not through any shipped surface; the value reaches a caller of `core.ask` only. | **builder** for the upper guard; **architect** for whether A-97 Part 4's structured half is admissible with no reader |
+| **R73-6** | MINOR | `packages/core/src/ask/match.ts:287-293` (`NP_FRAMES`) | **The accept set is not closed under adding the document's own noun phrase.** Six of the sixteen bare frames have an `… on <np>` twin; ten do not, so appending the one phrase that can only mean this document turns an answer into a refusal in **60 of 96** cases: *"how many countries am I seeing"* answers, *"how many countries am I seeing **on this trip**"* refuses. Measured recall on a 40-phrase corpus written independently of the builder's 18 is **20 of 40 (50%)** against a published floor of 15 of 18 (83%) — and **8 of the 20 refusals name the document in the sentence**. The failure direction is the accepted one and no refusal is a wrong answer, which is what keeps this MINOR. | `node qa/r73-i44.mjs A B` | YES — `node cli.ts ask "how many countries am I seeing on this trip"` refuses, no `--file` needed. | **builder** (A-98 Part 6 rider 1: ten NP-frame fragments, each of which passes Part 3's admission test trivially because it names the document; no architect round) |
+| **R73-7** | MINOR | `packages/core/src/ask/match.ts:528-536` | `scope_unclear`'s text — *"I cannot tell whether you mean this trip or every trip you have recorded"* — is **false of a sentence that names a city of this trip**: *"which countries am I visiting after Vienna"* and *"how many countries before Split"* both get it. This is A-98 Part 7's own objection to `I-38` one sentence over (*"false of a sentence containing free evening"*), surviving because the filter's guard is *"no candidate"* rather than *"nothing of this document was recognised"*. `cityHits` is already computed above the branch. | `node qa/r73-i44.mjs C` | YES — `node cli.ts ask "which countries am I visiting after Vienna"`, no `--file` needed. | **builder** (A-98 Part 6 rider 2's class: a refusal wearing the wrong reason; the branch already holds `cityHits`) |
+
+**`qa/r72-i38.mjs` is RE-CUT at six sites and is NOT all clear — three assertions are deliberately
+still RED and each is a finding above.** §F ×4: the three `ambiguous` expectations and the
+`city_edge` control were **correct at `465c200`**; A-98 Part 7 ruled a **third** outcome and it
+ships, so each now asserts the surviving reading's own **content** and its `unread` half rather
+than its `kind`, which is how a move is checked for its reason. §G ×1: the R72-8 planted document is
+re-cut so `durationMins` and `arrival.mins` **agree**, because the disagreeing case is R73-1 and
+belongs in this round's script; two controls for A-98 Part 8's second conjunct ride with it. §B ×1
+is a **probe defect, not a product one**: the regex forbade `<`/`>` beside `.endMin` while its own
+label says *"formatted and **compared**, nothing else"*, and R72-5's guard adds exactly the
+comparison the label permits — it now forbids arithmetic and sorting and names the one comparison.
+**The three that stay red are §D ×1 (R73-2) and §E ×2 (R73-4)**; neither was touched.

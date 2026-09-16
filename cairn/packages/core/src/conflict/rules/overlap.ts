@@ -23,23 +23,11 @@
  */
 import type { Conflict, Stop } from '../../model/types.ts';
 import { timeVal } from '../../derive/legs.ts';
+import { clockOf, stopOccupancy } from '../../derive/occupancy.ts';
 import { makeConflict } from '../id.ts';
 import type { Rule } from './types.ts';
 
 type Occupied = { s: Stop; start: number; mins: number; derived: boolean };
-
-/**
- * How long a stop occupies the clock, or `null` when the model does not know. Pure.
- *
- * `durationMins` wins where it is set. A `'journey'` stop with an `arrival` occupies the
- * vehicle's own run (§2.12) — flagged `derived`, because that is the occupancy the
- * timezone carve-out above applies to.
- */
-function occupancy(s: Stop): { mins: number; derived: boolean } | null {
-  if (s.durationMins != null) return { mins: s.durationMins, derived: false };
-  if (s.travelRole === 'journey' && s.arrival) return { mins: s.arrival.mins, derived: true };
-  return null;
-}
 
 export const overlap: Rule = {
   id: 'overlap',
@@ -60,8 +48,12 @@ export const overlap: Rule = {
 
       const timed: Occupied[] = [];
       for (const { s, start } of byTime) {
-        const occ = occupancy(s);
-        if (occ) timed.push({ s, start, mins: occ.mins, derived: occ.derived });
+        // §11.11 A-96 Part 2: this rule's module-private `occupancy` is now
+        // `derive/occupancy.ts`'s `stopOccupancy`, read by `ask/free_time` too.
+        // `source === 'journey_run'` IS the old `derived` flag — an exact identity, which is
+        // why KD-15's carve-out below and this rule's golden do not move.
+        const occ = stopOccupancy(s);
+        if (occ) timed.push({ s, start, mins: occ.mins, derived: occ.source === 'journey_run' });
       }
 
       for (let i = 0; i < timed.length; i++) {
@@ -88,15 +80,15 @@ export const overlap: Rule = {
                 { kind: 'day', id: day.id },
               ],
               summary:
-                `“${first.s.name}” runs ${fmt(first.start)}–${fmt(first.start + first.mins)} ` +
-                `but “${second.s.name}” starts at ${fmt(second.start)} on ${day.date}.`,
+                `“${first.s.name}” runs ${clockOf(first.start)}–${clockOf(first.start + first.mins)} ` +
+                `but “${second.s.name}” starts at ${clockOf(second.start)} on ${day.date}.`,
               params: {
                 dayId: day.id,
                 firstName: first.s.name,
                 secondName: second.s.name,
-                firstStart: fmt(first.start),
-                firstEnd: fmt(first.start + first.mins),
-                secondStart: fmt(second.start),
+                firstStart: clockOf(first.start),
+                firstEnd: clockOf(first.start + first.mins),
+                secondStart: clockOf(second.start),
               },
               values: { a: first.start, aDur: first.mins, b: second.start, bDur: second.mins },
             }),
@@ -107,9 +99,3 @@ export const overlap: Rule = {
     return out;
   },
 };
-
-function fmt(mins: number): string {
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}

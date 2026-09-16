@@ -1941,6 +1941,279 @@ gates `I-30`.** Two increments are scheduled and one criterion is corrected.
   interrupted-write fault. They agree by coincidence at 4 (the seed branch) and nowhere else. **Cite a
   fault by its document and its number, never by its number alone.**
 
+**Revision 77, 2026-09-11.** **A NEW CAPABILITY, and the first entry in this document that is not a QA
+consequence since revision 66.** Jacob asked for *"a chat-style way to ask about a trip — starting with
+'what does my trip look like' style questions, not 'where should I eat'"*, with the second half an explicit
+fence: places need a live API, a paid vendor and a server, and are out of scope. `ARCHITECTURE.md` revision
+77 answers it as a whole new section, **§11**, which is **self-contained at ~7k and read alone**; this file
+schedules it as **`I-35`** and **`I-36`**. **No `.tsx`, no `apps/web` file and no `docs/design/` file in
+either increment, and neither gates `I-30`**, which is still fenced by the unresolved visual direction and
+by nothing else.
+
+- **The ruling that matters, and it is a one-way door: a language model may PARSE a question and may never
+  ANSWER one.** `ask(question, ctx)` takes a value from a closed union and returns an `Answer` whose every
+  clause is rendered from a fact with a **cite** behind it; `matchQuestion(text, trip)` is the only thing
+  that turns text into that value. **The two are not alternatives** — an LLM, whenever one arrives, replaces
+  `matchQuestion` and may not replace `ask`. The stated requirement on an LLM design is *"invent nothing
+  outside the context"*, and **a rule written into a prompt is unenforceable by construction**: nothing
+  downstream can tell an invented booking reference from a real one, because both arrive as text. A rule
+  written as a **type** is enforced by the compiler and by one test. `ARCHITECTURE.md` §0 gains
+  **position 13**.
+- **`I-35` ships design (a) as the WHOLE answer, and (b) is not designed at all.** Three preconditions are
+  unmet — there is no server before Phase 3, `packages/core`/`packages/client` take **zero** runtime
+  dependencies, and **sending a trip to a vendor is an egress decision that is Jacob's**, because a trip
+  carries door PINs, booking references and ticket URLs (§6.6 exists because a build artifact once shipped
+  all three). So (b)'s prompt, request shape, model choice and redaction policy are **deliberately
+  undesigned**; `ARCHITECTURE.md` §7 and §11.2 carry it with all three triggers.
+- **Be honest about the size: this is a fixed-menu answer engine with a text shortcut in front of it.** Free
+  text is matched by a **recogniser**, not a classifier — literal triggers plus the trip's **own** city
+  names, no scoring and no nearest-match — and **two readings is a refusal**, as is a question at the wrong
+  *scope* (*"how many countries have I been to"* is `travelStats` over the library, not this trip) and a
+  recommendation. `askableQuestions(trip)` is the menu and is the answer to every refusal. A menu that is
+  completely correct beats a text box that is mostly right and occasionally invents.
+- **The measurement that decided the hardest rule, taken over the reference trip at `9333eb6`:
+  143 of 143 stops carry `durationMins: null`.** So *"do I have a free evening in Split?"* has **no evidence
+  behind a yes**, and `free_time` is three-valued — `busy` / `open` / `unknown` — with **not one day of this
+  trip returning `open`**. The honest answer is *"I can't tell: nothing is scheduled after 17:15 on Fri
+  14 Aug, but no stop that day says how long it takes."* A rule that could only ever say *yes* about the
+  only real trip we have is a rule nobody could have tested.
+- **One definition of "unbooked", and it is already in the repository.** `unbooked_ticketed` and
+  `missing_lodging` are it; `ask` re-publishes them and never computes a second list (sequencing rule 1).
+  The consequence is stated in the answer rather than hidden: both are **feasibility** rules (§8.2), so a
+  completed trip answers *"nothing — this trip is over"* and not *"nothing is unbooked"*. Measured: **12**
+  unresolved coverage conflicts at `today = 2026-08-01`, **0** at `2026-09-11`.
+- **§2.10 goes 88 → 91** (`ask`, `matchQuestion`, `askableQuestions`); `SCHEMA_VERSION` (5) and
+  `SUMMARY_VERSION` (8) **do not move** — nothing here is stored and `ask` has no write path at all.
+  **Sequencing rule 13** is new and is the routing half of §0 position 13.
+- **⚠ One wording conflict, flagged rather than resolved by guessing** (root `CLAUDE.md`). `BRIEF.md`'s
+  non-goals list *"Chat"* and `PRODUCT-VISION.md` §3 defers *"Chat, payments, recommendation ML, public
+  feed"*. Read in context both mean **person-to-person messaging in a social product** — they sit beside
+  payments and a public feed, in a list about the social layer — and this builds a **single-turn question
+  over your own document, with no second person and no message store**. It is recorded in §11.10 with the
+  conflict named, because it is exactly the sentence a later reader would use to argue this was built
+  against the brief. **If Jacob reads the non-goal the other way, §11 is withdrawn, not reinterpreted.**
+
+**Revision 79, 2026-09-12.** **`I-37` is BUILT (`e0fea87`) and QA round 71 sent it back — 0 blockers, 3
+MAJOR, 4 MINOR — so `I-38` is queued as the whole code consequence of `ARCHITECTURE.md` revision 79's
+§11.12 **A-97**.** Round 71 was a confirmation round and it confirmed the thing it was asked to: `I-37`'s
+classifier is exactly right cell by cell (44/0/4 → 46/0/2, **exactly two movers**, both the evenings A-96
+Part 4 names), its `overlap` identity is exact over **858 stop shapes**, and its redaction chokepoint held
+under a sentinel in **every** user-authored string field the model has. **What broke is the prose built on
+top of a correct classifier**, and all three MAJORs are one class: the renderer read something other than
+what the decision was made from. **`I-36` stays blocked behind `I-38`. No `.tsx`, no `apps/web` file and no
+`docs/design/` file, and nothing here gates `I-30`**, which is still fenced by the unresolved visual
+direction and by nothing else.
+
+- **The ruling, and it is `I-37`'s own success turned one line to the right.** `occupiedInterval` clamps a
+  run's end to 23:59 so the daypart predicate can make no claim about the next day — correct — and
+  `free_time` rendered that clamp as a landing time: *"on 2026-08-07 you are on a flight from 16:45 **until
+  23:59**"*, on the default output of `node cli.ts ask "do I have a free evening"`, about a stop whose
+  document says `arrival: {flight, 660}` — **16:45 + 660 = 03:45 the next day**, and `overlap` renders the
+  same run from the same function as **16:45–27:45**. It is invisible because 23:59 is also the end of the
+  window being asked about. **A value computed to DECIDE may never be STATED as a fact unless it is true
+  outside the decision that produced it**: the clamp moves into `intervalIntersects`, `endMin` becomes the
+  document's own arithmetic, and `crossesDay` — added by A-96 and read by **nothing** — gets its first
+  production reader, selecting the phrasing rather than supplying a next-day clock time this model has no
+  right to state.
+- **The same mistake at two lines' distance.** The renderer's run clause is gated on `run.stop.arrival`, a
+  field that merely **correlates** with the classifier's own discriminant, so a stop with a `durationMins`
+  and no `arrival` — the ordinary shape of a Cairn-native stop — makes a day busy and renders **zero
+  evidence**, taking the sentence's own arithmetic with it (*"the other one"* over two remaining days). The
+  bucket becomes `runsInto` else `starts`, total by construction, and the invariant is that the days named
+  equal the days counted.
+- **And the scope refusal stops being an enumeration.** §11.3 rule 3 is a **denylist over an open set** and
+  has now been measured short twice in two rounds — five phrasings, then eight more, including *"how many
+  countries have I **already** been to"*, one adverb from a phrasing that is refused. **`country_count` now
+  answers only where the text carries a trip-scope marker** and refuses otherwise with
+  `out_of_scope: 'scope_unclear'`. The argument is not that the marker list is closed — it is that **an
+  unlisted marker costs a refusal with the menu behind it, and an unlisted totality phrase cost a false
+  statement about the user's life**. The lifetime list stays, asked first, as a **diagnosis**.
+- **Cost:** **no version constant moves**, §2.10 stays at **91**, `core-conflicts.json` stays
+  byte-identical, and the 48 verdicts do not move — **a moved verdict is a stop-and-report**, because this
+  increment renders and does not classify. `MatchOutcome` gains one type-level union member with no
+  storage, no golden and no export behind it.
+- **Two rules come out of it.** *How a criterion is written* gains **rule 10** — a ruling that adds a field
+  to a returned type names its production reader in the same increment, or declares it unread with a
+  trigger; `crossesDay` shipped with none and the flag that would have caught R71-1 was not in anybody's
+  way. **Sequencing rule 13 gains (e)**, the routing half: a false rendered clause whose value comes out of
+  a *shared* derivation is a ruling and not a template fix, and once a default-deny scope gate exists, a new
+  escaping phrasing is builder-only unless it reaches an **answer**.
+
+**Revision 78, 2026-09-12.** **`I-35` is BUILT (`43315ef`) and QA round 70 sent it back — 0 blockers, 5
+MAJOR, 8 MINOR — so `I-37` is queued as the whole code consequence of `ARCHITECTURE.md` revision 78's
+§11.11 **A-96**.** The boundary §11 exists to hold **held, and the breaker could not bend it**: `ask/`
+imports nothing outside `packages/core/src`, reaches for no clock, no randomness and no network, and every
+menu answer is byte-identical across two calls. What broke is the other half of the same sentence — *every
+clause of every answer is traceable to a cited fact* — and **one of the four false answers is the
+increment's own flagship example**. `I-36` stays blocked behind `I-37`, not behind `I-35`. **No `.tsx`, no
+`apps/web` file and no `docs/design/` file, and nothing here gates `I-30`**, which is still fenced by the
+unresolved visual direction and by nothing else.
+
+- **The ruling, and it is the mirror image of the one revision 77 was proud of.** `free_time` shipped
+  *"Cairn does not invent a duration for a stop that states none"* — and **also refused to read the duration
+  a stop DOES state**, when it is written in a different field. §2.12 says that on a `travelRole: 'journey'`
+  stop `arrival.mins` **is** the vehicle's own run; **21 of 21 journey stops on the reference trip state one
+  that way and all 21 carry `durationMins: null`**, so the classifier called every one of them silent. The
+  flagship answer — *"do I have a free evening in Split?"* — said *"28 stops … say nothing about how long
+  they take"* when **8 of the 28 do**, and the day it could not judge is a day the document says you are on
+  a bus until **18:35**, inside the window.
+- **The fix is a location, not a patch.** The computation already existed, module-private, in
+  `conflict/rules/overlap.ts`, which has read `arrival.mins` correctly since Phase 1 — so `free_time` was a
+  **second opinion**, not an oversight. It moves to `derive/occupancy.ts` as `stopOccupancy` /
+  `occupiedInterval`, both callers read it, and `ask/` still owns exactly the two computations §11.4 allows
+  it. **Not a field on `TripSummaryRow`** (§0 position 8 — a per-stop interval is below the row's line;
+  position 6 — a row is a copy), **not a new package export** (two intra-package callers; §2.10 stays at
+  **91**), and **no version constant moves**.
+- **Measured over the whole population, not the flagship day** (§0 position 12 (b)). All 16 days × 3
+  dayparts: **44 busy / 0 open / 4 unknown → 46 / 0 / 2**. Exactly two verdicts move, both `unknown` →
+  `busy`, both because a journey's stated run reaches into the window. Split's four evenings are now all
+  `busy` and the answer becomes a `complete` **"No"** that names the bus, instead of a `partial` *"I can't
+  tell"* — and `free_time` **still never says "yes" about this trip**, which A-96 Part 5 declares rather
+  than leaves for a criterion to discover (criterion rule 9).
+- **Redaction was a property of the fixture's strings, not of the renderer.** `answer.text` interpolated
+  `trip.title` and `City.name` verbatim; a trip titled *"Split flat (door code 4821)"* rendered a §6.6
+  credential class straight into prose. **The general rule: a record's free text may be narrated only where
+  the closed `Question` union makes that record the SUBJECT of the question** — which admits exactly
+  `City.name` and nothing else, because §11.7 rule 2's restatement cannot name a city otherwise — and the
+  one admissible field still passes one chokepoint through §6.6's existing `redactText`. **A city name is
+  not categorically safer than a trip title; it is differently *admissible*.** §0 position 13 gains
+  clause **(d)**.
+- **One document was wrong and the builder was right.** §11.7 rule 4 gated `city_edge`'s journey search on
+  the day carrying a second city; taken literally that prints *"no stop on that day is recorded as a
+  journey"* about **two** of this trip's twelve edges that record one (Vienna's arrival day, London's last
+  day) and demotes two `complete` answers. The builder read the caveat's own definition off §11.5 and
+  ignored the gate (KD-131). **The prose is corrected; the code is not touched** — sequencing rule 12 (b),
+  third instance, and this time the builder under-stated the fix's necessity rather than over-stating it.
+
+**Revision 80, 2026-09-14.** **Jacob has directed that Phase 3 begin, and this revision is the DESIGN PASS
+that must precede any infrastructure being bought or built — `ARCHITECTURE.md` revision 80's new §12, the
+server boundary.** It is **not** a QA consequence and it queues no fix. Nothing has been purchased: no
+domain, no host, no database, no auth provider, and §12 Part 11 names the only two decisions that genuinely
+depend on a vendor and says what neither can change. **Phase 3 below is rewritten** — it gains five
+increments (**`I-39`**…**`I-43`**), a per-increment sequence, narrowed scope, and entry conditions that say
+plainly what does and does not gate it. **Sequencing rule 14** is new.
+
+- **The scope moves, and the move is the ruling.** Phase 3 ships **`owner` and `viewer`** — multi-device
+  sync for one owner, a user share, a link share, friends, and public share pages. **`editor`, `commenter`
+  and `TripMember` do not ship**, and the reason is not caution: `mergeTrips` rule 3's last-writer-wins is
+  honest exactly while the writer whose work was overwritten is the person reading `report.overwritten`,
+  and two devices of one user satisfy that while two people do not. **The CRDT trigger is therefore
+  restated: it is a `MergeReport` with a reader who is not the writer, not the existence of the `editor`
+  role.** All three roles stay in the predicates and in **every cell** of the conformance matrix, which is
+  a fixture-driven test and therefore still fires (§12.7, §12.12 residue 3).
+- **The server stores bytes it cannot read.** Users, auth identities, sessions, shares, connections, and
+  **one blob per trip**. Confirmed from the model, not the brief: `mergeTrips` is a three-way document merge,
+  `SCHEMA_VERSION` **5** and `migrate.ts` own the ladder, and `StorageVersion` is opaque by written contract
+  — a relational decomposition is a second implementation of all three, which is sequencing rule 1. `doc` is
+  `text`/`bytea` and **never `jsonb`**; there is **no `schema_version` column**, because nothing would read
+  it (criterion rule 10); and `services/api` imports **only** `core/access`, never `fromJSON` (§12.1).
+- **What a share page may contain, measured rather than reasoned about** (§0 position 12 (b)). At
+  `ff2c5de`, offline, through the shipped `packages/core`: the reference trip carries **146**
+  `redactionHits` across seven fields — `href` 69, `note` 24, `sourceDoc` 21, `reference` 19, `path` 6,
+  `name` 4, `subtitle` 3 — **plus 4 of its 17 derived conflict summaries**, which quote booking references
+  verbatim in prose core composed. The §2.14 copy projection over all **112** scheduled stops leaves **27**
+  (`href` 23, `name` 4) with **0** bookings, **0** tickets, **0** conflicts and **20** notes redacted; under
+  a **link** audience the hrefs go too, leaving **4**, and all four are false positives (`DE2081`, `DE4345`,
+  `QS1083`, `DECENTRAL`). **The server strips nothing because it is never given anything to strip**: a
+  non-owner is served a `ShareSnapshot` minted on the owner's device, stored in its own table, read by a
+  database role with **no `SELECT` grant on `documents`** (§12.4, §12.5).
+- **`core/access` runs server-side, verified rather than assumed.** `predicates.ts` was imported into a bare
+  `node:http` process at `ff2c5de` — no build step, no dependencies, expired link correctly denied. It is
+  **one function called twice**, not two rule sets that agree, and the risk §12.6 names is the
+  `Relationship` handed to `can`, never `can` itself.
+- **Live location stays refused and now has a mechanism** (§12.3, §12.8): a committed check over
+  `db/migrations/*.sql` refusing any coordinate-shaped **column**, written **before** the first migration.
+  A `SharedTrace` needs no Phase 3 schema, which is exactly why deferring it is safe.
+- **Two things stated rather than papered over.** **`I-30` is unbuilt and is the last Phase 2 increment**;
+  by sequencing rule 2 it gates Phase 3's **code** and it does **not** gate this ruling. **`R72-1`** —
+  `country_count`'s scope gate — shares no file with Phase 3 and gates neither; whether it gates Phase 2's
+  SHIP verdict is the manager's call and not mine. And **`P2-8`/`A-2` is NOT ruled in this pass**,
+  deliberately: it is a question about the document model, it is due at **`I-42`**, and §12.10 says so.
+- **No code file, no `.tsx`, no `apps/web`, no `qa/`, no `docs/design/`, no golden byte and no version
+  constant moves.**
+
+**Revision 82, 2026-09-15.** **QA round 73's architect half** — `ARCHITECTURE.md` revision 82's new **§11.14
+A-99**, with **`I-45`** queued as its whole code consequence, plus **criterion rule 12** above. Round 73's
+verdict was **SEND BACK, 0 blockers, 2 MAJOR, 5 MINOR**, and it **closed R72-1** structurally: thirteen of
+thirteen lifetime phrasings refuse and none is a member of the accept set, so A-98 Parts 1–7 — the ruling
+Jacob directed to close before Phase 3 code — are **done**. What sends it back is neighbouring code.
+
+- **Three deletions and one parameter.** The four **present-simple** bare fragments (`do i visit`, `do we
+  visit`, `do i go to`, `do we go to`) are **withdrawn** — present simple is habitual bare, so they fail
+  A-98 Part 3's own admission test and *"what countries do I visit"* was answered about this trip
+  (**R73-5**). A-98's six hand-written `… on <np>` frames are **deleted** in favour of a **generated twin
+  for every bare frame**, which takes the set to **1,272 sentences from 25 fragments** where A-98 had 816
+  from 43 — more recall from fewer human judgements, and *"how many countries am I seeing on this trip"*
+  stops refusing (**R73-6**). **`runEndsAt` is deleted** from the `day_state` fact: three wrong values and
+  zero readers in two rounds, which is criterion rule 10's own case (**R73-4**, and it closes **R72-5**).
+  And `journeyModeWord` **takes the interval it is labelling** as a parameter, because a predicate that
+  cannot see the value it must agree with cannot be audited for agreement (**R73-1**).
+- **The prose gets its first mechanism, and it is criterion rule 12.** The numeral-for-one defect was fixed
+  by enumeration in three consecutive rounds and returned each time, once **inside the sentence the previous
+  round fixed**. It is now held by a sweep over the **rendered text** of every answer (**R73-3**).
+- **The convergence judgement is A-99 Part 10 and it pre-commits a narrowing.** The mechanisms have
+  converged, by deletion; the prose has not — seventeen of round 71–73's findings are defects in sentences
+  and lists we wrote, against four in the mechanisms, and eleven of the seventeen are in `free_time`'s
+  composed paragraph. **If the confirmation round over `I-45` finds a prose defect no criterion covers, that
+  paragraph is withdrawn** in favour of a one-sentence verdict plus the `facts` array every surface already
+  receives. **`I-36` stays blocked. Nothing here gates `I-30` or Phase 3.**
+- **No code file, no `.tsx`, no `apps/web`, no `qa/`, no `docs/design/`, no golden byte and no version
+  constant moves in this revision.**
+
+**Revision 81, 2026-09-15.** **QA round 72's architect half, and it is ONE ruling that DELETES a list** —
+`ARCHITECTURE.md` revision 81's new **§11.13 A-98**, with **`I-44`** queued as its whole code consequence.
+Round 72's verdict was **SHIP, 0 blockers, 1 MAJOR, 7 MINOR**; the MAJOR (**R72-1**) is not a regression and
+is the residue A-97 Part 6 rider 4 defined as the trigger for the next ruling, so this revision is the
+ruling it named. **This is the third round on one boundary and it is the first that does not lengthen the
+list.** Round 70 added five entries, round 71 found eight more escaping, A-97 flipped to default-deny and
+round 72 measured the flip half-inert — **ten lifetime phrasings still answered about this trip**, through
+markers (`am i`, `do i`, `will we`, …) that carry **person and tense**, not scope. **`I-36` stays blocked
+behind `I-44`. No `.tsx`, no `apps/web` file and no `docs/design/` file, and nothing here gates `I-30`**,
+which is still fenced by the unresolved visual direction and by nothing else.
+
+- **The routed question was answered directly, and the answer is *no*.** *Can "this trip" versus "my whole
+  life" be a lexical property of a sentence, under the zero-dependency, no-LLM constraint?* **It cannot** —
+  and the measurement that settles it is not *"the list is short"*. It is that **every containment test over
+  the user's sentence is defeated by a preposition**: measured at `5fa74e1`, *"how many countries am I up to
+  **including this trip**"*, *"which countries am I yet to visit **before this trip**"* and *"**apart from
+  this trip** how many countries am I up to"* each carry a noun phrase that unambiguously denotes the
+  document in hand, each is a question about a life, and each is **answered** *"This trip accounts for 7
+  countries"*. Containment is not reference, and a bag-of-phrases test has no notion of scope to see the
+  preposition with. The verb-conjunction repair QA floated dies the same way: *"am I **visit**ing"* is this
+  trip and *"am I yet to **visit**"* is a life list, same two features.
+- **The ruling: a scope gate asks whether the sentence is one Cairn wrote.** `country_count` matches by
+  **whole-sentence token equality** against **816** sentences generated from **43 adjudicated fragments**
+  (6 stems × {16 bare frames + 15 frames × 8 document noun phrases}). **`TRIP_SCOPE_MARKERS` is deleted.**
+  `LIFETIME_TRIGGERS` and `COUNTRY_TRIGGERS` become diagnostic only — and A-97 Part 6 rider 2's *"a
+  diagnosis, not the safety mechanism"* stops being an assertion and becomes a **checked property**: no
+  accepted sentence trips either list (measured 0 of 816), so the order they are asked in cannot change an
+  outcome. **Over-refusal becomes the only failure the mechanism can produce**, by construction rather than
+  by argument; the residual MAJOR shrinks from *"English is bigger than our list"* to *"one of our own 816
+  sentences is ambiguous"*, which is found by reading 43 fragments.
+- **Measured cost, published rather than estimated** (§0 position 12 (b)). Over the 18 trip-scoped phrasings
+  round 72 and A-98 collected: **15 answer, 3 refuse.** The three are *"how many countries"* — which §11.3
+  rule 3 already **requires** to refuse — and two sentences with a word in front of them (*"so how many
+  countries am I visiting"*). A leading-particle stripper would recover both and is **refused by name**: it
+  is a list over English whose failure direction includes an **answer**, which is the one thing this ruling
+  removes.
+- **Two MINORs ride with it, both ruled rather than routed blind.** **R72-2** — the gate `return`ed from
+  inside the candidate loop and discarded readings other intents had already produced, so *"which countries
+  have a free evening"* refused with a sentence that is false of it; **the gate is a candidate filter and
+  the sentence-level refusal fires only where `unrecognised` would have.** **R72-8** — `OccupancySource`
+  names **which field stated the run length**, not the stop's role, so a journey stating both `durationMins`
+  and `arrival` lost its mode word; the mode is gated on the stop's own journey role. That is A-97 Part 2's
+  own sibling rule (*a renderer branches on the discriminant the classifier branched on*) failing **inside
+  A-97's own fix, one item later**.
+- **Criterion rule 11** is new — *text the product tells a user to type is asserted to round-trip* — and its
+  founding case is this ruling's own: after A-98 the `scope_unclear` pointer can quote a phrasing the gate
+  refuses, and a refusal that teaches an unusable rewrite is worse than one that teaches nothing.
+  **Phase 3 entry condition 2 is amended in place**: `R72-1` gates Phase 3 **by Jacob's direction, not by
+  dependency**, and both halves stay visible.
+- **§2.10 stays at 91**, `SCHEMA_VERSION` (5) and `SUMMARY_VERSION` (8) do not move, `MatchOutcome` does not
+  change at all, `core-conflicts.json` stays byte-identical and the 48 verdicts do not move. **No code file,
+  no `.tsx`, no `apps/web`, no `qa/`, no `docs/design/`, no golden byte and no new dependency in this
+  revision.**
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1952,7 +2225,7 @@ gates `I-30`.** Two increments are scheduled and one criterion is corrected.
 |---|---|---|
 | **1** ✅ | `packages/core` + `packages/client` + `apps/web`: a local-first, multi-trip planner Jacob can open and use | none — Node 24 and a browser |
 | **2** | **Travel history, local-first**: past trips, the trip lifecycle, the lifetime map, travel identity, trip participants as data | **none** — still Node 24 and a browser |
-| **3** *(was 2)* | `services/api` + Postgres/RLS: accounts, sync, friends, shares, public share links, the accept control | a managed Postgres/auth/storage account |
+| **3** *(was 2)* | `services/api` + Postgres/RLS: accounts, multi-device sync, friends, **read** shares, public share links, the accept control. **Narrowed at revision 80: `owner` + `viewer` only — no `editor`, no `commenter`, no `TripMember`** (§12.7) | a managed Postgres/auth/storage account — **and not before `I-41`, which needs a LOCAL one** |
 | **4** *(was 3)* | `services/ingest`: mailbox → candidate review queue → tickets | forward-in address, then Outlook OAuth, then Gmail |
 | **5** *(was 4)* | `apps/mobile` (Expo): offline travel, then background location, observed visits, timezones | Apple/Google developer accounts, a physical phone, **a Play background-location declaration** |
 | **6** *(was 5)* | Photos: on-device library scan, stop suggestions, opt-in attach | device photo library, **a Play broad-media-access review** |
@@ -1968,9 +2241,12 @@ trips has a travel history.
 
 ## How a criterion is written
 
-Nine rules. They apply to every phase in this document, and a criterion that breaks one is a defect
-routed to me, not to whoever failed to meet it. **Rule 9 is revision 76's and it is the newest**; rule 8 is
-revision 70's; rule 7 is revision 69's; rule 6 is revision 53's; the other five are unchanged.
+Twelve rules. They apply to every phase in this document, and a criterion that breaks one is a defect
+routed to me, not to whoever failed to meet it. **Rule 12 is revision 82's and it is the newest**; rule 11 is
+revision 81's; rule 10 is
+revision 79's; rule 9 is
+revision 76's; rule 8 is revision 70's; rule 7 is revision 69's; rule 6 is revision 53's; the other five are
+unchanged.
 
 **1. Every count carries an outcome clause.** A number is satisfiable while the thing misbehaves. *"12
 blockers"* was true and meant nothing. The clause names what must be true of each counted item, and for
@@ -2068,6 +2344,53 @@ five-entry history and the stop-and-report; for N3 it is the tie-free corpus and
 with a synthetic input** — `tools/elect-parent.mjs`, on the `corpus-write.mjs` precedent — so the fault
 fires against the **mechanism** when the data offers it nothing. **An undeclared unfireable `N` is a design
 defect routed to me**, and it is worse than a missing one, because a missing fault is visible.
+
+**10. A ruling that adds a field to a returned type names the production reader that consumes it, in the
+same increment — or declares the field unread, with a trigger** (revision 79, §0 position 13 (e),
+ARCHITECTURE §11.12 **A-97** Part 4, QA **R71-1**). `OccupiedInterval.crossesDay` was added by A-96 Part 2
+for exactly the right reason — to record that `endMin` had been clamped — and shipped with **zero
+production readers** across `packages/core/src`, `packages/client/src` and `cli.ts`, asserted only in its
+own unit test. One function away, a renderer printed the clamped `endMin` as a landing time and stated it to
+the user as fact. **A field nothing reads is not inert: it is a standing invitation to read the wrong
+neighbour**, because the flag that would have said *"the number beside me is not the whole truth"* is not in
+anybody's way. This is rule 9's shape one level down — rule 9 says a fault that cannot fire is **declared**;
+rule 10 says a field nothing reads is **declared** — and the declaration is cheap: *"`crossesDay` has no
+reader until §7's timezone work; until then `endMin` is clamped and no caller may render it"* would have
+made R71-1 a design question instead of a false statement in the flagship answer. **An undeclared unread
+field is a design defect routed to me.**
+
+**11. Text the product tells a user to type is asserted to round-trip** (revision 81, §0 position 13 (f),
+ARCHITECTURE §11.13 **A-98** Part 9 criterion 3, QA **R72-1**/**R72-7**). A menu line, a refusal's *"ask it
+as…"*, an error message quoting a command — each is a **promise that the string works**, and each is a
+string one side of the product composes and the other side parses, which is the drift shape rule 10 is
+about with a user standing in the gap. The standing menu round-trip (*every line `askableQuestions` prints
+parses back to the question it was rendered from*) was already this rule for half of the surface; **A-98
+makes the other half load-bearing**, because after it the `scope_unclear` pointer can quote a phrasing the
+gate refuses, and a refusal that teaches an unusable rewrite is worse than one that teaches nothing. **The
+criterion is over the SET of such strings, discovered rather than listed** — every `askableQuestions` line
+through the surface's own renderer, and every quoted phrasing inside an `out_of_scope` pointer — so a new
+pointer is covered on the day it is written and not on the day someone remembers it. This is rule 3's shape
+(*the fault it exists to catch*) applied to text rather than to data: **N is to change one quoted phrasing
+to something the parser refuses**, and the criterion names which string reddened.
+
+**12. Prose the product composes about a user's data is held by a criterion over the RENDERED TEXT, never by
+a list of the sentences that were wrong** (revision 82, §0 position 13 (g), ARCHITECTURE §11.14 **A-99** Part
+8, QA **R71-6**/**R72-6**/**R73-3**). The numeral-for-a-population-of-one defect was found and fixed by
+enumeration in **three consecutive rounds** — one site of three, then two more, then four more, one of them
+**inside the sentence the previous round had just fixed**. Each fix was correct; each claim of completeness
+rested on a list that was already incomplete when it was written, which is position 10's own case with
+English in it. **The remedy is not a longer list.** A composed answer has exactly one boundary every path
+passes through — the string the user reads — and the criterion goes there: *over a generated population of
+documents exercising every arm of every answer, at populations of 0, 1, 2 and many, no rendered text contains
+the standalone token `1`.* Three properties make it a criterion rather than a fixture. **(a) It is
+discovered, not listed** — a sentence written next month is covered on the day it is written, including in
+arms nobody has enumerated. **(b) Its fault is cheap and exact** — restore one bare `${n}` at any
+interpolation site and it reddens naming the answer and the sentence (rule 3). **(c) It scopes its
+population** — the generated documents' own strings carry no digits, so the sweep measures our prose and not
+the user's data (rule 8). This is rule 11's sibling: rule 11 is about text the product tells a user to
+**type**, rule 12 about text the product **says**. **Generalise it before reaching for it**: the standalone
+`1` is one class, and the shape to copy is *find the one string every path produces and assert over it*, not
+*add a second regex*.
 
 ---
 
@@ -10199,6 +10522,613 @@ disclosed as *unreachable* for two revisions and is reachable today.*
   gate should know that **R54-1 is open** and that the reachable producer is unchanged (a caller behind a
   cast; no shipped surface and no hostile file reaches it).
 
+#### I-35 — `ask`: a question about your own trip, answered from the document and nothing else (revision 77, `ARCHITECTURE.md` revision 77's **§11**; a NEW CAPABILITY from Jacob's framing of 2026-09-11, not a QA consequence)
+
+**Read `ARCHITECTURE.md` §11 whole. Nothing else in that document** — not §2, not §4, not §8, not §10, and
+no `A-` ruling at all; §11 is self-contained and quotes what it needs. **No `DESIGN.md`**: this increment
+renders nothing.
+
+**Why it exists.** Jacob asked for *"a chat-style way to ask about a trip — starting with 'what does my trip
+look like' style questions, not 'where should I eat'."* Everything he named is already in the document:
+dates, stops, gaps, what is unbooked, how many countries. **The value is that the answer is checkable** —
+every clause traces to a record — and it needs no vendor, no key, no network and no server, which is why it
+is buildable now and backend-only. **It is also the increment that fixes the boundary before a model ever
+exists**: `ask` takes a value from a closed union, `matchQuestion` is the only thing that turns text into
+one, and a language model — whenever one arrives, which is not here — replaces the second and may never
+replace the first (§0 position 13, §11.1).
+
+**Say plainly what size this is: a fixed-menu answer engine with a text shortcut in front of it.** Five
+question kinds, a recogniser that refuses rather than guesses, and `askableQuestions(trip)` as the answer to
+every refusal. A menu that is completely correct beats a text box that is mostly right and occasionally
+invents.
+
+**What it is NOT.** **No `.tsx`, no `apps/web` file of any kind, no `packages/client/src`, no
+`docs/design/`.** No language model, no network call, no `services/` directory, no dependency of any kind —
+§11.2's three preconditions are all unmet and its prompt and API shape are deliberately undesigned. **No
+recommendation of any sort.** **No second definition of "unbooked"** — `unbooked_ticketed` and
+`missing_lodging` are the definition and `ask` re-publishes them (§11.4). **No write path**: `ask` mints no
+record, takes no `IdFactory`, and never proposes an edit. **No stored field, no golden regenerated, no
+corpus byte**; `SCHEMA_VERSION` (5) and `SUMMARY_VERSION` (8) do not move.
+
+- **Built, in four parts.**
+  1. **`packages/core/src/ask/`.** `Question` (five kinds — `trip_overview`, `city_edge`, `unbooked`,
+     `country_count`, `free_time`), `Answer`, `AnswerCite`, `AnswerFact`, `AnswerCaveat`, `MatchOutcome`,
+     `AskCtx`, exactly as §11.3 and §11.5 declare them. `ask(question, ctx)` is total over the union and
+     throws only on programmer error (a missing country index — `tripSummary`'s own rule). `today` and
+     `index` are **injected**; no `Date.now()`, no randomness.
+  2. **`matchQuestion(text, trip)` — a recogniser, not a classifier.** Literal trigger phrases plus the
+     trip's **own** names; no scoring, no nearest-match, no threshold. **Two readings is `ambiguous`**,
+     lifetime-scope wording is `out_of_scope: 'lifetime'` with a pointer to `stats`, recommendation wording
+     is `out_of_scope: 'recommendation'`, and a partial read reports its `unread` words. Plus
+     `askableQuestions(trip)`, the menu instantiated over the trip's real cities.
+  3. **`cli.ts ask "<question>"` and `cli.ts ask --menu`.** The restatement prints **above** the answer, the
+     cites print **below** it, a `partial` answer prints its caveats, and a refusal prints the menu and
+     exits **2** — the CLI's house style for input it will not act on (`cmdExport`, `cmdCities`). Honours
+     `--today` through `todayIsValid()` and `--file` like every other command.
+  4. **§2.10 goes 88 → 91** with `ask`, `matchQuestion` and `askableQuestions`, added to `index.ts` and to
+     `surface.test.ts`'s list **in the same commit** (§8.9's rule). The types are types and do not count.
+- **Verification.** Tagged per **How a criterion is written**; the ceilings are ceilings (rule 4). Every
+  number below is measured at `9333eb6` over the reference trip, with its selector named (rule 8).
+  - **Every answer names what it read** `[stated]`: over every member of `askableQuestions(referenceTrip)`,
+    at `--today 2026-08-01` **and** `--today 2026-09-11`, every `AnswerCite` resolves through the single
+    `resolveCite` — `trip`/`day`/`stop`/`place`/`booking` by id, `city` by key, `conflict` against the set
+    `ask` computed in the same call. **N1, injected: mint `{kind:'stop', id:'no-such-stop'}` in one
+    resolver** → the test reddens **naming the question kind and the cite**. **Fireable**: every one of the
+    five kinds emits at least one cite on this trip.
+  - **"When do I leave Vienna" is right about a two-city day** `[stated]`: the answer is **`2026-08-10`**,
+    the last day whose `cities` include `vienna`; that day's `cities` are `["vienna","dubrovnik"]` and its
+    first stop with `travelRole === 'journey'` is **05:00 "Leave for Vienna Airport (VIE)"**, which is the
+    cited evidence. **N2, injected: take the FIRST day of the city range instead of the last** → this
+    reddens with `2026-08-08`.
+  - **"What's still unbooked" has one definition and states its horizon** `[stated]`: selector
+    `c.kind === 'coverage' && !c.resolution` over `detectConflicts(trip, {today})`. At
+    `--today 2026-08-01` the answer names **12** items (2 `missing_lodging`, 10 `unbooked_ticketed`;
+    unscoped `detectConflicts` returns **17**). At `--today 2026-09-11` it names **0** (unscoped **5**,
+    `lifecycle` is `completed`) **and the sentence says why** — *this trip is over, and Cairn stops asking
+    you to book things for a trip you have already taken* — **not** *"nothing is unbooked"*. **N3,
+    injected: render the empty case as "nothing is unbooked"** → the completed-trip arm reddens.
+  - **"Do I have a free evening in Split" answers `unknown`, and that is the correct answer**
+    `[stated]`: **143 of 143 stops on this trip carry `durationMins: null`** (112 scheduled + 31 pooled),
+    and **0 of 112 scheduled stops carry a null `time`**. Over `2026-08-12…15`, window 18:00–23:59: the
+    12th, 13th and 15th are **`busy`** (20:00; 20:15 and 20:30; 18:00 and 19:30) and the **14th is
+    `unknown`** — nothing starts after 17:15 and that stop states no duration. **Not one day returns
+    `open`**, `coverage` is `partial`, and the sentence says it cannot tell. **N4, injected: give the 14th's
+    stops a `durationMins`** → the day flips to `open`, `coverage` becomes `complete` and the sentence
+    changes. **N5, injected: default a null duration to any constant** → the 14th returns `open` with no
+    fixture change and this reddens.
+  - **A partial answer does not read like a complete one** `[stated]`: for `free_time`, the `partial`
+    `text` is **not byte-equal** to the `complete` `text` for the same `Question`. **N6, injected: render
+    `text` without consulting `coverage`** → reddens. A `coverage` field nothing renders lies by omission.
+  - **Country count carries its denominator and its evidence agrees with it** `[stated]`: **7** countries
+    (`AT, CZ, DE, GB, HR, HU, US`), and the evidence walk's code set **equals**
+    `tripSummary(trip, COUNTRY_INDEX).countryCodes` exactly. The census prints beside it — **95 places, 94
+    located, 91 attributed; 132 located stops, 128 attributed** — so `DE` (a layover) and `US` (departure)
+    are explained by a cited record rather than being a surprise. **N7, injected: drop the pool from the
+    evidence walk** → the set equality reddens.
+  - **A refusal is a refusal** `[stated]`: *"how many countries have I been to"* returns
+    `out_of_scope: 'lifetime'` and **never** the trip-scoped 7; *"where should I eat in Split"* returns
+    `out_of_scope: 'recommendation'`; text matching two intents, or two of this trip's city names, returns
+    `ambiguous` with both readings restated. All four exit **2** from the CLI and print the menu. **N8,
+    injected: make the lifetime pattern fall through to `country_count`** → reddens with `7`.
+  - **Nothing sensitive reaches an answer** `[stated]`: `redactionHits(answer.text)` is **`[]`** for every
+    member of `askableQuestions(referenceTrip)` at both clocks, and no `params` key is `lat`, `lng` or
+    `centre`. **N9, injected: interpolate the stop's booking link into the `unbooked` line** →
+    `redactionHits` returns `['url']` and this reddens. **Fireable by construction**: `unbooked_ticketed`'s
+    predicate requires `stop.links.length > 0 || stop.ticket`, so every stop that answer can name has a link.
+  - **The ceilings hold** `[stated]`: `packages/core` still has **zero** runtime dependencies; `node --test`
+    still runs the package on bare Node with no build step; `ask/` contains no `Date.now()`, no
+    `Math.random()`, no `fetch` and no `fs`; §2.10's runtime count is **91** and `surface.test.ts` asserts
+    set equality in both directions; `SCHEMA_VERSION` is **5** and `SUMMARY_VERSION` is **8**. **No file
+    under `apps/`, `packages/client/`, `docs/design/` or the repo root is opened.**
+- **Dependencies / blockers.** **None.** It shares no file with `I-33`, `I-34` or `I-30`, adds no
+  `.tsx`, and **does not gate `I-30`** — the picker is fenced by the unresolved visual direction and by
+  nothing else, and this increment does not touch that fence in either direction. It is the worked example
+  of sequencing rule 9 in the easy direction: the door is exercised through a CLI before any surface exists.
+- **Route: builder + breaker, mandatory** — a new capability that widens the `packages/core` export surface.
+
+#### I-36 — four more questions, and the proof that the engine widens without the boundary moving (revision 77, `ARCHITECTURE.md` §11; queued behind `I-35`, not routed until it is built)
+
+**Read `ARCHITECTURE.md` §11 whole, and `I-35`'s entry above. Nothing else.**
+
+**Why it exists, and why it is a separate increment.** `I-35` ships the five questions Jacob named. This one
+adds **four more and changes nothing structural**, which is the point: if the second batch needs a change to
+`Answer`, to `AnswerCite`, to `resolveCite` or to the grounding law, then §11's boundary was wrong and the
+finding is the architect's. **A widening that costs one resolver and one template is the design working; a
+widening that costs a type change is the design failing**, and this increment is where that is measured.
+
+- **Built.** Four `Question` kinds, each reading only what already exists (§11.4's ceiling: `ask/` holds no
+  domain arithmetic).
+  1. **`day_plan { date }`** — *"what am I doing on the 13th"*. `trip.days` by date, `computeLegs`,
+     `displayStatus` for the badge, and the same restatement/cite discipline.
+  2. **`city_stay { cityKey }`** — *"when am I in Split"*. `cityRange` and `daysForCity`, which are the two
+     functions that already answer it. **It may not sum city day counts into a trip total** — §8.4 A-56
+     residue 1, measured: the six cities of this trip sum to **20** over a **16**-day trip.
+  3. **`conflicts`** — *"what's wrong with my trip"*. `detectConflicts(trip, {today})` unresolved, all
+     kinds, with severity; `unbooked` stays the `coverage`-scoped subset and the two answers must agree on
+     their overlap.
+  4. **`cost_total`** — *"how much does this cost"*. `rollUpCost(trip, {target: trip.homeCurrency})`,
+     per-currency subtotals, `missingRates` stated in the sentence. **Core refuses to invent a rate** (§7)
+     and so does the answer: *"and CZK 4,200 that Cairn will not convert, because it has no rate table."*
+- **Verification.** `I-35`'s cite-resolution, redaction, coordinate-key, partial-text and ceiling criteria
+  are re-run **unchanged** over the widened `askableQuestions(referenceTrip)` — they are the criteria this
+  increment exists to keep green. Plus: `[stated]` the `conflicts` answer's `coverage`-kind subset is
+  **byte-identical** to the `unbooked` answer's fact list at the same clock (**12** at `2026-08-01`, **0**
+  at `2026-09-11`), which is the two-definitions check; `[stated]` `cost_total` names every currency
+  `rollUpCost` reports as unconvertible and converts none of them — **N1, injected: apply any rate** →
+  reddens. **`[stated]` the boundary did not move**: `Answer`, `AnswerCite`, `AnswerFact`, `AnswerCaveat`
+  and `resolveCite` are unchanged in this commit's diff, and §2.10 stays at **91** — the four kinds are
+  members of an existing union, not new exports. **If that criterion cannot be met, stop and report**: it
+  means §11's boundary is wrong and the fix is a ruling, not a build.
+- **Deferred out of this increment, with its trigger: `next_stop`** (*"what's next"*). It is the first
+  question whose answer depends on the **hour**, and `ClockTime` is wall-clock at the stop's location with
+  no timezone and no UTC instant (§7). *"Next"* is well-defined inside one day and undefined across a border,
+  which is `journey_overrun`'s problem exactly. **Trigger:** §7's timezone work, Phase 4.
+- **Dependencies / blockers.** **`I-35` must be built and adversarially verified first** — this increment's
+  headline criterion is that `I-35`'s boundary did not move, and that is unmeasurable before it exists.
+- **Route: builder only**, unless its stop-and-report fires — no export surface change, no new type, no new
+  invariant. If the boundary moves, it stops and becomes architect work.
+
+#### I-37 — the grounding repairs: one definition of how long a stop occupies the clock, and prose that is clean by construction (revision 78, `ARCHITECTURE.md` revision 78's §11.11 **A-96**; QA round 70's consequence, and the increment that closes `I-35`)
+
+> **⚠ BUILT (`e0fea87`) and SENT BACK by QA round 71 — 0 blockers, 3 MAJOR, 4 MINOR. This entry is
+> HISTORY; `I-38` below is the one to build.** Its subject held and the breaker re-derived all three claims
+> it was asked to rather than reading them: the 48-verdict sweep is exactly right cell by cell (44/0/4 →
+> 46/0/2, **exactly two movers**, both the evenings A-96 Part 4 names), the `overlap` identity is exact over
+> **858 stop shapes**, and the redaction chokepoint held under a sentinel in **every** user-authored string
+> field the model has. What broke is the **prose** on top of it: the fix for R70-3 turned two `unknown`
+> cells into `busy`, and the sentence one of them now renders states an end time the document contradicts
+> (**R71-1**). See `ARCHITECTURE.md` §11.12 **A-97**.
+
+**Read `ARCHITECTURE.md` §11.11 A-96 whole FIRST, then §11.4, §11.5, §11.7 and §11.8** (each of the last
+three carries A-96's amendment banner in place), **then `I-35`'s entry above, then QA round 70's findings
+table. Nothing else in `ARCHITECTURE.md`** — not §2, not §4, not §8, not §10. **No `DESIGN.md`**: this
+increment renders nothing.
+
+**Why it exists.** QA round 70 confirmed the boundary §11 exists to hold — *no model anywhere in the answer
+path* — and could not bend it. What it broke is the other half of the same sentence: **every clause of every
+answer is traceable to a cited fact.** Four of five MAJORs are rendered prose that is false of, or
+unsupported by, the document the answer claims to be about, and one of them is the increment's own flagship
+example. `I-35` is built and **not shippable until this lands**.
+
+**What it is NOT.** **No `.tsx`, no `apps/web` file of any kind, no `packages/client/src`, no
+`docs/design/`, no `qa/` rewrite** (the breaker owns `qa/r70-ask.mjs`). No new `Question` kind — that is
+`I-36`. No new export: **§2.10 stays at 91.** No stored field, no migration, no golden regenerated, no
+corpus byte; `SCHEMA_VERSION` (5) and `SUMMARY_VERSION` (8) do not move. **It does not gate `I-30`**, which
+is fenced by the unresolved visual direction and by nothing else.
+
+- **Built, in four parts, and parts 1 and 2 are ordered.**
+  1. **`packages/core/src/derive/occupancy.ts` — first, because nothing else can be re-verified before it**
+     (A-96 Part 2). `stopOccupancy(stop)` and `occupiedInterval(stop)`, module-level exports, **not added to
+     `packages/core/src/index.ts`**. `conflict/rules/overlap.ts` deletes its module-private `occupancy` and
+     imports `stopOccupancy`, mapping `source === 'journey_run'` onto its existing `derived` flag — an exact
+     identity, so KD-15's carve-out is untouched. **An `arrival` on a non-journey stop is the leg INTO the
+     stop and is not occupancy** (§2.5; **60 of 112** scheduled stops are that shape).
+  2. **`ask/freeTime.ts` reads intervals, and `free_time`'s sentences change with it** (A-96 Part 3, §11.7
+     rule 3). `busy` becomes *an interval intersects the window*; `DayVerdict.withoutDuration` becomes
+     `withoutOccupancy`; the `No` arm stops claiming everything *"starts in"* the window and names the
+     occupying stop's own evidence where it does not (*"you are on a bus into Split until 18:35"*); the
+     `duration_unknown` message stops naming `durationMins`. **`AnswerCaveatCode` does not move.** **R70-2
+     lands here** — an answer carrying an unresolvable hole is not `complete` — and it lands after this
+     part, because this part changes which days have holes.
+  3. **The renderer's one chokepoint** (A-96 Part 6, §11.8 clause 2). `trip.title` leaves `text` for
+     `params`/`facts`; `City.name` is the only user-authored field interpolated into prose or into a
+     `caveat.message`, and it goes through one function that applies §6.6's `redactText` first. **R70-4's
+     builder half is this part.**
+  4. **The remaining builder-routed findings of round 70, as one pass** — **R70-1** (`trip_overview`'s empty
+     arm says *"no days and no cities"* when one of the two is non-zero, and labels a describable document
+     `none`), **R70-5** (the lifetime-scope refusal is a six-phrase literal list; §11.3 rule 3 names the
+     *class* — a past-tense first-person frame — not the phrases), **R70-6**, **R70-7**, and every other row
+     of round 70's table routed to the builder. They share files with parts 2 and 3 and are cheaper as one
+     pass than as five.
+- **NOT built, because the fix was a document.** **R70-11** (§11.7 rule 4's two-city gate) is already
+  correct in the code: the builder read `no_departure_stop` off §11.5 and ignored the gate, and A-96 Part 7
+  confirms he was right and corrects the prose. **If this increment changes `answerCityEdge`'s search, it
+  has misread the ruling.**
+- **Verification.** Every criterion of `I-35` is re-run unchanged; these are additional.
+  - `[stated]` **The 48-verdict sweep.** All 16 days × 3 dayparts of the reference trip classify **46
+    `busy` / 0 `open` / 2 `unknown`**, the two `unknown` being the mornings of `2026-08-07` and
+    `2026-08-08`, and the two that moved since `I-35` being the evenings of `2026-08-07` and `2026-08-14`,
+    both `unknown` → `busy`. A ceiling, not a floor: no other verdict differs from A-96 Part 4's table.
+  - `[stated]` **The flagship answer.** *"Do I have a free evening in Split"* returns `coverage:
+    'complete'`, a `No`, and cites the `2026-08-14` 17:15 journey stop whose `arrival.mins` is **80**. Its
+    census clause says **20 of 28**, not 28. **N1, injected: delete that stop's `arrival`** → the 14th falls
+    back to `unknown`, `coverage` drops to `partial`, and the sentence changes to the *"I can't tell"* arm.
+    **This fault fires; `free_time`'s `open` arm cannot be fired from this fixture at all and is held by the
+    hand-built document in `ask.test.ts`** (A-96 Part 5, criterion rule 9).
+  - `[stated]` **One definition.** `stopOccupancy` is the only place in `packages/core/src` that reads
+    `arrival.mins` as a duration of the stop it sits on, and `conflict/rules/overlap.ts` calls it. **N2,
+    injected: make `stopOccupancy` return `null` for `'journey_run'`** → both the `overlap` suite and the
+    `free_time` sweep redden, which is the property *"two readers, one definition"* asserted rather than
+    asserted about.
+  - `[snapshot + stated]` **`overlap` did not move.** `fixtures/golden/core-conflicts.json` is
+    byte-identical, and `detectConflicts` on the reference trip still returns **0** `overlap` findings at
+    both clocks — the stated value beside the snapshot, per criterion rule 2.
+  - `[stated]` **Redaction is a property of the renderer.** Over `askableQuestions(trip)` at both clocks,
+    for the reference trip **and** for a copy whose `title` and one `City.name` carry one string per §6.6
+    pattern class, `redactionHits(answer.text)` and `redactionHits(caveat.message)` are **`[]`** for every
+    answer. **N3, injected: remove the chokepoint from the city-name path** → the mutated run reddens on
+    `trip_overview`, `city_edge` and `free_time`; the unmutated run stays green, which is what proves the
+    mutated document is the instrument (**0 of 6** city names and the title hit any pattern today).
+  - `[stated]` **`city_edge` did not change.** All **12** city edges of the reference trip answer
+    `coverage: 'complete'` and cite a `travelRole: 'journey'` stop, **10 of 12** on a two-city day. The
+    `no_departure_stop` caveat is **unfireable on this fixture (0 of 12)** and is held by `ask.test.ts`'s
+    hand-built document — declared, per criterion rule 9, not asserted.
+  - `[stated]` **The ceiling held.** `packages/core/src/ask/` still owns exactly two computations of its
+    own (§11.4); `ask/` imports nothing outside `packages/core/src`; `Object.keys(core).length` is **91**.
+- **Stop-and-report conditions.** Two, and both mean the ruling is wrong rather than the build. **(a)** If
+  the 48-verdict sweep differs from A-96 Part 4's table in any cell, stop — the architect measured the
+  committed fixture and one of us is wrong about the document. **(b)** If any `Answer` type, `AnswerCite`,
+  `AnswerCaveatCode` member or `resolveCite` signature has to change to land this, stop — §11's boundary
+  moved, and that is a ruling (sequencing rule 13 (d)).
+- **Dependencies / blockers.** `I-35` is built (`43315ef`). Part 1 precedes part 2. **`I-36` stays blocked
+  behind this**, not behind `I-35` alone: its headline criterion is that `I-35`'s boundary did not move, and
+  round 70 found four answers that were wrong inside it.
+- **Route: builder, and then the confirmation round QA round 70 already owes — not a second one.** It runs
+  over `I-37` as one subject, re-cutting `qa/r70-ask.mjs` against the corrected sweep; that re-cut is the
+  breaker's, not the builder's.
+
+#### I-38 — the prose repairs: a clamp stops being a fact, every busy day carries its evidence, and the scope refusal stops being a list (revision 79, `ARCHITECTURE.md` revision 79's §11.12 **A-97**; QA round 71's consequence, and the increment that closes `I-35`/`I-37`)
+
+**Read `ARCHITECTURE.md` §11.12 A-97 whole FIRST, then A-96 Parts 2, 3 and 6, then §11.3, §11.5, §11.7 and
+§11.8** (each of the last four carries A-97's amendment banner in place), **then QA round 71's findings
+table. Nothing else in `ARCHITECTURE.md`** — not §2, not §4, not §8, not §10, and **not A-96 Parts 1, 4, 5
+or 7**, which are `I-37`'s and are history. **No `DESIGN.md`**: this increment renders nothing.
+
+**Why it exists.** QA round 71 confirmed `I-37`'s subject cell by cell — the 48-verdict sweep, the
+`overlap` identity over 858 stop shapes, the redaction chokepoint under a sentinel in every user-authored
+string field the model has — and broke the **sentences** built on top of it. The flagship answer states a
+landing time the document contradicts (**R71-1**, on `node cli.ts ask "do I have a free evening"` with no
+`--file` and no mutation); an ordinary Cairn-native stop makes a day busy and contributes **no clause at
+all** (**R71-7**); and the scope refusal, rewritten as a class one round ago, is defeated by one adverb
+(**R71-3**). **`I-35` and `I-37` are built and neither is shippable until this lands.**
+
+**What it is NOT.** **No `.tsx`, no `apps/web` file of any kind, no `packages/client/src`, no
+`docs/design/`, no `qa/` rewrite** (the breaker owns `qa/r71-i37.mjs` and `qa/r70-ask.mjs`). No new
+`Question` kind — that is `I-36`. No new export: **§2.10 stays at 91.** No stored field, no migration, no
+golden regenerated, no corpus byte; `SCHEMA_VERSION` (5) and `SUMMARY_VERSION` (8) do not move, and
+`fixtures/golden/core-conflicts.json` stays **byte-identical**. No change to `classifyDay`'s three values or
+to any of A-96 Part 4's 48 verdicts. **It does not gate `I-30`**, which is fenced by the unresolved visual
+direction and by nothing else.
+
+- **Built, in four parts. Parts 1, 2 and 3 are ORDERED; part 4 shares no file with them.**
+  1. **`packages/core/src/derive/occupancy.ts` — first, because every sentence below is measured against
+     it** (A-97 Part 3). `OccupiedInterval.endMin` becomes `startMin + mins`, **uncapped**; `crossesDay`
+     becomes `endMin > DAY_END_MIN`; the clamp moves into `intervalIntersects` as one line with its reason
+     on it. **No second field** — `endMinRaw` beside `endMin` is refused by the ruling. `stopOccupancy` is
+     untouched and `conflict/rules/overlap.ts` is not opened at all.
+  2. **`ask/ask.ts`'s `free_time` renderer reads `crossesDay`** (A-97 Part 4) — its first production reader.
+     A run that ends inside the day keeps *"from 17:15 until 18:35"*; a run that outlives it reads *"from
+     16:45 and still on it at midnight"*. **No next-day clock time is rendered anywhere.** The `day_state`
+     fact's `params` gain **`runEndsAt`** (`clockOf(endMin)`, uncapped; `''` where the day has no run).
+  3. **The evidence partition** (A-97 Part 5). The `run.stop.arrival` gate is deleted; the bucket is
+     `runsInto` else `starts`, which is total over busy days by construction; the mode word is gated on
+     `interval.source === 'journey_run'`; a `stated_duration` run renders *"something that starts at …"*
+     with no stop name (inadmissible, A-96 Part 6). **`busyRuns.length + busyStarts.length === busy`.**
+  4. **`ask/match.ts` — the scope gate** (A-97 Part 6). `country_count` answers only on a trip-scope marker
+     and otherwise returns `out_of_scope: 'scope_unclear'`, a new `MatchOutcome` reason whose pointer names
+     both ways forward. The lifetime list stays, is still asked first, and becomes a **diagnosis**: its
+     builder-routed repairs ride here (scan for the participle in a short window rather than at a fixed
+     offset, first-person plural, the `have I not <verb>` frame the comment already claims), and *"have I
+     booked"* must still reach `unbooked`.
+  5. **The remaining builder-routed findings of round 71, as one pass** — **R71-2** (`trip_overview`'s third
+     arm), **R71-4** (`intervalIntersects` tests both ends of a stated run; it is written against the
+     **clamped** end, because the day-closed reading is that predicate's own business), **R71-5**'s missing
+     assertion **and** its `cli.ts` half (A-97 Part 7: where a redacted restatement and a typeable form
+     would share a line, the surface prints the typeable one only), and **R71-6**'s five prose edges. They
+     share files with parts 2–4 and are cheaper as one pass than as five.
+- **Verification.** Every criterion of `I-35` and `I-37` is re-run unchanged; these are additional.
+  - `[stated]` **The flagship sentence is true of the document.** `node cli.ts ask "do I have a free
+    evening"`, no `--file`, unmodified fixture: the `2026-08-07` clause states **no end clock time** and
+    says the flight is still running at midnight. Stated over the whole menu and scoped to the property
+    rather than to a spelling: **no answer `askableQuestions(referenceTrip)` can produce, at either clock,
+    renders an end time for a stop whose `crossesDay` is `true`** — which is the rule, and which a run that
+    genuinely ends at 23:59 would satisfy. **N1, injected: revert `endMin` to the clamped value** → the
+    `2026-08-07` clause reads *"until 23:59"* again and the assertion reddens naming the date.
+  - `[stated]` **One end-of-run instant.** For the `2026-08-07` 16:45 journey stop, `occupiedInterval`'s
+    `endMin` and `overlap`'s `start + mins` are the **same number** (1665), and `clockOf` renders both as
+    `27:45`. `conflict/rules/overlap.ts` is unopened by this increment and
+    `fixtures/golden/core-conflicts.json` is byte-identical.
+  - `[stated]` **The 48 verdicts did not move.** All 16 days × 3 dayparts still classify **46 `busy` / 0
+    `open` / 2 `unknown`**, the two `unknown` being the mornings of `2026-08-07` and `2026-08-08` (A-96
+    Part 4's table). A ceiling, not a floor: **this increment changes prose, and a moved verdict means it
+    changed the classifier, which is a stop-and-report.**
+  - `[stated]` **Every busy day carries a clause.** Over a hand-built document carrying all three shapes —
+    a journey run, a `durationMins` run with no `arrival`, and an in-window start — the number of days named
+    in `answer.text` equals the number of days it counts, and *"the other N"* is arithmetically correct.
+    **N2, injected: restore the `run.stop.arrival` gate** → the `durationMins` day loses its clause and the
+    count assertion reddens. **This fault is fireable only against that document**: the reference trip
+    carries **0** stops with a non-null `durationMins`, which is A-96 Part 5's declaration and criterion
+    rule 9's requirement, and the instrument holding the property meanwhile is `ask.test.ts`'s hand-built
+    `Trip` driven through the real `ask`.
+  - `[stated]` **The scope gate.** *"how many countries have I already been to"*, *"…have I now visited"*,
+    *"…have we visited"*, *"…to date"* and the other five phrasings R71-3 names all refuse — by
+    `'lifetime'` where a totality marker or a past frame is present, by `'scope_unclear'` where neither is —
+    and **none is answered**. *"how many countries am I visiting"*, *"how many countries does this trip
+    visit"* and *"how many countries on this trip"* all still answer. **Every line `askableQuestions` prints
+    still round-trips through `matchQuestion` to the question it was rendered from** (`test/cli.test.ts`'s
+    standing assertion). **N3, injected: delete the marker requirement** → *"how many countries have I
+    already been to"* is answered *"This trip accounts for 7 countries"* and the refusal assertion reddens.
+  - `[stated]` **Redaction covers the restatement.** §11.8 clause 2's criterion as widened by A-97 Part 7,
+    including its second injected fault: **revert `restate()` to the raw `cityName`** → the run reddens on
+    `city_edge` and `free_time` over the mutated document. It does not today, which is R71-5.
+  - `[stated]` **The ceiling held.** `packages/core/src/ask/` still owns exactly two computations of its own
+    (§11.4); `ask/` imports nothing outside `packages/core/src`; `Object.keys(core).length` is **91**; no
+    `Date.now`, no `Math.random`, no `fetch`; 36 menu answers byte-identical across two calls.
+- **Stop-and-report conditions.** Three, and each means the ruling is wrong rather than the build. **(a)**
+  If any of A-96 Part 4's 48 verdicts moves, stop — this increment renders, it does not classify. **(b)** If
+  `fixtures/golden/core-conflicts.json` moves by a byte, stop — A-97 Part 3 says `overlap` is not on this
+  path. **(c)** If any `Answer` type, `AnswerCite`, `AnswerCaveatCode` member or `resolveCite` signature has
+  to change to land this, stop — §11's boundary moved, and that is a ruling (sequencing rule 13 (d)).
+  `MatchOutcome`'s new `reason` is the one union change this increment is authorised to make.
+- **Dependencies / blockers.** `I-37` is built (`e0fea87`). **Part 1 → part 2 → part 3**, in that order:
+  part 3 makes more days render a run clause, so landing it before part 1 would spread R71-1's false end
+  time onto the days part 3 rescues. Part 4 is independent. **`I-36` stays blocked behind this**, not behind
+  `I-37`: its headline criterion is that the boundary did not move, and round 71 found three more answers
+  wrong inside it. **Nothing here gates `I-30`.**
+- **Route: builder, and then the confirmation round QA round 71 already owes — not a second one.** It runs
+  over `I-38` as one subject, re-cutting `qa/r71-i37.mjs` against the corrected renderer; that re-cut is the
+  breaker's, not the builder's.
+
+#### I-44 — the scope gate stops testing English: `country_count` matches sentences Cairn wrote (revision 81, `ARCHITECTURE.md` revision 81's §11.13 **A-98**; QA round 72's consequence, and the increment that closes the `country_count` scope arc)
+
+**Read `ARCHITECTURE.md` §11.13 A-98 whole FIRST, then §11.12 A-97 Parts 2, 5 and 6, then §11.3. Nothing
+else in `ARCHITECTURE.md`** — not §2, not §4, not §8, not §10, not §12, and not A-96. **No `DESIGN.md`**:
+this increment renders nothing.
+
+**Why it exists.** This is the **third** round on one boundary. Round 70 found five phrasings answered at
+the wrong scope and they were fixed by adding five entries; round 71 found eight more; A-97 flipped
+`country_count` to default-deny and round 72 measured the flip **half-inert** — ten lifetime phrasings still
+answered *"This trip accounts for 7 countries"*, through the six of twelve markers that are **person and
+tense** markers rather than scope markers (**R72-1**, MAJOR, and it is A-97 Part 6 rider 4's own MAJOR
+class: *a phrasing that reaches an ANSWER means the gate itself is wrong*). A-98 refuses a fourth list and
+measures that the whole family is dead: **containment is not reference**, and *"how many countries am I up
+to **including this trip**"* is answered today by a gate that would pass any marker-quality review. The
+replacement is **whole-sentence equality against sentences Cairn itself authored**.
+
+**What it is NOT.** **No `.tsx`, no `apps/web` file of any kind, no `packages/client/src`, no
+`docs/design/`, no `qa/` rewrite** (the breaker owns `qa/r72-i38.mjs`). No new `Question` kind — that is
+`I-36`. No `MatchOutcome` change at all: A-97 already minted `scope_unclear`, and **§2.10 stays at 91.** No
+stored field, no migration, no golden regenerated, no corpus byte; `SCHEMA_VERSION` (5) and
+`SUMMARY_VERSION` (8) do not move, `fixtures/golden/core-conflicts.json` stays **byte-identical**, and
+A-96 Part 4's **48 verdicts** do not move. **It does not gate `I-30`**, which is fenced by the unresolved
+visual direction and by nothing else.
+
+- **Built, in three parts. Part 1 → part 2 are ORDERED; part 3 shares no file with them.**
+  1. **`ask/match.ts` — the gate's PLACEMENT, first** (A-98 Part 7, **R72-2**). The scope decision stops
+     `return`ing from inside the candidate loop. `country_count` becomes a candidate or does not; the
+     sentence-level `out_of_scope: 'scope_unclear'` fires **only at the end**, only where a
+     `COUNTRY_TRIGGERS` phrase is present, the sentence is not accepted, **and no other intent produced a
+     reading** — i.e. exactly where `unrecognised` would otherwise be returned. Doing this first means the
+     new gate is written once, in the right place.
+  2. **`ask/match.ts` — the gate itself** (A-98 Parts 2 and 3). `TRIP_SCOPE_MARKERS` is **deleted**. A
+     module-private `Set<string>` is generated at module load from the four factor lists A-98 Part 3
+     publishes (6 stems, 4 determiners × 2 nouns, 15 NP frames, 16 bare frames → **816** sentences), and
+     `country_count` is a candidate **iff** `tokenize(text).join(' ')` is a member. One spelling, no second
+     reading (criterion rule 8). `COUNTRY_TRIGGERS` stays and stops producing a candidate. **R72-7** rides
+     here: the `scope_unclear` pointer stops printing `§8.4` at a person, and what it quotes as the way
+     forward must round-trip (verification 3 below).
+  3. **`ask/ask.ts` — the mode word** (A-98 Part 8, **R72-8**). The `busyRuns` clause emits the mode where
+     **`stop.travelRole === 'journey' && stop.arrival !== null`**, whatever `interval.source` is. **Two
+     conjuncts, not one**: `arrival` on a non-journey stop is the leg *into* it and 60 of the reference
+     trip's 112 scheduled stops are that shape. **No new field on `OccupiedInterval`.**
+  4. **The remaining builder-routed findings of round 72, as one pass** — **R72-3** and **R72-4**
+     (`derive/occupancy.ts`: `crossesDay`'s off-by-one against the half-open convention, and the clamp's
+     `Math.min(endMin, DAY_END_MIN + 1)` with the fourth-daypart test re-cut to match), **R72-5**
+     (`runEndsAt`'s domain guard) and **R72-6** (`ask.ts:709`/`:710`'s two surviving numerals). **They batch
+     by file**: R72-6 and R72-5 share `ask/ask.ts` with part 3, R72-7 shares `ask/match.ts` with parts 1 and
+     2, and R72-3/R72-4 are one file nothing else in this increment opens.
+- **Verification.** Every criterion of `I-35`, `I-37` and `I-38` is re-run unchanged; these are additional.
+  Each states whether its fault fires today (criterion rule 9).
+  - `[stated]` **The thirteen lifetime phrasings refuse, and none is answered.** R72-1's ten, plus A-98 Part
+    1's three preposition cases (*"…am I up to **including this trip**"*, *"which countries am I yet to visit
+    **before this trip**"*, *"**apart from this trip** how many countries am I up to"*). Each returns
+    `out_of_scope` — by `'lifetime'` where a totality marker or past frame is present, by `'scope_unclear'`
+    where neither is — and **none returns `matched`**. A ceiling, not a floor (rule 4). **RED at `5fa74e1`**:
+    all thirteen reach an answer there, eleven of them `matched: country_count`, and *"how many countries am
+    I up to"* is reachable through `node cli.ts ask` with no `--file` on the unmodified fixture. **N1,
+    injected: relax the gate from equality to containment on the accept set's stems** → the three preposition
+    cases are answered again and the assertion reddens naming them.
+  - `[stated]` **The accept set cannot be rescued by the lifetime list.** **No member of the accept set trips
+    `LIFETIME_TRIGGERS` or `lifetimeFrame`** — asserted over all 816, so the order the two refusals are asked
+    in cannot change any outcome, and A-97 Part 6 rider 2's *"a diagnosis, not the safety mechanism"* becomes
+    a checked property rather than a claim. **UNFIREABLE at birth and declared so** (criterion rule 9 (b)):
+    the set is built to satisfy it, measured 0 of 816 before ruling. **It reddens the day a fragment carrying
+    a past-travel frame is admitted**, which is exactly when A-98 Part 6 rider 1's builder-only route would
+    otherwise be dangerous, and the property is held meanwhile by A-98 Part 3's admission test applied to 43
+    fragments by a human.
+  - `[stated]` **Everything Cairn tells a user to type, parses.** Every line `cli.ts`'s `questionLine` prints
+    for `askableQuestions(trip)` round-trips to the question it was rendered from (the standing assertion,
+    unchanged) **and every phrasing quoted inside an `out_of_scope` pointer parses to a `matched` outcome**
+    (criterion rule 11, new). **GREEN at `5fa74e1` and declared**: today's pointer quotes the menu line
+    verbatim, so it cannot redden; it becomes fireable the moment the accept set and the pointer can drift,
+    which is the state this increment creates. **N2, injected: change the pointer's quoted phrasing to *"how
+    many countries have I been to"*** → it reddens naming the pointer, not the menu.
+  - `[stated]` **The gate is a candidate filter.** Three outcomes, as a table, with their `unread` lists:
+    `"which countries have a free evening"` → `matched: free_time` (`evening`, `cityKey: null`), `unread`
+    contains `which` and `countries`; `"how many countries have I booked"` → `matched: unbooked`, `unread`
+    contains `countries`; `"how many countries"` → `out_of_scope: 'scope_unclear'`. **RED at `5fa74e1`**: the
+    first two are `scope_unclear` there, which is R72-2. **N3, injected: restore the `return` inside the
+    candidate loop** → both revert and the assertion reddens.
+  - `[stated]` **Recall is measured, not asserted.** Over the 18 trip-scoped phrasings QA round 72 and A-98
+    collected between them, **15 answer and 3 refuse**, and the three are named in the test: *"how many
+    countries"* (which §11.3 rule 3 requires to refuse) and the two prefixed sentences of A-98 Part 4. **A
+    floor on the 15 and a NAMED list for the 3** — a fourth refusal is a finding, not a pass.
+  - `[stated]` **The mode word.** On a planted document whose journey stop states **both** `durationMins` and
+    `arrival`, the busy-day clause reads *"you are on a flight from 16:30 until 18:30"*. **UNFIREABLE against
+    the reference trip and declared**: all **21** of its journey stops carry `durationMins: null`, so
+    `source` is `'journey_run'` for every one and the change is inert there. Instruments: the planted
+    document `qa/r72-i38.mjs` §G already builds, and a hand-built `Trip` in `ask.test.ts`. **N4, injected:
+    restore `source === 'journey_run'`** → the clause reverts to *"something that starts at 16:30"*. **N5,
+    injected: drop the `travelRole` conjunct** → a `transfer` stop with an `arrival` renders *"you are on a
+    …"* and the assertion reddens **on the reference trip**, where 60 stops are that shape.
+  - `[stated]` **The deleted list stays deleted.** `TRIP_SCOPE_MARKERS` does not appear anywhere under
+    `packages/` — a greppable ceiling over the implementation, not a word-absence claim about a file
+    (criterion rule 7): the name is the ruling's own and only a ruling brings it back.
+  - `[stated]` **The ceiling held.** `Object.keys(core).length` is **91**; `packages/core/src/ask/` still
+    owns exactly two computations of its own (§11.4); no `Date.now`, no `Math.random`, no `fetch`; 36 menu
+    answers byte-identical across two calls; `fixtures/golden/core-conflicts.json` byte-identical; the 48
+    verdicts still 46 busy / 0 open / 2 unknown.
+- **Stop-and-report conditions.** Three, and each means the ruling is wrong rather than the build. **(a)** If
+  any of A-96 Part 4's 48 verdicts moves, stop — this increment renders and recognises; it does not classify.
+  **(b)** If a *realistic* trip-scoped phrasing cannot be admitted without a fragment that fails A-98 Part
+  3's admission test, stop and report it — that is the ruling's own boundary being met, and widening the set
+  by a sentence instead of a fragment is the move A-98 forbids. **(c)** If any `Answer` type, `AnswerCite`,
+  `AnswerCaveatCode` member, `MatchOutcome` member or `resolveCite` signature has to change to land this,
+  stop — §11's boundary moved, and that is a ruling (sequencing rule 13 (d)).
+- **Dependencies / blockers.** `I-38` is built. **Part 1 → part 2**; part 3 is independent. **`I-36` stays
+  blocked behind this**, on the same reasoning that blocked it behind `I-38`: its headline criterion is that
+  the boundary did not move, and the boundary moved here. **Nothing here gates `I-30`.** **Jacob has directed
+  that this close before Phase 3 code begins** — see Phase 3 entry condition 2, which records that the
+  direction is a direction and not a dependency.
+- **Route: builder, and then one confirmation round over `I-44` as one subject.** The re-cut of
+  `qa/r72-i38.mjs` §F and §G is the **breaker's**, not the builder's.
+
+#### I-45 — the accept set closes by generation, a clause takes its facts from one field, and the prose gets its first mechanism (revision 82, `ARCHITECTURE.md` revision 82's §11.14 **A-99**; QA round 73's whole code consequence, and the LAST scheduled increment on `ask` before the narrowing in A-99 Part 10)
+
+**Read `ARCHITECTURE.md` §11.14 A-99 whole FIRST, then §11.13 A-98 whole, then §11.12 A-97 Parts 2 and 5,
+then §11.3, §11.5 and §11.7. Nothing else in `ARCHITECTURE.md`** — not §2, not §4, not §8, not §10, not §12.
+**No `DESIGN.md`**: this increment renders nothing. **Read A-99 Part 10 even if you are only fixing one
+finding** — it says what happens to this capability if the round after this one finds another prose defect.
+
+**Why it exists.** Round 73 confirmed A-98's scope gate closed R72-1 structurally — thirteen of thirteen
+lifetime phrasings refuse, none is a member of the accept set — and found **two MAJORs in the neighbouring
+code**: the mode word now comes from `arrival.mode` beside a clock from `durationMins` (**R73-1**, A-97 Part
+2's own sibling rule failing inside A-98's fix for it), and four of the sixteen bare fragments are **present
+simple**, which is habitual rather than occasion-scoped, so *"what countries do I visit"* is answered about
+this trip (**R73-5**). Plus the numeral-for-one defect at its **sixth** site in three rounds (**R73-3**), a
+field with three wrong values and no reader (**R73-4**), and three builder-routed MINORs.
+
+**What it is NOT.** **No `.tsx`, no `apps/web` file of any kind, no `packages/client/src`, no
+`docs/design/`, no `qa/` rewrite** (the breaker owns `qa/r73-i44.mjs` and `qa/r72-i38.mjs`). No new
+`Question` kind — `I-36` stays blocked, on its own reasoning and on A-99 Part 10 (a). **No change to
+`derive/occupancy.ts` at all**: A-97 Part 3 and A-98's occupancy work is done and round 73 verified both
+boundaries. No `MatchOutcome`, `Answer`, `AnswerFact`, `AnswerCite` or `AnswerCaveatCode` change; **§2.10
+stays at 91**; `SCHEMA_VERSION` (5) and `SUMMARY_VERSION` (8) do not move; `fixtures/golden/core-conflicts.json`
+stays **byte-identical**; A-96 Part 4's **48 verdicts** stay 46 busy / 0 open / 2 unknown. **Nothing here
+gates `I-30` or Phase 3.**
+
+- **Built in two batches. They share no file and no state; either may go first. Within a batch the order is
+  stated and it matters.**
+
+  **Batch A — `packages/core/src/ask/match.ts`.**
+  1. **The authority ordering, first** (A-99 Part 4). `const authored = ACCEPTED_COUNTRY_QUESTIONS.has(tokens.join(' '))`
+     is computed at the top of `matchQuestion`, and the `lifetimeTokens` and `RECOMMENDATION_TRIGGERS`
+     refusals are guarded by `!authored`. **A sentence Cairn wrote is never vetoed by a list over English.**
+     Nothing else about either refusal moves; a non-member behaves exactly as it does today. Doing this
+     first is what makes step 2's new fragments admissible.
+  2. **The factor lists** (A-99 Parts 3 and 5), as one edit. The four present-simple bare frames are
+     **deleted**; the comment justifying the list stops saying *"tense"* and states the admission test's new
+     clause 2 (*a bare frame is admitted only if its habitual reading requires an added adverbial*); A-98's
+     six hand-written `… on <np>` entries leave `NP_FRAMES`; a `NP_ONLY_FRAMES` list holds `do i visit on
+     <np>`, `do we visit on <np>`, `do i go to on <np>`, `do we go to on <np>` and `have i visited on <np>`;
+     and the generator emits `` `${B} on <np>` `` for every bare frame `B`. **`6 × (12 + 25 × 8)` = 1,272
+     sentences from 25 fragments.** The count is the ruling's arithmetic; assert the relationship, not a
+     transcribed total (criterion rule 6).
+  3. **R73-7** — `scope_unclear`'s text is false of a sentence naming a city of this trip. `cityHits` is
+     already in scope above the branch: where `cityHits.length > 0` the refusal is not a scope refusal at
+     all and the sentence falls through to `unrecognised` with the menu, which is the true statement.
+  4. **Recall becomes monotone** (A-99 Part 6). The corpus — round 72's 18 trip-scoped phrasings, round 73's
+     40, and A-98 Part 1's 13 lifetime cases, deduped — is committed as a literal in
+     `packages/core/test/`, with each entry marked `answer` or `refuse` **as measured at `08c4696`**. The
+     assertion is that **nothing that answered before refuses after**. No percentage is asserted anywhere;
+     the measured count goes in `BUILD-NOTES.md` as history against this commit.
+
+  **Batch B — `packages/core/src/ask/ask.ts`.**
+  1. **R73-1, the mode word** (A-99 Part 1). `journeyModeWord(stop, interval)` — the interval is a
+     **parameter**, which is the fix; the mode is emitted only where the interval was measured from
+     `arrival`. **The shipped test that proves A-98 Part 8 is re-cut**: its disagreeing document (`durationMins:
+     120` beside `arrival.mins: 300`) must now assert the mode-less clause, and a **second** document whose
+     fields agree carries the mode-word assertion. A test pinning a sentence its own document contradicts is
+     the defect written down twice.
+  2. **R73-4, the field** (A-99 Part 9). `runEndsAt` is **deleted** from the `day_state` fact's `params`,
+     with its guard and its three failure modes. The fact's other ten params and all its cites are unchanged.
+     This closes R72-5 and R73-4 outright and removes half of R73-2. Do it beside step 1 — both touch the
+     same `facts.push(fact('day_state', …))` region.
+  3. **R73-2's remaining arm** (builder). `endMin === 1440` is correctly `crossesDay: false`, and the clock
+     arm has no case for it: `clockOf(1440)` is `"24:00"`. The clause reads **"until midnight"** for that one
+     value — *not* *"still on it at midnight"*, which is the other arm's and is false of a flight that has
+     landed.
+  4. **R73-3, the pluraliser** (A-99 Part 8), **last, over the final text.** `countWord(n)` and
+     `countNoun(n, singular, preposition, scope)`, module-private in `ask/`, used by **every** arm of
+     **every** answer. `theDays` and `everyOne` become outputs of `countNoun`; the loose `scope` string stops
+     being reachable by other sentences; verb agreement with a numeric subject follows the same value
+     (*"one of the 2 stops … states"*). **Do not fix the four known sites and stop** — the criterion below
+     is the deliverable and it will name sites nobody has enumerated.
+
+- **Verification.** Every criterion of `I-35`, `I-37`, `I-38` and `I-44` is re-run unchanged except the two
+  A-99 replaces; these are additional. Each states whether its fault fires today (criterion rule 9).
+  - `[stated]` **The mode word and the clock come from one field.** On a planted journey stop whose
+    `durationMins` and `arrival.mins` **disagree**, the clause reads *"on 2026-08-07 something that starts at
+    16:45 runs until 20:05"* and contains **no mode word**; on one where they **agree**, it reads *"you are on
+    a flight from 16:30 until 21:30"*. **RED at `08c4696`** for the first document — it reads *"you are on a
+    flight from 16:45 until 20:05"* there, about a flight the same stop says lands at 03:45. **UNFIREABLE
+    against the reference trip and declared**: all 21 of its journey stops carry `durationMins: null`, so the
+    instruments are two hand-built `Trip`s in `ask.test.ts` and the planted document of `qa/r73-i44.mjs` §D.
+    **N1: drop the `fromArrival` test** → the disagreeing document renders the mode and it reddens naming both
+    fields. **N2: restore `interval.source === 'journey_run'` alone** → the agreeing document loses its mode.
+    **N3: drop the `travelRole` conjunct** → a `transfer` carrying the leg into it renders *"you are on a …"*
+    and reddens **on the reference trip**, where 60 stops are that shape.
+  - `[stated]` **The four present-simple fragments are gone and the twenty-four cells with them.** *"what
+    countries do I visit"*, *"which countries do I go to"*, *"how many countries do we visit"* and *"what
+    countries do we go to"* each return `out_of_scope`, and **none returns `matched`** — a ceiling, not a
+    floor (rule 4). **RED at `08c4696`**: all four are answered *"This trip accounts for 7 countries"* through
+    `node cli.ts ask` with no `--file`. **N4: restore `'do i visit'` to `BARE_FRAMES`** → it answers again and
+    the assertion reddens naming the fragment.
+  - `[stated]` **The same four verbs answer with the document named.** *"how many countries do I visit on this
+    trip"*, *"which countries do I go to on our itinerary"* → `matched: country_count`. This is the pair that
+    proves the discriminant is the adverbial and not the verb; a criterion that only asserted the refusals
+    would pass on an implementation that deleted the verbs entirely.
+  - `[stated]` **The accept set closes under naming the document.** For **every** member `m` generated from a
+    bare frame, `tokenize(m + ' on this trip')` is also a member and also answers — asserted over the whole
+    generated population, not over a sample. **RED at `08c4696`**: 60 of 96 such sentences refuse there.
+    **N5: delete the twin generation and re-add A-98's six hand-written entries** → the assertion reddens with
+    a count of the sentences that lost their twin.
+  - `[stated]` **The order the refusals are asked in cannot change the outcome for a sentence Cairn wrote**
+    (this **replaces** A-98 Part 9 criterion 2). Every member of the accept set returns `matched:
+    country_count` **with `LIFETIME_TRIGGERS`, `lifetimeFrame` and `RECOMMENDATION_TRIGGERS` all in place**,
+    and *"how many countries have I visited on this trip"* — a member carrying a past-travel frame — is among
+    them. **RED at `08c4696`**: it refuses as `lifetime` there. **N6: move the membership test back below the
+    two refusals** → that sentence refuses and the criterion reddens **by name**. The criterion it replaces
+    was green by construction and could never fire; this one fires today.
+  - `[stated]` **No count reaches prose as a bare numeral** (criterion rule 12). Over a generated population
+    of documents exercising all three arms of `answerFreeTime` and every other `Question` kind, at day and
+    stop populations of **0, 1, 2 and many**, and whose city names carry no digits: **no `Answer.text`
+    contains the standalone token `1`.** **RED at `08c4696`** at four known sites, and the criterion is
+    expected to redden at sites this entry does not name — **those are fixed in this increment, and finding
+    them is the criterion working.** **N7: restore a bare `${n}` at any one interpolation site** → it reddens
+    naming the answer and the sentence.
+  - `[stated]` **The deleted field stays deleted.** `runEndsAt` does not appear anywhere under `packages/` —
+    a greppable ceiling over the implementation (criterion rule 7): the name is a ruling's and only a ruling
+    brings it back. The `day_state` fact still carries its other params and **every occupying stop of the day
+    as a cite**, which is the path a future consumer takes to the instant.
+  - `[stated]` **Recall is monotone.** Every phrasing marked `answer` in the committed corpus still answers.
+    **A new refusal is a finding, not a pass.** **UNFIREABLE in the redward direction at `08c4696`** by
+    construction (the corpus is marked from that commit) and declared; it becomes fireable on the next
+    fragment change, which is what it is for. **N8: delete one bare frame** → the corpus entries that used it
+    redden by name.
+  - `[stated]` **Everything Cairn tells a user to type still parses** (criterion rule 11, unchanged from
+    `I-44`) — the menu round-trip and every phrasing quoted inside an `out_of_scope` pointer. The pointer's
+    quoted phrasing *"how many countries am I visiting"* is still a member after the factor lists change.
+  - `[stated]` **The ceiling held.** `Object.keys(core).length` is **91**; no `Date.now`, no `Math.random`, no
+    `fetch` under `packages/core/src/ask/`; 36 menu answers byte-identical across two calls;
+    `fixtures/golden/core-conflicts.json` byte-identical; the 48 verdicts still 46 busy / 0 open / 2 unknown;
+    `derive/occupancy.ts` **unchanged, byte for byte**.
+- **Stop-and-report conditions.** Four, and each means the ruling is wrong rather than the build. **(a)** If
+  any of A-96 Part 4's 48 verdicts moves, stop. **(b)** If the twin-generation rule admits a sentence that
+  fails A-98 Part 3's admission test, stop and report the sentence — A-99 Part 5 claims the closure is a
+  theorem, and a counterexample falsifies a ruling, not a build. **(c)** If criterion rule 12's sweep reddens
+  at a site whose fix would change what an answer *means* rather than how it counts, stop — that is a prose
+  redesign and A-99 Part 10 has already said what happens to those. **(d)** If deleting `runEndsAt` breaks a
+  consumer, stop: A-99 Part 9 asserts it has none, and a consumer is that assertion being false.
+- **Dependencies / blockers.** `I-44` is built. Batch A and batch B are independent. **`I-36` stays blocked**
+  behind this, on its own reasoning and on A-99 Part 10 (a). **Nothing here gates `I-30` or Phase 3** —
+  Jacob's direction was that the `country_count` scope arc close before Phase 3 code, and A-98 Parts 1–7 did
+  that; this increment is the neighbouring repair.
+- **Route: builder, and then one confirmation round over `I-45` as one subject.** **That round is the
+  decision point A-99 Part 10 names**: if it finds a prose defect in an `Answer.text` that no criterion
+  covers, `free_time`'s composed paragraph is withdrawn in favour of a one-sentence verdict plus the `facts`
+  array, and that withdrawal is a builder increment, not another architect round.
+
 ### Exit criteria — the Phase 2 ship gate
 
 Tagged per **How a criterion is written**. The first two are ceilings on Phase 1 and are the ones that fail
@@ -10548,6 +11478,16 @@ withdrawn, and carries its own trigger; **it does not block `I-11`**, and I-11's
 is where that is adjudicated. This is the same treatment **I-13f** already has, which is the precedent it
 was written against.)*
 
+*(**Revision 77 adds one narrow exclusion beside a new capability.** `I-35` and `I-36` build the
+question-answering engine of `ARCHITECTURE.md` **§11**, entirely in `packages/core` and `cli.ts`. What this
+phase does **not** build: **any language model, network call, API key or `services/` directory**;
+**free-text understanding beyond §11.3's recogniser** — the closed vocabulary and the menu are the product;
+**multi-turn context**; **library-scope questions**, which `travelStats` already answers and which §11.3
+rule 3 refuses by name; **any recommendation of any kind**; **any answer that can act** — `ask` never
+proposes an edit, fixes a conflict or accepts a candidate; and **any screen at all** — no surface is
+scheduled while the visual direction is unselected, which is the same sentence `I-10` and `I-13f` are
+carried under. `ARCHITECTURE.md` §7 and §11.10 carry each with its trigger.)*
+
 **And, added at revision 10: no travel distance or mileage of any kind, in any mode.** `ARCHITECTURE.md`
 §8.10 architects it and schedules it across phases 4, 5b and 7; **nothing about it is built here.** In
 particular this phase adds no `Journey` record, no airport index, no `Booking.route` endpoint codes and no
@@ -10592,71 +11532,330 @@ rounds is how a probe stayed broken for seven commits with no status note mentio
 
 ## Phase 3 *(was Phase 2)* — server, accounts, the social graph, and share links
 
-**Ships:** `services/api` (Node 24, Postgres, RLS, managed auth and object storage), `packages/client` gains
-a `SyncPort`, sign-in, multi-device sync, friends, per-trip shares (`viewer/commenter/editor`), ticket
-upload, and **public share links a friend opens in a browser without installing anything** — the web
-companion's other job per Jacob's answer. **Sharing is read + `copyStopInto`**; the browse-another-trip pane
-from Phase 1 gains shared trips as a source and nothing else changes. `forkTrip` is not in this phase and is
+> **⚠ Rewritten at revision 80** against `ARCHITECTURE.md` **§12**, which is the ruling that precedes any
+> infrastructure being bought or built. **A builder or breaker of any increment below reads §12 whole and
+> nothing else in `ARCHITECTURE.md`** — not §2, not §4, not §8, not §10, not §11, and no `A-` ruling at all.
+> The revision-9 text this replaces is history; where the two disagree, §12 and this section win.
+
+**Ships:** `services/api` (Node 24, Postgres, RLS `FORCE`d and default-deny, three database roles),
+`packages/client` gains a `SyncPort`, sign-in, multi-device sync for one owner, friends (`Connection`),
+per-trip **read** shares to a Cairn user or to a link, and **public share pages a friend opens in a browser
+without installing anything**. **Sharing is read + `copyStopInto`**; the browse-another-trip pane from Phase
+1 gains shared trips as a source and nothing else about it changes. `forkTrip` is not in this phase and is
 not coming (§2.14).
 
-**Also here, because it needs accounts and it needs a ruling:** the `acceptCandidate` control in
-`apps/web`, which Phase 1 shipped without (`REVIEW.md`: an imported stop stays badged *from a friend*
-forever). **R8-3 is ruled before it ships**, and **R8-4 is ruled before or with the `SyncPort`.** If Jacob
-pulls the accept control forward into Phase 2, R8-3 moves with it — the two are one item.
+**Narrowed at revision 80, and the narrowing is a ruling, not caution** (§12.7). Phase 3 ships **`owner` and
+`viewer`**. **`editor`, `commenter` and `TripMember` have no mint endpoint**, because `mergeTrips` rule 3's
+last-writer-wins is honest exactly while the writer whose work was overwritten is the person reading
+`report.overwritten` — true for two devices of one user, false for two people. All three roles stay in the
+predicates, in the types and in **every cell** of the conformance matrix. CRDTs stay deferred (§7) and the
+trigger is now *a `MergeReport` with a reader who is not the writer*.
 
 **Five edges, and the pairs that must not be collapsed** (§8.7): `TripParticipant` (who travelled, shipped
 in Phase 2, grants nothing), `TripMember`, `TripShare`, `Connection`, `LocationShare`. Phase 2's
-participants become linkable to real `User`s here — `Participant.userId` stops being permanently null —
-and linking a participant **still grants nothing**; a grant is a second row the user creates deliberately.
+participants become linkable to real `User`s here — `Participant.userId` stops being permanently null — and
+linking a participant **still grants nothing**; a grant is a second row the user creates deliberately.
+`LocationShare` has no table in this phase and needs none (§12.8).
 
 **Independently useful:** Jacob's trips stop living in one browser, and his friends can see them.
 
-Entry: Phase 2 shipped, with a manager verdict of SHIP — **and `A-2` / QA `P2-8` ruled by the architect
-before the first line of share, friend or public-share-link code, and before anything reopens `importDoc`'s
-ownership check.** *(Added at revision 60, QA **R54-9**, which re-measured it at the Phase 2 gate and found
-it unchanged: with `"ownerId":"user:marta"` present the file is refused with `ForeignDocumentError`;
-**delete that one key and the same file is adopted whole as `local:self`**, carrying stops whose
-`provenance.actorUserId` is still `user:marta`, with `validateTrip` reporting **0** ownership issues. It has
-been routed to the architect since QA round 12, nine status notes have carried it as *"still open"*, and
-until revision 57 it had **no home in a contract document at all** — only `REVIEW.md`'s routing table, which
-is a verdict record. `ARCHITECTURE.md` **§7** now states it with its trigger, and this line is that trigger.
-It is a **scope rule, not an open defect** — nothing before this phase creates a second person whose
-document could arrive — and it is placed here rather than ruled now because `BRIEF.md`'s settled sentence,
-*"`importDoc` … refuses a document owned by someone else, **visibly**"*, can only be made true by a design
-that knows what an account is.)*
+**Also here, because it needs accounts and it needs a ruling:** the `acceptCandidate` control in `apps/web`,
+which Phase 1 shipped without (`REVIEW.md`: an imported stop stays badged *from a friend* forever). **R8-3
+is ruled before it ships**, and **R8-4 is ruled before or with the `SyncPort`.** If Jacob pulls the accept
+control forward into Phase 2, R8-3 moves with it — the two are one item.
 
-**Exit criteria**, tagged per **How a criterion is written**:
+**Do not ship an empty DISCOVER tab.** It appears in **`I-43`**, when there is a network behind it, and not
+one increment earlier.
+
+---
+
+### Entry conditions — stated plainly, including the two that do not gate
+
+1. **Phase 2 shipped, with a manager verdict of SHIP** (sequencing rule 2). **`I-30` — the picker screen —
+   is unbuilt and is the last Phase 2 increment, blocked on a visual direction that is not in this
+   repository.** It therefore **gates Phase 3's code** through rule 2, and it **does not gate revision 80's
+   design ruling**, which is what ROADMAP's own entry condition has always required to happen *before* the
+   first line of Phase 3 code. Stated rather than left ambiguous.
+2. **`R72-1` gates Phase 3 by DIRECTION, not by dependency, and the distinction is kept visible.**
+   **⚠ Amended at revision 81.** Technically it shares **no file** with anything below and nothing in Phase 3
+   reads `ask/`; that has not changed, and this entry said so. **What changed is that Jacob directed it close
+   before Phase 3 code begins**, which it does: §11.13 **A-98** is the ruling and **`I-44`** is the code. So
+   the honest statement is *a direction binds it, not a dependency* — if the two are ever traded off, the
+   trade is Jacob's to make on that basis and not on a false claim that Phase 3 needs it. Whether it gates
+   Phase 2's SHIP verdict is still the manager's call, not the architect's. *(Its shape is worth one sentence to anyone building
+   `I-42`: it is a capability answering at the wrong **scope**, and a share page answering for the wrong
+   **principal** is the same failure one axis over. That is an analogy, not a dependency.)*
+3. **`A-2` / QA `P2-8` — ruled by the architect before `I-42`, and it is NOT ruled by revision 80.** §12.10
+   says so and says why: it is a question about the document model (*does "allowed" also mean "adopt its
+   foreign provenance unexamined"*), not about what the server stores, and ruling it inside a server pass is
+   worse than ruling it in its own. **`I-39`, `I-40` and `I-41` contain no share, friend or public-link
+   code**, so the condition binds at `I-42` and not before. What revision 80 does settle: a `ShareSnapshot`
+   carries `ownerId` verbatim, so **no Phase 3 share path can produce the ownerless document `P2-8` is
+   about**.
+4. **Nothing is purchased before `I-41`.** `I-39` and `I-40` run in plain Node with no database and no
+   account. `I-41` needs **a local Postgres**, not a hosted one.
+
+---
+
+### The increment sequence
+
+**`I-39` → `I-40` → `I-41` → `I-42` → `I-43`.** The first two need no vendor and no account; `I-41` needs a
+local database; only deployment needs a purchase, and deployment is not an increment.
+
+---
+
+### `I-39` — `shareSnapshot`, the projection, in `packages/core`
+
+**The smallest shippable first increment, and it is deliberately the highest-risk thing in the phase.** If
+this is wrong, the phase ships the defect the whole ruling exists to prevent. It is pure, zero-dependency,
+plain-Node core code that can be attacked with `node --test` and no server, no account and no browser.
+
+**Route: builder + breaker, MANDATORY** — it is a new `packages/core` export surface *and* it touches the
+redaction family, which is two rows of the delegation table at once.
+
+**Read:** `ARCHITECTURE.md` §12 whole. Nothing else in that document.
+
+**Parts.**
+
+1. **`packages/core/src/share/shareSnapshot.ts`**, exporting
+   `shareSnapshot(trip: Trip, audience: ShareAudience): ShareSnapshotResult` where
+   `ShareAudience = 'user' | 'link'` and `ShareSnapshotResult = { doc: Trip; warnings: ShareWarning[] }`.
+   Pure: no clock, no ids, no IO. Added to `packages/core/src/index.ts`; the export count is asserted by the
+   test that owns it, not quoted here (criterion rule 6).
+2. **The field-by-field projection of §12.4**, implemented through the classification `copyStop.ts` already
+   applies — `note`, `cost.note`, `cost.display`, `arrival`, `MoveOverride.label`, `OpeningHours.note` — and
+   §6.6's `redactText` for `Trip.title` and `Day.subtitle`, which the copy path never sees. **No new pattern
+   set and no third threshold.**
+3. **Dropped whole:** `bookings`, `resolutions`, `photos`, `participants`, `homeBase`, `party`, `meta`.
+   `meta` is dropped **for a structural reason that goes in a comment beside it**: `TripMeta` declares
+   `[k: string]: unknown`, and an open index signature cannot be enumerated, so a denylist over it can never
+   fail closed.
+4. **The audience split on links:** `audience: 'user'` keeps `Stop.links[].href` (the §2.14 A-15 carve-out);
+   `audience: 'link'` drops every `href` and keeps the label (§6.6's build-artifact rule, which applies
+   because a link share has no person in the loop).
+5. **`warnings`**, one per string the snapshot emits that `redactionHits` matches, carrying `path`, `field`
+   and `matched`. **It reports; it never rewrites and never refuses.**
+6. **Key-set assertions on `Stop`, `Place`, `Day` and `Trip`**, in the A-15/A-18 form, so a field added to
+   any of them without a classification reddens the test. The projection **fails closed** on a field it has
+   not been told about.
+7. **`cli.ts share-preview <tripId> --audience=<user|link>`** — prints the warning list and the snapshot's
+   byte size. This is what makes `PRODUCT-VISION.md` §7 risk 6's later measurement cheap, and it is the only
+   way to exercise the projection before a UI exists.
+
+**Acceptance criteria.**
+
+- **The projection over the reference trip leaves exactly the residual hit set in
+  `fixtures/golden/share-snapshot-hits.json`, by field and by string, for both audiences.** Ceiling, not
+  floor: *exactly* these strings and no others. `[stated]` + `[snapshot]` — the golden is paired with the
+  stated ceiling below, per criterion rule 2. `[stated]`
+- **Stated ceiling, and it is scoped to the subjects this increment adds** (criterion rule 8): under
+  `audience: 'link'` the residual set is **exactly four strings, all of them `Stop.name`**; under
+  `audience: 'user'` it is those four plus `Stop.links[].href` and **nothing from any other field**. The
+  **unscoped** number — `redactionHits` over the *unprojected* reference trip — is **146** across seven
+  fields plus **4 of 17** conflict summaries, and it is stated so the selector is provably a filter and not
+  a hole. *(History, measured at `ff2c5de`; no criterion depends on the figure — the criteria depend on the
+  golden and on the field ceiling.)* `[stated]`
+- **The projected document carries zero `Booking`, zero `Ticket` of any kind and zero `ConflictResolution`,
+  and `detectConflicts` over it returns zero conflicts.** Outcome clause: *a share page therefore cannot
+  render a conflict summary, which is the path by which core's own prose quotes a booking reference
+  verbatim — four times on this trip.* `[stated]`
+- **Injected fault, and it fires:** set one stop's `name` to `PIN 0754`, project, and assert **exactly one**
+  warning is added naming that stop's path — **and assert the string is still present in `doc`**, proving
+  the mechanism is a report and not a silent rewrite. `[stated]`
+- **Injected fault, and it fires:** add a field to `Stop` without classifying it; the key-set assertion
+  reddens and names the field. `[stated]`
+- **Injected fault, and it fires:** project with `audience: 'link'` a trip whose `Stop.links[0].href` is a
+  ticket order URL; assert the href is absent and the label is present. `[stated]`
+- **`meta` is absent from every projection**, asserted over a trip carrying an unknown `meta` key the
+  projection was never told about. Outcome clause: *the assertion is about the index signature, so it must
+  use a key no source file mentions.* `[stated]`
+- **The projection is pure**: two calls on the same input are byte-identical, and `packages/core` still
+  takes zero runtime dependencies. `[stated]`
+
+**Dependencies / blockers:** none. It needs no server, no account, no database and no browser.
+
+**Stop-and-report:** a twenty-eighth residual string on the reference trip, or a residual hit in any field
+other than `name` and `links[].href`. That is a difference in a named set, not a size (sequencing rule 12),
+and it goes back to the architect rather than into a golden update.
+
+---
+
+### `I-40` — `SyncPort` and the sync slice, against a loopback adapter, in plain Node
+
+**Route: builder + breaker** — it changes `packages/client` and the reducer's neighbourhood.
+
+**Read:** §12 whole, and `packages/client/src/ports/types.ts`'s `StorageVersion` docstring.
+
+**Parts.**
+
+1. **`SyncPort` is `StoragePort`.** No new interface. The remote implementation's `refreshSummary`
+   **throws**, and the reason is in a comment at the throw (§12.2): §4.3 A-30's method exists for a *local*
+   background pass and there is no remote one.
+2. **A `sync` slice**, per trip: `{ syncedDoc: Trip | null; remoteVersion: StorageVersion | null; status }`.
+   `syncedDoc` is `mergeTrips`' ancestor, assigned **from a port result and from nowhere else** (§0
+   position 6, §2.2b F2). **The reducer's `persistence` slice does not gain a field** — and that is a
+   criterion below, not a hope.
+3. **Push / pull / merge / re-push**, with the merged document written **locally first** so a device is
+   never left holding a document it has not seen.
+4. **A loopback `SyncPort`** in `packages/client/test`, backed by the existing in-memory storage, with
+   injectable refusal and latency. This is what makes the whole state machine attackable with `node --test`.
+5. **Poll on open and on focus.** No push, no websocket, no long poll. The UI states when it last synced.
+
+**Acceptance criteria.**
+
+- **Two loopback clients, one trip, both edit different stops, both push:** the second is refused, merges,
+  and both edits survive. Outcome clause: *`report.fromRemote` names the other client's stop and
+  `report.overwritten` is empty.* `[stated]`
+- **Two clients edit the SAME stop:** last-writer-wins, and `report.overwritten` names it. Outcome clause:
+  *the losing edit is named in a report the UI is required to show, and the criterion asserts the report's
+  contents, not that a merge happened.* `[stated]`
+- **Injected fault, and it fires:** assign `syncedDoc` from `state.doc` instead of from the port result; the
+  same-stop test must then silently lose the remote edit with an **empty** `overwritten` report. `[stated]`
+- **`persistence` gains no field.** A greppable assertion over `reducer.ts`'s `PersistenceSlice` key set,
+  with the count owned by the assertion. `[stated]`
+- **`refreshSummary` on the remote port throws, and one test asserts the throw and its message.** Declared,
+  not discovered (§12.12 residue 4). `[stated]`
+- **Every Phase 1 and Phase 2 number is re-derived unchanged.** `[legacy from Phase 1]`
+
+**Dependencies / blockers:** none. No server exists yet and none is needed.
+
+---
+
+### `I-41` — the schema, the roles, the migration check, and the first real `services/api`
+
+**Route: builder + breaker, MANDATORY** — a new deploy unit holding credentials, and the first
+authorization enforcement in the product.
+
+**Read:** §12 whole, then §6.2 and §6.3.
+
+**Parts.**
+
+1. **`db/migrations/0001_*.sql`** — the seven tables of §12.1, every one with a tenancy column, RLS
+   `ENABLE` + `FORCE`, default-deny, an explicit policy per operation.
+2. **The migration check of §12.3, written BEFORE the first migration**: no table may declare a
+   coordinate-shaped column. It reads committed migration text, needs no database, and runs in `npm test`.
+3. **Three database roles** (§12.5): `cairn_api`, `cairn_share_reader`, `cairn_ingest`. **`cairn_ingest` is
+   created here, before any ingest code exists** (§6.2 rule 3). **`cairn_share_reader` has no `SELECT` grant
+   on `documents`.**
+4. **`services/api`**: sign-in, sessions, and the document endpoints of §12.2 — `GET /documents`,
+   `GET/PUT/DELETE /documents/{tripId}` with `ETag`/`If-Match` and **412** on mismatch. It imports from
+   `@cairn/core` **exactly the access surface**.
+5. **One `Relationship` assembly function, from one SQL view** (§12.6 (b)), named in the request middleware
+   that resolves a `tripId`.
+6. **The conformance matrix**, enumerated from the types, run against the local database.
+
+**Acceptance criteria.**
 
 - **The access conformance matrix passes on every cell** — core predicates vs RLS policies, every principal
-  × relationship × operation, and **the matrix is enumerated from the type definitions, not hand-listed**,
-  so a new role or operation cannot be silently absent. Count criterion, outcome clause: *every cell names
-  the principal, the relationship, the operation and the expected verdict; a cell that agrees because both
-  sides are `false` for the wrong reason is a defect.* `[stated]`
+  × relationship × operation, **enumerated from the type definitions, not hand-listed**, so a new role or
+  operation cannot be silently absent. Count criterion, outcome clause: *every cell names the principal, the
+  relationship, the operation, the expected verdict **and which clause denied it**; a cell that agrees
+  because both sides are `false` for the wrong reason is a defect.* `[stated]`
 - **The five edges are five tables and the matrix proves it** (§8.7). *"Participant with no share"*,
   *"follower with no share"* and *"member"* are three distinct principals, and the first two are denied
-  **every** operation including `view`, in the predicates **and** in the policies. **Injected fault:** add
-  a participant to a trip and a `Connection` from that user, and assert **no** operation's verdict changes
-  anywhere in the matrix. A schema in which participation, friendship or membership can be inferred from
-  one another fails this outright — that is principle 3, and it is cheaper to assert here than to migrate
-  later `[stated]`
-- **Injected fault:** revoke a share, go offline, reopen the cached trip → **an error, never stale content**;
-  and expire a share by moving the clock, not by editing the row `[stated]`
-- **Injected fault:** grant `services/ingest`'s database role and try to write a stop → refused by grant, not
-  by application code `[stated]`
+  **every** operation including `view`, in the predicates **and** in the policies. **Injected fault:** add a
+  participant to a trip and a `Connection` from that user, and assert **no** operation's verdict changes
+  anywhere in the matrix. `[stated]`
+- **Injected fault, and it fires:** drop `revoked_at` from the `Relationship` assembly view's `WHERE`
+  clause; the *revoked viewer* row flips to `allow` on the predicate side while the policy side still
+  denies, and the disagreement fails the build. `[stated]`
+- **Injected fault, and it fires:** connect as `cairn_share_reader` and `SELECT doc FROM documents` → the
+  statement fails with a **permission** error from Postgres. Outcome clause: *zero rows is a FAILURE of this
+  criterion, because zero rows means the grant was given and RLS was doing the work — which is the weaker
+  posture §12.5 exists to refuse.* `[stated]`
+- **Injected fault, and it fires:** grant `cairn_ingest` and try to write a stop → refused by grant, not by
+  application code. `[stated]`
+- **Injected fault, and it fires:** add `ALTER TABLE users ADD COLUMN last_seen_at timestamptz;` to a
+  migration → the §12.3 check reddens, naming the table, the column and the Part. Add `current_location
+  point` → it reddens naming the type. `[stated]`
+- **Byte identity:** `PUT` the reference trip's `toJSON` output, `GET` it back, assert byte-identical.
+  Outcome clause: *this is what makes `StorageVersion`'s own sentence true, and it is the criterion a
+  `jsonb` column fails.* `[stated]`
+- **`services/api` imports no core symbol outside the access surface**, asserted by the §3
+  dependency-direction test. Outcome clause: *`fromJSON` in the server's import graph means the server has
+  started having opinions about what a trip is.* `[stated]`
+- **No `schema_version` column exists**, asserted over the migration text. `[stated]`
+- **No service-role key appears in any client bundle**, checked by grepping the built assets. `[stated]`
+- **No coordinates and no mailbox content in any log line**, checked by grepping the logging paths for
+  coordinate-shaped floats (§6.1 cross-cutting rule 1). `[stated]`
+
+**Dependencies / blockers:** `I-40`. Needs a **local** Postgres; needs no hosted anything.
+
+---
+
+### `I-42` — shares, snapshots, revocation, and the public share page
+
+**Route: builder + breaker, MANDATORY.** **Blocked on `A-2`/`P2-8` being ruled** (entry condition 3).
+
+**Parts.** `shares` and `share_snapshots` write paths; the snapshot re-mint on the owner's next successful
+sync while a share is live; link tokens stored **hashed**; the share-create surface in `apps/web` listing
+`I-39`'s warnings, which is `warnings`' named production reader (criterion rule 10); the public share page
+served as `cairn_share_reader`; `mintedAt` rendered in words.
+
+**Acceptance criteria.**
+
+- **Injected fault, and it fires:** revoke a share, go offline, reopen the cached trip → **an error, never
+  stale content**; and expire a share by moving the clock, not by editing the row. `[stated]`
+- **A revoked or expired share returns 404 with no body**, not 403 and not a discriminating message.
+  Outcome clause: *the API does not disclose whether a token ever existed.* `[stated]`
+- **The bytes a share page serves are the snapshot's bytes**, asserted byte-for-byte against
+  `shareSnapshot(trip, 'link')` run locally. Outcome clause: *if these two ever differ, something
+  server-side is transforming a document, which §12.1 clause (d) forbids.* `[stated]`
+- **Injected fault, and it fires:** delete the `WHERE share_id = …` from the share-page query; the request
+  must still fail, because the role cannot read `documents` and the snapshot table is tenanted. `[stated]`
+- **A share cannot be minted while an undismissed warning exists**, asserted through the client, not the
+  server. `[stated]`
+- **No endpoint mints a share with `role IN ('editor','commenter')`**, asserted by one grep over route
+  handlers — the instrument §12.12 residue 3 names. `[stated]`
+
+**Dependencies / blockers:** `I-41`; `A-2`/`P2-8` ruled.
+
+---
+
+### `I-43` — `Connection`, the friend's-trip source, and DISCOVER
+
+**Route: builder + breaker, MANDATORY** — it touches `copyStopInto`'s consumers.
+
+**Parts.** `Connection` create/accept/remove; the Phase 1 browse-another-trip pane gains **shared trips** as
+a source; `copyStopInto` from a snapshot; `Participant.userId` becomes linkable and **still grants nothing**;
+the **DISCOVER** tab appears, with the network behind it.
+
+**Acceptance criteria.**
+
+- **A friend's snapshot is a valid `copyStopInto` source and the copy is a fixed point**: copying a stop out
+  of a snapshot produces a stop whose `redactionHits` set is **identical** to the one it had in the
+  snapshot. Outcome clause: *the copy threshold and the share threshold agree by construction, which is the
+  reason §12.4 composed them instead of inventing a third.* `[stated]`
+- **Injected fault, and it fires:** accept a `Connection` and assert **no** cell of the conformance matrix
+  changes, and that the friend still cannot `view` any trip. `[stated]`
+- **Linking `Participant.userId` changes no verdict**, asserted the same way. `[stated]`
+- **The DISCOVER tab is never rendered empty-by-construction**: with zero connections it shows the
+  connection affordance, not an empty list of trips. `[stated]`
+
+**Dependencies / blockers:** `I-42`.
+
+---
+
+### Phase 3 exit criteria
+
+Everything above, plus:
+
 - **The deletion cascade of §6.3 passes an orphan sweep**, and the sweep is run after each of the five
   deletion kinds in the §6.3 table, not once at the end. Outcome clause: *a friend's copied stop survives
   the deletion of the trip it came from, and its `attribution` resolves to a tombstone rather than
-  disappearing* `[stated]`
+  disappearing.* `[stated]`
 - **A full account export produces a readable zip** whose `trips/*.json` round-trip through Phase 1's
-  `fromJSON` unchanged `[legacy from Phase 1]`
-- **No service-role key appears in any client bundle**, checked by grepping the built assets `[stated]`
+  `fromJSON` unchanged. `[legacy from Phase 1]`
 - **The shipped sample on the public share host is not Jacob's trip.** §6.6's deliberate gap closes here:
-  redaction is enough while the build is his own; a public marketing surface needs an invented trip
+  redaction is enough while the build is his own; a public marketing surface needs an invented trip.
   `[stated]`
+- **A full dump of the phase's database contains no coordinate that a sensor produced and no column that
+  could hold one** — the §12.3 check, run over every migration the phase landed. `[stated]`
 
 Built here because it is expensive to retrofit and cheap now: tenancy columns on every table, RLS `FORCE`d
-and default-deny, the `services/ingest` database role created **before** any ingest code exists, and the
-export/deletion cascade. Not built here: moderation, rate limiting, billing, admin tooling (§6.5).
+and default-deny, the three database roles, the coordinate-column check, and the export/deletion cascade.
+Not built here: moderation, rate limiting, billing, admin tooling (§6.5), comments, co-ownership, editing by
+a second person, photo egress, ticket blobs, push, and invite-by-email (§12.9, each with its trigger).
 
 ---
 
@@ -10935,3 +12134,50 @@ built.
    consequence: an increment that elects, votes or takes a plurality over committed data **publishes the
    per-candidate tally the same way position 12 (a) makes it publish its match set**, and a criterion that
    states only the winner is a design defect routed to me.
+13. **A capability that answers in the user's voice cites what it read, refuses what it cannot read, and a
+   model in it parses rather than answers** (revision 77, §0 position 13, `ARCHITECTURE.md` **§11**). This
+   is the routing half, and it binds every future increment that produces a sentence about a user's data —
+   `ask`, a recap, a goal summary, a share-page blurb. **(a)** A surface that states a fact about a
+   document ships the **cites** beside it and a single resolver that proves each one, checked over every
+   answer the surface can produce, at more than one clock. A cite that resolves by coincidence is not a
+   cite: `ask`'s day cites are safe because §2.3 makes a day's id equal its date **by invariant**, not
+   because the reference trip happens to agree. **(b)** A question the system cannot read is **refused with
+   the menu** and never answered approximately, and a question at the wrong *scope* is refused **by name**
+   — one trip and the whole library differ by one word in English and by an entire dataset in this model,
+   and answering the scope we happen to have is being right about the wrong question. **(c)** **A language
+   model is scheduled only as a replacement for the part that reads the question**, never for the part that
+   composes the answer, and an increment proposing otherwise is a design defect routed to me. Its three
+   preconditions are §11.2's and the third is not technical: **what may leave the device is Jacob's
+   decision, in writing, before the call is built.** **(d)** The corollary for routing a *widening*: adding
+   a question to an existing engine is **builder-only** and its headline criterion is that the boundary did
+   **not** move; if it has to move, the increment **stops and reports**, because the boundary moving means
+   the ruling was wrong and the fix is a ruling. `I-36` is the worked example.
+   **(e)** *(revision 79, §0 position 13 (e), ARCHITECTURE §11.12 **A-97**, QA **R71-1**/**R71-3**/
+   **R71-7**.)* **Two routing consequences for any surface that composes prose about a user's data.**
+   **A finding that a rendered clause states a value the document contradicts is a MAJOR to the builder —
+   and a ruling to me whenever the value comes out of a SHARED derivation**, because the fix is a location
+   (which consumer narrows the value) and not a template. **And once such a capability has a default-deny
+   scope gate, a newly-found phrasing that reaches a *less specific refusal* is MINOR, builder-only, one
+   line, no architect round; a phrasing that reaches an *answer* is MAJOR and comes back to me, because it
+   means the gate is wrong.** The second half exists to end an arms race this project has now run twice in
+   two rounds on one function: the routing rule is what stops a third phrase list from being written.
+
+14. **A server may store a document and may not understand one; a non-owner is served a different byte
+   string than the owner's** (revision 80, §0 position 14, `ARCHITECTURE.md` **§12**). This is the routing
+   half of the server boundary, and it binds every increment from Phase 3 onward. **(a)** An increment that
+   proposes a **column** the server can query for something the document already says — a `stop_count`, a
+   `country`, a `city`, a `last_edited_by`, a coordinate of any kind — is a **design defect routed to me**,
+   because it is a second model of a trip and §12.1 refuses it. The exception that is not one: a **tenancy**
+   column is required on every table (§6.2 rule 1) and says nothing about the trip's contents. **(b)** An
+   increment that puts `fromJSON`, `toJSON`, `mergeTrips`, `detectConflicts` or `summarizeTrip` into
+   `services/api`'s import graph **stops and reports**. The server's ignorance of the document is the
+   property, not a consequence. **(c)** **A projection that decides what a non-owner may see is built in
+   `packages/core`, is pure, and ships its residual credential-hit set as a committed golden by field and by
+   string** — never as a count, and never as *"the test passes"* over one document whose strings happen to be
+   innocent (§0 position 13 (d)). A new residual string is a **stop-and-report**, on sequencing rule 12 (a)'s
+   authority. **(d)** **A role whose holder can write is scheduled only with the mechanism that tells the
+   loser** — a `MergeReport` whose `overwritten` list has a reader who is not the writer is the CRDT trigger,
+   restated, and an increment that mints an `editor` share without it is a design defect routed to me
+   (§12.7). **(e)** Where a decision genuinely depends on a **vendor**, the increment says which vendor
+   decision and what it cannot change, rather than assuming one. Nothing in Phase 3's design requires a
+   purchase before `I-41`, and `I-41` requires a **local** database, not a hosted one.

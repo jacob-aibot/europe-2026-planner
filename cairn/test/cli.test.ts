@@ -18,6 +18,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import * as core from '../packages/core/src/index.ts';
+import { loadEurope2026 } from '../fixtures/loadEurope2026.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CAIRN = resolve(HERE, '..');
@@ -1022,4 +1023,186 @@ test('I-28 (A-88 Part 9, R65-6): the per-row absorbed line CAPS its path list an
   assert.ok(line.length < 200, `the line is ${line.length} characters — it renders the whole list:\n${line}`);
   assert.match(line, /…and 195 more$/, `the line does not say it is capping:\n${line}`);
   assert.match(line, /^ {2}trip r: unreadable stored values at cities\[0]\.name, cities\[1]\.name, cities\[2]\.name, cities\[3]\.name, cities\[4]\.name …and 195 more$/);
+});
+
+// -------------------------------------------------------------------------------------------
+// `cli.ts ask` — ARCHITECTURE §11, ROADMAP I-35.
+//
+// The capability is designed so it needs no screen, and this command is what makes that
+// claim true rather than stated: a tester can attack `ask` end to end with no browser and no
+// UI. The per-answer criteria live in `packages/core/test/ask.test.ts`; what is asserted here
+// is the SHELL — the restatement above the answer, the cites below it, and exit **2** on every
+// refusal, which is this CLI's house style for input it will not act on.
+// -------------------------------------------------------------------------------------------
+
+test('cli ask --menu prints a menu whose every line is valid input to matchQuestion', () => {
+  const r = cli('ask', '--menu');
+  assert.equal(r.code, 0, r.err);
+  const lines = r.out.split('\n').map((l) => l.trim()).filter((l) => l.length > 0 && !l.startsWith('Questions I can answer'));
+  assert.ok(lines.length >= 30, `the menu printed ${lines.length} lines`);
+  const { trip } = loadEurope2026() as { trip: core.Trip };
+  const menu = core.askableQuestions(trip);
+  assert.equal(lines.length, menu.length, 'the printed menu and askableQuestions disagree on length');
+  // **A menu you cannot type is not a way out of a refusal.** Each line goes back through the
+  // recogniser and must land on exactly the question it was rendered from — one reading, not
+  // two. This is what keeps `cli.ts`'s own `questionLine` honest without putting a renderer on
+  // §2.10's surface (§11.9).
+  for (let i = 0; i < lines.length; i++) {
+    const m = core.matchQuestion(lines[i], trip);
+    assert.equal(m.kind, 'matched', `menu line "${lines[i]}" is not matched: ${m.kind}`);
+    if (m.kind !== 'matched') continue;
+    assert.deepEqual(m.question, menu[i], `menu line "${lines[i]}" round-trips to a different question`);
+  }
+});
+
+test('cli ask answers, with the restatement above and the cites below', () => {
+  const r = cli('ask', 'when do I leave vienna');
+  assert.equal(r.code, 0, r.err);
+  const restatement = r.out.indexOf('I read this as: when you leave Vienna.');
+  const answer = r.out.indexOf('You leave Vienna on 2026-08-10');
+  const cites = r.out.indexOf('cites — every record this answer read');
+  assert.ok(restatement >= 0, `no restatement:\n${r.out}`);
+  assert.ok(answer > restatement, 'the restatement does not precede the answer (§11.7 rule 2)');
+  assert.ok(cites > answer, 'the cites do not follow the answer (§11.6)');
+  assert.match(r.out, /stop:stop-\d+/, 'no stop is cited');
+  // §11.8 clause 1: no coordinate reaches an answer, in any form — checked by KEY NAME rather
+  // than by a decimal grep, because later intents (cost) legitimately render decimals.
+  for (const key of ['lat=', 'lng=', 'centre=']) {
+    assert.equal(r.out.includes(key), false, `the answer rendered a coordinate key: ${key}`);
+  }
+});
+
+test('cli ask exits 2 on every refusal and prints the menu as the way out', () => {
+  for (const [text, expect] of [
+    ['how many countries have i been to', /different data set/],
+    ['when do I leave vienna and prague', /two ways/],
+  ] as const) {
+    const r = cli('ask', text);
+    assert.equal(r.code, 2, `"${text}" exited ${r.code}, not 2:\n${r.out}`);
+    assert.match(r.out, expect);
+    assert.match(r.out, /Questions I can answer about this trip/, 'a refusal did not print the menu');
+    // The lifetime refusal may NEVER answer the trip-scoped question instead.
+    assert.equal(/This trip accounts for 7 countries/.test(r.out), false, 'a refusal answered anyway');
+  }
+});
+
+test('cli ask honours --today through todayIsValid, like every other dated command', () => {
+  const bogus = cli('ask', 'what is still unbooked', '--today', '2026-13-45');
+  assert.equal(bogus.code, 2, bogus.out);
+  assert.match(bogus.out, /--today must be a real calendar date/);
+});
+
+/**
+ * **QA R70-5.** The lifetime refusal was six literal phrases, so the obvious neighbours fell
+ * straight through and were answered **"This trip accounts for 7 countries"** — *right about the
+ * wrong question*, at the door a user actually types at.
+ */
+test('R70-5: every past-tense first-person countries question refuses at the CLI, like "have I been to"', () => {
+  for (const text of [
+    'how many countries have I visited',
+    'how many countries have I seen',
+    'how many countries have I stayed in',
+    'which countries have I visited',
+    'how many countries did I visit',
+    'how many countries total',
+  ]) {
+    const r = cli('ask', text);
+    assert.equal(r.code, 2, `"${text}" exited ${r.code}, not 2 — it was answered against THIS trip:\n${r.out}`);
+    assert.match(r.out, /different data set/, r.out);
+    assert.equal(/This trip accounts for 7 countries/.test(r.out), false, `"${text}" was answered anyway:\n${r.out}`);
+  }
+  // The control: the trip-scoped phrasing still answers, at the same door.
+  const scoped = cli('ask', 'how many countries am I visiting');
+  assert.equal(scoped.code, 0, scoped.out);
+  assert.match(scoped.out, /This trip accounts for 7 countries/);
+});
+
+/**
+ * **QA R70-12.** `--file` was read and `fromJSON` called at module scope with no `try`, so a
+ * document this CLI will not act on exited on a raw `TripParseError` **stack trace**. The house
+ * style is one line, no stack, a non-zero exit (R28-9).
+ */
+test('R70-12: a --file this CLI will not act on refuses with one line and exit 2, not a stack trace', () => {
+  const broken = join(CAIRN, 'node_modules', '.cairn-r70-broken.json');
+  writeFileSync(broken, '{"schemaVersion": 5, "trip": {}}');
+  try {
+    for (const [args, expect] of [
+      [['ask', 'what does my trip look like', '--file', '/dev/null'], /not valid JSON/],
+      [['ask', 'what does my trip look like', '--file', broken], /at \$\./],
+      [['trip', '--file', join(CAIRN, 'no-such-file.json')], /ENOENT/],
+    ] as const) {
+      const r = cli(...args);
+      assert.equal(r.code, 2, `exited ${r.code}, not 2:\n${r.out}${r.err}`);
+      assert.match(r.out, /^--file /m, `the refusal does not name the flag:\n${r.out}`);
+      assert.match(r.out, expect);
+      assert.equal(/at .*(cli|fromJSON)\.ts:\d+/.test(r.out + r.err), false, `a stack trace reached the user:\n${r.err}`);
+      assert.equal(r.out.split('\n').filter((l) => l.trim() !== '').length, 1, `the refusal is more than one line:\n${r.out}`);
+    }
+  } finally {
+    rmSync(broken, { force: true });
+  }
+});
+
+/**
+ * **QA R71-3 / §11.12 A-97 Part 6 — the scope gate at the door a user types at.** One adverb
+ * defeated R70-5's adjacency-matched lifetime class (*"how many countries have I **already** been
+ * to"* was answered *"This trip accounts for 7 countries"*), and the list it defeated was a
+ * denylist over an open set. `country_count` now answers only on a positive trip-scope marker.
+ */
+test('R71-3: the eight escapes refuse at the CLI, and a scopeless country question refuses too', () => {
+  for (const text of [
+    'how many countries have I already been to',
+    'how many countries have I now visited',
+    'how many countries have I actually visited',
+    'how many countries have I ever really been to',
+    'how many countries have I not visited',
+    'how many countries have I not been to',
+    'how many countries have we visited',
+    'how many countries to date',
+  ]) {
+    const r = cli('ask', text);
+    assert.equal(r.code, 2, `"${text}" exited ${r.code}, not 2 — it was answered against THIS trip:\n${r.out}`);
+    assert.match(r.out, /different data set/, r.out);
+    assert.equal(/This trip accounts for 7 countries/.test(r.out), false, `"${text}" was answered anyway:\n${r.out}`);
+  }
+  // No marker at all: the less specific refusal, with both ways forward and the menu behind it.
+  const bare = cli('ask', 'how many countries');
+  assert.equal(bare.code, 2, bare.out);
+  assert.match(bare.out, /which trip you mean|cannot tell whether you mean/, bare.out);
+  assert.equal(/it is a recommendation/.test(bare.out), false, `the refusal gives the wrong reason:\n${bare.out}`);
+  assert.match(bare.out, /how many countries am I visiting/, 'the refusal does not name the trip-scoped question');
+  assert.match(bare.out, /Questions I can answer about this trip/, 'a refusal did not print the menu');
+  assert.equal(/This trip accounts for 7 countries/.test(bare.out), false, bare.out);
+  // The control: the menu's own line still answers, at the same door.
+  const scoped = cli('ask', 'how many countries am I visiting');
+  assert.equal(scoped.code, 0, scoped.out);
+  assert.match(scoped.out, /This trip accounts for 7 countries/);
+});
+
+/**
+ * **QA R71-5 / A-97 Part 7 — where a redacted restatement and a typeable form would share a line,
+ * the surface prints the typeable one only.** `questionLine` interpolated the **raw** city name
+ * beside the redacted restatement (`1. when you leave [redacted]  —  ask it as: when do I leave
+ * LONDON`), which makes the redaction theatre. A menu line must stay typeable — that is what makes
+ * it a way out of a refusal — so the raw name is correct there and the fix is not to redact it.
+ */
+test('R71-5: an ambiguous refusal prints the typeable form only, never both on one line', () => {
+  const { trip } = loadEurope2026() as { trip: core.Trip };
+  const loud: core.Trip = { ...trip, cities: trip.cities.map((c) => (c.key === 'london' ? { ...c, name: 'LONDON' } : c)) };
+  const doc = join(CAIRN, 'node_modules', '.cairn-r71-london.json');
+  writeFileSync(doc, core.toJSON(loud));
+  try {
+    const r = cli('ask', 'when do I leave for LONDON', '--file', doc);
+    assert.equal(r.code, 2, `the two readings were not refused:\n${r.out}`);
+    assert.match(r.out, /two ways/, r.out);
+    assert.match(r.out, /when do I leave LONDON/, 'the menu line is no longer typeable');
+    for (const line of r.out.split('\n')) {
+      assert.equal(
+        line.includes('[redacted]') && /LONDON/.test(line), false,
+        `both forms appear on one line, which makes the redaction theatre:\n${line}`,
+      );
+    }
+  } finally {
+    rmSync(doc, { force: true });
+  }
 });

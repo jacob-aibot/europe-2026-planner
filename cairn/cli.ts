@@ -2,6 +2,8 @@
  * Cairn CLI — reports on a real trip with no browser and no install.
  *
  *   node cli.ts trip                 headline counts and the city ranges
+ *   node cli.ts ask "<question>"     one question about this trip, answered from the document
+ *   node cli.ts ask --menu           every question it can answer (§11)
  *   node cli.ts day 2026-08-13       one day: stops, legs, costs, badges
  *   node cli.ts conflicts [--all]    the conflicts panel, as text
  *   node cli.ts cost                 per-day and whole-trip roll-ups
@@ -80,12 +82,30 @@ function todayIsValid(): boolean {
 
 type Loaded = { trip: core.Trip; issues: core.Issue[]; cityRangeCheck?: unknown; unmatchedNames?: string[] };
 
-const loaded: Loaded = file
-  ? { trip: core.fromJSON(readFileSync(file, 'utf8')), issues: [] }
-  : (loadEurope2026() as unknown as Loaded);
-const trip = loaded.trip;
-
 const out = (s: string) => process.stdout.write(`${s}\n`);
+
+/**
+ * **QA R70-12.** `--file` was read and parsed here at module scope with **no `try`**, so
+ * `node cli.ts ask "…" --file broken.json` exited on a raw `TripParseError` **stack trace**.
+ * Pre-existing, but `ask` is now a command a user points at their own document, and this CLI's
+ * house style for input it will not act on is stated forty lines above in `todayIsValid`'s own
+ * comment: **one line, no stack, a non-zero exit** (R28-9). `fromJSON`'s message already carries
+ * the JSON path, which is the useful half of the trace.
+ */
+function loadOrRefuse(): Loaded | null {
+  if (!file) return loadEurope2026() as unknown as Loaded;
+  try {
+    return { trip: core.fromJSON(readFileSync(file, 'utf8')), issues: [] };
+  } catch (err: unknown) {
+    out(`--file ${file}: ${err instanceof Error ? err.message : String(err)}`);
+    process.exitCode = 2;
+    return null;
+  }
+}
+
+const loaded = loadOrRefuse();
+// `null` means the refusal above already printed and set the exit code. Nothing below runs.
+const trip = loaded === null ? (null as unknown as core.Trip) : loaded.trip;
 const money = (roll: core.CostRollUp) =>
   Object.entries(roll.byCurrency)
     .map(([cur, v]) => core.formatRange(cur, v.lo, v.hi))
@@ -181,7 +201,8 @@ function cmdImport() {
     out('import report is only available for the legacy fixture (drop --file)');
     return;
   }
-  const r = loaded;
+  // `loaded` is non-null on every path that reaches a command — see `loadOrRefuse`.
+  const r = loaded as Loaded;
   out(`import warnings: ${r.issues.length}`);
   const byCode: Record<string, number> = {};
   for (const i of r.issues) byCode[i.code] = (byCode[i.code] ?? 0) + 1;
@@ -556,8 +577,151 @@ async function cmdCities() {
   out(`source: ${source}`);
 }
 
+/**
+ * `ask "<question>"` — ARCHITECTURE **§11**, ROADMAP **I-35**.
+ *
+ * **This command is the whole point of building the capability before any screen exists.** §11 is
+ * designed so that it needs no surface: `ask` takes a value from a closed union and returns an
+ * `Answer` whose every clause is rendered from a fact with a cite behind it, so a terminal is a
+ * complete consumer of it and a tester can attack it with no browser, no device and no UI. That
+ * is `cli.ts cities`' argument (§8.4 A-82 Part 2 reason 4) at a second door.
+ *
+ * **The restatement prints ABOVE the answer** — §11.7 rule 2, which is the root `CLAUDE.md`
+ * convention (*never present our reading as the user's own*) applied at the one place in this
+ * product where the system's interpretation of the user stands between them and their data.
+ * **The cites print BELOW it**, because an answer that cannot say what it read is the thing this
+ * capability exists to not be.
+ *
+ * **A refusal prints the menu and exits 2** — this CLI's house style for input it will not act on
+ * (`cmdExport`'s two refusals, `cmdCities`' usage line). All four refusals do it: `ambiguous`,
+ * `out_of_scope: 'lifetime'`, `out_of_scope: 'recommendation'` and `unrecognised`. §11.3 rule 5:
+ * `askableQuestions(trip)` is the answer to every one of them.
+ *
+ * **`questionLine` is this file's own and is deliberately not a core export.** §11.9 keeps the
+ * renderer and the trigger tables internal, so the menu is printed from the `Question` values
+ * themselves. What keeps it honest is that **every line it prints is valid input**:
+ * `test/cli.test.ts` feeds each menu line back through `core.matchQuestion` and asserts it
+ * matches the question it was rendered from. A menu you cannot type is not a way out of a refusal.
+ */
+function questionLine(q: core.Question): string {
+  const name = (key: string) => trip.cities.find((c) => c.key === key)?.name ?? key;
+  switch (q.kind) {
+    case 'trip_overview': return 'what does my trip look like';
+    case 'unbooked': return 'what is still unbooked';
+    case 'country_count': return 'how many countries am I visiting';
+    case 'city_edge':
+      return q.edge === 'leave' ? `when do I leave ${name(q.cityKey)}` : `when do I arrive in ${name(q.cityKey)}`;
+    case 'free_time':
+      return q.cityKey === null
+        ? `do I have a free ${q.part}`
+        : `do I have a free ${q.part} in ${name(q.cityKey)}`;
+  }
+}
+
+/** The menu, printed. It is the answer to every refusal, so it is one function. */
+function printMenu() {
+  out('');
+  out('Questions I can answer about this trip — any line below is valid input:');
+  for (const q of core.askableQuestions(trip)) out(`  ${questionLine(q)}`);
+}
+
+/** `kind:id` for a cite. `city` carries a per-trip key rather than an id (§2.2 A-10). */
+function citeRef(c: core.AnswerCite): string {
+  return c.kind === 'city' ? `city:${c.key}` : `${c.kind}:${c.id}`;
+}
+
+/**
+ * Five at a time, then "…and N more" — §8.4 **A-88** Part 9's rule, one surface over: a list that
+ * is silently truncated is a list that lies about its length. The cap is on the DISPLAY; the
+ * `Answer` carries every cite, which is what `packages/core/test/ask.test.ts` resolves.
+ */
+function printCapped(label: string, lines: string[], cap: number) {
+  if (lines.length === 0) return;
+  out('');
+  out(`${label} (${lines.length})`);
+  for (const l of lines.slice(0, cap)) out(`  ${l}`);
+  const more = lines.length - Math.min(cap, lines.length);
+  if (more > 0) out(`  …and ${more} more (this display is capped at ${cap}; the answer carries all ${lines.length})`);
+}
+
+function cmdAsk() {
+  if (!todayIsValid()) return;
+  if (has('menu')) {
+    printMenu();
+    return;
+  }
+  const text = argv.slice(1).find((a) => !a.startsWith('--'));
+  if (text === undefined || text.trim() === '') {
+    out('usage: node cli.ts ask "<question>"   |   node cli.ts ask --menu');
+    out('Answers from THIS trip document and nothing else. No network, no model (§11).');
+    printMenu();
+    process.exitCode = 2;
+    return;
+  }
+
+  const m = core.matchQuestion(text, trip);
+  if (m.kind !== 'matched') {
+    if (m.kind === 'ambiguous') {
+      out(`I read "${text}" two ways, and I will not pick one for you:`);
+      for (let i = 0; i < m.readings.length; i++) {
+        // **QA R71-5 / §11.12 A-97 Part 7.** This line used to print the redacted restatement and
+        // the **raw** city name side by side (`when you leave [redacted]  —  ask it as: when do I
+        // leave LONDON`), which makes the redaction theatre. A menu line must stay **typeable** —
+        // that is what makes it a way out of a refusal — so the typeable form is the one that
+        // survives, and the readings are already distinguishable as typed questions.
+        out(`  ${i + 1}. ${questionLine(m.readings[i])}`);
+      }
+    } else if (m.kind === 'out_of_scope') {
+      // Three reasons, three sentences. `scope_unclear` is §11.12 A-97 Part 6's: the question
+      // is well formed and Cairn cannot prove which data set it is about, so it refuses rather
+      // than guessing — and its pointer names both ways forward.
+      const why = m.reason === 'lifetime'
+        ? 'it is about a different data set'
+        : m.reason === 'recommendation'
+          ? 'it is a recommendation'
+          : 'I cannot tell which trip you mean';
+      out(`I will not answer that: ${why}.`);
+      out(`  ${m.pointer}`);
+    } else {
+      out(`I don't recognise "${text}" as a question about this trip.`);
+      out('  No trigger phrase and no city name of this trip matched. I do not guess.');
+    }
+    printMenu();
+    process.exitCode = 2;
+    return;
+  }
+
+  const answer = core.ask(m.question, { trip, today, index: core.COUNTRY_INDEX });
+  out(`I read this as: ${m.restatement}.`);
+  if (m.unread.length > 0) out(`I did not read: ${m.unread.join(' ')}`);
+  out('');
+  out(answer.text);
+  out('');
+  out(`coverage: ${answer.coverage}`);
+  for (const c of answer.caveats) out(`  ⚠ [${c.code}] ${c.message}`);
+  // **The facts, not a second rendering of the answer.** `Answer.text` is rendered FROM these
+  // (§11.5), so printing them is what lets a reader check the sentence against the structured
+  // result rather than take it on trust — and it is where a record's own NAME lives, which the
+  // sentence deliberately never interpolates (see `ask/ask.ts`'s header: §6.6's pattern set
+  // legitimately fires on user prose, and a name is not a credential to be mangled).
+  printCapped(
+    'facts — what the sentence above is rendered from',
+    answer.facts.map((f) => {
+      const params = Object.entries(f.params)
+        .filter(([k, v]) => v !== '' && String(v) !== String(f.value) && k !== 'stopId')
+        .slice(0, 4)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(' ');
+      return `${f.label.padEnd(24)} ${String(f.value === null ? '(not recorded)' : f.value).padEnd(14)} ${params}`.trimEnd();
+    }),
+    20,
+  );
+  printCapped('cites — every record this answer read', answer.cites.map(citeRef), 12);
+}
+
 const commands: Record<string, () => void | Promise<void>> = {
   trip: cmdTrip,
+  ask: cmdAsk,
   day: cmdDay,
   conflicts: cmdConflicts,
   cost: cmdCost,
@@ -570,7 +734,10 @@ const commands: Record<string, () => void | Promise<void>> = {
 };
 
 const run = commands[cmd];
-if (!run) {
+if (loaded === null) {
+  // R70-12: `--file` named a document this CLI will not act on. The refusal is already printed
+  // and `process.exitCode` is already 2; no command runs against a trip that does not exist.
+} else if (!run) {
   out(`unknown command "${cmd}". Try: ${Object.keys(commands).join(' | ')}`);
   process.exitCode = 1;
 } else {

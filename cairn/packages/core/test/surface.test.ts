@@ -12,7 +12,7 @@
  * against cannot be "110 against 50, enumerated". BUILD-NOTES KD-33, which supersedes
  * KD-19 — the entry that recorded the gap as enumerated rather than narrowed.
  *
- * So: one array, **88** entries, set equality both ways. (69 in revision 5; `reassertRetirements`
+ * So: one array, **91** entries, set equality both ways. (69 in revision 5; `reassertRetirements`
  * joins in revision 6 under §2.7 A-5; `lifecycle` joins in revision 10 under §8.1/§8.9,
  * Phase 2 I-1; `countryOf` and `COUNTRY_INDEX` join under §8.4 clause 1, Phase 2 I-5; `SUMMARY_VERSION`
  * joins under §8.4 clause 3, Phase 2 I-6; `travelStats` joins under §8.4 clause 2 / A-31, Phase 2 I-7;
@@ -79,7 +79,7 @@ import * as gazetteerSubpath from '@cairn/core/gazetteer';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CAIRN = resolve(HERE, '..', '..', '..');
 
-/** §2.10, transcribed. Runtime symbols only — 87 of them, grouped as the section groups them. */
+/** §2.10, transcribed. Runtime symbols only — 91 of them, grouped as the section groups them. */
 const THE_LIST = [
   // model (8)
   'LOCAL_OWNER', 'SCHEMA_VERSION', 'sequentialIds', 'formatRange', 'costFromDisplay',
@@ -109,6 +109,17 @@ const THE_LIST = [
   // it is a pure nine-line function over a row the caller already holds — the subpath exists for
   // the ~380 kB dataset, not for the type.
   'searchGazetteer', 'cityPickFromRow',
+  // ask (3) — §11.9, ROADMAP I-35. 88 → 91, and the three are the WHOLE widening: `ask` is the
+  // capability, `matchQuestion` is the recogniser and **the symbol a language model would one day
+  // replace**, `askableQuestions` is the menu and the answer to every refusal. The trigger
+  // tables, the daypart windows, `resolveCite`, the per-intent resolvers and the renderer all
+  // stay internal (group 1, *internals of a public function*) — a caller that can reach the
+  // renderer is a caller that will render an answer `ask` did not produce, which is the one thing
+  // §11.6's grounding law exists to make impossible. `Question`, `Answer`, `AnswerCite`,
+  // `AnswerFact`, `AnswerCaveat`, `AnswerCaveatCode`, `AnswerCoverage`, `MatchOutcome`, `AskCtx`
+  // and `DayPart` are **types** and do not count. No second entry point: `ask/` has no dataset
+  // behind it.
+  'ask', 'matchQuestion', 'askableQuestions',
   // conflict (6)
   'detectConflicts', 'RULES', 'resolveConflict', 'unresolveConflict', 'syncResolutions',
   'reassertRetirements',
@@ -129,9 +140,9 @@ const THE_LIST = [
 const runtimeExports = () =>
   Object.keys(core).filter((k) => typeof (core as Record<string, unknown>)[k] !== 'undefined');
 
-test('§2.10 is 88 symbols, and the list in this file is exactly that long', () => {
-  assert.equal(THE_LIST.length, 88, 'the transcribed list is no longer §2.10\'s stated size');
-  assert.equal(new Set(THE_LIST).size, 88, 'the list has a duplicate');
+test('§2.10 is 91 symbols, and the list in this file is exactly that long', () => {
+  assert.equal(THE_LIST.length, 91, 'the transcribed list is no longer §2.10\'s stated size');
+  assert.equal(new Set(THE_LIST).size, 91, 'the list has a duplicate');
 });
 
 /**

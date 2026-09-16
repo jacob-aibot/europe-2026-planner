@@ -4110,6 +4110,19 @@ const SOURCE_ALLOW: Record<string, string> = {
   // traveller did, and it is a compile-time property of a `RuleSpec` — it is never written to a
   // document, a summary row or `AppState`. The classifier is deliberately wide enough to catch
   // it, because a classifier narrow enough to miss it would miss `daysVisited` too.
+  // §11 / ROADMAP I-35. An `Answer`'s `params` are the structured data §2.1 requires beside a
+  // user-facing string, on a value that is **returned and never stored**: `ask` has no write
+  // path, mints no record, and neither `SCHEMA_VERSION` nor `SUMMARY_VERSION` moves for it. This
+  // is `travelStats`' own entry verbatim, one derivation over — the classifier is deliberately
+  // wide enough to catch a day count wherever it is declared, which is why the disclosure is
+  // here rather than in a narrower classifier.
+  'packages/core/src/ask/ask.ts::days': 'Answer.params on a derived value — ask stores nothing',
+  // §11.11 A-96 / ROADMAP I-37. `DayVerdict` is the return type of `classifyDay`, computed from
+  // the document on every call and never written anywhere — the same statement as the two rows
+  // above it, one derivation over. `stopCount` exists so the SENTENCE cannot claim "every stop
+  // on that day states how long it takes" about a day carrying none (QA R70-10); it is the
+  // denominator of a claim, not a tally anyone could type.
+  'packages/core/src/ask/freeTime.ts::stopCount': 'DayVerdict on a derived value — ask stores nothing',
   'packages/core/src/conflict/rules/types.ts::horizonDays': 'RuleSpec look-ahead window — a duration, not a tally',
   'packages/core/src/conflict/detect.ts::horizonDays': 'RuleSpec look-ahead window — a duration, not a tally',
 };

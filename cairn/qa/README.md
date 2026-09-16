@@ -4764,3 +4764,179 @@ with `CAIRN_ADMIN0=/tmp/cairn-gazetteer-src/ne_10m_admin_0_countries.geojson`.
 None of the three round-69 scripts writes to the repo: `r69-corrections.mjs` reads the corpus, the
 goldens and the caches and writes only to `$CAIRN_R68_CACHE`; `r69-gate.sh` works exclusively inside
 a `git worktree` it creates and removes; `r69-repin-noop.mjs` reads two files.
+
+---
+
+**Round 70** is the mandatory adversarial pass over **`I-35`** (`ee5e313` … `43315ef`) — ARCHITECTURE
+**§11**, the closed-world answer engine (`packages/core/src/ask/`, `cli.ts ask`). **One script, and it
+is the one to reach for whenever a question is about what an ANSWER says**, because every section
+drives the shipped `ask` over a real `Trip` rather than re-implementing a rule:
+
+```bash
+node qa/r70-ask.mjs            # every section — offline, ~4 s, writes nothing
+node qa/r70-ask.mjs A C F      # named sections only
+```
+
+Sections **A**–**G** are findings, **H**–**I** are adjudications of what the builder disclosed, and
+**J** is the ceilings. **A** R70-1 (`trip_overview`'s empty arm says *"no days and no cities"* when
+only one is zero, contradicting its own facts); **B** R70-2 (`free_time` renders **"Yes."** at
+`coverage: 'complete'` while carrying a `time_unknown` caveat); **C** R70-3 (a `travelRole: 'journey'`
+stop's `arrival.mins` **is** its own run per §2.12, and `classifyDay` calls it *"states no duration"* —
+21 of 21 journey stops state one, and the 14th's 17:15 FlixBus runs to **18:35**, inside the evening
+window the flagship answer refuses to judge); **D** R70-4 (`trip.title` and `City.name` are
+interpolated into `answer.text` verbatim, so `redactionHits` is not `[]` — with the unmodified fixture
+as a passing control); **E** R70-5 (*"how many countries have I visited"* and five neighbours answered
+against **this** trip instead of refused); **F** R70-6/R70-7 (*"leave **for** Vienna"* picked silently;
+`tokenize` deletes any word with no `[a-z0-9]` run, so `unread` cannot report it); **G**
+R70-8/R70-9/R70-10 (three `free_time` prose defects).
+
+**§H and §I are the ones to reach for before re-deriving anything about `I-35`'s injected faults.**
+§H settles **N7** both ways in one run — the pool's code set really is a subset of the rest's, so the
+**stated** set-equality form cannot fire; and the **strengthened** form's hand-typed faulty object
+(`AT 29, CZ 52, DE 2, GB 15, HR 55, HU 44, US 2`) is byte-for-byte what the real fault produces when
+the pool is dropped from the evidence walk. It also re-measures the two arms declared unfireable on
+the reference trip (**0 of 112** scheduled stops with a null `time`; **0 of 6** cities with no days)
+and the full day × daypart sweep (**48 combinations: 44 `busy`, 4 `unknown`, 0 `open`**). §I measures
+**KD-131** against the data: the literal §11.7 rule 4 reading would print a falsehood on **two** edge
+days, not the one KD-131 names.
+
+One thing round 70 verified that is **not** in the script, because it plants a file in the tree: the
+**A-10 ship gate** really would have caught the negated character class `match.ts:50-62` says it
+avoids. Write `export const probe = (s: string) => s.split(/[^a-z0-9]+/);` to
+`packages/core/src/ask/__r70_plant.ts`, run `node --test packages/core/test/cityKey.test.ts`, and test
+19 goes **RED naming the planted file**; then delete it. The gate is real and the comment is honest.
+
+`r70-ask.mjs` writes nothing: it reads the fixture through `loadEurope2026()` and builds every variant
+document in memory.
+
+---
+
+**Round 71** is the confirmation round over **`I-37`** (`3bc5b3e` … `e0fea87`) — ARCHITECTURE
+**§11.11 A-96**, *one definition of how long a stop occupies the clock, and prose that is clean by
+construction*. One new script, and **`qa/r70-ask.mjs` is RE-CUT in the same round** (see below).
+
+```bash
+node qa/r71-i37.mjs            # every section — offline, ~6 s, writes nothing
+node qa/r71-i37.mjs A B        # named sections only
+```
+
+Sections **B**–**G** and **I** are findings, **A** and **H** are confirmations, **J** is the
+ceilings. It runs **79 assertions, 27 of them FAIL**, and every FAIL is a finding in round 71's block
+of `../docs/QA-FINDINGS.md`. **§B and §I are the two to reach for whenever a question is about what
+`free_time`'s `busy` SENTENCE says**, because they are the two halves of the same new branch: §B is
+the clamped `endMin` rendered as a clock time (the flagship answer says a flight ends at 23:59 when
+the document says 27:45, and `crossesDay` has no production reader), and §I is the `runsInto` day
+that renders no clause at all because `busyRuns` is gated on `arrival`.
+
+**`qa/r71-i37.mjs` §A is the one to reach for whenever a question is about the 48-VERDICT SWEEP.**
+It transcribes revision 77's `classifyDay` out of `git show 3bc5b3e` and runs both classifiers over
+all 16 days × 3 dayparts in one pass, so *"44/0/4 → 46/0/2, exactly two movers"* is re-derived rather
+than quoted: the two movers are named, the two survivors are named, and it separately asserts that
+nothing moves the other way and that every revision-77 `busy` is still `busy`. **A third mover
+reddens it.**
+
+**§H is the one to reach for before re-deriving anything about the redaction chokepoint, the
+`stops_without_occupancy` rename, the `SOURCE_ALLOW` row or the `overlap` identity.** **H1** puts a
+distinct sentinel in **every** user-authored string field the model has — sixteen of them, including
+`MoveOverride.label`, `Ticket.label`, `Booking.route.*`, `Stop.flags` and both `Day` title fields —
+and sweeps all 36 menu questions at both clocks over `answer.text`, every `caveat.message` **and**
+`restate()`: exactly one field reaches prose and it is `City.name`, redacted. **H2** measures
+`redactText`'s own boundary through the chokepoint (`LONDON`, `London door code 4821`, `ЛОНДОН`,
+fullwidth digits, a Greek-omicron homoglyph) — the escapes are §6.6 pattern-set gaps, not chokepoint
+gaps, and §11.8's criterion cannot see them because it uses `redactionHits` as both guard and oracle.
+**H5** re-implements `overlap.ts`'s deleted module-private `occupancy` and diffs it against
+`stopOccupancy` over **858 stop shapes** (every scheduled and pooled stop × five mutations), which is
+the identity claim checked rather than taken from the golden.
+
+Three faults were injected in throwaway `git worktree`s with a copied `node_modules` (the
+`r68-repin.sh` discipline; the live tree was never modified). Recorded here so nobody re-derives
+them: **`cityProse` returning the raw name** → 1,944 pass / **1 fail** (`ask.test.ts:814`), so the
+R70-4 guard is real; **`restate()` reverted to `cityName`** → **1,945 pass / 0 fail**, typecheck exit
+0, which is **R71-5**; **dropping the `travelRole === 'journey'` guard in `stopOccupancy`** — A-96
+Part 2's named trap — reddens **five** tests including the two named for it.
+
+**`qa/r70-ask.mjs` is RE-CUT and is now ALL CLEAR (40 assertions, 0 FAIL) — that is the measurement,
+not the goal.** Five assertions moved and each says why at its own site; do not re-derive them, and
+do not read the ALL CLEAR as *"round 70 found nothing"*. §C ×2 asserted properties of the **fixture**
+that were R70-3's own evidence written as requirements, so they were unpassable by construction;
+§C ×1 crashed on `stops_without_duration`, which is `stops_without_occupancy` at `e0fea87` and the
+rename is **right** (round 71 §H3 — `AnswerFact.label` is a bare `string`, no closed union, no
+golden), so the probe is what moved; §F ×1 required one Cyrillic word to be both matched and unread,
+which a consumed span makes impossible; §I ×1 is R70-11, adjudicated by **A-96 Part 7** in favour of
+the shipped code, so it becomes a re-derivation of that ruling's own number. **A sixth, which the
+builder did not flag: §G1 was passing VACUOUSLY** — `DayVerdict.latestStart` became
+`lastUncertainBefore` at `e0fea87` in an undisclosed rename, so the filter read `undefined`. It now
+names the live field, with a guard above it so a future rename cannot make it pass by absence again.
+
+Neither script writes anything: both read the fixture through `loadEurope2026()` and build every
+variant document in memory. `r71-i37.mjs` additionally reads `test/stats-storage.test.ts`,
+`fixtures/golden/`, `cli.ts` and the `ask/` and `derive/` sources as text.
+
+**Round 72** is the confirmation round over **I-38** (§11.12 **A-97**), at `465c200`. Two scripts,
+run from `cairn/`:
+
+```bash
+node qa/r72-i38.mjs          # 9 sections, 82 assertions — 23 FAIL over 8 findings, ~20 s
+node qa/r71-i37.mjs          # RE-CUT at four sites — ALL CLEAR at 465c200
+```
+
+`r72-i38.mjs`'s sections: **A** confirms R71-1 (`endMin === 1665`, *"still on it at midnight"*, no
+next-day clock, `runEndsAt === '27:45'`); **B** the uncapped `endMin`'s blast radius — the consumer
+census (`occupiedInterval` has **one** production caller), clamped-vs-unclamped over 112 intervals ×
+3 dayparts, the window matrix that carries **R72-4**, and the substitute evidence for `16:45–27:45`
+rebuilt independently (note: the planted stop must state a `durationMins` of its own, or `overlap`
+does not compare it); **C** **R72-3**, the exact-midnight boundary; **D** confirms R71-7 by fuzz —
+600 generated documents, 1,800 answers, four invariants, 0 violations; **E** **R72-5**; **F** the
+scope gate — **R72-1**, **R72-2**, **R72-7**, and R71-3's confirmations; **G** **R72-6** and
+**R72-8**; **H** the `ask.test.ts` re-cut driven in both directions plus R71-5's two halves; **I**
+the ceilings.
+
+**Do not re-derive these from round 72:** `overlap` returns **0** findings on the reference trip, so
+`node cli.ts conflicts` has never printed `16:45–27:45` there — round 71's report said otherwise and
+that sentence was illustrative, not measured. And `occupiedInterval` is read by `ask/freeTime.ts`
+alone: no conflict verdict can move with the clamp, because there is no call path, which is a
+stronger statement than the goldens being byte-identical.
+
+**`qa/r71-i37.mjs` is RE-CUT and is now ALL CLEAR (80 assertions, 0 FAIL) — that is the measurement,
+not the goal.** Four assertions moved, each with its reason at its own site, and the header carries
+the summary. §F demanded that the redacted restatement and the typeable menu line beside it *agree*;
+A-97 Part 7 ruled the opposite way out, so the assertion now reads the shipped CLI branch. §I ×2
+counted *"1 named + the other one"*, which was true of the broken renderer rather than a rule, and
+now assert A-97 Part 5 item 3's identity. §E ×1 was wrong when it was written — a document with
+`durationMins: -600` on every Split stop leaves no Split stop starting inside the evening, so `Yes.`
+is honest; R71-4's invariant is asserted on a stop that does start inside the window.
+
+**Round 73** is the confirmation round over **I-44** (§11.13 **A-98**), at `4142ecb`. Two scripts,
+run from `cairn/`:
+
+```bash
+node qa/r73-i44.mjs          # 7 sections, 76 assertions — 13 FAIL over 6 findings, ~15 s
+node qa/r72-i38.mjs          # RE-CUT at 6 sites; 3 FAIL REMAIN and they are findings
+```
+
+`r73-i44.mjs`'s sections: **A** the accept set, **regenerated from ARCHITECTURE §11.13 A-98 Part 3's
+own published fragments rather than read out of `match.ts`** — 43 fragments, 816 sentences, 816
+distinct, all answered, all `unread: []`, 0 tripping the lifetime diagnosis, 126 carrying no country
+trigger — plus the two edge findings (**R73-5**, the four present-simple bare frames; **R73-6**, the
+60-of-96 failure of closure under *"… on this trip"*); **B** recall on a 40-phrase corpus written
+before the accept set was read (**20 of 40**, against a published 15 of 18); **C** A-98 Part 7's
+three pinned outcomes plus the **structural** reason the filter cannot discard a reading —
+`COUNTRY_TRIGGERS` is named exactly twice in the file and its one read is inside
+`if (candidates.length === 0)` — and **R73-7**; **D** **R73-1**, reached through the public
+`updateStop` door on the reference trip's own flagship leg; **E** **R73-3**; **F** **R73-2**;
+**G** the ceilings (91 exports, the 48 verdicts, criterion rule 11's whole surface found by grep,
+determinism, and the increment's fence checked against `git diff --stat` rather than the report).
+
+**Do not re-derive these from round 73:** the accept set really is 816 with no colliding cells, all
+816 really do answer with an empty `unread`, and `Object.keys(core).length` really is 91 — those
+were measured independently of the builder's own assertions and agreed. And `journeyModeWord`'s
+disclosed reason holds: **0** of the reference trip's `runsInto` entries across all 48 day×daypart
+cells are non-journey stops, so N5 has no prose site that reddens there.
+
+**`qa/r72-i38.mjs` is RE-CUT at six sites and is deliberately NOT all clear.** §F ×4 and §G ×1
+moved because A-98 ruled a third outcome (each re-cut assertion now checks the surviving reading's
+**content**, not just its `kind`, so a move is verified for its reason); §B ×1 was a **probe
+defect** — the regex forbade the comparison its own label permits. The **three remaining FAILs are
+findings**: §D ×1 is **R73-2** (8 malformed `24:00` clocks over 1,800 fuzzed answers, where round 72
+measured 0) and §E ×2 is **R73-4** (R72-5 is half fixed; the `1e9` case and the missing production
+reader both stand).
