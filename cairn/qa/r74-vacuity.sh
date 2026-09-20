@@ -36,6 +36,7 @@ WANT=("$@"); [ ${#WANT[@]} -eq 0 ] && WANT=(V1 V2 V3 V4 V5)
 want() { for w in "${WANT[@]}"; do [ "$w" = "$1" ] && return 0; done; return 1; }
 
 BAD=0
+UNMEASURED=0
 mut() {
   node -e '
     const fs = require("node:fs");
@@ -49,14 +50,42 @@ mut() {
   return 0
 }
 
+# **MGR-15, fixed at QA round 75.** This decided a red row on `code -ne 0` ALONE — which is
+# R74-2's exact failure mode, live in the instrument this file used to FILE R74-2 against the
+# builder. `i30-attribution.mjs` announces correctly that it measured nothing when the server does
+# not answer, and exits 1; this wrapper scored that as CAUGHT and printed *"every mutation was
+# caught"* with exit 0. A run that never started is not a fired fault.
+#
+# The rule is now the same three-part one the builder was made to implement, plus `FAIL >= 1`:
+#
+#   STARTED   the probe printed its `i30-attribution: <url>` banner, which it only reaches after
+#             the server answered;
+#   RAN       at least one real assertion was scored (a `MEASURED NOTHING` line is not one);
+#   FINISHED  the probe printed its own terminating verdict line;
+#   RED       and, for a row that expects red, at least one REAL `FAIL`.
+#
+# A row that fails STARTED/RAN/FINISHED is UNMEASURED: it is neither caught nor not-caught, it
+# counts against `BAD`, and it may never be reported as a mutation the instrument caught.
 probe() { # label expect
   local label="$1" expect="$2" out="$TMP/out.txt"
   node qa/i30-attribution.mjs --url="$URL" > "$out" 2>&1
-  local code=$? fails oks
+  local code=$? fails oks started finished nothing real_fails
   fails=$(grep -c '^  FAIL' "$out"); oks=$(grep -c '^  ok  ' "$out")
-  printf '   %-44s exit=%s ok=%-3s FAIL=%-3s\n' "$label" "$code" "$oks" "$fails"
+  nothing=$(grep -c 'MEASURED NOTHING' "$out")
+  real_fails=$((fails - nothing))
+  started=$(grep -c '^i30-attribution: ' "$out")
+  finished=$(grep -cE '^(all phases green|[0-9]+ FAILURE\(S\))$' "$out")
+  printf '   %-44s exit=%s ok=%-3s FAIL=%-3s (real=%s started=%s finished=%s)\n' \
+    "$label" "$code" "$oks" "$fails" "$real_fails" "$started" "$finished"
   grep '^  FAIL' "$out" | sed 's/^  FAIL /      red: /' | head -8
-  if [ "$expect" = red ] && [ "$code" -eq 0 ]; then
+  if [ "$started" -eq 0 ] || [ "$finished" -eq 0 ] || [ $((oks + real_fails)) -eq 0 ]; then
+    printf '   >>> UNMEASURED. started=%s ran=%s finished=%s — this run scored NOTHING, so it is\n' \
+      "$started" "$((oks + real_fails))" "$finished"
+    printf '       neither a caught mutation nor an uncaught one. Start a dev server:\n'
+    printf '       (cd apps/web && npx vite --port 5399 --host 127.0.0.1 --strictPort)\n'
+    BAD=$((BAD+1)); UNMEASURED=$((UNMEASURED+1)); return
+  fi
+  if [ "$expect" = red ] && { [ "$code" -eq 0 ] || [ "$real_fails" -lt 1 ]; }; then
     printf '   >>> NOT CAUGHT. The instrument is green on this mutation.\n'; BAD=$((BAD+1))
   fi
   if [ "$expect" = green ] && [ "$code" -ne 0 ]; then
@@ -143,4 +172,9 @@ for f in "${TOUCHED[@]}"; do
 done
 [ "$D" -eq 0 ] || exit 1
 echo
+if [ "$UNMEASURED" -gt 0 ]; then
+  echo "=== $UNMEASURED row(s) UNMEASURED — this run establishes NOTHING about the instrument."
+  echo "    ($BAD row(s) scored against, of which $UNMEASURED never ran.)"
+  exit 1
+fi
 [ "$BAD" -eq 0 ] && echo "=== every mutation was caught" || { echo "=== $BAD mutation(s) NOT caught"; exit 1; }

@@ -4981,3 +4981,79 @@ settled query; `countryOf({46.2022, 6.1457}, COUNTRY_INDEX)` really is **`"FR"`*
 pick says `CH`, so phase 5's row is the disagreeing one it claims to be; and the CC BY 4.0 deed
 really answers **200 with no redirect**. Those were measured independently of the builder's
 assertions and agreed.
+
+---
+
+**Round 75** is the `I-11` **phase gate**, re-cut and run against `ROADMAP` **revision 83**'s
+corrected exit criteria, at `ed13aff` on `review/i30-picker`. Routed by `docs/REVIEW.md`'s `I-30`
+verdict (**MGR-11**, **MGR-13**, **MGR-15**). Run from `cairn/`:
+
+```bash
+node qa/r54-gate.mjs     # the gate: COMPLETE fails=3 ruled=3 unruled=0 gaps=2 notes=62
+node qa/r75-board.mjs    # NEW — the whole qa/ board, walked and run
+node qa/r75-board.mjs --list   # classify only, run nothing
+```
+
+**`r75-board.mjs` is the board runner there has never been.** ROADMAP's standing obligation is
+*"the breaker runs the WHOLE board at each step boundary"*, and every previous whole-board pass
+was done by hand — which is why the gaps between them are measured in rounds. It walks `qa/`,
+classifies each file **by reading it** (`RUN` / `BROWSER` / `MUTATES`), runs the headless ones with
+a 600 s cap, and reports exit code, `FAIL` count and whether the probe **crashed**. At `ed13aff`:
+`walked=272 ran=135 green=96 red=39 crashed=17`. **`crashed` is the number to read**: a probe that
+throws loses every assertion below the throw, which is R55-6's class. The seventeen are broken down
+by cause in `docs/QA-FINDINGS.md` round 75, **R75-11**.
+
+**What changed in `r54-gate.mjs`, and why each row moved** — read this before assuming a row was
+weakened:
+
+- **`D-c2v`, `J3`** asserted sentences ROADMAP **revision 60** withdrew (Vatican *"IT at every
+  scale"*; `fromJSON` *rejects* a duplicate participant id). Both now assert the corrected
+  criteria, which pin **both** answers: `IT` at the Basilica, the Square and the museum entrance
+  **and** `VA` on the Natural Earth sliver; the document **OPENS** and `validateTrip` reports.
+- **`F1a`, `M1`, `M2`, `M3`, `P1a`, `P4`** hard-coded `24` / `14` / `eight` / `86`. Revision 83
+  **removed** those values on criterion rule 6. The rows now assert the **identities** the criteria
+  name — against `test/stats-storage.test.ts`'s `ROW_PATHS` / `ROW_KEYS` / `ROW_COUNT_FIELDS`, over
+  `UNION_ROWS()`'s **five** shapes, and against criterion E's four agreeing views — and state no
+  number. **Section `M` is stronger, not weaker:** it gained the row-by-row key check, the
+  non-vacuity check and the `centre: null` reachability check it never had.
+- **`N` is rebuilt.** `:904`'s `new Set(['countries.json','forgiveness-drops.json'])` is **deleted,
+  not extended** — R54-6's own predicted failure, arrived. The probe now contains **no filename set
+  and no list of strings**: it discovers **617 needles** from the reference trip document at run
+  time and requires both of criterion 14's arms of every coordinate-bearing golden. The injected
+  fault is kept and fires, naming the needle and the file, and the `$`-prefixed scoping rule is
+  shown working in both directions.
+- **`O1`/`O3`** were a **working-tree** diff against `HEAD` — green on a clean tree for any artefact
+  whatsoever. Replaced by criterion 15's three actual arms, one of which (`O1d`) is **red**.
+- **`P3a`** asserted *"§2.10 states 86"* and stayed green on a history line after revision 83
+  deleted the live copy. Replaced by parsing §2.10's **list** and comparing it to the index, which
+  is what criterion E asks for — and it is **red**: the list is two symbols short (**R75-2**).
+- **`P5b`/`P5c`** scraped `THE_LIST` out of raw source and one apostrophe in a `//` comment
+  shifted every quote pair after it. Every list this probe reads is now comment-stripped first.
+- **`H` and `Q` exist.** Declared in the section index since round 54, never implemented, while
+  `gaps` reported `0`.
+
+**Three rows are RED and each carries a written `RULED` block naming whose it is and what its
+trigger is** — `O1d` (the lockfile moved: **R75-3**, Jacob's), `P3b` and `P5d` (§2.10's list:
+**R75-2**, the architect's). The run ends `unruled=0`, and a red row with no ruling is called out
+by name.
+
+**`r74-vacuity.sh`'s `probe()` is hardened (MGR-15).** It scored a run that never started as
+CAUGHT. It now requires **started · ran ≥ 1 · finished · `FAIL ≥ 1`**; anything else is
+**UNMEASURED** and the script exits 1 saying the run established nothing. Repro both ways:
+`bash qa/r74-vacuity.sh V1` with nothing on 5399 (exit 1, UNMEASURED) and with a dev server on
+5399 (V1 caught, exit 0).
+
+**`r74-faults-safety.sh` `S0`–`S3` are RETIRED, in place, each naming what replaced it.** They were
+four `FAIL` rows that were stale verdicts: `S0` asserts against a header claim `i30-faults.sh` no
+longer contains, and `S1`/`S2`/`S3` wait for a mutation in *this* checkout that, after R74-4's
+worktree fix, never appears — **measured**, not assumed: a full `i30-faults.sh` run was watched for
+its whole duration and this checkout's porcelain for those paths never moved (`SEEN=0`). The live
+evidence is **`bash qa/i30-faults-safety.sh`** — `F1` SIGTERM, `F2` the refused concurrent run,
+`F3` SIGINT where no trap can install — which is `all clear` at `ed13aff`. `S4` and `S5` still
+measure live properties and are unchanged.
+
+**Do not re-derive these from round 75:** the needle set the architect specifies for criterion 14
+is **510** strings and reproduces exactly (trip id/title, day id/date/**title**, every stop id and
+note including the pool, every place id and note, every photo id); the two coordinate-bearing
+goldens score **0** hits at 510 **and** at the stricter 617 the probe uses; and criterion 14's
+`Stop.title` names a field the model does not have (**R75-5**).

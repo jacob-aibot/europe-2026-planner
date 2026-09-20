@@ -1,4 +1,202 @@
-# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index), 23 (I-5b — A-27's forgiveness entry), 24 (I-5c — A-28's second arm for filter 2), 25 (the I-5 closure round), 26 (I-6 — the widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan), 27 (I-6a — A-29's stated-country gate and A-30's `refreshSummary`) 28 (I-7 — `travelStats` and the row's record census), 29 (I-7a — A-32's civil calendar, A-33's exit criterion 6, A-34's `provisional`) 30 (I-7b — A-35's span cap, A-36's executed port gate, A-37's row read gates) 31 (A-38 — the seeded double and `ensureReady`'s upcast) 32 (A-39 — the finite covering set and the boundary that closes the arc), 33 (I-8a — the tab shell, the world map, the token layer and the signal-collision fix), 34 (I-8c — A-45's calendar gate, A-44's lifecycle read gate, BLD-3's way out) 35 (I-8e — A-46's unreadable row, its rescue export, and R34-1's ordering fix) 36 (I-8d — A-41's atlas frame and A-42's withdrawn min-span claim; I-8d's first adversarial round) 37 (I-8g — A-48's `countryKeyPoint`, the connected-components partition, C9's paint order and the pane's `aspect`) 38 (I-8h — A-49's `countryParts`, C8′'s extent, C8″'s detached pane and A-50's symmetric pane box) 39 (I-8i — A-51's one-pane-per-cluster frame, A-52's ring filter and A-53's home/extent panes + I18) 40 (I-8f + I-8j together — A-47's `openFailures`/`rowUnopenable`, and A-54's G7′/G7″ layout, D/I19 ring guard and G5′ tie-break) 41 (I-8b — the Profile, the mobile-first shell, and `DESIGN.md` §5/§6's first rendered acceptance standard) 42 (I-8b's repair pass — the mandatory re-breaker over round 41's 3 MAJOR / 14 MINOR, `DESIGN.md` revision 2 §6.2's refusal-equivalence criterion, and the vacuous fault harness) and **43 (I-12 — A-56's `cities[].centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` 4 → 5, and `TravelStatsCity`'s city dates) 44 (I-12a — A-59's counted city-date fallback and nameable row, A-60's clamp-artefact fix) 45 (I-13 — the photo foundation: §10's record class, EXIF reader, byte stores and loading-state selectors, A-57/A-58/A-61) and **46 (I-13b — the confirmation round over the whole photo repair arc: A-62's `[tripId, photoId]` byte key, A-63's fourth `PhotoListing` phase, A-64's withdrawn provenance claim) 47 (I-13c — the confirmation round over the round-46 repair pass and revisions 45/46: A-62 Part 8 residue 4, A-65's refused deferred delete, A-66's five-armed failure union) 48 (I-13d — the confirmation round over §4.2 **A-67**, the store's generation guard, and revision 48's **Part 7a**) 49 (I-13e — the confirmation round over §4.2 **A-68**, the wiring at A-67's own call sites, and the required re-cut of `qa/r47-i13c.mjs`) 50 (I-13g + I-13h — the confirmation round over §4.2 **A-69**'s settling boundary and **A-70**'s sequence-stamped predicate, the required re-cut of `qa/r49-i13e.mjs`, and the close of the A-67…A-70 arc) 51 (I-13i — the confirmation round over §4.2 **A-71**'s subscriber-exception brand and one classifier, §10 **A-66 Part 11**'s `setBatch`, and the required re-cut of six assertions across three `qa/` probes)**** **52 (I-9 — participants in core: `Trip.participants`, the three build functions, the two validation codes, and the *participation grants nothing* invariant)** **53 (the confirmation-breaker pass over the participants arc)** **54 (I-11 — the PHASE 2 PHASE GATE: every exit criterion re-derived, the phase attack list run end to end, one cross-cutting scenario over everything the phase built, and the whole `qa/` board re-run)** and **55 (I-15 — the mandatory adversarial pass over §2.1 **A-76**, *a build door asks the parser what a record may hold*: KD-100, the TOCTOU window, the two standing censuses, and the hunt for the eleventh unguarded door)** and **56 (I-16 — the mandatory adversarial pass over §2.1 **A-77**, *a door does not say what it wrote; the document says what changed*: the identity diff itself, the eighth record class, the replaced door census, and the third attempt at one class of bug)** and **57 (I-17 — the mandatory adversarial pass over §2.1 **A-78**, *the census reads the tree, not a list of files*: the fourth round on one class after an explicit claim of structural closure, and the fifth face, which went inward)** and **58 (I-18 — the mandatory adversarial pass over §2.1 **A-79**, *the census asks whether a door is reachable, not how it is declared*: the fifth round on one class, run against A-79 Part 11's three named exceptions, and the sixth face — the type constructors the walk cannot descend through)** and **59 (I-19 — the mandatory adversarial pass over §2.1 **A-80**, *the predicate descends every type constructor, and the closure claim becomes coverage rather than a list of exceptions*: the sixth round on one class, run against A-80 Part 10's own statement of what a seventh finding must look like, and the seventh face — the door that IS the union member)** and **60 (I-21 — the mandatory adversarial pass over §8.4 **A-82**, *a bundled gazetteer gives a typed city a real coordinate and no shipped row may contradict the country index*: the invariant re-derived from the pinned source, the quantisation question answered, and the first measured coverage hit rate for the capability Jacob asked for)** and **61 (I-22 — the mandatory adversarial pass over §8.4 **A-83** Part 8, *`City.centre` may be `null` and a picked city carries the row it came from*: the `SCHEMA_VERSION` 3 → 4 migration attacked byte for byte, the near-Null-Island case constructed, the corpus regeneration diffed row by row against `dd19958`, and the browser read-back gate finally run)** and **62 (I-22a — the mandatory adversarial pass over §8.4 **A-84**, *a pick is a record, the country is read off it, and a stale pick is inert*: the exact-float staleness rule attacked over all 7,342 shipped rows, the parser past its own ceiling, the door census run rather than reasoned about, and the `SCHEMA_VERSION` 4 → 5 rung walked on the committed fixtures)** and **63 (I-24 — the mandatory adversarial pass over §8.4 **A-85**, *a pick lands on the point it names and the place census gains its denominator*: the door-level rule attacked at every door that can reach a `City`, the `SUMMARY_VERSION` 7 → 8 rescan driven end to end through the store, the covering table re-derived from the file's own text, and the five builder disclosures adjudicated one at a time)** and **64 (the round `2b54c67` owed, run over TWO commits as one subject — the four builder-routed fixes of QA round 63 **and** **I-25** / §8.4 **A-86**, *the door and the census after round 63*: `I-24`'s exit re-derived under both corrected criteria, the absorbed-row count attacked over sixteen non-array values and both lifecycles, KD-117's blast radius established, and the two test-shaped claims — the CLI source-lift and the `issuesForRef` tripwire — put under mutation)** and **65 (the round `e1e1973` owed, run over TWO commits as one subject — round 64's builder-routed fixes (`e1e1973`) **and** **I-26** (`ede933f`) / §8.4 **A-87**, *the read gate and the census after round 64*: the closure claim attacked at its own denominators rather than with a sixth shape, the reachability premise behind its stated scope limit tested rather than accepted, the reader's own read-once discipline measured with counting accessors, the five builder disclosures adjudicated one at a time, and eleven mutants run against the new assertions)** and **66 (the round **I-28** owes — §8.4 **A-88**, *a predicate widened in place names its callers, a coverage claim names its denominators, and the read-gate arc closes here*: the covering claim injected at all FOUR of its denominators, A-88 Part 2's *"throws exactly two ways"* premise searched over 405 plain-data row shapes, the residue's own trigger measured at the commit before A-45, and every mutation literal in every harness still in use audited for the one failure mode a mutant can have — reporting success for doing nothing)** and **67 (I-23 — the mandatory adversarial pass over §8.4 **A-83** Parts 1–7 and 10–11 with **A-84** Parts 5 and 6, *the gazetteer's filter becomes notability, the corpus is sharded, and a search fetches one shard*: the two broken probes re-cut off the committed shards with no loader hook and the coverage headline re-derived from them, KD-118 verified over 1,377,944 query prefixes rather than three examples, KD-119 adjudicated against the pinned 1:10m layer at its own sha256, and the fold's substitution table re-derived against the punctuation the new corpus actually spells its names with)** and **70 (I-35 — the mandatory adversarial pass over ARCHITECTURE **§11**, *a language model may parse a question; it may never answer one*)** and **71 (I-37 — the confirmation round over §11.11 **A-96**, *one definition of stop occupancy, and prose that is clean by construction*: the 48-verdict sweep re-derived cell by cell against revision 77's classifier, the redaction chokepoint attacked with a sentinel in every user-authored string field of the model rather than with one door code, a sixth phrasing of the lifetime refusal found by inserting one adverb, the `arrival.mins` fallback's boundary constructed at five malformed shapes, and `qa/r70-ask.mjs` re-cut from 4 FAIL + 1 crash to ALL CLEAR)** and **72 (I-38 — the confirmation round over §11.12 **A-97**, *a value computed to decide is not a value to state, and a scope is proved*: round 71's seven findings re-checked against the code, the uncapped `endMin`'s blast radius measured at its one consumer, the clamp exercised at the window it was kept for, the evidence partition fuzzed over 1,800 answers, and the default-deny scope gate measured for over-refusal AND for what it still answers)** and **73 (I-44 — the confirmation round over §11.13 **A-98**, *a scope gate asks whether the sentence is one Cairn wrote*: the 816-sentence accept set regenerated from the ruling's own 43 fragments rather than read out of the implementation, its EDGES adjudicated against Part 3's admission test, recall re-measured on an independent 40-phrase corpus, the candidate filter attacked in both directions, and A-98 Part 8's two-conjunct predicate walked to the shape where the mode word and the clock come from fields that disagree)** and **74 (I-30 — the adversarial pass over the PICKER's GATE EVIDENCE, on branch `review/i30-picker`: the attribution's corpus cost counted request by request rather than accepted, N3's control shown to read the changed value, the `[rendered]` criterion's blindness to `display:none` found and closed, the allowlist re-run over seven planted reaches, the Geneva chain's non-vacuity established by dropping the pick, and `qa/i30-faults.sh`'s own reason for mutating the real checkout measured and refuted)**
+# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index), 23 (I-5b — A-27's forgiveness entry), 24 (I-5c — A-28's second arm for filter 2), 25 (the I-5 closure round), 26 (I-6 — the widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan), 27 (I-6a — A-29's stated-country gate and A-30's `refreshSummary`) 28 (I-7 — `travelStats` and the row's record census), 29 (I-7a — A-32's civil calendar, A-33's exit criterion 6, A-34's `provisional`) 30 (I-7b — A-35's span cap, A-36's executed port gate, A-37's row read gates) 31 (A-38 — the seeded double and `ensureReady`'s upcast) 32 (A-39 — the finite covering set and the boundary that closes the arc), 33 (I-8a — the tab shell, the world map, the token layer and the signal-collision fix), 34 (I-8c — A-45's calendar gate, A-44's lifecycle read gate, BLD-3's way out) 35 (I-8e — A-46's unreadable row, its rescue export, and R34-1's ordering fix) 36 (I-8d — A-41's atlas frame and A-42's withdrawn min-span claim; I-8d's first adversarial round) 37 (I-8g — A-48's `countryKeyPoint`, the connected-components partition, C9's paint order and the pane's `aspect`) 38 (I-8h — A-49's `countryParts`, C8′'s extent, C8″'s detached pane and A-50's symmetric pane box) 39 (I-8i — A-51's one-pane-per-cluster frame, A-52's ring filter and A-53's home/extent panes + I18) 40 (I-8f + I-8j together — A-47's `openFailures`/`rowUnopenable`, and A-54's G7′/G7″ layout, D/I19 ring guard and G5′ tie-break) 41 (I-8b — the Profile, the mobile-first shell, and `DESIGN.md` §5/§6's first rendered acceptance standard) 42 (I-8b's repair pass — the mandatory re-breaker over round 41's 3 MAJOR / 14 MINOR, `DESIGN.md` revision 2 §6.2's refusal-equivalence criterion, and the vacuous fault harness) and **43 (I-12 — A-56's `cities[].centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` 4 → 5, and `TravelStatsCity`'s city dates) 44 (I-12a — A-59's counted city-date fallback and nameable row, A-60's clamp-artefact fix) 45 (I-13 — the photo foundation: §10's record class, EXIF reader, byte stores and loading-state selectors, A-57/A-58/A-61) and **46 (I-13b — the confirmation round over the whole photo repair arc: A-62's `[tripId, photoId]` byte key, A-63's fourth `PhotoListing` phase, A-64's withdrawn provenance claim) 47 (I-13c — the confirmation round over the round-46 repair pass and revisions 45/46: A-62 Part 8 residue 4, A-65's refused deferred delete, A-66's five-armed failure union) 48 (I-13d — the confirmation round over §4.2 **A-67**, the store's generation guard, and revision 48's **Part 7a**) 49 (I-13e — the confirmation round over §4.2 **A-68**, the wiring at A-67's own call sites, and the required re-cut of `qa/r47-i13c.mjs`) 50 (I-13g + I-13h — the confirmation round over §4.2 **A-69**'s settling boundary and **A-70**'s sequence-stamped predicate, the required re-cut of `qa/r49-i13e.mjs`, and the close of the A-67…A-70 arc) 51 (I-13i — the confirmation round over §4.2 **A-71**'s subscriber-exception brand and one classifier, §10 **A-66 Part 11**'s `setBatch`, and the required re-cut of six assertions across three `qa/` probes)**** **52 (I-9 — participants in core: `Trip.participants`, the three build functions, the two validation codes, and the *participation grants nothing* invariant)** **53 (the confirmation-breaker pass over the participants arc)** **54 (I-11 — the PHASE 2 PHASE GATE: every exit criterion re-derived, the phase attack list run end to end, one cross-cutting scenario over everything the phase built, and the whole `qa/` board re-run)** and **55 (I-15 — the mandatory adversarial pass over §2.1 **A-76**, *a build door asks the parser what a record may hold*: KD-100, the TOCTOU window, the two standing censuses, and the hunt for the eleventh unguarded door)** and **56 (I-16 — the mandatory adversarial pass over §2.1 **A-77**, *a door does not say what it wrote; the document says what changed*: the identity diff itself, the eighth record class, the replaced door census, and the third attempt at one class of bug)** and **57 (I-17 — the mandatory adversarial pass over §2.1 **A-78**, *the census reads the tree, not a list of files*: the fourth round on one class after an explicit claim of structural closure, and the fifth face, which went inward)** and **58 (I-18 — the mandatory adversarial pass over §2.1 **A-79**, *the census asks whether a door is reachable, not how it is declared*: the fifth round on one class, run against A-79 Part 11's three named exceptions, and the sixth face — the type constructors the walk cannot descend through)** and **59 (I-19 — the mandatory adversarial pass over §2.1 **A-80**, *the predicate descends every type constructor, and the closure claim becomes coverage rather than a list of exceptions*: the sixth round on one class, run against A-80 Part 10's own statement of what a seventh finding must look like, and the seventh face — the door that IS the union member)** and **60 (I-21 — the mandatory adversarial pass over §8.4 **A-82**, *a bundled gazetteer gives a typed city a real coordinate and no shipped row may contradict the country index*: the invariant re-derived from the pinned source, the quantisation question answered, and the first measured coverage hit rate for the capability Jacob asked for)** and **61 (I-22 — the mandatory adversarial pass over §8.4 **A-83** Part 8, *`City.centre` may be `null` and a picked city carries the row it came from*: the `SCHEMA_VERSION` 3 → 4 migration attacked byte for byte, the near-Null-Island case constructed, the corpus regeneration diffed row by row against `dd19958`, and the browser read-back gate finally run)** and **62 (I-22a — the mandatory adversarial pass over §8.4 **A-84**, *a pick is a record, the country is read off it, and a stale pick is inert*: the exact-float staleness rule attacked over all 7,342 shipped rows, the parser past its own ceiling, the door census run rather than reasoned about, and the `SCHEMA_VERSION` 4 → 5 rung walked on the committed fixtures)** and **63 (I-24 — the mandatory adversarial pass over §8.4 **A-85**, *a pick lands on the point it names and the place census gains its denominator*: the door-level rule attacked at every door that can reach a `City`, the `SUMMARY_VERSION` 7 → 8 rescan driven end to end through the store, the covering table re-derived from the file's own text, and the five builder disclosures adjudicated one at a time)** and **64 (the round `2b54c67` owed, run over TWO commits as one subject — the four builder-routed fixes of QA round 63 **and** **I-25** / §8.4 **A-86**, *the door and the census after round 63*: `I-24`'s exit re-derived under both corrected criteria, the absorbed-row count attacked over sixteen non-array values and both lifecycles, KD-117's blast radius established, and the two test-shaped claims — the CLI source-lift and the `issuesForRef` tripwire — put under mutation)** and **65 (the round `e1e1973` owed, run over TWO commits as one subject — round 64's builder-routed fixes (`e1e1973`) **and** **I-26** (`ede933f`) / §8.4 **A-87**, *the read gate and the census after round 64*: the closure claim attacked at its own denominators rather than with a sixth shape, the reachability premise behind its stated scope limit tested rather than accepted, the reader's own read-once discipline measured with counting accessors, the five builder disclosures adjudicated one at a time, and eleven mutants run against the new assertions)** and **66 (the round **I-28** owes — §8.4 **A-88**, *a predicate widened in place names its callers, a coverage claim names its denominators, and the read-gate arc closes here*: the covering claim injected at all FOUR of its denominators, A-88 Part 2's *"throws exactly two ways"* premise searched over 405 plain-data row shapes, the residue's own trigger measured at the commit before A-45, and every mutation literal in every harness still in use audited for the one failure mode a mutant can have — reporting success for doing nothing)** and **67 (I-23 — the mandatory adversarial pass over §8.4 **A-83** Parts 1–7 and 10–11 with **A-84** Parts 5 and 6, *the gazetteer's filter becomes notability, the corpus is sharded, and a search fetches one shard*: the two broken probes re-cut off the committed shards with no loader hook and the coverage headline re-derived from them, KD-118 verified over 1,377,944 query prefixes rather than three examples, KD-119 adjudicated against the pinned 1:10m layer at its own sha256, and the fold's substitution table re-derived against the punctuation the new corpus actually spells its names with)** and **70 (I-35 — the mandatory adversarial pass over ARCHITECTURE **§11**, *a language model may parse a question; it may never answer one*)** and **71 (I-37 — the confirmation round over §11.11 **A-96**, *one definition of stop occupancy, and prose that is clean by construction*: the 48-verdict sweep re-derived cell by cell against revision 77's classifier, the redaction chokepoint attacked with a sentinel in every user-authored string field of the model rather than with one door code, a sixth phrasing of the lifetime refusal found by inserting one adverb, the `arrival.mins` fallback's boundary constructed at five malformed shapes, and `qa/r70-ask.mjs` re-cut from 4 FAIL + 1 crash to ALL CLEAR)** and **72 (I-38 — the confirmation round over §11.12 **A-97**, *a value computed to decide is not a value to state, and a scope is proved*: round 71's seven findings re-checked against the code, the uncapped `endMin`'s blast radius measured at its one consumer, the clamp exercised at the window it was kept for, the evidence partition fuzzed over 1,800 answers, and the default-deny scope gate measured for over-refusal AND for what it still answers)** and **73 (I-44 — the confirmation round over §11.13 **A-98**, *a scope gate asks whether the sentence is one Cairn wrote*: the 816-sentence accept set regenerated from the ruling's own 43 fragments rather than read out of the implementation, its EDGES adjudicated against Part 3's admission test, recall re-measured on an independent 40-phrase corpus, the candidate filter attacked in both directions, and A-98 Part 8's two-conjunct predicate walked to the shape where the mode word and the clock come from fields that disagree)** and **74 (I-30 — the adversarial pass over the PICKER's GATE EVIDENCE, on branch `review/i30-picker`: the attribution's corpus cost counted request by request rather than accepted, N3's control shown to read the changed value, the `[rendered]` criterion's blindness to `display:none` found and closed, the allowlist re-run over seven planted reaches, the Geneva chain's non-vacuity established by dropping the pick, and `qa/i30-faults.sh`'s own reason for mutating the real checkout measured and refuted)** and **75 (the `I-11` PHASE GATE, re-cut and RUN at `ed13aff` on `review/i30-picker`: `ROADMAP` revision 83's corrected exit criteria implemented as the identities they now name rather than the counts they no longer state, the privacy criterion rebuilt as a property with its needle set discovered from the reference trip document at run time, the gate's own `H` and `Q` sections built after nineteen rounds of being declared and absent, MGR-15's double standard closed in the breaker's own instrument, the round-74 evidence board retired where it went stale, and the whole `qa/` board walked by a runner for the first time)**
+
+> **Status (round 75 — the `I-11` PHASE GATE re-cut and RUN, on branch `review/i30-picker`;
+> `master` NOT touched, nothing merged, nothing pushed).** The round the manager's `I-30` verdict
+> routed to the breaker (**MGR-11**, **MGR-13**, **MGR-15**), run at `ed13aff` against `ROADMAP`
+> **revision 83**'s corrected exit criteria. **Zero product-code edits: zero `src`, zero `.tsx`,
+> zero `apps/web`, zero `packages/*`, zero `tools/`, zero golden byte, zero corpus byte, zero
+> `docs/design/`, zero `package.json`, zero lockfile change.** Five files, all mine:
+> `qa/r54-gate.mjs`, `qa/r74-vacuity.sh`, `qa/r74-faults-safety.sh`, this file, and one new
+> `qa/r75-board.mjs`.
+>
+> ```bash
+> cd cairn
+> node qa/r54-gate.mjs            # the phase gate: COMPLETE fails=3 ruled=3 unruled=0 gaps=2 notes=62
+> node qa/r75-board.mjs           # the WHOLE qa/ board, walked and run — new in this round
+> bash qa/r74-vacuity.sh V1       # with NOTHING on port 5399: now exit 1 "UNMEASURED" (was exit 0 "caught")
+> bash qa/r74-faults-safety.sh S0 S1 S2 S3   # four RETIRED rows, each naming what replaced it
+> ```
+>
+> **FIXED in this round (all of them instruments, none of them product).**
+>
+> - **The gate was 12 red and is now 3 red, and all three reds are findings against somebody
+>   else.** Nine rows were probe rot: `D-c2v` and `J3` asserted sentences ROADMAP revision 60
+>   withdrew; `F1a`, `M1`, `M2`, `M3`, `P1a` and `P4` hard-coded `24` / `14` / `eight` / `86`,
+>   the exact values revision 83 **removed** on criterion rule 6; `P5c` was comparing the export
+>   surface against comment text. Every one of them now asserts the identity its criterion names
+>   rather than a number no criterion states.
+> - **The privacy criterion (criterion 14, MGR-13) is rebuilt and green, as a property, with its
+>   fault firing.** `qa/r54-gate.mjs:904`'s hard-coded `new Set(['countries.json',
+>   'forgiveness-drops.json'])` is **deleted, not extended**. The probe now contains no filename
+>   set and no list of strings. **617 needles discovered from the reference trip document at run
+>   time; 19 goldens scanned; 2 carry a coordinate; both EARN the exclusion on both arms; 0 hits
+>   each.** The injected fault fires and names the needle and the file.
+> - **MGR-15 is closed.** `qa/r74-vacuity.sh`'s `probe()` decided a red row on `code -ne 0` alone
+>   and scored a run that never started as CAUGHT. It now requires **started · ran ≥ 1 assertion ·
+>   finished · `FAIL ≥ 1`**, and a row that fails any of those is **UNMEASURED**, counts against
+>   the wrapper's own exit code, and may never be reported as a caught mutation. Both directions
+>   verified: with no server, exit **1** and *"this run establishes NOTHING"*; with a server on
+>   5399, V1 is still scored CAUGHT and the script still exits 0.
+> - **Sections `H` and `Q` exist.** Both were declared in the gate's own section index at round 54
+>   and neither had ever been implemented, while the probe reported `gaps=0` — a section index
+>   promising a section it does not run, which is criterion rule 9's shape applied to the
+>   instrument. `H` evaluates criterion 8 out of band by executing
+>   `packages/client/test/summary-rescan.test.ts` (16/16) and `switch.test.ts`'s lexical-scope
+>   structural row. `Q` runs the Phase 2 attack list: 26 rows, 3 of them pointers to where an
+>   item is already run and 2 `GAP`s.
+> - **The round-74 evidence board is retired where it went stale**, with the replacement named
+>   row by row rather than deleted (see **R75-8**).
+>
+> **STILL OPEN — the three red rows, each ruled, none of them the breaker's.**
+>
+> | Row | Whose | Trigger |
+> |---|---|---|
+> | `O1d` — `cairn/package-lock.json` moved | **Jacob**, then the architect | **R75-3** |
+> | `P3b` — §2.10's list ≠ the index | **architect** | **R75-2** |
+> | `P5d` — the four views disagree | **architect** — the same finding as `P3b` | **R75-2** |
+>
+> **VERDICT on the gate itself: `node qa/r54-gate.mjs` completes, every red row is ruled, and
+> neither remaining subject is in the breaker's gift.** Phase 2's gate is now *runnable*; whether
+> Phase 2 *passes* it turns on one architect pass (`R75-2`) and one decision of Jacob's
+> (`R75-3`). **0 BLOCKERS, 5 MAJOR, 6 MINOR** — and the fifth MAJOR is the board's, not the
+> gate's: **17 of 135 headless `qa/` probes ABORT** and report whatever count they reached
+> (**R75-11**). That is routed to the next round and is stated here rather than quietly not run.
+
+---
+
+# Round 75 — the `I-11` phase gate, re-cut and run
+
+**Subject:** `ROADMAP.md` *Exit criteria — the Phase 2 ship gate* at **revision 83**, re-derived
+against the tree at `ed13aff` on `review/i30-picker`. Routed by `docs/REVIEW.md`'s `I-30` verdict,
+routing item 3.
+
+**Baselines measured in this session, at `ed13aff`:** `npm run test:tap` → **1,984 pass / 0 fail**
+(1,977 + the 7 `apps/web/test` tests the builder's `ed13aff` just put into the glob);
+`npm run typecheck` → **exit 0**.
+
+| id | sev | file:line | defect | repro | routing |
+|---|---|---|---|---|---|
+| **R75-1** | MAJOR | `qa/r54-gate.mjs` `P5b`/`P5c` (pre-fix `:1010`) | `THE_LIST` was scraped out of raw TypeScript with `/'([^']+)'/g`; the apostrophe in the `// … §11.6's grounding law …` comment added with the `ask (3)` group shifts every quote pair after it, so `P5c` compared the export surface against prose and `P5b`'s length check counted quote **pairs** (N + ⌊k/2⌋ matches for N entries and k stray apostrophes — green at k=1 for arithmetic reasons, with 28 of 91 names garbage) | `node qa/r54-gate.mjs` (rows `P5b`, `P5c`) | **breaker — FIXED here** |
+| **R75-2** | MAJOR | `docs/ARCHITECTURE.md` §2.10, the `packages/core/src/index.ts re-exports exactly this and nothing else` code block | The block lists **89** symbols; the index exports **91**. `searchGazetteer` (I-21) and `cityPickFromRow` (I-22a) are in §2.10's **prose** genealogy and not in its **list**. Criterion E is *"runtime exports equal §2.10's list exactly — set equality in both directions"*, so the phase's export criterion is **red on the contract document**. §2.10 also still says *"§2.10 is still 87"* in prose | `node qa/r54-gate.mjs` (rows `P3b`, `P3c`, `P5d`) | **architect** |
+| **R75-3** | MAJOR | `cairn/package-lock.json`, `+45` lines vs `86692af` | Criterion 15 arm 2 — *"`cairn/package-lock.json` does not move … checked against `HEAD`'s committed bytes"* — is false on this branch: `d3-geo`, `d3-array`, `internmap` and `@types/d3-geo` entered the repository's only lockfile with Codex's `apps/web` ride-along | `node qa/r54-gate.mjs` (row `O1d`) | **Jacob** (does `d3-geo` enter the tree), then **architect** (if yes, arm 2 must say so) |
+| **R75-4** | MAJOR | `qa/r74-vacuity.sh:52-68` | `probe()` decided a red row on `code -ne 0` alone, so a run against a dead server printed *"every mutation was caught"* and exited **0** — R74-2's exact failure mode inside the instrument that filed R74-2. **MGR-15** | `bash qa/r74-vacuity.sh V1` with nothing on 5399 | **breaker — FIXED here** |
+| **R75-5** | MINOR | `docs/ROADMAP.md` criterion 14, arm (ii) | The needle list names **`Stop.title`**, a field that does not exist on the shipped model (`Stop.name` is the stop's title). Taking `Stop.name` re-admits **`Place.name`** — which the same ruling excludes — through the back door: 34 stop titles are byte-equal to a place name on the reference trip (`Blue Cave, Biševo`). The probe subtracts every `Place.name` and `City.key` after building the set and says so | `node qa/r54-gate.mjs` (rows `N0b`, `N0c`) | **architect** — one sentence |
+| **R75-6** | MINOR | `docs/ROADMAP.md` criterion 14, revision-83 note | The note's per-file hit census — *"42, 32, 145, 20, 34, 11 and 17 hits"* — is not reproducible by the needle rule the criterion states. At the architect's own **510** I measure `32, 16, 129, 20, 27, 11, 9`; at the probe's 617, `38, 16, 236, 28, 35, 12, 9`. **The 510 itself reproduces exactly**, and so does the orthogonality claim the criterion rests on, so nothing load-bearing moves | `node qa/r54-gate.mjs` (rows `N0`, `N1f`, `N1g`) | **architect** — history only |
+| **R75-7** | MINOR | `qa/r54-gate.mjs` section index | Sections `H` (criterion 8) and `Q` (the phase attack list) were declared at round 54 and never implemented, while `gaps` reported **0** — named by the architect at revision 83. Both are now built | `node qa/r54-gate.mjs` (sections `H`, `Q`) | **breaker — FIXED here** |
+| **R75-8** | MINOR | `qa/r74-faults-safety.sh` `S0`–`S3` | Four `FAIL` rows that were stale verdicts, not defects. Retired in place with the replacement named | `bash qa/r74-faults-safety.sh S0 S1 S2 S3` | **breaker — FIXED here** |
+| **R75-9** | MINOR | `qa/r54-gate.mjs` `O1`/`O3` (pre-fix) | Both read a **working-tree** diff against `HEAD`, which on a clean tree is green for any artefact whatsoever — criterion rule 9's own shape, named by the architect at revision 83. Replaced by criterion 15's three actual arms | `node qa/r54-gate.mjs` (rows `O1`…`O1g`) | **breaker — FIXED here** |
+| **R75-10** | MINOR | `qa/r54-gate.mjs` `P3a` (pre-fix) | `P3a` asserted *"§2.10 states 86"* and stayed **green after revision 83 deleted the live copy**, because `86` survives in §2.10's history prose. A false green that would have hidden **R75-2** | `node qa/r54-gate.mjs` (rows `P2`, `P3b`, `P3d`) | **breaker — FIXED here** |
+
+## R75-2 — the contract document is two symbols short of the contract (the worst thing in this round)
+
+This is the one finding here that is about the product's own contract rather than about an
+instrument, and it is the reason the gate is not green.
+
+**What criterion E asserts.** ROADMAP revision 83 rewrote it to state **no count** and to name a
+relationship instead: *"`packages/core/src/index.ts`'s runtime exports equal §2.10's list exactly
+— one list, set equality in both directions"*, with four views that must agree — the command,
+`surface.test.ts`'s `THE_LIST`, §2.10's transcribed list, and `index.ts`'s docstring.
+
+**What is there.** Three of the four views agree at **91**. §2.10's list, parsed out of its own
+code block — the one headed *"packages/core/src/index.ts re-exports exactly this and nothing
+else"* — has **89** entries, and its own twelve group labels (`model (8)` … `redact (4)`) sum to
+89 as well, so the block is internally consistent and externally two short. The two missing are
+`searchGazetteer` and `cityPickFromRow`.
+
+**Why nobody caught it.** The old row asked *"does §2.10 state 86?"* — a string search over prose.
+It was green before revision 83 because the number was there, and it stayed green **after**
+revision 83 removed it, because `86` survives in the section's history notes (**R75-10**). At no
+point did anything compare §2.10's **list** to the index, which is the only thing criterion E
+actually asks for. Revision 83 corrected the sentence above the list and the header inside it and
+did not open the list. That is **MGR-10's own class, one line further in** — and it is the third
+time in this document family that a remedy for a stale copy landed beside the stale copy rather
+than on it.
+
+**What is not wrong.** `surface.test.ts`'s `THE_LIST` is current at 91 and its `geo (2)` group
+carries both symbols, so `npm test` is right and nothing in the code is broken. This is a defect
+in the document the Phase 3 server and the Phase 4 native app are written against.
+
+**Trigger for the row going green:** a `geo (2)` group in §2.10's code block. While the file is
+open, *"§2.10 is still 87"* one paragraph down is the same defect a third time.
+
+## R75-3 — the lockfile moved, and criterion 15 arm 2 is the machine-checkable form of the merge gate
+
+`git diff --numstat 86692af HEAD -- cairn/package-lock.json` → `45 0`. The packages added are
+`d3-geo`, `d3-array`, `internmap` and `@types/d3-geo`, pulled in by
+`apps/web/src/views/CroatiaPreview.tsx` and `apps/web/src/world/globeGeometry.ts`. Criterion 15
+arm 2 forbids **any** movement of this file, and arm 2's own sentence says it is *"the
+repository's only lockfile"* — which I re-derived (`git ls-files '*package-lock.json'
+'*yarn.lock' '*pnpm-lock.yaml' 'npm-shrinkwrap.json'` returns exactly one path).
+
+The manager routed the `d3-geo` question to Jacob and wrote that it *"gates the MERGE TO
+`master`"*. **The gate row is that sentence, mechanised.** It is red at HEAD and will stay red
+until either the lockfile returns to its branch-point bytes or arm 2 is re-scoped to admit
+`apps/web`'s dependency tree — which is an architect's ruling and needs Jacob's answer first.
+Note what the criterion already says and what this does **not** touch: `apps/web/package.json`
+carrying React, Leaflet, `d3-geo` and Vite is explicitly outside the ceiling. It is the **shared
+lockfile at the root of the bare-Node half** that arm 2 is about.
+
+## What this round did NOT establish, said plainly
+
+- **The browser half of the board was not run.** `qa/r75-board.mjs` classifies 272 files:
+  **135 RUN**, **79 BROWSER**, **58 MUTATES**. Only the 135 were run. The 79 need a dev server or
+  a built `dist`; the 58 write to tracked files and are not run unattended.
+- **`qa/i30-faults.sh` was run once in this session** and exited 1 on its closing
+  porcelain-identity check — because **I** created `qa/r75-board.mjs` while it was running. That
+  is the check working, not a failure of it.
+- **Criterion 14 bounds this repository's one reference trip**, which is what the criterion itself
+  says. The day a second person's document is in the tree the needle set is taken over every
+  document, and the probe's needle discovery is written so that is a change of source, not a
+  change of mechanism.
+
+## The whole `qa/` board — `node qa/r75-board.mjs`
+
+There has never been a board runner; every previous whole-board pass was done by hand, which is
+why the gaps between them are measured in rounds rather than in commits. `qa/r75-board.mjs` walks
+`qa/`, classifies each file by reading it, and runs the headless ones.
+
+```
+board: 272 files — {"RUN":135,"BROWSER":79,"MUTATES":58}
+BOARD COMPLETE  walked=272 ran=135 green=96 red=39 crashed=17 notRun=137
+```
+
+**39 red of 135 run.** Most are each round's own evidence and are *expected* red — `r48-i13d`
+reports 13 `FAIL` lines and exits **0**; `r52-participants` reports 13 and exits 1; the round
+notes in this file say which. **The number that matters is `crashed=17`**, and it is **R75-11**.
+
+| **R75-11** | MAJOR | 17 of 135 headless `qa/` probes | A probe that throws loses every assertion below the throw and reports whatever count it reached — the failure mode round 55 re-cut seven probes for (**R55-6**), and the one that let `qa/r54-gate.mjs` itself once report a false `fails=0`. Seventeen probes are in that state now | `node qa/r75-board.mjs` | **breaker**, next round — not this one, and said so rather than quietly not run |
+
+The seventeen, by cause, each cause measured rather than guessed:
+
+- **Nine abort on a door guard that did not exist when they were written** — `attack2`,
+  `r10-mergeundo`, `r10-prune`, `r10-redo`, `r11-recheck`, `r34-a45`, `r8-geo`, `r9-geo`,
+  `r9-ledger`. Each plants a loose or hostile value that §2.1 **A-76**…**A-80** (`I-15`…`I-19`)
+  now refuse at the door: *"`setDayMeta`: `\"note\"` may not be patched"*, *"`copyStopInto`: this
+  place cannot be stored — expected a string (at `$.category`)"*, *"`ensureDays`: expected a
+  string (at `$.provenance.addedAt`)"*. **The refusals are correct and the probes are stale.**
+  R55-6 re-cut seven probes for exactly this; these nine were not among them.
+- **Five abort on a module path the `I-23` sharding deleted** — `r61-corpus`, `r61-migration`,
+  `r61-precedence`, `r62-pick`, `r63-i24`, all importing
+  `packages/core/src/geo/gazetteer.gen.ts`, removed at `ff0ecdd`. `cairn/CLAUDE.md`'s revision-73
+  block says `I-33` *"owns every re-cut"* of the gazetteer call sites, *"45 of them in five `.mjs`
+  `qa/` probes that break at runtime"*. Five `.mjs` `qa/` probes still break at runtime.
+- **Three are shape or environment drift** — `i6a-gate` (`undefined.centre`), `r73-i44`
+  (`undefined.replace`), and `r30-upcast`, which needs real IndexedDB and aborts under bare Node
+  **by design** and is not a defect.
+
+**Two board reds that are NOT findings, recorded so the next reader does not chase them.**
+
+- `qa/i30-faults-safety.sh` scored 2–3 `FAIL`s on *"this checkout is exactly as it was"* during
+  the board run and **all clear** when re-run alone. Cause, measured by polling
+  `git status --porcelain -- cairn` every 2 s through a full run: **a concurrent agent was editing
+  the working tree** (`apps/web/test/globeGeometry.test.ts`, `tools/gen-croatia-map.mjs`,
+  `docs/BUILD-NOTES.md`, a new `tools/mutate-globe-geometry.mjs`). The assertion is correct and
+  was telling the truth; its subject was somebody else. **`bash qa/i30-faults-safety.sh` →
+  `all clear`, F1/F2/F3 all green**, which is what S1/S2/S3's retirement rests on.
+- `qa/r74-allowlist.mjs` exits 1 on one row: that is **R74-9**, filed, routed `none`, inside the
+  predicate's own stated claim.
+
+---
 
 > **Status (round 74 — the ADVERSARIAL PASS over `I-30`'s gate evidence, on branch
 > `review/i30-picker` @ `e890d50`; `master` NOT touched, nothing merged, nothing pushed).**

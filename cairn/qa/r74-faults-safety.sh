@@ -9,14 +9,14 @@
 # land on the working tree Jacob's branch lives in, and the blast radius of a failure is the
 # repository. These rows attack the guard rails.
 #
-#   S0  the worktree claim, measured rather than accepted
-#   S1  SIGINT mid-mutation           — the EXIT/INT/TERM trap must restore the tree
-#   S2  SIGKILL mid-mutation          — the residue, stated (no trap can fire)
-#   S3  two runs at once              — run B snapshots run A's mutation as its own "pristine"
+#   S0  the worktree claim                — **RETIRED at round 75**: its subject was fixed (R74-4)
+#   S1  SIGINT mid-mutation               — **RETIRED**: replaced by i30-faults-safety.sh F1/F3
+#   S2  SIGKILL mid-mutation              — **RETIRED**: replaced by i30-faults-safety.sh F1
+#   S3  two runs at once                  — **RETIRED**: replaced by i30-faults-safety.sh F2
 #   S4  a mutation target that is absent — must be reported stale, not skipped silently
 #
-# S2 and S3 deliberately leave the tree mutated and then restore it with `git checkout --`, so
-# this script REFUSES to start unless the three files it can touch are clean.
+# S4 restores with `git checkout --`, so this script REFUSES to start unless the three files it
+# can touch are clean. (S2 and S3, which used to be the reason for that refusal, are retired.)
 set -u
 CAIRN="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$CAIRN" || exit 1
@@ -29,7 +29,7 @@ if [ -n "$(git status --porcelain -- "$PICKER" "$META" "$UNAUTH")" ]; then
   exit 2
 fi
 
-WANT=("$@"); [ ${#WANT[@]} -eq 0 ] && WANT=(S0 S1 S2 S3 S4 S5)
+WANT=("$@"); [ ${#WANT[@]} -eq 0 ] && WANT=(S0 S1 S2 S3 S4 S5)   # S0-S3 are RETIRED; see the block below
 want() { for w in "${WANT[@]}"; do [ "$w" = "$1" ] && return 0; done; return 1; }
 FAIL=0
 ok() { if [ "$1" = 0 ]; then printf '  ok   %s\n' "$2"; else printf '  FAIL %s\n' "$2"; FAIL=$((FAIL+1)); fi; }
@@ -43,154 +43,78 @@ wait_for_mutation() {
   return 1
 }
 
-if want S0; then
-echo "== S0 — the worktree claim, MEASURED rather than accepted"
-# `i30-faults.sh` lines 23-26 justify mutating the real checkout with: *a worktree's
-# `node_modules/@cairn/core` symlink resolves back to the MAIN checkout's `packages/core`, so a
-# worktree mutation of `meta.json` would not be the file the dev server serves.* This row builds
-# that worktree, mutates ONLY its `meta.json`, and reads the rendered credit out of Chromium.
-WTROOT="$(mktemp -d)"; WT="$WTROOT/wt"
-ROOT="$(cd "$CAIRN/.." && pwd)"
-PORT="${R74_WT_PORT:-5401}"
-git -C "$ROOT" worktree add --detach "$WT" HEAD >/dev/null 2>&1
-if [ -d "$WT/cairn" ]; then
-  ln -s "$CAIRN/node_modules" "$WT/cairn/node_modules"
-  ln -s "$CAIRN/apps/web/node_modules" "$WT/cairn/apps/web/node_modules"
-  ( cd "$WT/cairn" && node tools/gen-sample.mjs >/dev/null 2>&1 )   # `npm run dev`'s presample step
-  node -e '
-    const fs=require("node:fs");const f=process.argv[1];
-    const s=fs.readFileSync(f,"utf8");
-    const a=String.fromCharCode(34)+"$source"+String.fromCharCode(34)+":"+String.fromCharCode(34)+"GeoNames geographical database";
-    const at=s.indexOf(a); if(at<0) process.exit(3);
-    fs.writeFileSync(f, s.slice(0,at)+a+" WORKTREE-ONLY-TOKEN"+s.slice(at+a.length));
-  ' "$WT/cairn/packages/core/src/geo/gazetteer/meta.json"
-  [ -z "$(git -C "$ROOT" status --porcelain -- cairn/packages/core/src/geo/gazetteer/meta.json)" ]
-  ok $? "the worktree mutation leaves THIS checkout's meta.json byte-identical"
-  ( cd "$WT/cairn/apps/web" && setsid npx vite --port "$PORT" --host 127.0.0.1 --strictPort >/tmp/r74-wtvite.log 2>&1 & )
-  sleep 20
-  node -e '
-    const pw = require("/opt/node22/lib/node_modules/playwright/index.js");
-    (async () => {
-      const b = await pw.chromium.launch();
-      const p = await (await b.newContext()).newPage();
-      await p.route("**tile.openstreetmap.org/**", (r) => r.abort());
-      await p.goto("http://127.0.0.1:" + process.argv[1] + "/", { waitUntil: "domcontentloaded" });
-      await p.waitForTimeout(2500);
-      await p.getByRole("button", { name: /Add somewhere I.ve been/i }).first().click();
-      await p.waitForTimeout(3000);
-      const t = await p.getByTestId("gazetteer-attribution").first().innerText();
-      console.log("  note worktree server rendered: " + JSON.stringify(t.slice(0, 80)));
-      await b.close();
-      process.exit(t.includes("WORKTREE-ONLY-TOKEN") ? 0 : 1);
-    })().catch((e) => { console.log("  note " + String(e).slice(0,120)); process.exit(2); });
-  ' "$PORT"
-  W=$?
-  if [ "$W" -eq 0 ]; then
-    printf '  note >>> the worktree dev server SERVES THE WORKTREE'"'"'S meta.json. vite.config.ts\n'
-    printf '  note     aliases @cairn/core/gazetteer to resolve(import.meta.dirname, "../../packages/\n'
-    printf '  note     core/src/geo/gazetteerShards.gen.ts") — a path relative to the CONFIG FILE, so\n'
-    printf '  note     the node_modules/@cairn/core workspace link is never consulted for it.\n'
-    ok 1 "the stated reason for mutating the real checkout does NOT hold"
-  else
-    ok 0 "the worktree server ignored the worktree meta.json (the stated reason holds)"
-  fi
-  pkill -f "vite --port $PORT" 2>/dev/null
-  git -C "$ROOT" worktree remove --force "$WT" >/dev/null 2>&1
-  rm -rf "$WTROOT"; git -C "$ROOT" worktree prune
-else
-  printf '  note could not create a worktree; S0 unmeasured\n'
-fi
-fi
-
-# Start `i30-faults.sh` in its OWN session and record the session's pgid, so a signal can be
-# sent to the WHOLE group — which is what Ctrl-C at a terminal does, and the only thing that
-# reaches the `node` child the script is blocked on.
-PGFILE="$(mktemp)"
-start_faults() {
-  setsid bash -c 'echo $$ > "$1"; exec bash qa/i30-faults.sh' _ "$PGFILE" > "$2" 2>&1 &
-  for _ in $(seq 1 30); do [ -s "$PGFILE" ] && break; sleep 1; done
-  cat "$PGFILE"
+# ===========================================================================================
+# **S0, S1, S2 and S3 are RETIRED at QA round 75. They are kept, not deleted.**
+#
+# A breaker's evidence board records what was measured and when it stopped being measurable. All
+# four rows scored FAIL at HEAD, and none of the four FAILs was a live defect:
+#
+#   S0  asserted against a HEADER CLAIM that `qa/i30-faults.sh` no longer contains. Its verdict
+#       line is *"the stated reason for mutating the real checkout does NOT hold"* — and the
+#       script no longer mutates the real checkout and no longer states that reason: R74-4 was
+#       accepted, `i30-faults.sh` lines 24-32 now record the claim as measured and REFUTED and
+#       every mutation lands in a throwaway worktree. A row that fails because its subject was
+#       fixed is a stale verdict.
+#       REPLACED BY: `qa/i30-faults.sh`'s own per-run isolation assertion (it asserts the
+#       worktree's `@cairn/core` resolves to the worktree, on every run) plus S5 below, which
+#       still reads a live property.
+#
+#   S1  SIGINT mid-mutation · S2 SIGKILL mid-mutation · S3 two runs at once.
+#       All three begin with `wait_for_mutation`, which polls THIS checkout's
+#       `git status --porcelain -- $PICKER $META` for 240 s. After R74-4's worktree fix, no
+#       mutation ever appears there. **Measured at round 75, not reasoned about:** a full
+#       `qa/i30-faults.sh` run was watched for its whole duration and this checkout's porcelain
+#       for those two paths never moved once (`SEEN=0`). So all three rows time out and report
+#       *"unmeasured"*, which scores FAIL — a hazard that no longer has a surface, reported as a
+#       defect.
+#       REPLACED BY, row for row, in `qa/i30-faults-safety.sh`:
+#         S1 (SIGINT, trap restores the tree)      -> F1 (SIGTERM) and F3 (SIGINT, where POSIX
+#                                                     starts an asynchronous command with SIGINT
+#                                                     IGNORED so no trap can install at all —
+#                                                     the case S1 assumed away)
+#         S2 (SIGKILL residue in the checkout)     -> F1's worktree/lock/porcelain assertions;
+#                                                     a SIGKILL now abandons a throwaway worktree
+#                                                     rather than a mutated review branch
+#         S3 (two runs share state)                -> F2 (a second concurrent run must be REFUSED
+#                                                     loudly, which is the fix for the hazard S3
+#                                                     was written to demonstrate)
+#
+# The four rows below print their record and score NOTHING. `bash qa/i30-faults-safety.sh` is the
+# live evidence; this file keeps S4 and S5, which still measure live properties.
+# ===========================================================================================
+retired() { # id, what it measured, what replaced it
+  printf '  RETIRED %s\n    was: %s\n    now: %s\n' "$1" "$2" "$3"
 }
+
+if want S0; then
+echo "== S0 — RETIRED (round 75)"
+retired "S0 the worktree claim, measured rather than accepted" \
+  "a FAIL asserting that i30-faults.sh's stated reason for mutating the real checkout does not hold" \
+  "the claim was withdrawn by the builder at R74-4; i30-faults.sh asserts its own worktree isolation on every run"
+fi
 
 if want S1; then
 echo
-echo "== S1 — SIGINT to the whole group mid-mutation (what Ctrl-C does)"
-: > "$PGFILE"
-PG="$(start_faults "$PGFILE" /tmp/r74-s1.log)"
-printf '  note i30-faults.sh session pgid=%s\n' "$PG"
-if wait_for_mutation; then
-  printf '  note mutation on disk: %s\n' "$(git status --porcelain -- "$PICKER" "$META" | tr '\n' ' ')"
-  kill -INT -"$PG" 2>/dev/null
-  for _ in $(seq 1 60); do kill -0 -"$PG" 2>/dev/null || break; sleep 1; done
-  sleep 3
-  D="$(git status --porcelain -- "$PICKER" "$META" "$UNAUTH")"
-  [ -z "$D" ]; ok $? "after SIGINT the tree is clean (the EXIT/INT trap restored it)  ${D:+[$D]}"
-  V="$(pgrep -f 'vite --port 5' | wc -l)"
-  [ "$V" -eq 0 ]; ok $? "no orphaned vite dev server survives the interrupt (found $V)"
-else
-  ok 1 "no mutation appeared within 240 s — S1 unmeasured"
-fi
-pkill -f 'vite --port 5' 2>/dev/null
-kill -9 -"$PG" 2>/dev/null
-sleep 2
-git checkout -- "$PICKER" "$META" "$UNAUTH" 2>/dev/null
+echo "== S1 — RETIRED (round 75)"
+retired "S1 SIGINT mid-mutation" \
+  "wait_for_mutation over THIS checkout, which no longer sees a mutation (measured: SEEN=0 over a full run)" \
+  "qa/i30-faults-safety.sh F1 (SIGTERM) and F3 (SIGINT, where no trap can install)"
 fi
 
 if want S2; then
 echo
-echo "== S2 — SIGKILL to the whole group mid-mutation: the residue, stated"
-: > "$PGFILE"
-PG="$(start_faults "$PGFILE" /tmp/r74-s2.log)"
-if wait_for_mutation; then
-  kill -KILL -"$PG" 2>/dev/null
-  sleep 3
-  D="$(git status --porcelain -- "$PICKER" "$META" "$UNAUTH" | tr '\n' ' ')"
-  printf '  note after SIGKILL the tree is: %s\n' "${D:-clean}"
-  if [ -n "$D" ]; then
-    printf '  note >>> a hard kill leaves the CHECKOUT mutated — no trap can cover SIGKILL, and\n'
-    printf '  note     the surviving edit is a hard-coded credit or a re-pinned CORPUS BYTE on\n'
-    printf '  note     the branch being reviewed. The pristine copies are in a mktemp dir nobody\n'
-    printf '  note     will find. Recovery is `git checkout --`, which is not stated anywhere.\n'
-  fi
-  pkill -f 'vite --port 5' 2>/dev/null
-  git checkout -- "$PICKER" "$META" "$UNAUTH"
-  [ -z "$(git status --porcelain -- "$PICKER" "$META" "$UNAUTH")" ]; ok $? "restored by hand afterwards (git checkout --)"
-else
-  ok 1 "no mutation appeared within 240 s — S2 unmeasured"
-fi
+echo "== S2 — RETIRED (round 75)"
+retired "S2 SIGKILL mid-mutation, the residue stated" \
+  "the same wait_for_mutation; and the residue it described is now a throwaway worktree, not the review branch" \
+  "qa/i30-faults-safety.sh F1's worktree / lock / porcelain assertions"
 fi
 
 if want S3; then
 echo
-echo "== S3 — two runs at once: run B snapshots run A's mutation as its own pristine copy"
-: > "$PGFILE"
-PG="$(start_faults "$PGFILE" /tmp/r74-s3.log)"
-if wait_for_mutation; then
-  # i30-faults.sh line 40, verbatim, is `cp "$f" "$TMP/orig/$f"` — this is a second run doing it.
-  B="$(mktemp -d)"
-  cp "$PICKER" "$B/picker"; cp "$META" "$B/meta"
-  printf '  note run B took its "pristine" copies while run A had a mutation on disk\n'
-  kill -INT -"$PG" 2>/dev/null
-  for _ in $(seq 1 60); do kill -0 -"$PG" 2>/dev/null || break; sleep 1; done
-  sleep 3
-  pkill -f 'vite --port 5' 2>/dev/null; kill -9 -"$PG" 2>/dev/null
-  [ -z "$(git status --porcelain -- "$PICKER" "$META")" ]; ok $? "run A restored the tree on its way out"
-  # Run B's own EXIT trap now fires, restoring from the copies it took.
-  cp "$B/picker" "$PICKER"; cp "$B/meta" "$META"
-  D="$(git status --porcelain -- "$PICKER" "$META" | tr '\n' ' ')"
-  if [ -n "$D" ]; then
-    printf '  note >>> run B'"'"'s restore RE-APPLIED run A'"'"'s mutation: %s\n' "$D"
-    printf '  note     and run B'"'"'s closing "byte-identical to how this script found it" check\n'
-    printf '  note     PASSES, because it compares against the copy taken mid-mutation.\n'
-    ok 0 "the concurrent-run hazard reproduces: a mutation survives and the self-check stays green"
-  else
-    ok 1 "could not reproduce the concurrent-run hazard on this timing"
-  fi
-  rm -rf "$B"
-  git checkout -- "$PICKER" "$META"
-else
-  ok 1 "no mutation appeared within 240 s — S3 unmeasured"
-fi
+echo "== S3 — RETIRED (round 75)"
+retired "S3 two runs at once share state" \
+  "the same wait_for_mutation; the hazard was a shared pristine snapshot of the real checkout" \
+  "qa/i30-faults-safety.sh F2 — a second concurrent run is REFUSED loudly"
 fi
 
 if want S4; then
