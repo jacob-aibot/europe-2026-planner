@@ -1,5 +1,26 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — the globe's test replaced with one that guards something, plus F6 (`gen-croatia-map.mjs`'s
+> undeclared `d3-geo`), on branch `review/i30-picker` at `02da1ee` → this commit. NOT on `master`,
+> NOT merged, NOT pushed.** **Four files + one rename.** Zero `.tsx`, zero `packages/`, zero
+> `apps/web/src/` (verified: `git status --porcelain apps/web/src/` is empty), zero `qa/`, zero
+> `docs/design/`, zero ARCHITECTURE/ROADMAP/REVIEW/QA-FINDINGS, zero `package.json` anywhere, zero
+> `package-lock.json`, zero dependency.
+>
+> | | |
+> |---|---|
+> | **Why** | `apps/web/test/globeGeometry.test.ts` was the only guard on `apps/web/src/world/globeGeometry.ts`, the one surface nobody has driven, and commit `ed13aff` had just put it into CI. It caught **0 of 6** injected defects — it asserted arity, key uniqueness, one non-empty `d` string and that the index was not mutated, all of which survive swapping longitude and latitude for every vertex on Earth. A test that certifies and catches nothing is worse than no test. |
+> | **What changed** | `apps/web/test/globeGeometry.test.ts`: 2 tests → **8**. The two real assertions from the old file (pose clamping; the index is not mutated) are kept verbatim. New: landmark containment, winding normalisation, ring closure, paint order, zoom scaling, backface culling. |
+> | **The instrument, committed** | `tools/mutate-globe-geometry.mjs` — applies each mutation to a **copy** in a temp dir, runs the suite against it, and reports survivors. `node tools/mutate-globe-geometry.mjs`. The checkout is never mutated. |
+> | **Measured — mutants** | Control (unmutated) **8 pass / 0 fail**. **M1** winding → caught (3 tests). **M2** ring closure → caught. **M3** lng/lat swap → caught (4 tests). **M5** paint order → caught. **M7** zoom ignored → caught. **M6** `.clipAngle(90)` → **survives, and it is not a defect — KD-132.** **5 of 6 caught; the sixth is not a real mutation.** |
+> | **Measured — the numbers the tests assert** | Re-derived, not taken: **292 entries / 1,033 rings**; **233 drawn / 59 clipped** at `INITIAL_POSE`; **90 / 202** at longitude 180 (the review said 71 / 221 — **my figure is 90 / 202**, `INITIAL_POSE`'s latitude 24 held constant); **exactly 1** inversion in 291 adjacent pairs of the large-to-small paint order; largest projected ring **0.4066 sr**; exactly **one** ring in the shipped index (South Africa's Lesotho hole) needs winding reversal, raw area **12.5657 sr** against 4π = 12.5664; drawn extent **174.0006 / 295.8006 / 487.2005 px** at zoom 1 / 1.7 / 2.8 against `GLOBE_RADIUS * zoom` = 174 / 295.8 / 487.2. |
+> | **Measured — suite** | `npm run test:tap` → **1,990 pass / 0 fail** (baseline `02da1ee`: 1,984). `npm test` exit 0. `npm run typecheck` exit 0. |
+> | **F6 — the undeclared dependency, fixed by location** | `tools/gen-croatia-map.mjs` imported `d3-geo`, which only `apps/web/package.json` declares; from `cairn/tools/` it resolved **only** by npm workspace hoisting. Criterion 15 forbids a `cairn/package.json` dependency entry and any `package-lock.json` movement, so the manifest was not touched: the generator **moved to `apps/web/tools/gen-croatia-map.mjs`**, inside the workspace that declares what it imports, and its output path is now resolved against `import.meta.url` rather than the shell's cwd (the move would otherwise have silently changed where the SVG lands). |
+> | **F6 — the measurement** | (a) Reproduced the un-hoisted layout npm produces when it has a reason not to hoist (`d3-geo` present only in `apps/web/node_modules`): a probe at `cairn/tools/` → `ERR_MODULE_NOT_FOUND`; the same probe at `cairn/apps/web/tools/` → resolves. (b) Downloaded the Natural Earth source and confirmed its SHA256 is the `239eec57…` this repo records; ran the generator **before** the move from `cairn/` and **after** the move from `/tmp`. Both write `croatia-coast.svg` at 61,116 bytes, sha256 `340242a3952c22f828776e6e2540701530ca9b07442a864cb4e0a6910a2e09e2`, byte-identical to the committed file — `git status --porcelain` on it is empty. `apps/web/public/images/README.md`'s pointer updated. |
+> | **What I could not verify** | **That any of this renders.** `World.tsx`, `Globe.tsx` and `CroatiaPreview.tsx` are fenced to Codex and I did not open them; these are unit tests over `globeGeometry.ts`, and a correct path string is not a correct screen. The review's own F4/F7/F8/F9 remain open and are not mine. |
+> | **A gap I did not close** | **`apps/web/test/` is typechecked by neither project.** The root `tsconfig.json` deliberately excludes `apps/web`, and `apps/web/tsconfig.json`'s `include` is `["src", "vite.config.ts"]`. I confirmed out-of-band that the new file typechecks clean under the web project's options with `types: ["node"]` (exit 0), but wiring `apps/web/test` in permanently means widening that project's `types` for the tests' sake — a config decision, not mine to take silently. Reported, not done. |
+> | **Not done, deliberately** | No `.tsx`. No `packages/core`. No `qa/` file — a breaker is live there. `apps/web/test/localIdentity.test.ts` untouched (4 of 4 mutants; those tests are real). |
+
 > **Addendum — `apps/web/test/*.test.ts` wired into the test runner (REVIEW item 4), on branch
 > `review/i30-picker` at `f3bc3cd` → this commit. NOT on `master`, NOT merged, NOT pushed.**
 > **One file: `cairn/package.json`, two lines, `scripts` only.** Zero dependency keys touched, zero
@@ -6735,6 +6756,38 @@ it carries `["vienna","dubrovnik"]`, and its first journey stop is 05:00 under b
 **If the architect intends the literal reading, the change is two lines** (`const journey =
 others.length > 0 ? edgeDay.stops.find(…) : undefined`) and one test. I did not make that choice
 silently — this entry is the disclosure, and `ask/ask.ts`'s docstring points at it.
+
+### KD-132 — `.clipAngle(90)` on the globe's projection restates d3-geo's own default, so deleting it is not a defect and no test asserts that it is
+
+The review that routed this pass named six mutations of `apps/web/src/world/globeGeometry.ts` as
+real defects the globe's test had to catch. Five are. The sixth — **M6, deleting `.clipAngle(90)`
+from `globeProjection`** — is not, and I did not write a test asserting a behaviour that does not
+matter.
+
+**The measurement.** d3-geo 3.1.1's `geoOrthographic()` is, verbatim,
+`projection(orthographicRaw).scale(249.5).clipAngle(90 + epsilon)` with `epsilon = 1e-6`
+(`node_modules/d3-geo/src/projection/orthographic.js`). Deleting the explicit `.clipAngle(90)`
+therefore moves the clip by one millionth of a degree; it does not remove backface culling.
+`node tools/mutate-globe-geometry.mjs` sweeps the mutant against the unmutated module over **240
+poses x 292 entries = 70,080 path strings** and reports:
+
+- poses where the drawn/clipped count differs **at all**: **0** (233 drawn / 59 clipped at
+  `INITIAL_POSE` and 90 / 202 at longitude 180, under both);
+- path strings that differ at all: **214 of 70,080**, worst single pose **6 of 292**, and every one
+  of them is limb resampling on an entry that is drawn either way (Antarctica, mostly).
+
+**What I did instead.** `apps/web/test/globeGeometry.test.ts` still has a culling test — *"World
+globe culls the far side of the sphere"* — because the far side being painted through the near side
+is a real failure and nothing guarded it. It asserts the measured asymmetry (a Europe-facing pose
+draws far more entries than a Pacific-facing one; NZ, FJ and AU are absent at `INITIAL_POSE`; HR is
+absent at longitude 180) and it catches M3. It does **not** catch M6, its docstring says so, and the
+harness reports M6 as a survivor rather than quietly dropping it from the list.
+
+**If the architect wants M6 caught**, the only honest way is to stop relying on the default: give
+`globeProjection` a clip angle that is not d3's own, or assert the projection's `clipAngle()` value
+directly (a source-shaped assertion, which is what the review asked this pass not to write). I did
+neither. **Nothing in `apps/web/src/` changed in this pass** — `git status --porcelain apps/web/src/`
+is empty at the commit that carries this entry.
 
 ## 2. How to run it
 
