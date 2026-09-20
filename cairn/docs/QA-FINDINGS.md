@@ -74,6 +74,14 @@ routing item 3.
 (1,977 + the 7 `apps/web/test` tests the builder's `ed13aff` just put into the glob);
 `npm run typecheck` → **exit 0**.
 
+*(**HEAD moved under this round and the numbers are re-measured rather than carried.** A
+concurrent builder landed `02da1ee` and `53f7809` while this pass was running. At **`cb323d9`**,
+this round's own commit sitting on top of them: `npm run test:tap` → **1,990 pass / 0 fail**
+(`53f7809` adds six globe-geometry tests), `npm run typecheck` → **exit 0**, and
+`node qa/r54-gate.mjs` → **`COMPLETE fails=3 ruled=3 unruled=0 gaps=2 notes=62`**, unchanged —
+neither commit touches `fixtures/golden/`, `packages/core` or the lockfile. The whole-board figures
+below were taken at `ed13aff` and are labelled as such.)*
+
 | id | sev | file:line | defect | repro | routing |
 |---|---|---|---|---|---|
 | **R75-1** | MAJOR | `qa/r54-gate.mjs` `P5b`/`P5c` (pre-fix `:1010`) | `THE_LIST` was scraped out of raw TypeScript with `/'([^']+)'/g`; the apostrophe in the `// … §11.6's grounding law …` comment added with the `ask (3)` group shifts every quote pair after it, so `P5c` compared the export surface against prose and `P5b`'s length check counted quote **pairs** (N + ⌊k/2⌋ matches for N entries and k stray apostrophes — green at k=1 for arithmetic reasons, with 28 of 91 names garbage) | `node qa/r54-gate.mjs` (rows `P5b`, `P5c`) | **breaker — FIXED here** |
