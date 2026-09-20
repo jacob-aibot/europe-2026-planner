@@ -1,10 +1,10 @@
-import { chromium } from 'file:///C:/Users/jacob/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
 import assert from 'node:assert/strict';
-const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'});
+const browser=await chromium.launch({headless:true,executablePath: process.env.BROWSER_PATH});
 const context=await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce',isMobile:true,hasTouch:true});
 const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
 try {
- await page.goto('http://192.168.1.92:5175/',{waitUntil:'networkidle'});
+ await page.goto('http://LAPTOP-LAN-IP:5175/',{waitUntil:'networkidle'});
  await page.getByRole('button',{name:/Set up my profile/}).click();
  await page.getByLabel('Your name').fill('Phone preview');
  await page.getByRole('button',{name:'Save my profile'}).click();

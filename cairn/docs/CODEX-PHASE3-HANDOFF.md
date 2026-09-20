@@ -5,8 +5,8 @@ This is a status and integration handoff, not approval to bypass an entry gate.
 
 ## Checkout and availability
 
-- Git root: `C:/Users/jacob/OneDrive/Documents/ChatGPT/Cairn/repo`
-- Cairn root: `C:/Users/jacob/OneDrive/Documents/ChatGPT/Cairn/repo/cairn`
+- Git root: `<local checkout path removed>`
+- Cairn root: `<local checkout path removed>`
 - Base HEAD: `9333eb6e875b7ef774a0882f2e0f1b909dfeea87`
 - The Codex implementation is in tracked modifications plus untracked source/assets in this working
   tree. It has not been committed or pushed. A GitHub checkout does not contain these edits, and

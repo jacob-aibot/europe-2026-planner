@@ -1,7 +1,7 @@
-import { chromium } from 'file:///C:/Users/jacob/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
-const browser = await chromium.launch({ headless: true, executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe' });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.BROWSER_PATH });
 const passed = [];
 const origin = 'http://127.0.0.1:5180';
 const dir = '.impeccable/review';

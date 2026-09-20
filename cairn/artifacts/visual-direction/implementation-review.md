@@ -24,7 +24,7 @@ awaiting the user's visual approval; no commit or push has been made.
   context loss shows fallback; restoration reloads the material. Preview exploration creates
   no journey and Back restores its trigger focus.
 - Production build passed. The main entry remains approximately 1.10 MB with Vite's size warning.
-- LAN preview returns HTTP 200 at `http://192.168.1.92:5175/`, listening on `0.0.0.0:5175`.
+- LAN preview returns HTTP 200 at `http://LAPTOP-LAN-IP:5175/`, listening on `0.0.0.0:5175`.
   Profile setup, lazy city search, saved visit, World, reload and You passed there in Edge touch
   emulation with no page errors. This is not physical iPhone/Safari testing.
 - Changed-source design detector returned `[]`; raster provenance scan: four rasters, none missing.

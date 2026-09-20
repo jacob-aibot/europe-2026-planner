@@ -1,6 +1,6 @@
 # Open Cairn on a phone
 
-On the same Wi-Fi as the laptop, open **http://192.168.1.92:5175/** in Safari or Chrome.
+On the same Wi-Fi as the laptop, open **http://LAPTOP-LAN-IP:5175/** in Safari or Chrome.
 Include `http://` and `:5175`. This is a local preview: the laptop must remain awake with
 its preview process running. Cellular or another Wi-Fi network cannot reach this address.
 

@@ -1,6 +1,6 @@
-import { chromium } from 'file:///C:/Users/jacob/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
 import assert from 'node:assert/strict';
-const browser = await chromium.launch({headless:true, executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', args:['--enable-webgl','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const browser = await chromium.launch({headless:true, executablePath: process.env.BROWSER_PATH, args:['--enable-webgl','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 try {
   for (const failure of ['image','webgl']) {
     const context=await browser.newContext({viewport:{width:320,height:844},reducedMotion:'reduce'});

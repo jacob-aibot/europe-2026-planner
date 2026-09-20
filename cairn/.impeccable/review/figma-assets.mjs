@@ -1,6 +1,6 @@
-import { chromium } from 'file:///C:/Users/jacob/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
 import { writeFile } from 'node:fs/promises';
-const browser = await chromium.launch({headless:true,executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'});
+const browser = await chromium.launch({headless:true,executablePath: process.env.BROWSER_PATH});
 const page=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});
 await page.goto('http://127.0.0.1:5180',{waitUntil:'networkidle'});
 const svg=await page.locator('.globe svg').first().evaluate(el=>{

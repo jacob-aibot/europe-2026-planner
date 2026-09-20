@@ -32,7 +32,7 @@ in the same review directory. Content beneath the fixed navigation remains scrol
   failed navigation without a deferred intent, reduced motion and desktop 200% reflow.
 - A real IndexedDB write refusal verifies that completion stays hidden while unsaved. Retry
   saves the same journey and reveals the confirmation; selecting it opens Croatia on World.
-- Production browser interaction on `http://192.168.1.92:5175/` verifies profile setup, lazy
+- Production browser interaction on `http://LAPTOP-LAN-IP:5175/` verifies profile setup, lazy
   Split lookup, past-trip save, Croatia on World, reload and You without page errors.
 
 The browser runs used isolated Edge contexts, including mobile dimensions and touch emulation.
@@ -52,6 +52,6 @@ The verdict permits handoff for user visual approval; it does not authorize comm
 
 ## Preview
 
-The laptop's Wi-Fi address responds at **http://192.168.1.92:5175/**. Use the same Wi-Fi and
+The laptop's Wi-Fi address responds at **http://LAPTOP-LAN-IP:5175/**. Use the same Wi-Fi and
 keep the laptop awake. See [phone preview instructions](../docs/PHONE-PREVIEW.md) for restarting
 the production preview on the same port. There is no hosted deployment from this pass.
