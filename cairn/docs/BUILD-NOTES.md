@@ -1,5 +1,20 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — `apps/web/test/*.test.ts` wired into the test runner (REVIEW item 4), on branch
+> `review/i30-picker` at `f3bc3cd` → this commit. NOT on `master`, NOT merged, NOT pushed.**
+> **One file: `cairn/package.json`, two lines, `scripts` only.** Zero dependency keys touched, zero
+> `package-lock.json`, zero `.tsx`, zero `packages/`, zero `qa/`, zero `docs/design/`, zero
+> ARCHITECTURE/ROADMAP/REVIEW/QA-FINDINGS.
+>
+> | | |
+> |---|---|
+> | **What changed** | `apps/web/test/*.test.ts` added to the globs of both `test` and `test:tap`, between the `packages/client` glob and the root `test/` glob. Nothing else in the file moves. |
+> | **Premise checked first** | Phase 2 exit criterion 15 (the A-58 no-dependency ceiling) at `f3bc3cd` explicitly permits this: *"What the ceiling permits… a **`scripts`** edit. Adding `apps/web/test/*.test.ts` to `test` and `test:tap`… none of these is a dependency"*. Its three arms (four dependency keys, `package-lock.json`, core/client imports) are untouched. |
+> | **Measured — count** | `npm run test:tap` baseline at `f3bc3cd`: **1,977 pass / 0 fail**. After: **1,984 pass / 0 fail**. +7, exactly the two `apps/web` test files. |
+> | **Measured — the glob can redden** | A deliberately wrong expected value planted in `apps/web/test/globeGeometry.test.ts` (`longitude: 13` → `999`) made `npm test` **exit 1** naming that file's line 7. Reverted in the same pass; `npm test` then **exit 0** and the working tree shows no diff outside `package.json`. |
+> | **`npm run typecheck`** | exit 0 (unchanged — the web tsconfig already covered these files). |
+> | **Not done, deliberately** | No `apps/web` test was fixed or altered; none needed it. `qa/` untouched — a concurrent breaker owns it, including `qa/r54-gate.mjs:904`, whose golden-exclusion set criterion 15 says is to be deleted rather than extended. That remains owed by someone else. |
+
 > **Addendum — ROADMAP `I-45` / ARCHITECTURE §11.14 **A-99**, QA round 73's whole code
 > consequence, on branch `review/i30-picker` at `1adc706` → this commit. NOT on `master`, NOT
 > merged, NOT pushed.** **Three files, all `packages/core`**: `src/ask/match.ts`, `src/ask/ask.ts`
