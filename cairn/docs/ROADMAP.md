@@ -2269,6 +2269,56 @@ rather than quoted.** Six things move.
   **3 seconds** against `npm test`'s 48, and was consulted **once in twenty increments**. It moves from the
   step boundary to every increment's ship gate.
 
+**Revision 84, 2026-09-21.** **QA round 75's architect half — the three findings it routed here, plus the
+one decision of Jacob's that round 75 correctly refused to make for him.** Round 75 re-cut and ran the
+`I-11` phase gate and left it at **`fails=3`, all three ruled, none of them the breaker's**. This revision
+answers all three. **No code file, no `.tsx`, no `apps/web`, no `qa/`, no `docs/design/`, no
+`package.json`, no lockfile, no golden byte, no corpus byte — §2.10's surface is 91, re-derived here with
+criterion E's own command and not quoted from anywhere.** Five things move.
+
+- **Criterion E can be met again, because §2.10's LIST was the thing that could not meet it** (`R75-2`,
+  MAJOR). Three of criterion E's four views agreed at **91**; §2.10's transcribed code block was at
+  **89**, missing `searchGazetteer` (`I-21`) and `cityPickFromRow` (`I-22a`) — both correctly recorded in
+  §2.10's genealogy the whole time. A `geo (2)` group is added at ARCHITECTURE revision 84 and the set
+  equality is re-derived in both directions. **Gate rows `P3b`, `P3c` and `P5d` go green without
+  `qa/r54-gate.mjs` being edited**, which is the shape a document-side fix is supposed to have.
+- **Criterion rule 14 is new, and it is the ruling on how `R75-2` survived a correction pass.** The only
+  instrument ever checking §2.10 asked *"does it contain `86`?"*, and went on being **green** after
+  revision 83 deleted the live `86`, because `86` survives on a history line. *A criterion checks the
+  relationship it names, never a token standing in for it; an absence check over a document carrying its
+  own history is not a check.* **Rule 13 would not have caught this** — the movers visited the carrier
+  their ruling named (*"§2.10's prose"*) and that phrase named the genealogy, not the list — so **rule
+  13 (b) is amended in place**: a carrier is named by the exact text that carries it. ARCHITECTURE §2.10
+  now enumerates **five** carriers.
+- **Criterion 14 — the privacy criterion — names fields the model actually has, and its number is
+  reproducible** (`R75-5`, `R75-6`). It named **`Stop.title`**, which does not exist (`Stop.name` is the
+  stop's title), and omitted **`Day.title`**, which does — which is how revision 83's own **510** was
+  produced: the rule as written silently contributed nothing for every stop title. The corrected list adds
+  `Stop.name` and `Day.title`, and the two exclusions (`Place.name`, `City.key`) are ruled as a
+  **subtraction after the set is built**, because 34 stop titles are byte-equal to a place name and a probe
+  that merely declines to add place names re-admits all 34. At `9d42455` the corrected set is **617**.
+  **The revision-83 per-file census is WITHDRAWN rather than corrected** — it is not reproducible by any
+  reading of the rule, and what it was reaching for is one sentence: *no golden carries both a
+  coordinate-shaped pair and a needle hit.* **Nothing about the privacy conclusion moves**: the two
+  coordinate-bearing goldens score **0** at 510, at 617, at 651 and at the maximal 718.
+- **Criterion 15 arm 2 admits `d3-geo` as a bounded exception, on Jacob's decision, and the ceiling gets
+  STRONGER rather than weaker** (`R75-3`). Arm 2 said the shared lockfile *"does not move"* — an
+  assertion that was the wrong shape from the day `apps/web` gained its first dependency, because one
+  lockfile serves four workspaces and the browser half and the bare-Node half do not share a ceiling. It
+  is replaced by three arms over the lockfile's **own dependency graph**: **(2a)** the root workspace's
+  transitive closure does not move **at all** (zero growth, which is what A-58 actually ruled and is now
+  asserted directly instead of by proxy); **(2b)** every added `node_modules/` entry is inside `apps/web`'s
+  closure and outside the root's; **(2c)** `apps/web`'s declared dependency list is exactly what
+  `test/views.test.ts` pins. **Five conditions are stated for a SECOND `apps/web` dependency** — including
+  the by-hand alternative measured in SLOC, which is the one that does the work. **`O1d` must be re-cut by
+  the breaker against these three arms**; the row as written asserts the sentence this revision replaced.
+- **Two things recorded rather than ruled.** **F5** (MINOR): `d3-geo`'s second importer,
+  `apps/web/src/views/CroatiaPreview.tsx`, projects two hard-coded constants under a constant projection
+  and **is withdrawn on condition 3** — **routed to Codex**, whose fence owns the file, and it gates
+  nothing. **MGR-14** (MINOR): `GAZETTEER_CONSUMERS`'s denominator is diluted to nine modules, seven by
+  reachability; the ruling is **deferred to `I-42`** with the question stated, and the banner is in both
+  this document and ARCHITECTURE §8.4 A-91 so neither reader has to rediscover it.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -2296,8 +2346,9 @@ trips has a travel history.
 
 ## How a criterion is written
 
-Thirteen rules. They apply to every phase in this document, and a criterion that breaks one is a defect
-routed to me, not to whoever failed to meet it. **Rule 13 is revision 83's and it is the newest**; rule 12 is
+Fourteen rules. They apply to every phase in this document, and a criterion that breaks one is a defect
+routed to me, not to whoever failed to meet it. **Rule 14 is revision 84's and it is the newest**; rule 13 is
+revision 83's; rule 12 is
 revision 82's; rule 11 is
 revision 81's; rule 10 is
 revision 79's; rule 9 is
@@ -2466,17 +2517,82 @@ version constant or a corpus row **runs the command that derives it, in its own 
 artefact that carries it, and **names the command in its ship gate as run**. An increment that moves such a
 value and does not do this has not met its own gate, whatever else is green.
 
-**(b) The carriers are enumerated in the ruling that owns the value, not discovered by the next reader.**
+**(b) The carriers are enumerated in the ruling that owns the value, not discovered by the next reader —
+and a carrier is named by the exact text that carries it, never by the section it lives in.**
 §2.10's export count has four carriers and revision 60 named all four — the command, `surface.test.ts`'s
 `THE_LIST`, §2.10's prose and `index.ts`'s docstring — and three of the four were stale at `1adc706`
 anyway, because naming them was not the same as obliging anyone to visit them. A ruling that introduces a
 value a document will quote **lists its carriers in the ruling**, and (a) is what makes the list get used.
+*(**Amended at revision 84, QA R75-2.** The phrase *"§2.10's prose"* named one artefact and §2.10 holds
+**two**: its join genealogy and its contract code block. The genealogy was correct and current at every
+join; **the code block was two symbols short for three increments** and nobody had been obliged to open it,
+because the carrier list did not distinguish them. ARCHITECTURE §2.10's revision-84 banner now enumerates
+**five** carriers by name. Where a section is large enough to hold two carriers, the ruling names both, or
+(a) discharges against whichever one the reader happened to open.)*
 
 **(c) Where a value has a standing re-derivation, the criterion cites the instrument and states nothing.**
 That is rule 6's form and it is the one that cannot recur. The residual risk this rule accepts, stated
 plainly: a value with **no** standing re-derivation is still held by (a) alone, which is a human obligation
 and will eventually be missed. The answer to that is not a longer rule — it is **sequencing rule 15**, which
 makes the instrument that already detects every one of these run often enough to be worth having.
+
+**14. A criterion checks the RELATIONSHIP it names, over the artefacts that carry it — never a token
+standing in for the relationship; and an absence check over a document that carries its own history is not
+a check** (revision 84, QA **R75-2**/**R75-10**, ARCHITECTURE §2.10). Criterion E names set equality
+between §2.10's list and `packages/core/src/index.ts`'s runtime exports. The gate row that stood for it
+asked *"does §2.10 contain the string `86`?"* — and **it went on being green after revision 83 deleted the
+live copy of that number**, because `86` survives in §2.10's own history notes. At no point — through
+every breaker round since the gate was written, one manager pass, and one architect correction pass aimed
+at this exact defect — did anything compare the two **lists**, and §2.10's was two symbols short from
+`I-22a` until `9d42455`.
+
+**The mechanism, named, because it is the reusable part:** a criterion whose passing condition is the
+presence or absence of a **literal** goes green the moment that literal moves out of the document's live
+text — and **a correction is precisely the event that moves it**. The row does not fail; it stops having a
+subject, and a row with no subject is indistinguishable, at every distance a reviewer stands at, from a row
+that passed. This is **rule 9's shape applied to the oracle instead of to the fault**: rule 9 is about an
+injected fault the artefact offers nothing to bite, rule 14 is about an assertion the artefact offers
+nothing to be true or false about.
+
+**Would rule 13 have caught it? No — and stating that is half the ruling.** **(i)** Rule 13 obliges the
+*mover* to visit the carriers **the owning ruling enumerates**, and §2.10's ruling enumerated *"§2.10's
+prose"*. `I-21` and `I-22a` both visited §2.10's prose and both recorded their join correctly, in the
+genealogy, at the top of the section. **A perfectly rule-13-compliant increment produces exactly the
+artefact R75-2 found** — which is why rule 13 (b) is amended above rather than merely cited here.
+**(ii)** Rule 13 (c) hands its residual risk to **sequencing rule 15** — run the instrument that already
+detects this, more often. The instrument **had a row for this** and the row was the false green. Running a
+false green at every increment instead of once a phase produces more green, faster. **A detection
+obligation is worth exactly what its weakest row is worth**, and nothing in rules 6, 13 or sequencing rule
+15 asks whether a row can still fail.
+
+**Three consequences.**
+
+**(a) Where a criterion states a relationship between two artefacts, the check PARSES BOTH and compares the
+sets.** Not a number scraped from one against a number scraped from the other, and never against a number a
+human wrote in either — that is a third artefact with its own drift. The form is `P3b` as it now stands:
+parse §2.10's code block into a list, read the index's runtime exports, assert set equality **in both
+directions**, and report the difference by **name** rather than by count, so the finding arrives already
+diagnosed.
+
+**(b) A check over a document that carries its own history scopes itself to the live text, or it does not
+get to be a token check.** `86` was in §2.10 twice — once as the contract and once as the record of the
+contract having been wrong before — and no search distinguishes those two. **Every contract document in
+this repository carries its own history deliberately**; it is most of why they are the size they are. So
+this is not a note about one row: **any instrument asserting over `ARCHITECTURE.md`, `ROADMAP.md` or
+`BUILD-NOTES.md` by string match is subject to it**, and the remedy is always the same — find the
+structure (a fenced block, a table, a heading's own span) and parse that.
+
+**(c) Every absence assertion ships an inconclusiveness guard over the same artefact.** A positive check
+that reddens if the artefact stops being found or stops being parseable, beside the assertion that depends
+on it — `P3`'s *"§2.10's contract list is parseable out of its own code block, and has more than 50
+entries"* sitting in front of `P3b` is the form. Without it, renaming a heading converts a set-equality row
+into a vacuous pass, which is this rule's own defect re-entering through the parser instead of through the
+string.
+
+**What this rule does NOT require, so nobody builds it:** it does not ask for a sweep over document prose
+hunting stale numerals. That is the heuristic-over-English shape rules 7, 8, 12 and sequencing rule 15 have
+each already refused. It asks one question of a criterion, at the moment it is written: **what would have
+to change in the artefact for this row to go RED, and can that thing be deleted?**
 
 ---
 
@@ -2898,10 +3014,13 @@ not decoration.
   and it is **held** by `packages/core/test/surface.test.ts`'s `THE_LIST` — the single array of symbol
   names, asserted set-equal to the index's runtime exports in both directions. That assertion is the oracle;
   every number anywhere else is a copy of it. **The relationship, which is what a contract document may
-  state and what does not go stale:** the command's output, `THE_LIST.length`, §2.10's transcribed list and
-  `index.ts`'s own docstring are **four views of one set and must agree**, and the assertion checks two of
-  the four — so the two it cannot check (§2.10's prose, the docstring) are the two that drift, and they are
-  exactly where every recurrence of this defect has landed. Type-only exports are outside the set by
+  state and what does not go stale:** the command's output, `THE_LIST.length`, §2.10's **transcribed code
+  block** and `index.ts`'s own docstring are **four views of one set and must agree**, and the assertion
+  checks two of the four — so the two it cannot check (§2.10's code block, the docstring) are the two that
+  drift, and they are exactly where every recurrence of this defect has landed. **§2.10's join genealogy is
+  a FIFTH view and is a different artefact from its code block** — named apart at revision 84, because the
+  phrase *"§2.10's prose"* covered both and is what let the code block go three increments unvisited while
+  the genealogy stayed correct (criterion rule 14). Type-only exports are outside the set by
   construction (they do not exist at runtime) and this criterion says so rather than leaving a tester to
   discover it. **What re-arms the pin — criterion rule 13, and it is a rule and not a habit:** an increment
   that adds or removes an export **runs the command in that increment's own pass and updates §2.10's list
@@ -2957,6 +3076,20 @@ not decoration.
   the re-count an obligation of the increment that moves the surface rather than a habit of whoever
   remembers. The measured value at a fixed commit stays available, in the join-history note above, where no
   criterion depends on it.)*
+  *(**Revision 84, QA R75-2 — the SEVENTH recurrence, and the first one where every stated number was
+  already right.** Revision 83 removed the counts from this criterion and from §2.10, and the criterion
+  still could not be met, because **§2.10's code block had been two symbols short since `I-22a`**:
+  `searchGazetteer` and `cityPickFromRow` were in §2.10's genealogy and missing from its list, and the
+  block's twelve group labels summed to 89 as well, so it was internally consistent and externally two
+  short. Three of the four views agreed; the dissenter was the one no assertion had ever read.
+  **Re-derived here at `9d42455`, both directions, with criterion E's own command and the gate's own
+  parser: the index exports 91, §2.10's block now parses to 91, the symmetric difference is empty in both
+  directions, and the group labels sum to 91** — a new `geo (2)` group carrying the two. `THE_LIST` was
+  current at 91 throughout and **no code was ever wrong**. Two rules come out of it: **criterion rule 14**
+  (a criterion checks the relationship it names, not a token standing in for it — the row that guarded
+  this asked *"does §2.10 contain `86`?"* and stayed green after revision 83 deleted the live `86`, on a
+  history line), and **rule 13 (b)'s amendment** (a carrier is named by the exact text that carries it).
+  ARCHITECTURE §2.10's revision-84 banner enumerates all five carriers by name.)*
   Rewritten in revision 5, because the criterion as met was
   satisfied by construction: the test asserted equality against the **union** of `SECTION_2_10` (50) and
   `BEYOND_2_10` (60), which is 110 = 110 for any 110 exports, and QA found 42 of the 60 per-symbol
@@ -11563,12 +11696,23 @@ first.
 
     **(ii) Nothing of a user's trip is in it.** The file contains **zero** occurrences of any string drawn
     from the reference trip document, and **the needle set is discovered from that document at run time,
-    never listed in the probe**: every `Trip.id`, `Day.id`, `Day.date`, `Stop.id`, `Place.id`, `Photo.id`,
-    `Trip.title`, `Stop.title` and every `note`. **`City.key` and `Place.name` are deliberately not
-    needles, and the exclusion of each is part of the ruling** — a place name is what a public gazetteer is
-    made of, so treating one as private makes the test fire on the dataset it exists to permit (measured at
-    `1adc706`: the city key `split` matches the word *split* inside `gazetteer-probes.json`'s own `$what`
-    prose). **The file's own provenance header is not its data**: a value under a `$`-prefixed top-level key
+    never listed in the probe**. **The fields, named as the shipped model spells them** (corrected at
+    revision 84, QA **R75-5**): every `Trip.id`, `Trip.title`, `Day.id`, `Day.date`, `Day.title`,
+    `Stop.id`, `Stop.name`, `Place.id`, `Photo.id`, and every `note` — `Stop.note` and `Place.note`.
+    **`Stop.name` IS the stop's human title; there is no `Stop.title` on the model**, and `Day.title` is a
+    needle and was not named.
+
+    **`City.key` and `Place.name` are deliberately not needles, and the exclusion of each is part of the
+    ruling** — a place name is what a public gazetteer is made of, so treating one as private makes the
+    test fire on the dataset it exists to permit (measured at `1adc706`: the city key `split` matches the
+    word *split* inside `gazetteer-probes.json`'s own `$what` prose). **The exclusion is applied as a
+    SUBTRACTION after the set is built, and that is the ruling and not an implementation detail**: a stop's
+    title and a place's name overlap on the reference trip — 34 stop titles are byte-equal to a place name
+    at `9d42455`, `Blue Cave, Biševo` among them — so a probe that takes `Stop.name` and merely declines
+    to add `Place.name` re-admits every overlapping place name through the back door. Build the set from
+    the fields above, then delete every `Place.name` and every `City.key` from it.
+
+    **The file's own provenance header is not its data**: a value under a `$`-prefixed top-level key
     (`$generatedBy`, `$source`, `$fetched`, `$sourceSha256`, `$what`) is outside the search, because it
     describes where the file came from rather than what is in it — without that scoping a re-pin dated on
     one of the trip's sixteen days would redden the privacy criterion for a reason that has nothing to do
@@ -11608,11 +11752,24 @@ first.
     attribution obligation is what made that visible**: `fixtures/golden/gazetteer-probes.json` is generated
     GeoNames data — no user, no trip, no device — and it carries `$source` **because a CC BY 4.0 artefact
     must**, so the exclusion cannot admit it and the phase's privacy criterion is red on it. **The intent
-    was never in doubt and I re-derived it rather than taking it**: the trip-derived needle set is 510
-    strings at `1adc706`; the two coordinate-bearing goldens score **0 hits each**, and the seven goldens
-    that do carry trip strings (42, 32, 145, 20, 34, 11 and 17 hits) carry **no coordinate at all**. The two
-    axes are orthogonal on the shipped artefact, which is what makes the intent true and the new arms
-    checkable. **`qa/r54-gate.mjs:904`'s `new Set(['countries.json','forgiveness-drops.json'])` is deleted
+    was never in doubt and I re-derived it rather than taking it**: **no golden carries both a
+    coordinate-shaped pair and a needle hit.** That one sentence is the whole of what this note ever
+    needed to say, and it is the form that survives a re-pin, a new golden and a corrected field list.
+    *(**The per-file census this note used to carry — “510 needles; the seven goldens carrying trip
+    strings hold 42, 32, 145, 20, 34, 11 and 17 hits” — is WITHDRAWN at revision 84, QA **R75-6**, not
+    corrected.** It is not reproducible by the needle rule the criterion states, and it never could have
+    been: the 510 is what the rule produced with `Stop.title` naming a field that does not exist, so it
+    silently omitted every stop title. Criterion rule 6 says a measured value belongs in the assertion
+    that checks it; the assertion here is `qa/r54-gate.mjs`'s section `N`, whose `N0` note publishes the
+    needle count and whose per-file hits it records at run time. **What re-derives, and is history against
+    a fixed commit rather than a criterion**: at `9d42455`, under the corrected field list, the needle set
+    is **617**; the two coordinate-bearing goldens — `forgiveness-drops.json` and `gazetteer-probes.json`
+    — score **0 hits each** and **earn the exclusion on both arms**; **eight** goldens carry trip strings,
+    not seven, and none of the eight carries a coordinate. **The privacy conclusion is invariant to the
+    field list, which is the point worth recording**: the two coordinate-bearing goldens score 0 at 510, at
+    617, at the un-subtracted 651, and at 718 — the maximal reading that adds back every `Place.name` and
+    `City.key` the ruling excludes.)*
+    **`qa/r54-gate.mjs:904`'s `new Set(['countries.json','forgiveness-drops.json'])` is deleted
     rather than extended** — it is R54-6's own predicted failure, arrived, and it is also wrong in the other
     direction: `countries.json` carries no coordinate-shaped pair at all, so one of the two names it
     hard-codes was never needed.)*
@@ -11626,9 +11783,55 @@ first.
     `optionalDependencies`, `peerDependencies` — carry **zero runtime dependencies**, and the two type-only
     devDependencies they do carry are the pre-existing set. A new entry under any of the four is the
     failure this arm exists for.
-  - **`cairn/package-lock.json` does not move.** It is the repository's only lockfile; the assertion is over
-    that file, and it is checked against **`HEAD`'s committed bytes**, not against a clean working tree — a
-    diff that is zero because nothing is uncommitted measures nothing (criterion rule 9).
+  - **`cairn/package-lock.json` moves only inside `apps/web`'s own dependency closure — and the closure,
+    not the file, is what the ceiling is over.** *(Rewritten at revision 84, QA **R75-3**, on Jacob's
+    decision to keep `d3-geo`. The note below has the measurement and the argument; this is the rule.)* It
+    is the repository's only lockfile — one file serving a four-workspace tree — which is why *"it does
+    not move"* was the wrong assertion from the day `apps/web` gained its first dependency: the browser
+    half and the bare-Node half share a lockfile and do not share a ceiling. **A-58's subject is the
+    bare-Node half, and the bare-Node half is now asserted directly instead of by proxy.** Three arms,
+    every one of them computed from the lockfile's own graph and quoting no package list:
+
+    **(2a) The root workspace's closure does not move.** Resolve `cairn/package.json`'s
+    `dependencies` + `devDependencies` transitively **through the lockfile's own `packages` map, by npm's
+    hoisting rule**, at the branch point and at `HEAD`. The two sets are **identical**. This is the arm
+    A-58 actually ruled and it is a ceiling of **zero growth**, not of bounded growth. *(History against a
+    fixed commit, depended on by no criterion: the root closure is 3 packages at both ends —
+    `@types/node`, `typescript`, `undici-types`.)*
+
+    **(2b) Every `node_modules/` entry ADDED between the branch point and `HEAD` is inside `apps/web`'s
+    closure and outside the root's.** Same resolution, run from the `apps/web` workspace entry. An entry
+    that is in neither closure, or in both, fails. **No removal is admitted either** — a package leaving
+    the lockfile is a change to what the bare-Node half resolves and is ruled the same way as an addition.
+
+    **(2c) `apps/web`'s declared dependency list is exactly what `test/views.test.ts` pins.** That
+    assertion — `assert.deepEqual(Object.keys(pkg.dependencies).sort(), […])` — is the **gate**, and
+    (2b) is only as strong as it is: (2b) bounds the lockfile by a list, and (2c) is what stops the list
+    moving without a ruling. The two are one mechanism and neither ships without the other.
+
+    **All three are checked against COMMITTED bytes** — branch point to `HEAD` — never against a clean
+    working tree, where a zero diff measures nothing (criterion rule 9). **Injected fault, required:** add
+    a `node_modules/` entry reachable only from the root workspace → (2a) and (2b) both redden and name it;
+    add a fifth key to `apps/web`'s `dependencies` → (2c) reddens.
+
+    **What a SECOND `apps/web` dependency requires — five conditions, and `d3-geo` is on the record as
+    having met all five.** This is the part that keeps the ceiling meaningful: the exception is not
+    *"`apps/web` may take dependencies"*, it is *"each one is a ruling, and here is what a ruling has to
+    contain."*
+    1. **A ruling in this document naming it**, with the **measured** marginal cost stated the way
+       `d3-geo`'s is — gzip bytes against the shipped entry chunk, and the count of transitive packages.
+    2. **A measured used-surface**: which exports are imported, out of how many the package offers, at
+       which sites. *"We use a library"* is not a justification; *"4 of 49 `geo*` exports, at two sites"*
+       is.
+    3. **The by-hand alternative, measured in SLOC of code we would otherwise write and test.** This is
+       the condition that does the work, and it is the one **F5** turns on: a dependency standing in for
+       ~1,100 lines of spherical geometry is a different object from one standing in for two multiply-adds.
+    4. **`test/views.test.ts`'s exact dependency-list assertion and `test/boundaries.test.ts`'s
+       `allowBare` allowlist are both edited in the SAME commit.** Editing them is the act of admission;
+       neither can happen by accident, and a dependency that lands without them is caught by (2c) and by
+       the boundaries test respectively.
+    5. **Zero bare imports in `packages/core` and `packages/client`, verified by grep and not assumed** —
+       which is arm 3, unchanged, and is what makes the admission bounded to the browser half.
   - **Nothing under `packages/core/src` or `packages/client/src` imports anything that is not relative or
     `node:`.** This is the arm that actually holds the property when the other two are quiet, because a
     dependency that is never declared is still a dependency.
@@ -11638,8 +11841,9 @@ first.
   project — none of these is a dependency, none changes what the suite may import, and A-58 ruled on
   **dependencies**, not on how the suite is invoked. A criterion that forbids widening the test glob is
   forbidding the suite from growing, which is the opposite of what it is for. **What it still forbids:** any
-  new entry under the four dependency keys, any movement of `cairn/package-lock.json`, and any non-relative,
-  non-`node:` import in core or client. **What it does not cover, said so nobody reads it back in:**
+  new entry under the four dependency keys, any lockfile movement that is not inside `apps/web`'s own
+  closure (arm 2, above), and any non-relative, non-`node:` import in core or client. **What it does not
+  cover, said so nobody reads it back in:**
   `apps/web/package.json`, which carries React, Leaflet, `d3-geo` and Vite **by design** — the browser app
   was never on A-58's bare-Node path, and the `anywhere in the repo` phrasing this criterion used to carry
   was false about the tree on the day it was written `[stated]`
@@ -11652,6 +11856,48 @@ first.
   probe read it as a **working-tree** diff against `HEAD`, which on a clean tree is green for any artefact
   whatsoever — a row that reports success for doing nothing, which is criterion rule 9's own shape. The
   arms above are what A-58 actually ruled, scoped to what A-58 was actually about.)*
+  *(**Revision 84, QA R75-3 — `d3-geo` is an ADMITTED, BOUNDED exception, and this is the record of it.**
+  **Jacob's decision, made on a measured review; I am recording it, not re-litigating it.** **Which
+  numbers below I re-derived and which I am carrying is marked, because a justification record that blurs
+  the two is worth less than one that is short** (criterion rule 6). **RE-DERIVED HERE at `9d42455`:**
+  **4 of `d3-geo`'s 49 `geo*` exports are used** — `geoArea`, `geoOrthographic`, `geoPath` in
+  `apps/web/src/world/globeGeometry.ts` and `geoMercator` in `apps/web/src/views/CroatiaPreview.tsx`;
+  **`+45` lines of lockfile and four new
+  `node_modules/` entries** — `d3-geo`, its two transitive runtime packages `d3-array` and `internmap`,
+  and the type-only `@types/d3-geo`. **`@types/geojson` is NOT one of them**, contrary to the routing note
+  that reached me: it was already in the lockfile at `86692af`, pulled in by `@types/leaflet`, and what the
+  diff adds is `@types/d3-geo`'s dependency **edge** to it. **`packages/core` and `packages/client` have
+  zero bare imports** — grepped, not assumed — and the root workspace's closure is **unchanged at 3
+  packages** while `apps/web`'s goes **72 → 76**.
+  **CARRIED from the review Jacob decided on, not re-measured here and marked so nobody quotes it as
+  mine:** ~**8 KB gzip against an existing 353 KB entry chunk (1.9 %)**; the used surface is ~**1,100 SLOC**
+  of real spherical work (small-circle clipping at the horizon, polygon rejoin along the clip boundary,
+  antimeridian cutting, adaptive great-circle resampling); at the shipped pose **233 of 292** countries
+  draw and **59** clip away entirely, and at longitude 180 it is **90/202**. **No arm of criterion 15
+  depends on any carried figure** — they are the argument for the exception, and the
+  assertion is over the lockfile's graph.
+  **Why this is an exception rather than a weakened ceiling:** the thing A-58 protects is the property that
+  `packages/core` and `packages/client` run on a bare Node with nothing installed, and arm 2a asserts that
+  property **directly** now, at zero growth, instead of inferring it from a file that four workspaces
+  share. The ceiling did not move; the proxy did. The five conditions above are what a second dependency
+  costs, and they are deliberately expensive.)*
+  *(**Revision 84 — F5, ruled and ROUTED. MINOR, and it gates nothing.** `d3-geo`'s **second** importer,
+  `apps/web/src/views/CroatiaPreview.tsx:2,14`, uses `geoMercator` to project **two hard-coded constant
+  points under a compile-time-constant projection** — `.center([16.35,44.05]).scale(2250)
+  .translate([195,110])`, inside a `useMemo` with an empty dependency array. The output is two fixed
+  `[x, y]` pairs. **That importer is WITHDRAWN**, on condition 3 above: a dependency admitted for doing
+  ~1,100 lines of spherical geometry may not also be cited for arithmetic whose result is a literal, and
+  the marginal cost (**1,037 B min / 319 B gzip**, carried from the reviewer's measurement, not
+  re-measured here) is the smaller half of the reason. The larger half is the
+  **justification record**: with two importers, the record reads *"two modules need `d3-geo`"*, and one of
+  them does not — which is exactly the drift condition 2 exists to prevent, arriving in the same commit as
+  the admission. **Replace the call with the two projected constants, computed once and committed with the
+  projection parameters in a comment beside them.** **Routing: CODEX** — the file is a `.tsx` fenced to
+  Codex and nobody in this pipeline implements it. **It does not gate `O1d`, the merge, or anything else**:
+  `globeGeometry.ts` puts `d3-geo` in the lockfile either way, so arms 2a–2c report the same thing before
+  and after. **Trigger for it being done:** `grep -rn "d3-geo" apps/web/src` returns `globeGeometry.ts`
+  alone. If Codex declines, the standing state is *two importers, one of them unjustified*, and that is a
+  note on the record rather than a red row.)*
 
 ### What the tester should attack (plain `node`, no network)
 
@@ -12081,6 +12327,26 @@ served as `cairn_share_reader`; `mintedAt` rendered in words.
   handlers — the instrument §12.12 residue 3 names. `[stated]`
 
 **Dependencies / blockers:** `I-41`; `A-2`/`P2-8` ruled.
+
+> **⚠ ARCHITECT WORK THIS INCREMENT CARRIES, DEFERRED HERE ON PURPOSE AND RECORDED SO IT IS NOT
+> REDISCOVERED — MGR-14, MINOR, ARCHITECT.** `GAZETTEER_CONSUMERS` (§8.4 **A-91** item 2) now lists
+> **nine** `apps/web` modules including `App.tsx` and `main.tsx`, **seven** of them justified as *"reaches
+> the shared city-search consumer through the relative module graph"*. This is **mechanically correct and
+> is nobody's defect** — the predicate closes over relative imports by design, and the dilution arrived
+> with the first rendered consumer, which is the increment A-91 item 2 was written for. What it costs is
+> the **denominator**: the list no longer separates *"renders gazetteer data and therefore owes the CC BY
+> 4.0 attribution"* from *"is reachable from the application root"*, so A-91 item 2's obligation — *"the
+> entry beside the new name is where the obligation is stated"* — is now stated nine times, eight of them
+> saying nothing, and every future view needs a boilerplate entry that means nothing either.
+> **The manager set the trigger at `I-42` and I am keeping it there**, because `I-42` is the first
+> increment since the picker that adds a **rendered** consumer (the public share page), which is exactly
+> the event that turns a diluted denominator from untidy into wrong. **The question to rule, stated so the
+> next architect does not have to reconstruct it:** is the obligation *"this module renders gazetteer data
+> and states the credit"* or *"this module can reach the loader"*? If the former — and item 2's own
+> sentence says it is — then reachability is the wrong predicate for the **attribution** census even
+> though it is the right one for the **import** ceiling, the two need separating, and the ruling says what
+> carries the attribution half. **This does not gate `I-42`'s build**; it is ruled before `I-42`'s share
+> page adds the tenth entry, or `I-42` inherits the defect.
 
 ---
 

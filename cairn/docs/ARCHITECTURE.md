@@ -2154,6 +2154,45 @@ command and not by reading this sentence. The one code change in the pass is
 `packages/core/src/index.ts:4`'s headline **docstring** (MGR-12), which is a comment. `ROADMAP.md` revision
 83 carries the rest, including **criterion rule 13** and **sequencing rule 15**.
 
+**Revision 84, 2026-09-21 — §2.10's LIST gains the two symbols it has been missing since `I-22a`, and the
+lesson is that revision 83 corrected everything around it.** QA round 75's architect half. **The headline
+is `R75-2` (MAJOR) and it is about this document, not about the code**: §2.10's contract code block — the
+one headed *"`packages/core/src/index.ts` re-exports exactly this and nothing else"* — listed **89**
+symbols while the index exports **91**, missing **`searchGazetteer`** (`I-21`) and **`cityPickFromRow`**
+(`I-22a`). Both are in §2.10's **genealogy**, correctly, and have been since they joined; neither was in
+its **list**. The block's twelve group labels summed to 89 too, so it was internally consistent and
+externally two short, and `surface.test.ts`'s `THE_LIST` was current at **91** throughout — **`npm test`
+was right and nothing in the product was ever broken.** What was two short is the artefact the Phase 3
+server and the Phase 4 native app are written against. **The repair is a `geo (2)` group**, and the count
+is re-derived rather than quoted: at `9d42455` the index exports 91, §2.10's block parses to 91, the
+symmetric difference is empty **in both directions**, and the group labels sum to 91.
+
+**Three things ride with it, and one of them is why this happened.** **(1)** The third live copy of a stale
+count — *"§2.10 is still 87"* — is gone from §2.10's subpath paragraph, along with *"is not part of the
+87"* one paragraph up. **(2)** §2.10 gains a banner **enumerating its FIVE carriers by name**, because the
+carrier list that existed said *"§2.10's prose"* and §2.10 holds two carriers, not one; `ROADMAP.md`
+criterion **rule 13 (b)** is amended to match. **(3)** The false green that hid it for three increments —
+the only instrument ever checking §2.10 was a string search for the literal `86`, which **stayed green
+after revision 83 deleted that number**, because `86` survives on a history line — is ruled as
+`ROADMAP.md` criterion **rule 14**: *a criterion checks the relationship it names, never a token standing
+in for it, and an absence check over a document that carries its own history is not a check.* **Rule 13
+would NOT have caught this and rule 14 says so explicitly.**
+
+**Two further amendments, both banners on existing rulings, neither reopening what it annotates.**
+**A-58**'s headline *"no runtime dependency is added, to any package"* is corrected to name its real
+subject — the bare-Node half — after Jacob's decision to keep **`d3-geo`** in `apps/web` (QA `R75-3`);
+the ceiling is unchanged and is now asserted directly, in `ROADMAP.md` criterion 15 arm 2's three arms,
+with the five conditions a **second** `apps/web` dependency must meet. **A-91 item 2** gains a deferral
+banner: `GAZETTEER_CONSUMERS` now carries nine modules, seven of them reachability rather than rendering
+(**MGR-14**), and the ruling on its denominator is deferred to ROADMAP **`I-42`** with the trigger
+recorded in both documents.
+
+**Nothing else moves.** No `A-` number is minted, §0 does not move, §11 and §12 do not move, `SCHEMA_VERSION`
+(5) and `SUMMARY_VERSION` (8) do not move, and **no code file, no `.tsx`, no `apps/web`, no `qa/` file, no
+`docs/design/` file, no `package.json`, no lockfile, no golden byte and no corpus byte** is touched by this
+revision. `ROADMAP.md` revision 84 carries criterion rule 14, rule 13 (b)'s amendment, criterion 14's
+corrected field list, criterion 15 arm 2 and the **F5** ruling routed to Codex.
+
 Read the whole document when you are the manager, when you are changing the design, or when a change
 crosses a section boundary. Otherwise this table is the contract.
 
@@ -9932,17 +9971,20 @@ testable against a hand-built fixture. `foldPlaceName` and `decodeGazetteer` sta
 reason, which is `countryIndex`/`decodeCountryIndex`'s reason verbatim — *a caller needs to pass an index,
 not to mint one* — and `foldPlaceName` additionally must not be reachable because it is **not**
 `normalizeCityName` and a caller that can reach both will use the wrong one (A-82 Part 3). **`GAZETTEER` is
-NOT on this list and is not part of the 87.** Unlike `COUNTRY_INDEX`, the gazetteer is **not on the write
-path** (A-27 Part 9 is the contrast), so its bytes are reached by dynamic import through a **declared
+NOT on this list.** Unlike `COUNTRY_INDEX`, the gazetteer is **not on the write path** (A-27 Part 9 is the contrast), so its bytes are reached by dynamic import through a **declared
 subpath**, `@cairn/core/gazetteer`, in `packages/core/package.json`'s `exports` map. That subpath is a
 **door, not a reach-in**: ceiling (1) still forbids importing the generated data by module path, the
 subpath carries **exactly one runtime symbol** and is asserted by its own set equality in
 `surface.test.ts`, and `boundaries.test.ts` allows the bare specifier for `apps/web` and nowhere else.
 **At revision 64 (§8.4 A-83 Part 7) that one symbol is renamed `GAZETTEER` → `loadGazetteerFor(query)`,
 because the corpus is sharded and a search loads one shard rather than the whole of it. The count is still
-one, `searchGazetteer` is still pure and synchronous, and §2.10 is still 87.** A
+one, `searchGazetteer` is still pure and synchronous, and **this section's own list does not move**,
+because a rename behind the subpath is not a widening of this surface. *(Corrected at revision 84, QA
+**R75-2**: this sentence said §2.10 *"is still 87"*, which was the third live copy of a count this section
+is not allowed to state — criterion rule 6. The number is counted, with criterion E's command, never
+quoted.)* A
 second subpath is an architect's ruling, not a builder's convenience. `Gazetteer`, `GazetteerRow` and
-`GazetteerHit` are **types** and are not part of the count.
+`GazetteerHit` are **types** and are not part of the set.
 
 **`countryParts(code, index, thresholdKm)` joins at Phase 2 I-8h** under **P2** — §4.4 A-49 Part 2 specifies
 it by name — and under **P1**, because `worldMapFrame` calls it. It is in core for `countryKeyPoint`'s reason
@@ -10081,6 +10123,12 @@ packages/core/src/index.ts re-exports exactly this and nothing else.
                  countryKeyPoint(code, index)                        // §4.4 A-48 — a LABEL, never an attribution
                  countryParts(code, index, thresholdKm)              // §4.4 A-49 — the country's landmasses, same rule
                  travelStats(summaries, today)                       // §8.4 clause 2, A-31 — never stored
+  geo (2)        searchGazetteer(query, gazetteer, opts?)            // §8.4 A-82 Part 9 — I-21; pure,
+                                                                     // synchronous, corpus injected. The
+                                                                     // subpath's `loadGazetteerFor` is NOT
+                                                                     // here and is not part of this set
+                 cityPickFromRow(row)                                // §8.4 A-84 Part 3 clause 4 — I-22a;
+                                                                     // the ONLY legal way to mint a `CityPick`
   conflict (6)   detectConflicts · RULES · resolveConflict · unresolveConflict · syncResolutions
                  reassertRetirements(trip, retired)                  // §2.7 A-5 — the retirement ledger
   validate (2)   validateTrip · issueCounts
@@ -10134,6 +10182,24 @@ per-symbol justification list is what let 42 wrong justifications through:
 exports, **no union and no second list**. A symbol added to the index without being added to §2.10 fails; a
 symbol in §2.10 that is not exported fails. Widening the surface is a documentation change first — add the
 caller or add the section that names it, then add the line.
+
+> **⚠ REVISION 84 — this section carries TWO carriers of the surface, not one, and for three increments only
+> one of them was maintained (QA `R75-2`, MAJOR).** The genealogy at the head of §2.10 and the code block
+> above it are **separate artefacts that must agree**, and a reader who fixes *"§2.10's prose"* has fixed
+> whichever of the two he happened to open. Measured at `9d42455`: the genealogy recorded
+> `86 → 87 → 88 → 91` correctly and had done since each join; **the code block was at 89**, missing
+> `searchGazetteer` (I-21) and `cityPickFromRow` (I-22a), and its twelve group labels summed to 89 as well,
+> so it was internally consistent and externally two short. `surface.test.ts`'s `THE_LIST` was current at 91
+> throughout, so **no code was ever broken** — what was two short is the document the Phase 3 server and the
+> Phase 4 native app are written against. The `geo (2)` group above is the repair.
+>
+> **The carrier list, restated exactly, because ROADMAP criterion rule 13 (b) obliges this ruling to own
+> it** — the previous list said *"§2.10's prose"* and that phrase is what let the list go unvisited. The
+> surface has **five** carriers: **(1)** `packages/core/src/index.ts` itself, which is the value;
+> **(2)** `packages/core/test/surface.test.ts`'s `THE_LIST`, which is the only enforced one;
+> **(3)** §2.10's **code block**; **(4)** §2.10's **join genealogy**; **(5)** `index.ts`'s headline
+> docstring. **An increment that moves the surface visits all five in its own commit**, and (3) and (4) are
+> named separately from here on.
 
 `moveStop` covering day↔day, day↔pool and reorder is deliberate: today those are three functions with three
 chances to disagree about what happens to `sug`/`_optId`/`addHint`.
@@ -25412,6 +25478,22 @@ one constant, and a miss has no hits to carry it, which is exactly the case the 
 — a map label, a share page, an export — owes it again, and item 2's allowlist is what will make that
 surface's author find this ruling. **Fires** when `GAZETTEER_CONSUMERS` gains its second `.tsx` entry.
 
+> **⚠ REVISION 84 — ITEM 2'S DENOMINATOR IS DILUTED, AND THE RULING ON IT IS DEFERRED TO ROADMAP `I-42`
+> (manager finding MGR-14, MINOR, architect).** Measured after the picker landed: `GAZETTEER_CONSUMERS`
+> carries **nine** `apps/web` modules, including `App.tsx` and `main.tsx`, **seven** of them justified as
+> *"reaches the shared city-search consumer through the relative module graph"*. **That is the predicate
+> working as written** — it closes over relative imports on purpose, which is what makes it a ceiling a
+> `.tsx` cannot slip past — and it is not a defect in Codex's work or the builder's. What it costs is
+> this item's own sentence: the list stops distinguishing *"renders gazetteer data and owes the credit"*
+> from *"is reachable from the app root"*, so the obligation is stated nine times and means something
+> twice. **Deferred deliberately, not overlooked**: ruling it now would be ruling on one rendered consumer,
+> and `I-42`'s share page is the second — the first increment at which the two predicates visibly want to
+> be different objects. **The trigger is `I-42`, before its share page adds the tenth entry**, and
+> `ROADMAP.md`'s `I-42` entry carries the same banner so whoever opens either finds it. **Item 2's import
+> ceiling is not in question and does not move** — reachability is the right predicate for *who may import
+> the corpus*. The question is whether it is the right denominator for *who owes attribution*, and the
+> answer this ruling expects is no.
+
 ---
 
 #### A-92 — a type a port passes is declared once: `MapBoundsLike` is deleted, and a reader census's population is *declarations*, not imports (revision 70, §8.4 **A-84** Part 7 item 2's residue, carried from the previous increment)
@@ -27528,6 +27610,16 @@ already on an axis"* is a builder finding, not a design one.
 
 #### A-58 — EXIF and thumbnailing take no dependency, and the reason is where the code has to live (revision 40, ROADMAP **I-13**)
 
+> **⚠ AMENDED AT REVISION 84 — the headline *"to any package"* was already loose when it was written and
+> is now wrong. Read it as *"to the bare-Node half"*.** A-58's subject is `packages/core`, `packages/client`
+> and `cairn/package.json`, and its own next sentence says the zero-dependency rule *"does not reach
+> `apps/web`"*. At `9d42455` `apps/web` declares four runtime dependencies — React, React-DOM, Leaflet and
+> **`d3-geo`**, the last admitted by Jacob's decision on the World globe's geometry (QA **R75-3**). **A-58's
+> actual property is unchanged and is now asserted directly rather than through a shared lockfile**: the
+> root workspace's transitive dependency closure does not move at all, and `ROADMAP.md`'s criterion 15
+> arm 2 is where that is checked, in three arms, with the five conditions a second `apps/web` dependency
+> has to meet. Nothing about EXIF or thumbnailing is reopened by this: Parts 1–4 below stand as ruled.
+>
 > **STATUS: RULED. No runtime dependency is added, to any package.** Judged on the standard A-55 Part 0
 > established — a measured cost against a measured benefit, **not** the zero-dependency rule, which does not
 > reach `apps/web`. Two candidates were measured against the registry today; both are real, one is good, and
