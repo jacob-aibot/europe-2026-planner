@@ -1,6 +1,6 @@
 # Cairn Figma redesign — 14 September 2026
 
-[Editable Figma file](https://www.figma.com/design/ni4enXsWxhFHa5pqIEknAl)
+[Editable Figma file](https://www.figma.com/design/<figma-key-redacted>)
 
 Six native, editable compositions cover World, Trips and You at phone and desktop sizes. The file includes Cairn color variables, text styles, reusable action components, actual globe vectors and licensed Dubrovnik destination photography.
 

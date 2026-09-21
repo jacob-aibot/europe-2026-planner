@@ -180,7 +180,7 @@ The repo is public. `02da1ee`'s message states the leak as *"a Figma file key an
 key at `02da1ee^` matched two paths, and the second is untouched at HEAD:**
 
 ```
-cairn/artifacts/figma-redesign.md:3:[Editable Figma file](https://www.figma.com/design/ni4enXsWxhFHa5pqIEknAl)
+cairn/artifacts/figma-redesign.md:3:[Editable Figma file](https://www.figma.com/design/<figma-key-redacted>)
 ```
 
 Both were added by Codex in `4940630`. The redaction pass grepped for `C:/Users/jacob` and found
@@ -442,7 +442,7 @@ gate the re-issued verdict.**
 
 3. **BUILDER — three items, none of them gating, all of them before the merge.**
    - **`MGR-19` — redact the Figma key at the tip.** `cairn/artifacts/figma-redesign.md:3` carries
-     `https://www.figma.com/design/ni4enXsWxhFHa5pqIEknAl`. It is not `.tsx`, not `docs/design/`,
+     `https://www.figma.com/design/<figma-key-redacted>`. It is not `.tsx`, not `docs/design/`,
      not fenced. Redact it the way `02da1ee` redacted its sibling (`redacted-see-jacob`), and **run
      `git grep` for the key itself, not for a path**, to confirm the tip is clean — which is the
      step whose absence caused this. Add a line to the commit saying history still carries it.
@@ -498,7 +498,7 @@ moment I wrote this file** (rows 11 and 12 each assert it inline).
 | 14 | `sed -n '11391,11960p' docs/ROADMAP.md \| grep -oE 'qa/[a-zA-Z0-9._-]+' \| sort -u` | **Exactly two**: `qa/r54-gate.mjs` and `qa/i7a-idb-rowkeys.mjs`. **Neither is among R75-11's seventeen** — this is the measurement behind §2's ruling |
 | 15 | `sed -n '11391,11960p' docs/ROADMAP.md \| grep -ci 'ask'` | **1**, incidental. **MGR-17** |
 | 16 | `grep -n 'I-45' docs/QA-FINDINGS.md` | **zero lines**, against `ROADMAP.md:11386`'s *"and then one confirmation round over `I-45` as one subject"*. **MGR-16** |
-| 17 | `git grep -n 'ni4enXsWxhFHa5pqIEknAl' -- cairn` at `02da1ee^`, at `02da1ee` and at HEAD | **Two paths before, one after, one at HEAD**: `cairn/artifacts/figma-redesign.md:3` is untouched and live. **MGR-19** |
+| 17 | `git grep -n '<figma-key-redacted>' -- cairn` at `02da1ee^`, at `02da1ee` and at HEAD | **Two paths before, one after, one at HEAD**: `cairn/artifacts/figma-redesign.md:3` is untouched and live. **MGR-19** |
 | 18 | `git grep -nE '192\.168\.[0-9]+\.[0-9]+\|10\.…' -- cairn`; `git grep -nEi 'C:\\Users\\\|/mnt/c/Users/' -- cairn` | One hit: `cairn/docs/design/WORLD-FIRST.md:125` (LAN IP, fenced path, correctly disclosed as not done). **Zero** Windows-username hits — that half of `F3` is genuinely closed |
 | 19 | `grep -n 'base' apps/web/vite.config.ts`; `grep -rn '/images/' apps/web/src`; `sed -n '78,92p' apps/web/src/world/earthMaterial.ts` | `base: './'` at `:10`; **seven source sites** use root-absolute `/images/…`; `img.onerror = () => { if (!disposed) ready(false); }`. **F4 confirmed, including the silent degrade** |
 | 20 | `git rev-list --objects 4940630^..1ddc8f9 \| git cat-file --batch-check` filtered to binary extensions | **45 blobs, 13,063,209 bytes = 12.46 MB**. **F10 re-measured** |

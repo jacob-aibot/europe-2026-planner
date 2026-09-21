@@ -460,8 +460,8 @@ shipped to the server in Phase 2. `stopId` is already in `subjects`. Decide now.
 
 ### F-19 — `npm run web:build` bakes personal ticket tokens into the JS bundle
 **Routing: architect.** The generated sample embeds live, unauthenticated ticket URLs, e.g.
-`cityairporttrain.com/en/account/order/9zuskFnJPD8oOm5hGTJX54VCS_hmSZu7` and
-`ulaznice.hr/web/confirmFromMailGuest/2665250/52/88193/fcvbimxq`. Nothing is committed
+`cityairporttrain.com/en/account/order/<order-token-redacted>` and
+`ulaznice.hr/web/confirmFromMailGuest/<order-token-redacted>`. Nothing is committed
 (`dist/` and the generated sample are gitignored) and the same URLs are already in the root
 planner, so this is not a new exposure *today*. It becomes one the moment `apps/web/dist` is
 deployed as the public share-page host in Phase 2. The sample trip should ship with tickets
