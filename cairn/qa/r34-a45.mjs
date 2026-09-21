@@ -212,7 +212,9 @@ ok('weekdayOf("0001-01-01") === "Mon"', summary.weekdayOf('0001-01-01') === 'Mon
 // validateTrip's invalid_calendar_date still exists for a Trip built directly
 {
   const trip = core.createTrip({ title: 'x', startDate: '2026-08-07', endDate: '2026-08-08', cities: [] },
-    { ids: core.sequentialIds('v'), today: '2026-08-31' });
+    // QA round 77 (R75-11 re-cut): `BuildCtx` injects the date as `now`, not `today`. The stale
+    // key left `provenance.addedAt` undefined and §2.1 A-76's guard at `ensureDays` refused it.
+    { ids: core.sequentialIds('v'), now: '2026-08-31' });
   const mangled = { ...trip, days: trip.days.map((d, i) => (i === 0 ? { ...d, date: '2026-02-30' } : d)) };
   const issues = core.validateTrip(mangled);
   ok('validateTrip still reports invalid_calendar_date on a hand-built Trip',

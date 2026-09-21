@@ -141,10 +141,19 @@ line('§3 the parts of A-1 that DO hold');
     durationMins: null, placement: { kind: 'scheduled', dayId, time: null, order },
   });
   const pl = (id, name, cityKey, lat, lng) => ({ id, name, cityKey, category: 'sight', at: { lat, lng }, note: '' });
+  // QA round 77 (R75-11 re-cut). This was a hand-written object literal at `schemaVersion: 1`
+  // with no `party`, and §2.1 A-76's door guard — which parses the whole envelope on every
+  // commit — refused it, aborting the probe here. Re-cut so the ENVELOPE comes from `createTrip`
+  // and only the fields this section is about are overridden: a scalar added to the model in a
+  // later increment can no longer stale this probe, which is the failure being repaired.
+  const template = core.createTrip({
+    title: 'template', startDate: '2026-08-01', endDate: '2026-08-02',
+    cities: [{ key: 'london', name: 'London', centre: { lat: 51.5072, lng: -0.1276 } }],
+  }, { ids: { newId: (k) => `${k}-t` }, now: '2026-01-01' });
   const base = (id, owner, title, days, places) => ({
-    schemaVersion: 1, id, ownerId: owner, title, startDate: '2026-08-01', endDate: '2026-08-02',
-    cities: [{ key: 'london', name: 'London', centre: { lat: 51.5072, lng: -0.1276 } }], homeBase: null,
-    days, pool: [], places, bookings: [], resolutions: [], revision: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01',
+    ...template,
+    id, ownerId: owner, title, days, pool: [], places, bookings: [], resolutions: [],
+    revision: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01',
   });
   let n = 0;
   const ids = { newId: (k) => `${k}-c${++n}` };

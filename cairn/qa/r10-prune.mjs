@@ -33,7 +33,10 @@ const FAR_A = { lat: 21.3069, lng: -157.8583 };   // Honolulu
 
 let idn = 0;
 const ids = { newId: (k) => `${k}-n${++idn}` };
-const ctx = () => ({ ids, now: TODAY, clock: { today: () => TODAY }, actorUserId: 'local:self' });
+// QA round 77 (R75-11 re-cut): `CopyStopCtx` injects the date as `today` and `BuildCtx` as `now`;
+// the stale `clock` object satisfied neither, so `provenance.addedAt` was undefined and §2.1
+// A-76's door guard correctly refused. One object with both keys, rather than two factories.
+const ctx = () => ({ ids, now: TODAY, today: TODAY, actorUserId: 'local:self' });
 
 function baseTrip(id, title, ownerId = 'local:self') {
   const t = core.createTrip({
@@ -47,7 +50,7 @@ function baseTrip(id, title, ownerId = 'local:self') {
 /** A friend's trip with one stop linking one place. */
 function sourceTrip(id, owner, placeName, at) {
   let t = baseTrip(id, owner + "'s trip", 'user:' + owner);
-  const place = { id: `place-${owner}`, name: placeName, cityKey: 'vienna', at, kind: 'sight' };
+  const place = { id: `place-${owner}`, name: placeName, cityKey: 'vienna', at, category: 'sight' };
   t = { ...t, places: [...t.places, place] };
   t = core.addStop(t, { kind: 'scheduled', dayId: t.days[0].id, time: null, order: 1 },
     { name: placeName, category: 'sight', place: { kind: 'place', placeId: place.id } }, ctx());
@@ -155,7 +158,7 @@ line('§2 the anti-sweep guards, and the ONE documented cost');
   // 2.1 — the user's own stop on their own place, deleted. Clause 2 must decline even when
   // that stop is the place's only linker, and the place must still be MEASURED afterwards.
   let mine = baseTrip('trip-u1', 'Mine');
-  mine = { ...mine, places: [...mine.places, { id: 'place-user', name: 'My spot', cityKey: 'vienna', at: FAR_A, kind: 'sight' }] };
+  mine = { ...mine, places: [...mine.places, { id: 'place-user', name: 'My spot', cityKey: 'vienna', at: FAR_A, category: 'sight' }] };
   mine = core.addStop(mine, { kind: 'scheduled', dayId: mine.days[0].id, time: null, order: 1 },
     { name: 'My spot', category: 'sight', place: { kind: 'place', placeId: 'place-user' } }, ctx());
   const own = mine.days[0].stops.find((s) => s.name === 'My spot');
@@ -170,7 +173,7 @@ line('§2 the anti-sweep guards, and the ONE documented cost');
   // must leave it alone, because the user's own stop still links it (clause 3).
   const at = { lat: 48.2100, lng: 16.3700 };
   let mine = baseTrip('trip-u2', 'Mine');
-  mine = { ...mine, places: [...mine.places, { id: 'place-user', name: 'Stephansdom', cityKey: 'vienna', at, kind: 'sight' }] };
+  mine = { ...mine, places: [...mine.places, { id: 'place-user', name: 'Stephansdom', cityKey: 'vienna', at, category: 'sight' }] };
   mine = core.addStop(mine, { kind: 'scheduled', dayId: mine.days[0].id, time: null, order: 1 },
     { name: 'Stephansdom', category: 'sight', place: { kind: 'place', placeId: 'place-user' } }, ctx());
   const src = sourceTrip('trip-src6', 'marta', 'Stephansdom', at);

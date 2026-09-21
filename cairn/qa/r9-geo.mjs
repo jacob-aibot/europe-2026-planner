@@ -31,7 +31,13 @@ const FAR_B = { lat: -33.8688, lng: 151.2093 };   // Sydney
 
 let idn = 0;
 const ids = { newId: (k) => `${k}-n${++idn}` };
-const ctx = () => ({ ids, clock: { today: () => TODAY }, actorUserId: 'local:self' });
+// QA round 77 (R75-11 re-cut): `BuildCtx` is `{ ids, now, actorUserId? }` — the injected date is
+// the string `now`, not a `clock` object. The stale shape left `provenance.addedAt` undefined and
+// §2.1 A-76's door guard at `ensureDays` correctly refused it, aborting this probe at its first
+// `baseTrip` call and losing every assertion below.
+// `BuildCtx` injects the date as `now`; `CopyStopCtx` injects it as `today`. This probe passes one
+// object to both doors, so it carries both keys rather than two near-identical factories.
+const ctx = () => ({ ids, now: TODAY, today: TODAY, actorUserId: 'local:self' });
 
 /** A minimal Vienna trip with a home base, so `homeBase` is in the anchor set as on the real trip. */
 function baseTrip(id, title, ownerId = 'local:self') {
@@ -46,7 +52,9 @@ function baseTrip(id, title, ownerId = 'local:self') {
 /** A source trip owned by somebody else, holding one stop that links a far-away place. */
 function sourceTrip(id, owner, placeName, at) {
   let t = baseTrip(id, owner + "'s trip", 'user:' + owner);
-  const place = { id: `place-${owner}`, name: placeName, cityKey: 'vienna', at, kind: 'sight' };
+  // QA round 77 (R75-11 re-cut): a `Place`'s field is `category`, not `kind` (§2.2 `Place`).
+  // The stale key left `$.category` undefined and A-76's guard at `copyStopInto` refused it.
+  const place = { id: `place-${owner}`, name: placeName, cityKey: 'vienna', at, category: 'sight' };
   t = { ...t, places: [...t.places, place] };
   const day = t.days[0];
   t = core.addStop(t, { kind: 'scheduled', dayId: day.id, time: null, order: 1 },

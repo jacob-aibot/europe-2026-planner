@@ -29,7 +29,10 @@ const FAR = { lat: 21.3069, lng: -157.8583 };
 
 let idn = 0;
 const ids = { newId: (k) => `${k}-r11-${++idn}` };
-const ctx = () => ({ ids, now: TODAY, clock: { today: () => TODAY }, actorUserId: 'local:self' });
+// QA round 77 (R75-11 re-cut): `CopyStopCtx` injects the date as `today` and `BuildCtx` as `now`;
+// the stale `clock` object satisfied neither, so `provenance.addedAt` was undefined and §2.1
+// A-76's door guard correctly refused. One object with both keys, rather than two factories.
+const ctx = () => ({ ids, now: TODAY, today: TODAY, actorUserId: 'local:self' });
 const findStop = (trip, id) => [...trip.days.flatMap((d) => d.stops), ...trip.pool].find((s) => s.id === id) ?? null;
 const blockers = (trip) => core.detectConflicts(trip, { today: TODAY }).filter((c) => c.severity === 'blocker');
 
@@ -192,7 +195,7 @@ function baseTrip(id, title, ownerId = 'local:self') {
 }
 function sourceTrip() {
   let t = baseTrip('trip-marta', "Marta's trip", 'user:marta');
-  const place = { id: 'place-marta', name: 'Far Away', cityKey: 'vienna', at: FAR, kind: 'sight' };
+  const place = { id: 'place-marta', name: 'Far Away', cityKey: 'vienna', at: FAR, category: 'sight' };
   t = { ...t, places: [...t.places, place] };
   t = core.addStop(t, { kind: 'scheduled', dayId: t.days[0].id, time: null, order: 1 },
     { name: 'Far Away', category: 'sight', place: { kind: 'place', placeId: place.id } }, ctx());
@@ -228,7 +231,7 @@ function withCopy(placement) {
 // 2.2 — place -> a DIFFERENT { kind: 'place' } link
 {
   const { trip: t0, copiedStop, copiedPlaceId } = withCopy();
-  const other = { id: 'place-other', name: 'Vienna Sight', cityKey: 'vienna', at: VIENNA, kind: 'sight' };
+  const other = { id: 'place-other', name: 'Vienna Sight', cityKey: 'vienna', at: VIENNA, category: 'sight' };
   const trip = { ...t0, places: [...t0.places, other] };
   const after = core.updateStop(trip, copiedStop.id, { place: { kind: 'place', placeId: other.id } });
   ok('2.2 re-pointing a copied stop at a DIFFERENT place prunes the one it left',
@@ -255,7 +258,10 @@ function withCopy(placement) {
 // 2.4 — `moveStop` must not be able to change `place` at all (§2.10: placement only)
 {
   const { trip, copiedStop, copiedPlaceId, dayId } = withCopy();
-  const moved = core.moveStop(trip, copiedStop.id, { kind: 'pool' });
+  // QA round 77 (R75-11 re-cut): a `pool` placement states its `cityKey` (§2.2 `StopPlacement`);
+  // the bare `{kind:'pool'}` was refused by A-76's door guard rather than stored. The property
+  // under test — `moveStop` changes placement and nothing else — is unchanged.
+  const moved = core.moveStop(trip, copiedStop.id, { kind: 'pool', cityKey: 'vienna' });
   const s = findStop(moved, copiedStop.id);
   ok('2.4a moveStop preserves the stop\'s place link (no orphan to prune)',
      s.place.kind === 'place' && s.place.placeId === copiedPlaceId, `place=${JSON.stringify(s.place)}`);
@@ -272,7 +278,8 @@ function withCopy(placement) {
 // 2.5 — the over-prune guard: a SECOND linker sitting in the pool
 {
   const { trip: t0, copiedStop, copiedPlaceId } = withCopy();
-  const trip = core.addStop(t0, { kind: 'pool' },
+  // R75-11 re-cut: a `pool` placement states its `cityKey`; see 2.4 above.
+  const trip = core.addStop(t0, { kind: 'pool', cityKey: 'vienna' },
     { name: 'My own note on it', category: 'sight', place: { kind: 'place', placeId: copiedPlaceId } }, ctx());
   const after = core.updateStop(trip, copiedStop.id, { place: { kind: 'inline', at: VIENNA } });
   ok('2.5a a place still linked from the POOL is never pruned by an updateStop re-point',

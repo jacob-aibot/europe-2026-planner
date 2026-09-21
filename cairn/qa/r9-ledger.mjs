@@ -145,7 +145,10 @@ line('§2 KD-36 case 1 — a second dismissal vs. further edits, undo, and a thi
   // fields its id is content-addressed over. `legacy_flag`'s id is over {date, subtitle}.
   const { store, conflictId, dayId } = await secondDismissal();
   store.dispatch({ type: 'setDayMeta', dayId, patch: { title: 'same subject' } });
-  store.dispatch({ type: 'setDayMeta', dayId, patch: { notes: 'still the same day' } });
+  // QA round 77 (R75-11 re-cut): `Day` has no `note`/`notes` field and `DayMetaPatch`'s
+    // allowlist (§2.1 A-77 Part 5) refuses every key outside its `Pick`. The property under test is
+    // an edit to a field DISJOINT from `title`; `subtitle` is that field and is patchable.
+  store.dispatch({ type: 'setDayMeta', dayId, patch: { subtitle: 'still the same day' } });
   store.getDerived();
   ok('2.2 the fresh dismissal survives edits on the conflict\'s OWN subject day',
      rowAt(store, conflictId, '2026-08-02')?.retiredAt === null, JSON.stringify(rows(store, conflictId)));

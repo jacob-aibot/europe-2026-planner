@@ -43,7 +43,10 @@ other.dispatch({ type: 'setDayMeta', dayId, patch: { title: 'OTHER TAB' } });
 await other.flush();
 
 // This tab edits the day's NOTE — a disjoint field — and hits the version fence.
-mine.dispatch({ type: 'setDayMeta', dayId, patch: { note: 'mine' } });
+// QA round 77 (R75-11 re-cut): `Day` has no `note`/`notes` field and `DayMetaPatch`'s
+// allowlist (§2.1 A-77 Part 5) refuses every key outside its `Pick`. The property under test is
+// an edit to a field DISJOINT from `title`; `subtitle` is that field and is patchable.
+mine.dispatch({ type: 'setDayMeta', dayId, patch: { subtitle: 'mine' } });
 await mine.flush();
 ok('1 precondition: the save is refused, so the merge button is reachable',
    mine.getState().persistence.status === 'conflict', mine.getState().persistence.status);

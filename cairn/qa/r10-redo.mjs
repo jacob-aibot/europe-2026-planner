@@ -271,7 +271,10 @@ line('§5 a trip round trip and a merge reseed with a live future stack');
   await other.openTrip(id);
   other.dispatch({ type: 'setDayMeta', dayId, patch: { title: 'from the other tab' } });
   await other.flush();
-  store.dispatch({ type: 'setDayMeta', dayId, patch: { note: 'mine' } });
+  // QA round 77 (R75-11 re-cut): `Day` has no `note`/`notes` field and `DayMetaPatch`'s
+    // allowlist (§2.1 A-77 Part 5) refuses every key outside its `Pick`. The property under test is
+    // an edit to a field DISJOINT from `title`; `subtitle` is that field and is patchable.
+  store.dispatch({ type: 'setDayMeta', dayId, patch: { subtitle: 'mine' } });
   await store.flush();                                            // -> conflict
   const conflicted = store.getState().persistence.status === 'conflict';
   ok('5.2a precondition: the store is in conflict, so merge is reachable', conflicted, store.getState().persistence.status);
