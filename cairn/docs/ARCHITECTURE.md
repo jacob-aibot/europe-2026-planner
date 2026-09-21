@@ -2193,8 +2193,50 @@ recorded in both documents.
 revision. `ROADMAP.md` revision 84 carries criterion rule 14, rule 13 (b)'s amendment, criterion 14's
 corrected field list, criterion 15 arm 2 and the **F5** ruling routed to Codex.
 
+**Revision 85, 2026-09-21 — the manager's re-issued Phase 2 gate, architect half. Three rulings inside
+§11.14 A-99, all three on divergences the builder of `I-45` disclosed, and one line in §0.** **Nothing
+about what `ask` does moves** — no code file, no `.tsx`, no `apps/web`, no `qa/`, no `docs/design/`, no
+golden byte, no corpus byte, no version constant; §2.10 stays at **91** and nothing here gates `I-30`.
+Every item is a document defect and each was reported by the agent it cost, which is the pipeline working.
+
+**A-99 Part 5 — the accept-set arithmetic was one fragment short, and the TOTALS ARE WITHDRAWN** (manager
+finding **MGR-16 (a)**). Part 4 admits `have i visited on <np>` **by name** and makes it criterion N6's own
+instrument; Part 5's arithmetic counted `NP_ONLY_FRAMES` as four. The set is correspondingly larger than
+the published **1,272 from 25**, and the builder — who implemented the fragment, asserted the
+**relationship** rather than a total, and disclosed the gap — was right on every count. Criterion rule 6's
+own instruction is followed rather than the total corrected: **a transcribed total goes stale the next time
+a fragment is adjudicated and the relationship survives one.** The banner enumerates every carrier by its
+exact text (rule 13 (b)), separates the **live** ones from the **ledger** ones that record what revision 82
+said, and routes the one outside this pass's fence.
+
+**A-99 Part 8 — the third count renderer is ADMITTED and the rule stops counting functions** (**MGR-16
+(b)**). `countOf` is built **on** `countWord` and covers the indefinite counted noun neither of Part 8's
+two shapes reaches. The rule was never *"two functions"* — it is *"one decision about how a population of
+one is spelled"*, restated as something greppable over the implementation: **every number `ask/`
+interpolates into an `Answer.text` reaches the string through `countWord`.** A rule stated as a count of
+functions is falsified by its own correct extension.
+
+**A-99 Part 6 — monotonicity is NARROWED to admit a ruled withdrawal** (**MGR-16 (c)**). The claim was
+false for exactly one corpus entry, and false inside the ruling that made it so: *"what countries do we go
+to"* rides on a bare frame **Part 3 of the same ruling withdraws**. The builder's third corpus mark,
+`withdrawn`, is the right shape and is ruled in with the clause that makes it safe — **a `withdrawn` mark
+may be minted only by the ruling that withdraws the fragment, never by the increment failing against the
+entry** — plus the two-way assertion that keeps the withdrawal from being undone silently.
+
+**§0 gains one line that is not a position** (**F10**, accepted by the manager, gating nothing): this
+repository commits binary assets and every one is permanent, because history is not rewritten on a public
+remote where four documents' shas are the whole point — so the next binary is a decision and not an
+accident.
+
+**The consequences outside this document are in `ROADMAP.md` revision 85**: Phase 2's **first exit
+criterion about `ask`** (**MGR-17** — eleven increments built this capability and the ship gate was silent
+about all of them), Phase 3's **entry condition 1 rewritten to name no increment** with sequencing rule 2
+amended to say why (**MGR-18**), `I-45`'s **BUILT** banner, and criterion 15 arm 2 restated to match what
+the gate already checks (`R76-2`/`R76-3`/`R76-4`).
+
 Read the whole document when you are the manager, when you are changing the design, or when a change
 crosses a section boundary. Otherwise this table is the contract.
+
 
 ---
 
@@ -2412,6 +2454,16 @@ crosses a section boundary. Otherwise this table is the contract.
    has a reader who is not the writer**. Phase 3 therefore ships `owner` and `viewer` and does not mint
    `editor`, `commenter` or `TripMember`, while keeping all three in the predicates and in every cell of the
    conformance matrix. §**12**, §12.1, §12.3, §12.4, §12.7.
+
+**One line that is not a fifteenth position, added at revision 85 (manager finding `F10`, accepted).**
+**This repository commits binary assets, and every one of them is permanent.** The branch is pushed to a
+public remote and the shas quoted in `REVIEW.md`, `QA-FINDINGS.md`, `BUILD-NOTES.md`, `ROADMAP.md` and this
+document are worth something only because a sha means one tree — so history is not rewritten, and a
+committed binary can be added to but never removed. The 45 blobs and 12.46 MB already here are accepted on
+exactly that reasoning. **The consequence, which is the whole position: the next binary is a decision and
+not an accident** — an agent committing one says so in the commit message, and an agent committing several
+says why this repository is the right place for them. **Nothing measures this and no increment waits on
+it.**
 
 ---
 
@@ -30010,9 +30062,13 @@ Four consequences, and the first is the one that makes this different from the t
 > requires an added adverbial.* **(b)** The set **closes under naming the document** — for every bare frame
 > `B`, `` `${B} on <np>` `` is **generated**, not authored — and A-98's six hand-written `… on <np>` entries
 > leave `NP_FRAMES`. **(c)** `do i visit on <np>`, `do we visit on <np>`, `do i go to on <np>`, `do we go to
-> on <np>` and `have i visited on <np>` are admissible **only** with the document named. **The arithmetic
-> becomes `6 × (12 + 25 × 8)` = 1,272 sentences from 25 adjudicated fragments.** Read A-99 Parts 3–5 before
-> this Part.
+> on <np>` and `have i visited on <np>` are admissible **only** with the document named — **five frames,
+> and the fifth is Part 4's own instrument.** **The size becomes the RELATIONSHIP
+> `STEMS × (BARE_FRAMES + (NP_FRAMES + NP_ONLY_FRAMES + TWINS) × DOC_NPS)` and no total is published**
+> *(amended at revision 85, manager finding MGR-16 (a): this clause used to read `6 × (12 + 25 × 8)` =
+> 1,272 from 25, which counted four `NP_ONLY` frames while clause (c) beside it lists five — the total is
+> withdrawn under criterion rule 6, not corrected; A-99 Part 5's revision-85 banner has the full ruling and
+> the carrier list)*. Read A-99 Parts 3–5 before this Part.
 
 **Part 3 — the accept set, published by its factors rather than as 816 lines.** It is **generated at module
 load**, in `packages/core/src/ask/match.ts`, module-private (§11.9):
@@ -30417,20 +30473,47 @@ NP_FRAMES (9)          frames that are inherently NP-taking, unchanged from A-98
                        on · in · are on · are in · does <np> visit · does <np> cover ·
                        does <np> go to · does <np> include · is <np>
 
-NP_ONLY_FRAMES (4)     frames admissible ONLY with the document named (Parts 3 and 4):
+NP_ONLY_FRAMES (5)     frames admissible ONLY with the document named (Parts 3 and 4):
                        do i visit on <np> · do we visit on <np> · do i go to on <np> ·
-                       do we go to on <np>          [+ have i visited on <np>, Part 4]
+                       do we go to on <np> · have i visited on <np>
 
 GENERATED TWINS (12)   `${B} on <np>` for every bare frame B — by the rule above, not by hand.
                        A-98's six hand-written `… on <np>` entries are DELETED from NP_FRAMES:
                        four are now generated and two moved to NP_ONLY_FRAMES.
+                       The twins are NOT fragments: nobody adjudicates one and nobody can
+                       mistype one.
 
-ACCEPT = 6 × (12 + (9 + 4 + 12) × 8) = 6 × 212 = 1,272 sentences from 25 adjudicated fragments
+ACCEPT = STEMS × (BARE_FRAMES + (NP_FRAMES + NP_ONLY_FRAMES + TWINS) × DOC_NPS)
 ```
 
-**1,272 sentences from 25 fragments, where A-98 had 816 from 43.** More recall from fewer human judgements,
-which is the only direction this mechanism should ever move: every fragment is a place we can be wrong, and
-R73-5 measured that error rate at 4 in 43.
+**The size is that RELATIONSHIP and this ruling publishes no total** *(amended at revision 85, manager
+finding MGR-16 (a) — see the banner below)*. **What is published is the count of human judgements**: the
+adjudicated fragments are `NP_FRAMES + NP_ONLY_FRAMES + BARE_FRAMES`, where A-98 had 43. More recall from
+fewer human judgements is the only direction this mechanism should ever move — every fragment is a place
+we can be wrong, and R73-5 measured that error rate at 4 in 43.
+
+> **⚠ AMENDED at revision 85 — manager finding MGR-16 (a), and the builder of `I-45` was right.** As
+> written at revision 82 this Part published **`6 × (12 + (9 + 4 + 12) × 8)` = 1,272 sentences from 25
+> adjudicated fragments**, and **Part 4 above admits a 26th fragment by name in the same ruling** —
+> `have i visited on <np>`, which Part 4 makes criterion N6's own instrument and which cannot be omitted
+> without the criterion failing. `NP_ONLY_FRAMES` is **five**, the accept set is correspondingly larger,
+> and the arithmetic was one fragment short from the day it was written. The builder built the fragment,
+> asserted the **relationship** rather than a total exactly as `I-45` instructs, and disclosed the gap
+> rather than quietly resolving it either way — which is the behaviour the pipeline is for.
+>
+> **The totals are WITHDRAWN rather than corrected, and that is criterion rule 6's own instruction.** A
+> transcribed total goes stale the next time a fragment is adjudicated; the relationship survives one, and
+> the relationship is what `packages/core/test/ask.test.ts` already asserts. What the set measures at a
+> fixed commit is **history in `BUILD-NOTES.md`'s `I-45` addendum** and **no criterion depends on it**.
+> **Carriers of the withdrawn total, enumerated here because rule 13 (b) requires the owning ruling to
+> name them by their exact text** — **live, and corrected in this revision:** this Part's `ACCEPT =` block
+> and the sentence under it; §11.13 **A-98 Part 3**'s revision-82 amendment banner clause *"The arithmetic
+> becomes …"*; `ROADMAP.md` **`I-45`** batch A item 2. **History, and deliberately NOT touched, because a
+> ledger entry records what a revision said:** this document's revision-82 banner, `ROADMAP.md`'s
+> revision-82 ledger entry, and `cairn/CLAUDE.md`'s revision-82 cost-map row. **Outside this pass's fence
+> and routed to the next builder who opens the file:** `packages/core/test/ask.test.ts`'s comment *"A-99
+> publishes 25 adjudicated ones plus one generation rule"*. **A-98's own 816-from-43 figures are A-98's
+> and are correct about A-98**; they are not touched either.
 
 **Part 6 — the recall figure is WITHDRAWN, and recall stops being published as a percentage.** Round 73
 measured **20 of 40 (50%)** on a corpus written independently of the builder's, against A-98's published
@@ -30444,10 +30527,29 @@ same agent that wrote the accept set, so the figure measured the author's imagin
 > history against `5fa74e1`.
 
 What replaces it is **monotonicity**, which cannot be gamed and needs no percentage: **every phrasing
-answered at `08c4696` is answered after this increment**, over a committed corpus that is the union of round
-72's 18, round 73's 40 and A-98 Part 1's 13 lifetime cases, held in `packages/core/test/` where the builder
-owns it. The raw count is published in `BUILD-NOTES.md` as history. **A new refusal in that corpus is a
-finding, not a pass** — which is what the 15/18 floor was reaching for and could not express.
+answered at `08c4696` is answered after this increment, except where a Part of a ruling WITHDRAWS the
+fragment it rides on** — over a committed corpus that is the union of round 72's 18, round 73's 40 and
+A-98 Part 1's 13 lifetime cases, held in `packages/core/test/` where the builder owns it. The raw count is
+published in `BUILD-NOTES.md` as history. **A new refusal in that corpus is a finding, not a pass** — which
+is what the 15/18 floor was reaching for and could not express.
+
+> **⚠ NARROWED at revision 85 — manager finding MGR-16 (c), and the builder was right to refuse to hide
+> it.** As written at revision 82 this Part's claim is **false for exactly one corpus entry**, and it was
+> false in the same ruling that made it false: *"what countries do we go to"* answered at `08c4696` and
+> rides on `do we go to`, which **Part 3 of this same ruling withdraws**. Monotonicity and Part 3 are in
+> direct conflict on that sentence, and every way of resolving it silently is worse than the conflict.
+> `I-45`'s builder marked the entry **`withdrawn`** — a third mark beside `answer` and `refuse` — rather
+> than re-marking it `refuse`, which would have hidden a deliberate loss of recall inside an ordinary one.
+> **That is the shape, and it is ruled in.** Three clauses, because the escape hatch is the dangerous part:
+>
+> **(a) The mark exists and is itself asserted.** A `withdrawn` entry must **not** answer. The withdrawal
+> is therefore a two-way assertion — it cannot be undone silently, and the corpus cannot lose it.
+> **(b) A `withdrawn` mark may be minted ONLY by the ruling that withdraws the fragment, naming the
+> fragment.** It may never be minted by the increment, the round or the builder that is failing against
+> the entry. A mark that whoever is red may apply to themselves is not a mark; it is a mute button.
+> **(c) The sentence to check is therefore two, not one:** *every `answer` still answers* **and** *every
+> `withdrawn` still refuses.* The second half is what keeps the other entries monotone, and it is why this
+> is a narrowing of the claim rather than an exception to it.
 
 **Part 7 — the particle strip stays REFUSED, and A-98 Part 10 residue 1's trigger is raised.** Round 73's
 corpus refuses *"so how many countries am I visiting"* and *"tell me how many countries I am visiting"*, and
@@ -30482,7 +30584,24 @@ countNoun(n: number, singular: string, preposition: string, scope: string): stri
 
 `theDays` and `everyOne` already spell the right answer at two sites; they become the output of `countNoun`
 rather than two local ternaries, and `scope` — which is where *"across 1 day"* and *"Of the 1 day"* leak —
-stops existing as a separate string that other sentences can reach for. Verb agreement with a numeric subject
+stops existing as a separate string that other sentences can reach for.
+
+> **⚠ AMENDED at revision 85 — manager finding MGR-16 (b): a THIRD renderer, `countOf`, is ADMITTED, and
+> the rule is restated so it does not count functions.** `I-45`'s builder found that the many sentences
+> counting something **without naming a scope** (*"On it are 8 scheduled stops, 31 pooled ideas…"*) fit
+> neither shape, and added `countOf(n, singular)` — built **on** `countWord`, with a shared `plural()`,
+> not beside it. That is correct and it is the right shape. **This Part's rule was never *"two functions"*;
+> it is *"one decision about how a population of one is spelled, and no site at which a builder can
+> pluralise the noun and not the number."*** Two functions was the shape that rule happened to have at
+> revision 82, and **a rule stated as a count of functions is falsified by its own correct extension** —
+> criterion rule 8's family, one level up from a criterion.
+>
+> **The restated rule, which is greppable over the implementation rather than over a tally** (criterion
+> rule 7's form): **every number `packages/core/src/ask/` interpolates into an `Answer.text` reaches the
+> string through `countWord`.** `countNoun` and `countOf` both call it; a fourth renderer is admitted on
+> the same terms and needs no amendment to this Part. **The backstop is unchanged and is the thing that
+> actually holds the property**: the rendered-text sweep below does not care how many renderers there
+> are, and a renderer that bypasses `countWord` reddens it at the first population of one. Verb agreement with a numeric subject
 follows the same value: *"1 of the 2 stops … state"* becomes *"one of the 2 stops … states"*.
 
 **The criterion is mechanical and it is not a fixture.** Over a generated population of documents exercising

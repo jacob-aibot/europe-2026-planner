@@ -2319,6 +2319,56 @@ criterion E's own command and not quoted from anywhere.** Five things move.
   reachability; the ruling is **deferred to `I-42`** with the question stated, and the banner is in both
   this document and ARCHITECTURE §8.4 A-91 so neither reader has to rediscover it.
 
+**Revision 85, 2026-09-21.** **The manager's re-issued Phase 2 gate, architect half — `MGR-17`,
+`MGR-18`, `MGR-16`'s three document items, `R76-2`/`R76-3`/`R76-4` and `F10`.** **No code file, no `.tsx`,
+no `apps/web`, no `qa/`, no `docs/design/`, no `package.json`, no lockfile, no golden byte, no corpus byte;
+§2.10 stays at 91 and nothing here gates `I-30`.** Five things move, and the first is the one that matters.
+
+- **Phase 2's exit criteria gain their FIRST criterion about `ask`** (**MGR-17**, MAJOR). Eleven
+  increments — `I-35`…`I-45` — built the answer engine inside this phase and the ship gate's seventeen
+  sections were **silent about every one of them**, which is why `node qa/r54-gate.mjs` could report
+  `fails=0` truthfully on a tree where `I-45` had shipped and had never been confirmed. **One criterion**,
+  to the manager's stated ceiling: two ceilings (*what may authorise an answer*, *what an answer may say*)
+  plus monotonicity, citing seven assertions that exist in `packages/core/test/ask.test.ts` — including
+  **criterion rule 12's own rendered-text sweep, which no criterion had ever cited**. **The load-bearing
+  clause is how it reddens**: the gate resolves each cited assertion **by name** and fails on a name it
+  cannot find, identically to a name that failed, so a deleted assertion is red rather than quiet. *"The
+  `ask` suite passes"* would have been green on every tree in this repository's history, including the
+  trees where `ask` did not exist — that is criterion rule 14's own defect, and this criterion is written
+  not to be it.
+- **Phase 3's entry condition 1 stops naming an increment** (**MGR-18**, MINOR). It had gone stale three
+  times, twice inside the note explaining the previous staleness. The fix is not a fourth correction: **an
+  entry condition is a function of the VERDICT it waits on, never of the work that verdict will cover.**
+  Condition 1 is now satisfied exactly when `REVIEW.md`'s newest Phase 2 gate section records SHIP with no
+  routed item still open; it is **re-armed by exactly two events** — a newer non-SHIP verdict, or a routed
+  item reopened — and it **fails closed**, because a missing verdict is NOT SATISFIED and not *"no
+  evidence either way"*. **Sequencing rule 2 is amended in place** to say so for every phase, and `I-45`
+  gets the **BUILT** banner it never got.
+- **`MGR-16`'s three disclosed divergences are ruled, and the builder was right on all three.**
+  **(a)** The accept set is **1,320 from 26**, not the **1,272 from 25** A-99 Part 5 and this document
+  published — A-99 Part 4 adjudicates a fifth `NP_ONLY` fragment by name and Part 5's arithmetic counts
+  four. **Both totals are WITHDRAWN rather than corrected** (criterion rule 6): a total goes stale the next
+  time a fragment is adjudicated and the **relationship** survives one, and the relationship is what the
+  test already asserts. **Carriers, enumerated as rule 13 (b) requires** — live: A-99 Part 5's `ACCEPT =`
+  block and its following sentence, §11.13 A-98 Part 3's revision-82 amendment banner, and `I-45`'s item
+  2 here; **history and deliberately not touched**: this file's revision-82 ledger entry, `ARCHITECTURE`'s
+  revision-82 banner and `cairn/CLAUDE.md`'s revision-82 cost-map row, which record what revision 82 said;
+  **out of this pass's fence and routed**: `packages/core/test/ask.test.ts`'s comment *"A-99 publishes 25
+  adjudicated ones"*, which is a builder line. **(b)** `countOf` is **admitted** — A-99 Part 8's rule was
+  never *"two functions"*, it is *"one decision about how a population of one is spelled"*, and the
+  restated form is greppable over the implementation. **(c)** A-99 Part 6's monotonicity sentence is
+  **narrowed** to admit a **ruled** withdrawal, which is what the builder's third corpus mark was
+  reporting; the mark may be minted only by the ruling that withdraws the fragment, never by the increment
+  failing against it.
+- **Criterion 15 arm 2 says what the instrument actually checks** (`R76-2`, `R76-3`, `R76-4`; non-blocking,
+  and the manager verified all three are already closed in the gate). Arm (2a) is now three parts —
+  **membership**, **version and integrity** (a name set cannot see a version bump inside an unchanged
+  closure), and **each of A-58's four bare-Node manifests** rather than one. The `72 → 76` closure figure
+  is **withdrawn**: the `+4` delta is invariant, the absolute is convention-dependent, and the convention
+  was never stated. No arm depended on it.
+- **`F10` — the repository's position on committed binaries** is one line in `ARCHITECTURE.md` §0, and it
+  is a position, not a policy: a committed binary is permanent, so the next one is a decision.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -11244,6 +11294,18 @@ visual direction and by nothing else.
 
 #### I-45 — the accept set closes by generation, a clause takes its facts from one field, and the prose gets its first mechanism (revision 82, `ARCHITECTURE.md` revision 82's §11.14 **A-99**; QA round 73's whole code consequence, and the LAST scheduled increment on `ask` before the narrowing in A-99 Part 10)
 
+> **⚠ BUILT at `f3bc3cd`, and its confirmation round is OWED.** The builder disclosed **three**
+> divergences from A-99 (BUILD-NOTES, *Divergences from A-99, all three disclosed*); all three are ruled at
+> revision 85 — **(a)** the published accept-set arithmetic was one fragment short and **the totals are
+> withdrawn** in favour of the relationship (§11.14 A-99 Part 5, and item 2 below), **(b)** `countOf` is
+> **admitted** and A-99 Part 8's rule is restated over the boundary rather than over a count of functions,
+> **(c)** A-99 Part 6's monotonicity sentence is **narrowed** to admit a ruled withdrawal, which is what
+> the builder's `withdrawn` mark was reporting. The **breaker's** confirmation round over `I-45` as one
+> subject — manager finding **MGR-16** — is separate and is not discharged by this banner. **The
+> increment's own criteria are now also covered by a phase-level criterion**: the new `ask` criterion in
+> *Exit criteria — the Phase 2 ship gate* cites four of the assertions below by name, so a tree on which
+> they are absent is a **red gate row** rather than a silent one (manager finding **MGR-17**).
+
 **Read `ARCHITECTURE.md` §11.14 A-99 whole FIRST, then §11.13 A-98 whole, then §11.12 A-97 Parts 2 and 5,
 then §11.3, §11.5 and §11.7. Nothing else in `ARCHITECTURE.md`** — not §2, not §4, not §8, not §10, not §12.
 **No `DESIGN.md`**: this increment renders nothing. **Read A-99 Part 10 even if you are only fixing one
@@ -11280,9 +11342,18 @@ gates `I-30` or Phase 3.**
      clause 2 (*a bare frame is admitted only if its habitual reading requires an added adverbial*); A-98's
      six hand-written `… on <np>` entries leave `NP_FRAMES`; a `NP_ONLY_FRAMES` list holds `do i visit on
      <np>`, `do we visit on <np>`, `do i go to on <np>`, `do we go to on <np>` and `have i visited on <np>`;
-     and the generator emits `` `${B} on <np>` `` for every bare frame `B`. **`6 × (12 + 25 × 8)` = 1,272
-     sentences from 25 fragments.** The count is the ruling's arithmetic; assert the relationship, not a
-     transcribed total (criterion rule 6).
+     and the generator emits `` `${B} on <np>` `` for every bare frame `B`. **The size is
+     `stems × (bare + npTaking × nps)`, where `npTaking` is `NP_FRAMES + NP_ONLY_FRAMES + one twin per
+     bare frame` — the relationship, asserted; never a transcribed total** (criterion rule 6).
+     *(**Corrected at revision 85, manager finding MGR-16 (a).** This item published **`6 × (12 + 25 × 8)`
+     = 1,272 sentences from 25 fragments**, copied from A-99 Part 5, whose arithmetic counted
+     `NP_ONLY_FRAMES` as **four** while Part 4 adjudicated a **fifth** — `have i visited on <np>` —
+     admissible by name and made it criterion N6's own instrument. The builder built the fifth fragment,
+     correctly, asserted the relationship rather than the total, and disclosed the gap. **Both totals are
+     withdrawn rather than corrected**, on criterion rule 6's own instruction: a total goes stale the next
+     time a fragment is adjudicated and the relationship survives one. What the set measures at `f3bc3cd`
+     is history in `BUILD-NOTES.md`'s `I-45` addendum, against that commit, and no criterion depends on
+     it.)*
   3. **R73-7** — `scope_unclear`'s text is false of a sentence naming a city of this trip. `cityHits` is
      already in scope above the branch: where `cityHits.length > 0` the refusal is not a scope refusal at
      all and the sentence falls through to `unrecognised` with the menu, which is the true statement.
@@ -11792,12 +11863,28 @@ first.
     bare-Node half, and the bare-Node half is now asserted directly instead of by proxy.** Three arms,
     every one of them computed from the lockfile's own graph and quoting no package list:
 
-    **(2a) The root workspace's closure does not move.** Resolve `cairn/package.json`'s
-    `dependencies` + `devDependencies` transitively **through the lockfile's own `packages` map, by npm's
-    hoisting rule**, at the branch point and at `HEAD`. The two sets are **identical**. This is the arm
-    A-58 actually ruled and it is a ceiling of **zero growth**, not of bounded growth. *(History against a
-    fixed commit, depended on by no criterion: the root closure is 3 packages at both ends —
-    `@types/node`, `typescript`, `undici-types`.)*
+    **(2a) The bare-Node closures do not move — not their membership, not their versions, and not one
+    manifest of the four.** Resolve `dependencies` + `devDependencies` transitively **through the
+    lockfile's own `packages` map, by npm's hoisting rule**, at the branch point and at `HEAD`, and compare
+    the two. The arm has three parts and **each is a separate way for an unchanged-looking lockfile to be a
+    changed one**:
+    - **Membership.** The two closures are **identical** as sets. Zero growth, not bounded growth — this is
+      what A-58 actually ruled. `O1d`.
+    - **Identity, not name** *(added at revision 85, QA **R76-3**)*. Every package **in** that closure
+      resolves to the same **`version` and `integrity`** at both ends. A set of names cannot see a version
+      bump inside an unchanged closure, and a version bump is exactly as much a change to what the
+      bare-Node half resolves as an addition is. `O1d2`, with `O1dF3` as the fault that shows it firing
+      where `O1d` alone stays green.
+    - **Every manifest npm installs from, not one** *(added at revision 85, QA **R76-4**)*. A-58's subject
+      is the bare-Node half of the repo and that half is **four `package.json` files**: `cairn/`,
+      `packages/core/`, `packages/client/` and `packages/tokens/`. npm installs from all four and **none of
+      the last three is reachable from the root's declared dependencies**, so a dependency declared in
+      `packages/core/package.json` and never imported is invisible to arm 1 (which reads `cairn/`'s) and to
+      arm 3 (which greps imports). Resolving one manifest is resolving a quarter of the subject. `O1d` runs
+      the root; `O1d3` runs the other three.
+    *(History against a fixed commit, depended on by no criterion: the root closure is 3 packages at both
+    ends — `@types/node`, `typescript`, `undici-types`. `O1d1` and `O1d3a` re-derive that and the other
+    three at both ends; this sentence is not what anything checks.)*
 
     **(2b) Every `node_modules/` entry ADDED between the branch point and `HEAD` is inside `apps/web`'s
     closure and outside the root's.** Same resolution, run from the `apps/web` workspace entry. An entry
@@ -11867,8 +11954,17 @@ first.
   and the type-only `@types/d3-geo`. **`@types/geojson` is NOT one of them**, contrary to the routing note
   that reached me: it was already in the lockfile at `86692af`, pulled in by `@types/leaflet`, and what the
   diff adds is `@types/d3-geo`'s dependency **edge** to it. **`packages/core` and `packages/client` have
-  zero bare imports** — grepped, not assumed — and the root workspace's closure is **unchanged at 3
-  packages** while `apps/web`'s goes **72 → 76**.
+  zero bare imports** — grepped, not assumed — the root workspace's closure is **unchanged**, and
+  `apps/web`'s grows by **exactly the four entries named above and nothing else**.
+  *(**Revision 85, QA R76-2.** This sentence used to publish `apps/web`'s closure as **72 → 76**. The
+  **delta** is invariant; the **absolute is not**, and the convention it was measured under was never
+  stated — over `dependencies` alone the same closure is 70 → 74, including optional and peer edges it is
+  99 → 103, and `72 → 76` reproduces only if entries the lockfile marks `optional: true` are skipped. A
+  figure whose value depends on an unstated walk is the arithmetic result criterion rule 6 forbids, and
+  **no arm of this criterion depends on it**, so it is withdrawn here rather than annotated. `O1d6a`
+  re-derives the absolutes under each of the three conventions, beside `O1d6`'s assertion that (2b)'s
+  **verdict** is the same under all three — which is the property that actually matters: the ceiling is
+  over the graph, not over the walk.)*
   **CARRIED from the review Jacob decided on, not re-measured here and marked so nobody quotes it as
   mine:** ~**8 KB gzip against an existing 353 KB entry chunk (1.9 %)**; the used surface is ~**1,100 SLOC**
   of real spherical work (small-circle clipping at the horizon, polygon rejoin along the clip boundary,
@@ -11898,6 +11994,62 @@ first.
   and after. **Trigger for it being done:** `grep -rn "d3-geo" apps/web/src` returns `globeGeometry.ts`
   alone. If Codex declines, the standing state is *two importers, one of them unjustified*, and that is a
   note on the record rather than a red row.)*
+
+- **`ask` answers only sentences Cairn itself wrote, and states nothing in them that the document does
+  not.** *(Added at revision 85, manager finding **MGR-17**. Eleven increments — `I-35`…`I-45` — built this
+  capability inside Phase 2 and **no exit criterion covered any of it**, which is why nothing anywhere was
+  red on the tree where `I-45` had shipped and had never been confirmed. §11's governing rule is **"a
+  language model may parse a question; it may never answer one"**, and this criterion is what makes a
+  violation of it red rather than merely described.)* Two ceilings — **what may authorise an answer**, and
+  **what an answer may say** — plus the thing that may not silently stop being true. **It cites assertions
+  and states no value of its own** (criterion rule 6); every one lives in `packages/core/test/ask.test.ts`
+  and is named there in the words quoted here.
+  - **What may authorise an answer: membership of a finite set Cairn wrote, and nothing else.**
+    *"A-99 Parts 3/5: the accept set is the ruling's factors, and every sentence in it answers"* — the set is
+    the cross product of `ARCHITECTURE.md` §11.14 **A-99** Part 5's published factors, asserted as that
+    **relationship** and never as a transcribed total, every member answers `country_count` with nothing
+    unread, and the number of **adjudicated fragments** behind it is asserted as the sum of the three
+    human-judged lists. Its two ceilings are *"A-99 Part 3: the four present-simple bare frames are
+    withdrawn"* — **none** of the withdrawn cells returns `matched`, which is what makes the set *closed*
+    rather than merely large — and *"A-98 Part 1: thirteen lifetime phrasings refuse"*, which is the failure
+    the whole mechanism exists to make unreachable: a question about the user's life answered with a fact
+    about this trip. Its order-independence is *"A-99 Part 4: a sentence Cairn wrote is never vetoed by a
+    list over English"*.
+  - **What an answer may say: only what the document states, and only through one boundary.**
+    *"A-99 Part 8 / criterion rule 12: no count reaches prose as a bare numeral"* — the sweep over rendered
+    `Answer.text` across a generated population of documents at day and stop populations of 0, 1, 2 and
+    many, at both clocks, **which is criterion rule 12's own instrument and which no criterion has cited
+    until this one**. Beside it: *"§11.6: every cite of every askable question resolves, at both clocks"*
+    (§11.6's grounding law — every answer names the records it read and every name resolves), and
+    *"R70-4: one chokepoint — nothing in ask/ interpolates a record's free text into prose except through
+    it"* (§11.8's redaction claim, held as a property of the renderer rather than of the fixture's strings).
+  - **What may not silently stop being true.** *"A-99 Part 6: recall is monotone over the committed
+    corpus"* — every phrasing the corpus marks `answer` still answers, every phrasing a **ruling** has
+    withdrawn still refuses, and the `withdrawn` mark is itself asserted, so a withdrawal cannot be undone
+    and cannot be minted by the increment that is failing against it (§11.14 A-99 Part 6, as narrowed at
+    revision 85).
+
+  **How this row goes red — stated because criterion rule 14 requires it, and because what failed here was
+  a row with no subject.** The gate **resolves each assertion cited above by its name in the output of
+  `node --test packages/core/test/ask.test.ts`, and fails on a name it cannot find, identically to a name
+  that failed.** A deleted or renamed assertion is a **red** row and not a quiet one, and a **missing
+  file** produces no names at all, so the row is red in full rather than vacuous. That is the whole
+  difference between this criterion and *"the `ask` suite passes"*, which is green on every tree in this
+  repository's history — including every tree on which `ask` did not exist — and which is therefore rule
+  14's own defect written as a criterion. **It is also what would have caught `MGR-16`**: on a tree where
+  `I-45` has not landed, the four A-99 assertions are not in the file, the row is red **and names them**,
+  and the sentence a reviewer gets is *"the `ask` repair is not confirmed"* rather than silence. `[stated]`
+
+  **Injected faults — two, both at this criterion's own subject, and `qa/r54-gate.mjs` gains one section
+  for them.** **(i) Rename any one cited assertion** → the row reddens naming the assertion it could not
+  resolve. This is the fault the criterion exists for and it fires today. **(ii) Over the property rather
+  than the instrument: move the accept-set membership test back below the `lifetimeTokens` and
+  `RECOMMENDATION_TRIGGERS` refusals** in `packages/core/src/ask/match.ts` → *"how many countries have I
+  visited on this trip"* refuses and the authorisation half reddens by name; this is `I-45`'s **N6**, shown
+  to fire. **Each cited assertion carries its own injected fault, already declared fireable or unfireable
+  at its own site** (criterion rule 9), and this criterion neither restates them nor adds to them.
+  *(Every numeral in this criterion sits inside a quoted assertion name. The assertion owns it and the
+  assertion moves it; this criterion states none of its own — criterion rule 6, and rule 13 (c).)*
 
 ### What the tester should attack (plain `node`, no network)
 
@@ -12080,20 +12232,42 @@ one increment earlier.
 
 ### Entry conditions — stated plainly, including the two that do not gate
 
-1. **Phase 2 shipped, with a manager verdict of SHIP** (sequencing rule 2). **⚠ Corrected at revision 83.**
-   **`I-45` is the last Phase 2 increment and it is unbuilt** (`ROADMAP.md` I-45, revision 82, against
-   `ARCHITECTURE.md` §11.14 **A-99**); it carries QA round 73's unrepaired **SEND BACK** and the live
-   regression **R73-1**. **`I-30` — the picker — is BUILT**, and QA round 74 plus the manager gate of
-   2026-09-16 returned **SHIP** on it as an increment. Phase 2 as a phase has a manager verdict of **SEND
-   BACK**, so rule 2 binds and **Phase 3's code does not begin**; it does **not** gate revision 80's design
-   ruling, which is what this entry has always required to happen *before* the first line of Phase 3 code.
-   *(Revision 80 wrote *"`I-30` … is unbuilt and is the last Phase 2 increment"*, which was true when it was
-   written; **revision 82 superseded the second half by scheduling `I-45` after it**, and `I-30`'s build
-   superseded the first. The stale sentence stood through two revisions and cost a manager a re-derivation
-   and a brief a false premise, which is the whole reason a superseded entry condition is corrected rather
-   than left for a reader to notice. **What gates Phase 3 is the phase verdict, never a named increment** —
-   an entry condition that names one increment goes stale every time the sequence grows, and this one has
-   now done so twice.)*
+1. **The standing Phase 2 verdict is SHIP, and no item routed by it is still open** (sequencing rule 2).
+   **⚠ Rewritten at revision 85, manager finding MGR-18 — and the rewrite is the ruling, not the
+   correction.** This condition has now gone stale **three times**, and every previous fix corrected the
+   sentence: revision 80 wrote *"`I-30` … is unbuilt and is the last Phase 2 increment"*, revision 82
+   superseded that by scheduling `I-45` after it, revision 83 corrected it to *"`I-45` is the last Phase 2
+   increment and it is unbuilt"* — inside a note that says in as many words *"what gates Phase 3 is the
+   phase verdict, never a named increment"* — and `I-45` was built at `f3bc3cd` on the next commit that
+   touched the subject. **A condition that names an increment goes stale every time the increment list
+   moves, which is every phase**, and correcting it is a repair with the same lifetime as the thing it
+   repaired.
+
+   > **A phase's entry condition is a function of the VERDICT it waits on, never of the work that verdict
+   > will cover.** It names the artefact the verdict lives in and the property of that artefact it needs.
+   > It names no increment, no commit, no count of increments and no build state.
+
+   **So, evaluably, as written:** condition 1 is satisfied **exactly when the newest Phase 2 gate section
+   of `REVIEW.md` records a verdict of SHIP and carries no routed item still open against it.** That is the
+   whole condition. It is a property of one artefact a reader can open, and nothing about the increment
+   sequence can move it.
+
+   **What RE-ARMS it — and there are exactly two things, which is the point of stating it this way.**
+   **(a)** A manager issuing a **newer** Phase 2 verdict that is not SHIP. **(b)** An item routed by the
+   standing SHIP verdict being **reopened**. Nothing else re-arms it: not an increment being added to
+   Phase 2, not an increment being built, not an increment being un-built, not a commit, not a QA round
+   whose findings the manager has not yet ruled on. A round's findings reach this condition **through**
+   the manager, which is what sequencing rule 2 has always meant.
+
+   **How it reads when its subject is missing, stated because criterion rule 14's failure is exactly a row
+   with no subject:** **absence is NOT SATISFIED.** No Phase 2 gate section, or a section with no verdict
+   line, is **not** *"no evidence either way"* — it is the condition unmet. This condition fails closed.
+
+   **State at revision 85, as history and not as the condition:** the newest Phase 2 gate section of
+   `REVIEW.md` is the re-issued gate of 2026-09-21, whose verdict is **SEND BACK** on `MGR-16` and
+   `MGR-17`, so **condition 1 is NOT SATISFIED and Phase 3's code does not begin**. It does **not** gate
+   revision 80's design ruling (§12), which is what this entry has always required to happen *before* the
+   first line of Phase 3 code, and §12 is done.
 2. **`R72-1` gates Phase 3 by DIRECTION, not by dependency, and the distinction is kept visible.**
    **⚠ Amended at revision 81.** Technically it shares **no file** with anything below and nothing in Phase 3
    reads `ask/`; that has not changed, and this entry said so. **What changed is that Jacob directed it close
@@ -12584,7 +12758,16 @@ built.
 1. **Nothing skips Phase 1.** Every later phase consumes `packages/core` and `packages/client`. A second
    implementation of legs, costs, conflicts or trip state anywhere is a design defect, routed to the architect.
 2. **No phase begins before the previous one has a manager verdict of SHIP.** A phase built on an unverified
-   phase is where the pipeline stops being worth having.
+   phase is where the pipeline stops being worth having. *(**Amended at revision 85, manager finding
+   MGR-18.** Phase 3's entry condition 1 implemented this rule by naming **which increment** was
+   outstanding, and went stale three times in five revisions — twice inside the note explaining the
+   previous staleness, and once costing a manager a re-derivation and a brief a false premise. **An entry
+   condition is a function of the verdict it waits on and never of the work that verdict will cover**: it
+   names the artefact the verdict lives in (`REVIEW.md`'s newest gate section for that phase) and the
+   property it needs (a verdict of SHIP with no routed item still open), and it names no increment, no
+   commit and no build state. **It is re-armed by exactly two events** — a newer verdict that is not SHIP,
+   or a routed item reopened — and **it fails closed**: a missing verdict is NOT SATISFIED, never *"no
+   evidence either way"*, which is criterion rule 14's failure mode carried into an entry condition.)*
 3. **Privacy and authorization invariants are tested every phase, not audited at the end.** From the
    accounts phase (now **3**) the tester's brief includes grepping for coordinates and mailbox content in
    logs, requests and database rows, and running the access conformance matrix. Phase 2 runs the matrix too
