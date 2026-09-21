@@ -1,12 +1,14 @@
 # Cairn — manager reviews
 
-**Eight verdicts live in this file, newest first.** The **I-30 / Phase 2 gate** is the current
-one; the **I-8b (Profile)**, **I-8f + I-8j**, **I-8i**, **I-8a**, **2b (data layer)**, **2a** and
-**Phase 1** verdicts below it are **closed and kept for the record**, not superseded — their
+**Nine verdicts live in this file, newest first.** The **Phase 2 gate, re-issued** is the current
+one; the **I-30 / Phase 2 gate** below it is **superseded on the phase question and standing on
+`I-30`**; the **I-8b (Profile)**, **I-8f + I-8j**, **I-8i**, **I-8a**, **2b (data layer)**, **2a**
+and **Phase 1** verdicts below that are **closed and kept for the record**, not superseded — their
 routing discharged and their carried items re-placed downstream.
 
 | Verdict | Scope | Commit reviewed | Date | Result |
 |---|---|---|---|---|
+| **Phase 2 gate, re-issued** | Phase 2's whole exit-criteria block re-derived against `ROADMAP.md` **revision 84**, plus the `I-45` build, the re-cut `I-11` phase gate, and the merge question over the Codex batch `4940630` | `1ddc8f9` on `review/i30-picker` (`master` at `86692af`) | 2026-09-21 | **Phase 2: SEND BACK — narrowly, and for one reason.** Everything the 2026-09-16 verdict held it on is **closed and I re-derived it rather than reading `fails=0`**: `I-45` is built, the six stale criteria are corrected, the gate is re-cut and RUN at `COMPLETE fails=0 ruled=0 unruled=0`, the privacy criterion is a property again. What is not done: **`I-45`'s mandatory confirmation round never ran** (`MGR-16`) — its three disclosed divergences from A-99 are unadjudicated and A-99 Part 10's decision point was never reached — and **no Phase 2 exit criterion covers `ask/` at all** (`MGR-17`), which is why nobody noticed. **`R75-11` does not gate.** **The Codex batch is recommended for merge, whole, after one precondition.** **Phase 3 does not begin** |
 | **I-30 — the city picker, and the Phase 2 ship gate** | `ROADMAP.md` Phase 2 increment **I-30** against `ARCHITECTURE.md` §8.4 **A-91**, plus **Phase 2's whole exit-criteria block** re-derived at HEAD | `8a8a36d` on `review/i30-picker` (`e890d50` + `c3a503b` + `8a8a36d`; `master` at `86692af`) | 2026-09-16 | **I-30: SHIP — the increment closes.** **Phase 2: SEND BACK.** 0 blockers in the picker. The phase is held by three things that are not I-30: **`I-45` is scheduled and unbuilt** and carries round 73's unrepaired **SEND BACK**; **four of Phase 2's own exit criteria are false about the shipped artefact**; and the phase-gate probe has not been run in 19 rounds and is **11 red** at HEAD. **Phase 3 does not begin** |
 | **I-8b — Profile: the first UI proof of `DESIGN.md` and the mobile-first responsive contract** | `ROADMAP.md` Phase 2 increment **I-8b** (revision 27/38) against `DESIGN.md` §5 (composition) and §6 (the rendered acceptance standard), plus the five bounded shell items §5.6 enumerates | `dac9595` (build `adcce5e`+`ade9d42`+`652c2c3`, record `dac9595`) | 2026-09-02 | **SHIP.** 0 blockers, 0 MAJOR. **3 MINOR routed to builder (R42-1, R42-2, R42-3), 1 MINOR to architect (MGR-8)** — none gating. Real-iOS residue listed separately |
 | **I-8f + I-8j — the manager-gated prerequisites for I-8b** (closes MGR-1, MGR-2 and R39-1 from the I-8i gate) | `ROADMAP.md` Phase 2 increments **I-8f** (`359234b`) against `ARCHITECTURE.md` §2.9 **A-47**, and **I-8j** (`3044bdd`) against §4.4 **A-54** — **I-8b is not included and does not ship here** | `3044bdd` (record `f622ab9`) | 2026-09-01 | **I-8f SHIP · I-8j SHIP.** **I-8b is permitted to open.** 5 items routed, **0 gate I-8b** |
@@ -18,9 +20,573 @@ routing discharged and their carried items re-placed downstream.
 
 ---
 
+# Phase 2 gate, re-issued — the exit criteria re-derived at revision 84
+
+> **Status: CURRENT.** Manager, stage 4. Reviewed `review/i30-picker` @ `1ddc8f9`, working tree
+> clean before and after (`git status --porcelain` → 0 lines, asserted at both ends of every
+> mutation I ran); `master` untouched at `86692af`. 2026-09-21. Every claim below has a command in
+> **§ Verified** and I ran it in this session.
+>
+> ## **VERDICT — Phase 2: SEND BACK. `R75-11` does not gate. The Codex batch: MERGE, whole, after one precondition. Phase 3 does not begin.**
+>
+> **I was asked not to ship this because the sequence has been long, and I am not. I was also asked
+> not to manufacture work, and I am not doing that either — so read the size of this first.**
+> **Everything I held Phase 2 on six days ago is closed, and I re-derived each one rather than
+> reading the gate's own verdict.** `I-45` is built and both of round 73's live defects are gone
+> from the shipped CLI. The six stale criteria are corrected — and the architect found a sixth by
+> walking the block rather than only the four I routed. The phase gate is re-cut and **RUN**:
+> `COMPLETE fails=0 ruled=0 unruled=0 gaps=2 notes=69`, **seventeen sections A–Q, one per exit
+> criterion, every one of them implemented** — `H` and `Q` included, after nineteen rounds declared
+> and absent. The privacy criterion is a property with a needle set discovered at run time and an
+> injected fault that fires. Criterion E is four views compared as *lists*, in both directions.
+> That is a real gate and it is the first one this phase has had.
+>
+> **What holds it is one hole, and it has two halves that are the same hole.**
+>
+> 1. **`MGR-16` — `I-45`'s confirmation round never ran.** `ROADMAP.md:11386` routes `I-45` as
+>    *"builder, **and then one confirmation round over `I-45` as one subject**"*, and says in the
+>    next sentence that **that round is the decision point A-99 Part 10 names**. `grep -n 'I-45'
+>    docs/QA-FINDINGS.md` returns **zero lines**. Rounds 75 and 76 were gate re-cuts; round 74 was
+>    `I-30`. **The last adversarial verdict on the `ask` capability is still round 73's SEND BACK**,
+>    and its repair has not been attacked. The builder disclosed **three divergences from A-99** in
+>    his own addendum and they are sitting unadjudicated (§2 below). My 2026-09-16 routing item 1
+>    had two halves; one landed.
+> 2. **`MGR-17` — no Phase 2 exit criterion covers `ask/`, which is why nobody noticed.** Eleven
+>    increments — `I-35`…`I-45`, the capability Jacob types questions into — were built inside
+>    Phase 2, and the phase's exit-criteria block mentions them **once, incidentally**. The gate's
+>    seventeen sections map onto EC-1…EC-15, EC-E and the attack list; **none of them is about
+>    `ask`.** So `fails=0` is *true* and it is **silent** about a third of what the phase built.
+>    That is not the breaker's failure and it is not the builder's: a phase gained a capability and
+>    its ship gate did not.
+>
+> **The distinction that matters, because it will be misread:** `fails=0` is not wrong and the gate
+> is not weak. It is **scoped to a criteria block written before `ask` existed**. A SHIP verdict is
+> an assertion that the phase's exit criteria were re-derived *and that they cover the phase*. The
+> first half is now true. The second is not, and one round plus one architect pass closes both.
+>
+> **What I am not saying.** `ask` is not broken — I ran it, `R73-1` and `R73-5` are both gone, and
+> 59 `ask` tests pass. Nothing here is a defect in the picker, in the gate, or in the globe work.
+> This is not a re-run of the last verdict: **five of its six findings are discharged**, and the
+> two that remain are the ones nobody was asked to do.
+
+---
+
+## 0. What closed — each one re-derived, not read
+
+**I checked every item I held the phase on, by running the thing rather than the summary of it.**
+
+| Prior finding | State at `1ddc8f9` | How I checked it, not who told me |
+|---|---|---|
+| **MGR-9** — `I-45` unbuilt | **Build half CLOSED. Round half OPEN → `MGR-16`** | `runEndsAt` is gone from `packages/core/src` (the only hits are the test that asserts its absence and two stale `qa/` probes). `journeyModeWord(stop, interval)` now takes the interval it is labelling — `ask.ts:630`, called at `:789` with `evidence.interval`. `node cli.ts ask "what countries do I visit"` **refuses**: *"I will not answer that: I cannot tell which trip you mean"*, with both disambiguations offered. That is **R73-5 closed at the shipped door** |
+| **MGR-10 (a)** — `ROW_PATHS`/`ROW_KEYS`/`ROW_COUNT_FIELDS` stated 24/14/8 | **CLOSED, and in the stronger form.** The numbers are **removed**, not corrected | Gate rows `M1`/`M2`/`M3` now assert the three **identities** (`'IDENTITY 2: the union of the union rows’ leaf paths is exactly ROW_PATHS'`, etc.), `M0` is an inconclusiveness guard on the extraction, `M4` is the injected fault, and `M5` publishes `SUMMARY_VERSION` as a note. No count is stated anywhere in the criterion. Criterion rule 6's own instruction, applied |
+| **MGR-10 (b)** / **MGR-12** — criterion E and `index.ts` stale at 86 | **CLOSED, and criterion rule 14 came out of it** | `Object.keys(m).length` → **91**. Gate section `P` compares **four views** — the command, `THE_LIST`, §2.10's code block, the index — and `P5d` asserts all four agree on one set. `P3b` is set-equality in **both directions**. `P2` asserts `index.ts`'s docstring states **no** count. The old row asked *"does §2.10 contain the string `86`?"*, which went green when revision 83 deleted the live `86` — that is `R75-2`, and it is the cleanest example of rule 14 in the repo |
+| **MGR-10 (c)** — criterion 15's ceiling forbade its own repair | **CLOSED.** The `scripts` edit is now explicitly permitted, and it landed | `package.json`'s `test` and `test:tap` globs both name `apps/web/test/*.test.ts`. `node --test apps/web/test/*.test.ts` → **13 pass**; `npm run test:tap` → **1,990 pass / 0 fail**, against 1,969 at the last verdict — **+13** now visible from `apps/web/test/` (7 that already existed and had never run in CI, plus 6 new globe tests) and **+8** from `I-45`'s own additions |
+| **MGR-11** — the gate 19 rounds unrun, 11 red | **CLOSED, and this is the one that changed most** | `node qa/r54-gate.mjs` → **`COMPLETE fails=0 ruled=0 unruled=0 gaps=2 notes=69`**, exit 0, 9.6 s. I did not stop at the count: I listed the sections (17, `A`…`Q`, one per criterion), read `H`, `M`, `N`, `O` and `P` row by row, and confirmed each has an inconclusiveness guard and a firing fault. Both `gaps` are `Q24`/`Q25` and **each names where it IS evaluated** |
+| **MGR-13** — the privacy criterion unevaluable | **CLOSED, and it is the best-built row on the board** | Section `N`: the needle set is **discovered from the reference trip document at run time** (`N0` — 617 needles), `N0a` guards non-triviality, `N0b` asserts `City.key`/`Place.name` are subtracted, `N1a`/`N1b` run both arms per coordinate-bearing golden, **`N1c` asserts every one earned its exclusion and names no file**, `N1d` records the earned set as a *note*, `N1i` fires the injected fault naming the needle, and `N1l` asserts the golden on disk is byte-identical afterwards. `qa/r54-gate.mjs:904`'s hard-coded filename set is gone |
+| **MGR-15** — `r74-vacuity.sh` scoring a run that never started as CAUGHT | **CLOSED** (round 75, recorded; the script's subject was retired with the round-74 board) |
+| **MGR-14** — `GAZETTEER_CONSUMERS`'s denominator | **UNTRIGGERED, correctly.** It binds at `I-42` |
+
+**Phase 2's exit criteria, re-derived at revision 84 — my own reading, criterion by criterion.**
+The block is EC-1…EC-15 plus criterion E. I walked it against the gate's section index and against
+the artefact. **Every criterion is evaluable as written, and every one is green.** The two I
+re-derived by hand rather than by reading a row are criterion E (91, four views, both directions)
+and criterion 15 arm 2 (`O1d`: root closure identical at both ends at 3 packages; `O1d4` every
+added entry — `@types/d3-geo`, `d3-array`, `d3-geo`, `internmap` — inside `apps/web`'s closure and
+outside the root's; `O1d5` nothing removed; `O1d9` every declared dependency in `boundaries.test.ts`'s
+`allowBare`). **The gate is not the reason I am not shipping.**
+
+## 1. Does Phase 2 SHIP? — **NO. SEND BACK**, on `MGR-16` and `MGR-17`.
+
+### MGR-16 (MAJOR, breaker + architect) — `I-45` was built and never attacked, and three disclosed divergences from A-99 are unruled
+
+`ROADMAP.md:11386`, `I-45`'s own *Route* bullet, in full:
+
+> **Route: builder, and then one confirmation round over `I-45` as one subject.** **That round is
+> the decision point A-99 Part 10 names**: if it finds a prose defect in an `Answer.text` that no
+> criterion covers, `free_time`'s composed paragraph is withdrawn in favour of a one-sentence
+> verdict plus the `facts` array, and that withdrawal is a builder increment, not another architect
+> round.
+
+`grep -n 'I-45' cairn/docs/QA-FINDINGS.md` → **no lines**. The rounds since are **75** (the gate
+re-cut) and **76** (one gate row). Neither took `I-45` as its subject, and both say so honestly in
+their own status blocks. **This is not a bookkeeping gap:** the round is a *product* decision point
+— whether the flagship answer's composed paragraph survives — and it has not been reached.
+
+**Three divergences from A-99, disclosed by the builder in `BUILD-NOTES.md`'s `I-45` addendum
+(the *"Divergences from A-99, all three disclosed"* row), each of which is an architect's call and
+none of which has had one:**
+
+- **(a) The published accept-set arithmetic is one fragment short, in two contract documents.** The
+  build is **1,320 sentences from 26 fragments**; A-99 Part 5 and `ROADMAP.md` `I-45` both state
+  **1,272 from 25**. A-99 Part 5 lists `NP_ONLY_FRAMES (4)` and then admits
+  `have i visited on <np>` on the same line, Part 4 adjudicates it admissible **by name** and makes
+  it criterion N6's own instrument — and the arithmetic counts four. **The builder implemented the
+  fragment and asserted the relationship rather than the total, which is correct and is what `I-45`
+  told him to do.** The two published figures are still wrong.
+- **(b) A third count renderer exists that A-99 Part 8 does not name.** `countOf(n, singular)`,
+  built **on** `countWord` with a shared `plural()`, because *"On it are 8 scheduled stops…"* needs
+  an indefinite counted noun and neither of Part 8's two shapes covers it. Reasonable; unruled.
+- **(c) A-99 Part 6's monotonicity claim is false for exactly one corpus entry.** *"what countries
+  do we go to"* rides on the bare frame Part 3 deletes, so Part 6 (*every phrasing answered at
+  `08c4696` is answered after this increment*) and Part 3 are in direct conflict there. The builder
+  **marked it `withdrawn` rather than silently re-marking it `refuse`**, and asserted the mark so
+  the withdrawal cannot be undone without reddening. That is exactly right, and it leaves a ruling
+  whose stated property is false and uncorrected.
+
+**Why this gates and the rest of the board does not.** The gate measures what the criteria name.
+These three are a *ruling* disagreeing with its own build, in the one capability the phase's
+criteria do not measure at all (`MGR-17`). The instrument that would catch them is the round that
+did not run.
+
+### MGR-17 (MAJOR, architect) — eleven increments built the `ask` capability inside Phase 2 and no exit criterion mentions it
+
+Measured: over `ROADMAP.md:11391`–`11960` (the whole exit-criteria block plus the attack list),
+`grep -ci 'ask'` returns **1**, and it is incidental. `qa/r54-gate.mjs` declares **17** sections and
+every one of them is implemented — `A` EC-1 through `P` EC-E, plus `Q` the attack list. **None is
+about `ask`.** The single occurrence of the string in the gate is a source comment about §2.10's
+`ask (3)` export group.
+
+So the phase's ship gate is complete with respect to the criteria it has, and **silent about
+`I-35`…`I-45`**. That silence is the reason `MGR-16` could happen without anyone being careless:
+there is no row anywhere whose redness would have said *"the `ask` repair was never confirmed."*
+
+**This is sequencing rule 5's family and it is the architect's**: a criterion block that does not
+cover its own phase is a design defect, not a build defect. The phase acquired a capability at
+revision 77 and the block has not moved since revision 40 except to be corrected.
+
+**What I am asking for is small and I am naming its ceiling so it does not grow.** Not a new
+subsystem of criteria — **one criterion**, with the shape the block already uses: a ceiling plus an
+injected fault, over the property `ask` actually has to hold. The material is already written and
+already asserted in `packages/core/test/ask.test.ts`: A-98's accept-set closure (*the gate answers
+a sentence because it IS one of the generated sentences, and 0 of N lifetime phrasings are members*),
+A-99's grounding (*no `Answer.text` states a value that is not true outside the decision that
+produced it*), and criterion rule 12's rendered-text sweep, which is at `ask.test.ts:2093` today and
+which **no criterion cites**. Cite the assertions; state no counts (rule 6); keep the fault.
+
+### MGR-18 (MINOR, architect) — Phase 3's entry condition 1 is stale again, one revision after rule 13 was written to stop exactly this
+
+`ROADMAP.md:12084`, the condition that gates Phase 3, still reads **"`I-45` is the last Phase 2
+increment and it is unbuilt"**. It was built at `f3bc3cd`. The entry carries a **⚠ Corrected at
+revision 83** banner and a paragraph explaining that *"a superseded entry condition is corrected
+rather than left for a reader to notice"* — and it went stale again on the next commit that touched
+the subject. `I-45`'s own increment entry carries **no BUILT banner** either. **This is rule 13's
+own class, in the document that defines rule 13, inside the entry that already records having been
+caught by it twice.** It cost me a re-derivation, which is the second time in two verdicts.
+
+### MGR-19 (MAJOR, builder) — the Figma file key is still live in a tracked file at the tip, and the record says it is not
+
+The repo is public. `02da1ee`'s message states the leak as *"a Figma file key and URL in
+`.impeccable/review/figma-redesign.json`"* — one file — and redacts that file. **`git grep` for the
+key at `02da1ee^` matched two paths, and the second is untouched at HEAD:**
+
+```
+cairn/artifacts/figma-redesign.md:3:[Editable Figma file](https://www.figma.com/design/ni4enXsWxhFHa5pqIEknAl)
+```
+
+Both were added by Codex in `4940630`. The redaction pass grepped for `C:/Users/jacob` and found
+ten files; it did not grep for **the key itself**, so it closed two of three copies of the one item
+in the batch that is capability-shaped. `cairn/artifacts/` is not `.tsx` and not `docs/design/` —
+it is not fenced, and nothing prevented this from being fixed in the same commit.
+
+**Mitigating, and stated so this is not read as worse than it is:** Jacob is rotating the key, and
+history carries it regardless on a public remote, so rotation was always the real remedy. **What is
+a finding is the record**, which says the tip is clean when it is not — and the next reader will
+believe it.
+
+*(`cairn/docs/design/WORLD-FIRST.md:125`'s LAN IP is separately and correctly disclosed as not
+done, because that path is fenced. Still open; still Codex's or Jacob's.)*
+
+### MGR-20 (MINOR, breaker) — the new globe tests are real, and they are blind to the pose
+
+**I ran my own mutation harness rather than accepting the reported 5-of-6**, injecting eight defects
+into `apps/web/src/world/globeGeometry.ts` one at a time and restoring between each (porcelain 0
+before and after; the full table is in **§ Verified**). **Six of eight redden, and the reported
+lat/lng-swap does redden four assertions — that claim is true.** Two survive:
+
+- **`.clipAngle(90)` deleted → 8/8 green.** This is the refused sixth defect, and **the refusal is
+  correct**: `geoOrthographic()` already applies `.clipAngle(90 + ε)`, so the deletion shifts the
+  clip by 1e-6°. Recorded as **KD-132** rather than tested, which is criterion rule 9's (b) done
+  properly. I endorse it in writing.
+- **`.rotate([-p.longitude, -p.latitude, 0])` → `.rotate([-p.latitude, -p.longitude, 0])` → 8/8
+  green, and it is NOT declared.** This is not equivalent and it is not small: at the shipped
+  opening pose it changes **240 of 292** drawn paths and takes the visible-country count from
+  **233 to 219**; at `{lon 12, lat 70}` it is 254 of 292 and **236 → 191**. It is the defect where
+  a vertical drag spins the globe sideways.
+
+**Why the suite cannot see it:** every assertion is either about the **unprojected** shapes (the
+landmark test reads `globeShapes`, which is where the *ring-reading* swap lives) or about a
+rotation-invariant property of the disc (radius, zoom ratio, paint order). **Nothing asserts that a
+given pose puts a given place at a given point on the disc** — so the pose is the one input with no
+oracle. That is the F1 class one axis over, and it survived because the Codex pass enumerated six
+mutants rather than asking what the module's inputs are. **Criterion rule 12's own lesson applied to
+a mutant list: the remedy is not a seventh mutant.**
+
+**It does not gate Phase 2** — the globe is unapproved Codex WIP and no exit criterion touches it —
+but the claim *"the globe is now guarded"* is narrower than it has been stated, and the merge
+recommendation below rests on the narrower version.
+
+### MGR-21 (MINOR, owed — and this is the one Jacob actually reads)
+
+`docs/CAIRN_VISUAL_ROADMAP.md` and its `.html` twin were last touched at **`f5aef8e`**, before the
+2026-09-16 verdict. Its own first paragraph says *"Read this file, not your memory of a past
+session, before answering 'where is Cairn.'"* It currently says nothing about the picker being
+built, nothing about `I-45`, nothing about the phase gate. **Three verdicts have now named this as
+owed and it has not been done.** It lands with `MGR-16`'s pass.
+
+## 2. Does `R75-11` gate? — **NO**, and here is the reasoning rather than the answer
+
+**I verified it is real rather than taking it, and I ran the whole board myself rather than three
+samples of it.** `node qa/r75-board.mjs` to completion: **`BOARD COMPLETE walked=272 ran=135
+green=97 red=38 crashed=17 notRun=137`** — **`crashed=17` reproduced exactly, and the seventeen
+names match the breaker's list item for item.** Three of them I also ran alone to see the throw
+(`qa/r9-geo.mjs` at `:48` in `sourceTrip`; `qa/r61-corpus.mjs` on `ERR_MODULE_NOT_FOUND` for
+`packages/core/src/geo/gazetteer.gen.ts`; `qa/r73-i44.mjs` on `TypeError: … reading 'replace'` at
+`:171`). The breaker's filing is accurate in every particular, has a one-command reproduction, and
+classifies all seventeen by **measured** cause. **The breaker did its job on this one; it declined
+to fix it in-round and said so in writing, which is the correct behaviour and not a finding.**
+
+**It does not gate Phase 2, and the reason is specific rather than a judgement call.** I measured
+which `qa/` probes the Phase 2 exit-criteria block actually depends on: over `ROADMAP.md:11391`–
+`11960` there are exactly **two** — `qa/r54-gate.mjs` and `qa/i7a-idb-rowkeys.mjs`. **Neither is
+among the seventeen.** The seventeen are past rounds' evidence boards; nine abort on door guards
+`I-15`…`I-19` **correctly added**, five on a module `I-23`'s sharding **correctly deleted**, and one
+(`r30-upcast`) aborts under bare Node **by design**. A stale probe asserting a withdrawn behaviour
+is rot, not a signal about the product.
+
+**Where I do not follow the framing I was handed.** *"A green gate beside 17 crashing probes is the
+shape this project keeps getting caught by"* is a good instinct and it is about the wrong object
+here. The shape that catches this project is **an instrument reporting success for doing nothing**
+— and the seventeen do the opposite: they crash loudly, they are counted, they are named, and a
+runner now exists that finds them. The gate itself is the object that must not be vacuous, and I
+checked that directly: 17 declared sections, 17 implemented, inconclusiveness guards on the
+extractions, faults that fire, `unruled=0`, both `gaps` pointing at where they are evaluated.
+
+**What I am ruling instead, and it is a real obligation.** `R75-11` is a **hard precondition on the
+next breaker round** and **must be closed before Phase 3's first QA round**, for a reason that is
+not hygiene: Phase 3 adds a server, a projection and a share path, and the `qa/` board is the only
+instrument that runs *across* subsystems. A board that aborts seventeen ways is not a board you can
+add an eighteenth subsystem to. It rides with `MGR-16`'s round.
+
+## 3. Does the Codex batch merge to `master`? — **YES, whole, after one precondition. Recommended, and the call is Jacob's**
+
+**The separation question is settled and I verified the reasoning rather than the conclusion.**
+`App.tsx` imports `Library.tsx` (→ `CitySelector.tsx`, the picker) **and** `World.tsx` (→
+`Globe.tsx` → `globeGeometry.ts` → `d3-geo`), plus `world.css`, `immersive.css`, `NavIcon`,
+`Profile` and `localIdentity`, in one module. Taking the picker alone means editing `App.tsx` to
+remove the World tab — a structural change to fenced Codex work, made by us, to code whose visual
+direction Jacob has not approved. **That is a worse act than either merging or holding.** Option (a)
+from my last verdict is withdrawn; I was wrong that it was cheap.
+
+**So the question is merge-whole versus keep-holding, and I recommend merge.** The reasons, in the
+order they should weigh:
+
+1. **`0` blockers from an adversarial pass that actually found things.** `F1` and `F3` were both
+   MAJOR and both real — `F3` in particular found that **the batch's entire browser-verification
+   evidence base could not be re-run by anyone**, which is the finding that would have let us
+   believe the screens were checked. Both are fixed. A review that finds two MAJORs and clears the
+   rest is worth more than one that clears everything.
+2. **Holding is not free and this repo has been burned by it specifically.** `CLAUDE.md`'s
+   **Branches** section exists because Cairn work once lived only on an orphaned `claude/*` history
+   while `master` went stale. We are nine commits deep on `review/i30-picker` with `master` at
+   `86692af`, and **every further Phase 2 repair lands on the branch too**. The longer this runs the
+   more the merge stops being a decision and starts being a migration.
+3. **The picker is the thing Jacob has been waiting for since `I-21`** and it is only reachable on
+   `master` through this merge.
+4. `npm run typecheck` is exit 0 across **both** projects, so the 103 files compile; `npm run
+   test:tap` is 1,990/0 with `apps/web/test/` finally inside the glob.
+
+**The one precondition, and it is small: close `MGR-19` before the merge.** Merging a live Figma
+file key onto `master` while the record says it was redacted is the single thing here that could
+embarrass us, and it is a one-line edit to an unfenced file. Do that first; do not gate the merge on
+anything else.
+
+**Three things that must be said IN the merge commit rather than discovered afterwards**, because
+merging is also publishing a claim about what landed:
+
+- **The World tab and the first-run screens are unapproved WIP.** Jacob has not seen them and this
+  pipeline has issued no judgement on how they look. Merging them makes them the default app on
+  `master`. Under the convention *never present our suggestion as Jacob's own plan*, that has to be
+  stated at the point it lands, not inferred from a branch name.
+- **`F4` is open and it degrades silently.** `vite.config.ts` sets `base: './'` while seven source
+  sites use root-absolute `/images/…` (`ExampleJourney.tsx:8`, `CroatiaPreview.tsx:5,6,19,30`,
+  `Profile.tsx:39`, `World.tsx:133,134`, `earthMaterial.ts:84`). Served from a sub-path or
+  `file://`, the globe texture and every photo 404 — and `earthMaterial.ts:85` is
+  `img.onerror = () => { if (!disposed) ready(false); }`, so the globe comes up **untextured with no
+  message**. Confirmed by reading the built chunk and the source. This is the class the planner's
+  own history is full of: a map that fails to a plausible-looking wrong picture.
+- **`MGR-20`**: the globe's guard does not cover the pose.
+
+## 4. Phase 3 entry conditions — exactly which are satisfied
+
+Against `ROADMAP.md:12081`–`12107`. **`I-39` does not start today, on condition 1 alone.**
+
+| # | Condition | State at `1ddc8f9` |
+|---|---|---|
+| **1** | **Phase 2 shipped, with a manager verdict of SHIP** (sequencing rule 2) | **NOT SATISFIED.** This verdict is SEND BACK. **It is satisfied when `MGR-16` and `MGR-17` land and the re-issued verdict is SHIP — nothing else is outstanding against it.** *(The condition's own text is also stale: it says `I-45` "is unbuilt". `MGR-18`)* |
+| **2** | **`R72-1`, by direction not dependency** | **SATISFIED, and I re-verified it at the shipped door rather than reading round 73.** `node cli.ts ask "what countries do I visit"` refuses with *"I cannot tell which trip you mean"* and offers both scopes. A-98 is the ruling, `I-44` the code, round 73 the confirmation. Jacob's direction is met. **It does not gate this verdict** — `MGR-16` is about round 73's *other* findings, not this one |
+| **3** | **`A-2`/`P2-8` ruled by the architect before `I-42`** | **NOT YET DUE, NOT SATISFIED, and it does not block `I-39`.** `I-39`, `I-40` and `I-41` contain no share, friend or public-link code. Architect owes it before `I-42`. **`MGR-14` binds at the same point** — do them in one pass |
+| **4** | **Nothing purchased before `I-41`** | **SATISFIED.** Nothing purchased. `I-39` and `I-40` need no vendor; `I-41` needs a **local** Postgres |
+
+**So `I-39`'s start condition is exactly one line long: `MGR-16` and `MGR-17` close and I re-issue
+SHIP.** When it starts, its read is `ARCHITECTURE.md` **§12 whole and nothing else in that
+document**, and **§12 Part 3 (the never-list) and Part 4 (what a share page may contain) come before
+any other Phase 3 decision** — including before anyone opens a hosting page.
+
+## 5. `F10` and `F11` — routed to me, ruled
+
+### F10 — 45 binary files, 12.46 MB, permanently in history. **ACCEPTED. It gates nothing.**
+
+Re-measured myself over `4940630^..1ddc8f9`: **45 blobs, 13,063,209 bytes (12.46 MB)** matching
+`.png|.jpg|.jpeg|.svg|.webp|.gif|.ico|.woff2?|.mp4`. The reported 44 / 12.51 MB is the same
+population under a slightly different extension set; the difference is not material.
+
+**Ruling: do not rewrite history.** The branch is pushed to a public remote; a rewrite invalidates
+every sha in `REVIEW.md`, `QA-FINDINGS.md`, `BUILD-NOTES.md` and `ROADMAP.md` — documents whose
+entire value is that a sha means one tree — and buys back 12 MB. **The cost of the fix exceeds the
+cost of the defect**, and that is the whole ruling.
+
+**One line to the architect, non-blocking, no trigger date:** say what this repository's position on
+committed binary assets is, so the next 12 MB is a decision and not an accident. One sentence in
+§0 is enough. It does not gate anything and no increment waits on it.
+
+### F11 — `docs/CODEX-PHASE3-HANDOFF.md` says the picker gate remains open. **BUILDER, one banner, before the merge.**
+
+Confirmed at `docs/CODEX-PHASE3-HANDOFF.md:30`: a heading **"Picker gate remains open"**, and at
+`:32` *"Do not mark I-30 complete merely because CitySelector exists"*, followed by five gate items
+it says are outstanding. **All five were ruled ESTABLISHED by the 2026-09-16 verdict**, which
+returned **`I-30`: SHIP** on the increment, and that verdict stands and is not superseded by this
+one.
+
+The document is not wrong about the checkout it was written against — it says so itself at `:66`
+(*"A-98 is not present in this older checkout"*). **What makes it a finding is that it will be read
+as current**, by Codex, at the point Codex is deciding whether to touch the picker.
+
+**Route: builder.** Put a dated banner at the top of the file — not an edit to its body, which is
+Codex's record of its own reasoning: *"`I-30` returned SHIP at the manager gate of 2026-09-16
+(`REVIEW.md`, `1adc706`) and the five gate items below are ESTABLISHED. This document is the state
+at `4940630` and is kept as that record."* The file carries no personal data at HEAD — I checked.
+
+---
+
+## Routing — each item, its agent, and exactly what it must do
+
+**Order: 1 and 2 in parallel; 3 needs 2; 4, 5 and 6 are independent of all of them. Only 1 and 2
+gate the re-issued verdict.**
+
+1. **BREAKER — one confirmation round over `I-45` as one subject, and `R75-11` in the same pass.**
+   This is `MGR-16` and it is the only thing between here and SHIP.
+   - **Read:** `ARCHITECTURE.md` **§11 whole and nothing else in that document** (the cost map's
+     revision-82 row: A-99 first, then A-98 whole, then A-97 Parts 2 and 5, then §11.3, §11.5,
+     §11.7), plus `BUILD-NOTES.md`'s `I-45` addendum — specifically its *"Divergences from A-99, all
+     three disclosed"* and *"Could not verify / not done"* rows, which are your starting attack
+     surface rather than background.
+   - **`I-45`'s four parts, attacked as one subject:** the four withdrawn present-simple bare
+     fragments; the generated twin per bare frame; `runEndsAt`'s deletion (A-99 Part 9 asserts it
+     has no consumers — a consumer is that assertion being false); and `journeyModeWord`'s interval
+     parameter, which is **R73-1**, the regression.
+   - **A-99 Part 10 is the decision this round exists to make and you may not skip it.** If you find
+     a prose defect in an `Answer.text` that no criterion covers, `free_time`'s composed paragraph
+     is withdrawn in favour of a one-sentence verdict plus the `facts` array — and that withdrawal
+     is a **builder** increment, not another architect round. Say which way it went, explicitly,
+     even if the answer is *"no such defect found"*.
+   - **Adjudicate the builder's three divergences** (a), (b), (c) of `MGR-16` above — each as
+     confirmed / refuted / routed-to-architect, one at a time, in writing. (a) is a document defect
+     in two files and is the architect's to correct; you establish whether **1,320 from 26** is what
+     the shipped accept set actually is.
+   - **`R75-11`, all seventeen, in the same pass.** Nine re-cut against the `I-15`…`I-19` door
+     guards (the refusals are correct; the probes are stale — this is R55-6's re-cut, seven of which
+     you have done before); five re-pointed off the committed shards through the real loader, which
+     is `I-33`'s own stated debt; `i6a-gate` and `r73-i44` fixed (the latter is
+     `journeyModeWord(stop)` at four call sites, which the `I-45` builder named and correctly did
+     not touch); `r30-upcast` **declared** as needing real IndexedDB, not fixed. **Establish:**
+     `node qa/r75-board.mjs` reports `crashed=0`, and every remaining red is named in
+     `QA-FINDINGS.md` as expected evidence.
+   - **`MGR-20` in the same pass:** add the assertion that gives the pose an oracle — at a named
+     pose, a named place projects to a named point on the disc, within tolerance — and confirm it
+     reddens on `.rotate([-p.latitude, -p.longitude, 0])`. Repro and measurement in **§ Verified**
+     row 11. Do **not** add a seventh mutant to a list; add the oracle the module's inputs are
+     missing.
+   - **Not yours:** the browser half of the board (79 files) stays deferred and stays disclosed.
+
+2. **ARCHITECT — one pass, four items, no code.**
+   - **(a) `MGR-17` — one exit criterion for `ask`, added to Phase 2's block.** Ceiling plus
+     injected fault, stating no counts (rule 6), citing assertions that exist: A-98's accept-set
+     closure, A-99's grounding rule, and criterion rule 12's rendered-text sweep at
+     `packages/core/test/ask.test.ts:2093`, **which no criterion currently cites**. **Establish:**
+     a reader of Phase 2's exit criteria can tell what `I-35`…`I-45` had to hold, and
+     `qa/r54-gate.mjs` gains one section for it. **Ceiling on this item: one criterion.** If it
+     wants to be five, that is a Phase 2 scope question and it comes back to me first.
+   - **(b) `MGR-16` (a) — the accept-set arithmetic.** A-99 Part 5's `6 × (12 + (9 + 4 + 12) × 8)`
+     and `ROADMAP.md` `I-45`'s copy both state **1,272 from 25** while Part 4 adjudicates a 26th
+     fragment admissible by name. Correct both, or state the relationship and move the figures to
+     `BUILD-NOTES.md` as history against a fixed commit — **rule 6's own instruction, and rule 13(b)
+     says enumerate the carriers in the ruling this time.** Rule on (b) `countOf` and (c) A-99
+     Part 6's monotonicity claim in the same pass; (c) needs Part 6's sentence narrowed to admit the
+     one withdrawn entry, since the build is right and the sentence is not.
+   - **(c) `MGR-18` — Phase 3 entry condition 1 and `I-45`'s BUILT banner.** `I-45` was built at
+     `f3bc3cd`; `ROADMAP.md:12084` still says it is unbuilt. **And say what re-arms it**: this entry
+     has now gone stale three times, and the fix that keeps failing is correcting the sentence. The
+     condition should not name an increment at all — its own revision-83 note says so and then names
+     one.
+   - **(d) `R76-2`, `R76-3`, `R76-4` — closed in the instrument, open in the criterion.** **I
+     verified all three are genuinely closed in the gate and I am not re-litigating them**: `O1d6`
+     asserts (2b)'s verdict is invariant under all three resolution conventions; `O1d2` asserts
+     version *and* integrity across the root closure, not just names; `O1d3` runs the closure over
+     **each** bare-Node workspace, which is A-58's four manifests. The breaker measured its own
+     instrument against its own criterion and found the sentence narrower — that is the pipeline
+     working, and the fix is one pass over criterion 15 arm 2 to say what the gate already asserts.
+     **Non-blocking. It may ride with (a) or wait for the next architect pass.**
+   - **Also yours, untriggered, listed so it is not rediscovered: `MGR-14`** (`GAZETTEER_CONSUMERS`'s
+     denominator) and **entry condition 3** (`A-2`/`P2-8`). Both bind at **`I-42`**. Do them in one
+     pass when that comes.
+
+3. **BUILDER — three items, none of them gating, all of them before the merge.**
+   - **`MGR-19` — redact the Figma key at the tip.** `cairn/artifacts/figma-redesign.md:3` carries
+     `https://www.figma.com/design/ni4enXsWxhFHa5pqIEknAl`. It is not `.tsx`, not `docs/design/`,
+     not fenced. Redact it the way `02da1ee` redacted its sibling (`redacted-see-jacob`), and **run
+     `git grep` for the key itself, not for a path**, to confirm the tip is clean — which is the
+     step whose absence caused this. Add a line to the commit saying history still carries it.
+   - **`F11` — the banner on `docs/CODEX-PHASE3-HANDOFF.md`**, wording in §5 above. Do not edit the
+     body.
+   - **`MGR-21` — `docs/CAIRN_VISUAL_ROADMAP.md` and its `.html` twin, in the same pass**, to this
+     phase boundary. Three verdicts have now owed this. The three-way distinction the board already
+     uses: **`I-30` → shippable**; **`I-45` → built, confirmation round owed**; **Phase 2 → verified,
+     not shippable**. It is the file Jacob is told to read before asking where Cairn is, and it
+     currently predates the picker.
+
+4. **CODEX — unchanged from what was already routed, and one addition.** `F4` (the `base: './'` vs
+   root-absolute `/images/…` mismatch, seven sites, with `earthMaterial.ts:85` degrading silently),
+   `F5` (`CroatiaPreview.tsx:2,14`'s withdrawn `d3-geo` importer — trigger: `grep -rn "d3-geo"
+   apps/web/src` returns `globeGeometry.ts` alone), `F7`/`F8`/`F9`, and
+   **`docs/design/WORLD-FIRST.md:125`'s LAN IP**, which is the last leak in a fenced path. **`F4` is
+   the one to do first** — it is the only one a user meets.
+
+5. **ME, at the re-issue.** When 1 and 2 land I re-derive the criteria block **including the new
+   `ask` criterion** and re-issue. **I will not re-run the whole gate's green rows a third time**;
+   what I will re-derive is the new criterion, `MGR-16`'s three adjudications, and `crashed=0`.
+
+6. **NOBODY — and I am naming these so they are not picked up.** `F10` is accepted (§5). The globe's
+   `.clipAngle(90)` mutant is **correctly refused** and **KD-132 is the right form** — do not
+   "fix" it by adding a test. `MGR-15` and the round-74 board are closed. `R75-11`'s browser half
+   (79 files) stays deferred and stays disclosed. **`R72-1` is closed and does not gate** —
+   re-stated because it has been misread once already.
+
+---
+
+## Verified — what I personally ran, and what happened
+
+All from `/home/user/europe-2026-planner/cairn` at `1ddc8f9` on `review/i30-picker`.
+**`git status --porcelain` → 0 lines before I started, after every mutation I injected, and at the
+moment I wrote this file** (rows 11 and 12 each assert it inline).
+
+| # | Command | Result |
+|---|---|---|
+| 1 | `node qa/r54-gate.mjs` | **`COMPLETE fails=0 ruled=0 unruled=0 gaps=2 notes=69`**, exit 0, 9.6 s. It was `fails=11` at `8a8a36d`. **MGR-11 closed** |
+| 2 | `grep -n '^section(' qa/r54-gate.mjs` | **17** sections, `A`…`Q`, one per exit criterion: EC-1…EC-15, EC-E, and `Q` the attack list. **Every declared section is implemented** — `H` and `Q` were the two that were not |
+| 3 | `node qa/r54-gate.mjs` filtered to `M`/`N`/`O`/`P`/`H` rows, read line by line | `M1`/`M2`/`M3` are the three **identities**, no count stated; `M0` guards the extraction; `M4` is the fault. `N0` discovers **617** needles from the trip document at run time; `N0a`/`N0b` guard it; `N1c` asserts every coordinate-bearing golden earned its exclusion **naming no file**; `N1i` fires the fault; `N1l` asserts the golden is byte-identical after. `O1d`…`O1d9` are the closure arms. `P3b`/`P5c`/`P5d` are set-equality in both directions across four views. `H1`…`H4` run criterion 8's own file out of band (16/16). **MGR-10, MGR-12, MGR-13 closed** |
+| 4 | `npm run test:tap` | **`# tests 1990 / # pass 1990 / # fail 0`**, 50.5 s. Baseline at the last verdict was 1,969 |
+| 5 | `npm run typecheck` | exit **0**, both projects (root and `apps/web` — the 103 Codex files compile) |
+| 6 | `node --test apps/web/test/*.test.ts` and `grep '"test"' package.json` | **13 pass / 0 fail**, and both `test` and `test:tap` globs now name `apps/web/test/*.test.ts`. **MGR-10 (c) closed** |
+| 7 | `node --experimental-strip-types -e "import('./packages/core/src/index.ts').then(m=>console.log(Object.keys(m).length))"` | **91**, agreeing with gate rows `P1`, `P1a`, `P3b`, `P5b1`, `P5d`. **Criterion E re-derived by hand** |
+| 8 | `node cli.ts ask "what countries do I visit"` | *"I will not answer that: I cannot tell which trip you mean… Ask 'how many countries am I visiting' for this trip, or `stats` for your whole library"*, then the menu. **R73-5 closed at the shipped door.** It answered *"This trip accounts for 7 countries"* six days ago |
+| 9 | `grep -rn 'runEndsAt' --include=*.ts --include=*.mjs .` and `grep -n 'journeyModeWord' packages/core/src/ask/*.ts` | `runEndsAt` survives only in `packages/core/test/ask.test.ts` (the test **asserting its absence**) and in two stale `qa/` probes. `journeyModeWord(stop: Stop, interval: OccupiedInterval)` at `ask.ts:630`, called at `:789` with `evidence.interval`. **R73-1 closed** |
+| 10 | `node --test packages/core/test/ask.test.ts` | **59 pass / 0 fail**; criterion rule 12's rendered-text sweep is at `:2093` (`assert.equal(/\b1\b/.test(text), false, …)`), asserted and **cited by no criterion** — which is `MGR-17` |
+| 11 | **My own mutation harness** — 8 defects injected into `apps/web/src/world/globeGeometry.ts`, one at a time, file restored from a copy between each, `git status --porcelain` asserted **0** at the end | **6 of 8 caught.** ring read lat-first → **4 fail**; zoom ignored → 1; winding not normalised → 3; latitude clamp removed → 1; paint order not reversed → 1; ring closing removed → 1. **SURVIVING: `.clipAngle(90)` deleted → 8/8 green** (correctly refused, KD-132) and **`.rotate([-p.latitude, -p.longitude, 0])` → 8/8 green, undeclared — `MGR-20`** |
+| 12 | A script projecting the shipped `COUNTRY_INDEX` under both rotate orders at three poses | At `{lon 12, lat 24}` — the shipped opening pose — **233 vs 219** entries drawn and **240 of 292** paths differ; at `{lon 12, lat 70}`, **236 vs 191** and 254 of 292. **The surviving mutant is a large, user-visible behaviour change.** Tree clean after |
+| 13 | `node --experimental-strip-types qa/r9-geo.mjs`, `qa/r61-corpus.mjs`, `qa/r73-i44.mjs` | All three **throw**: `sourceTrip` at `r9-geo.mjs:48`; `ERR_MODULE_NOT_FOUND` for `packages/core/src/geo/gazetteer.gen.ts`; `TypeError: … reading 'replace'` at `r73-i44.mjs:171` |
+| 13a | `node qa/r75-board.mjs` — **the whole board, run to completion** (~50 min; it exceeded a 900 s limit twice before I let it run unbounded) | **`BOARD COMPLETE walked=272 ran=135 green=97 red=38 crashed=17 notRun=137`.** **`crashed=17` reproduced exactly**, and the seventeen names match the breaker's list **item for item**: `attack2`, `i6a-gate`, `r10-mergeundo`, `r10-prune`, `r10-redo`, `r11-recheck`, `r30-upcast`, `r34-a45`, `r61-corpus`, `r61-migration`, `r61-precedence`, `r62-pick`, `r63-i24`, `r73-i44`, `r8-geo`, `r9-geo`, `r9-ledger`. My `green`/`red` differ from the round's by one row — `i30-faults-safety.sh`, which the breaker's own note predicts and explains as concurrency. **R75-11 is fully corroborated; the breaker's filing is accurate in every particular.** `git status --porcelain` → 0 after the run |
+| 14 | `sed -n '11391,11960p' docs/ROADMAP.md \| grep -oE 'qa/[a-zA-Z0-9._-]+' \| sort -u` | **Exactly two**: `qa/r54-gate.mjs` and `qa/i7a-idb-rowkeys.mjs`. **Neither is among R75-11's seventeen** — this is the measurement behind §2's ruling |
+| 15 | `sed -n '11391,11960p' docs/ROADMAP.md \| grep -ci 'ask'` | **1**, incidental. **MGR-17** |
+| 16 | `grep -n 'I-45' docs/QA-FINDINGS.md` | **zero lines**, against `ROADMAP.md:11386`'s *"and then one confirmation round over `I-45` as one subject"*. **MGR-16** |
+| 17 | `git grep -n 'ni4enXsWxhFHa5pqIEknAl' -- cairn` at `02da1ee^`, at `02da1ee` and at HEAD | **Two paths before, one after, one at HEAD**: `cairn/artifacts/figma-redesign.md:3` is untouched and live. **MGR-19** |
+| 18 | `git grep -nE '192\.168\.[0-9]+\.[0-9]+\|10\.…' -- cairn`; `git grep -nEi 'C:\\Users\\\|/mnt/c/Users/' -- cairn` | One hit: `cairn/docs/design/WORLD-FIRST.md:125` (LAN IP, fenced path, correctly disclosed as not done). **Zero** Windows-username hits — that half of `F3` is genuinely closed |
+| 19 | `grep -n 'base' apps/web/vite.config.ts`; `grep -rn '/images/' apps/web/src`; `sed -n '78,92p' apps/web/src/world/earthMaterial.ts` | `base: './'` at `:10`; **seven source sites** use root-absolute `/images/…`; `img.onerror = () => { if (!disposed) ready(false); }`. **F4 confirmed, including the silent degrade** |
+| 20 | `git rev-list --objects 4940630^..1ddc8f9 \| git cat-file --batch-check` filtered to binary extensions | **45 blobs, 13,063,209 bytes = 12.46 MB**. **F10 re-measured** |
+| 21 | `grep -n 'I-30\|gate' docs/CODEX-PHASE3-HANDOFF.md`; `git grep -niE 'jacob\|C:/Users' -- docs/CODEX-PHASE3-HANDOFF.md` | `:30` *"Picker gate remains open"*, `:32` *"Do not mark I-30 complete…"*, five items. **F11 confirmed.** No personal data in it at HEAD |
+| 22 | `grep -n 'import' apps/web/src/App.tsx`; `grep -n 'CitySelector' apps/web/src/views/*.tsx` | `App.tsx` imports `Library.tsx` **and** `World.tsx` plus `world.css`, `immersive.css`, `NavIcon`, `Profile`, `localIdentity`; `CitySelector` is imported by `Library.tsx:20` and `PastTripForm.tsx:33`. **The picker cannot be separated without editing `App.tsx`** — confirmed |
+| 23 | `git log -2 -- docs/CAIRN_VISUAL_ROADMAP.md docs/CAIRN_VISUAL_ROADMAP.html`; `grep -n 'I-45\|I-30' docs/CAIRN_VISUAL_ROADMAP.md` | Last touched at **`f5aef8e`** (revision 80's Phase 3 design pass, before the 2026-09-16 verdict); **no mention of `I-30`, `I-45` or the gate**. **MGR-21** |
+| 24 | `git show --stat` on all nine commits since `1adc706` | `2462118` 3/+409−72 · `f3bc3cd` 4/+1048−359 · `ed13aff` 2/+17−2 · `02da1ee` 14/+27−27 · `53f7809` 5/+394−3 · `cb323d9` 6/+1145−235 · `9d42455` 1/+8 · `6b7edc9` 2/+385−27 · `1ddc8f9` 3/+397−26. **Each matches its author's report** |
+
+**What I did NOT run, stated rather than implied.**
+
+- **The browser half of the `qa/` board — 79 files — is `notRun`**, by the runner's own
+  classification, and stays a disclosed deferral. The 135 headless probes I did run (row 13a).
+- **No browser, and therefore no judgement on how anything looks.** I did not render the picker, the
+  globe or the first-run screens. `F4`, `F8` and `F9` are confirmed by source and by the built
+  chunk, not by a page. **`qa/i7a-idb-rowkeys.mjs` is a disclosed gap, not a pass** — that is the
+  criterion's own instruction and it is met.
+- **I did not re-run every green gate row by hand.** I read the five sections carrying the findings
+  I had routed (`H`, `M`, `N`, `O`, `P`) row by row, and re-derived criterion E and criterion 15
+  arm 2 independently. The other eleven sections I read as output.
+- **I did not re-review the 103 Codex files.** The adversarial pass did; I verified two of its
+  findings myself (`F4`, `F10`), confirmed its redaction claim was **incomplete** (`MGR-19`), and
+  ran my own mutation harness against the fix for its headline finding (`MGR-20`).
+- **I did not re-litigate `d3-geo`.** Jacob decided it on a measured review; the architect recorded
+  it as a bounded exception with five conditions. I read the record and checked the gate asserts it
+  (`O1d7`/`O1d8`/`O1d9`).
+
+---
+
+## For Jacob — where this actually stands
+
+**Almost everything I sent back six days ago came back done, and I checked it rather than took it.**
+The "ask a question about your trip" bug is fixed — I typed the question that used to give the wrong
+answer and got the right refusal. The picker is built and closes. The phase's checklist, which had
+not been run in nineteen rounds and was eleven red, now runs clean in ten seconds, and I read it row
+by row rather than trusting the summary line: it has seventeen sections and **every one of them is
+now actually implemented** — two of them had been promised-but-missing for months. The privacy check
+is a real check again. 1,990 tests pass.
+
+**I am still not calling Phase 2 finished, and it is one thing, not a list.**
+
+The fix for the "ask" bug was **built but never attacked.** Our own process says that feature gets a
+dedicated quality round after the fix, and that round is where a real product question gets decided
+— whether the long paragraph the app writes about your free time survives or gets cut down to one
+sentence plus the facts. That round did not happen. And while it was built, the builder wrote down
+**three places where his code and the design document disagree** — including one where the design's
+own arithmetic is off by one — and nobody has ruled on any of them.
+
+**The reason nobody noticed is the more interesting half, and it is ours, not anyone's mistake.**
+Phase 2's pass/fail checklist was written before the "ask" feature existed, and it was never
+extended. **Eleven increments of work — the thing you type questions into — have no line on the
+checklist at all.** So the checklist passing is true, and it is silent about a third of what the
+phase built. One round plus one short design pass fixes both, and I have specified them so the two
+agents need nothing from you.
+
+**One thing I need you to know before the merge, because it is mine to have caught.** Codex's batch
+committed your Figma file key into two files. Our redaction pass cleaned one of them and **recorded
+that the job was done.** The second copy is still there, in the open, at
+`cairn/artifacts/figma-redesign.md`. It is a one-line fix and it is routed. You are already rotating
+the key, which was always the real remedy since it is in the published history either way — but the
+record said clean when it was not, and that is the part worth telling you about.
+
+**Two decisions I need from you:**
+
+- **The Codex batch — merge it whole?** I recommend **yes**, once that Figma line is fixed. You
+  asked whether the picker could be split out from it; **it cannot** — I checked the imports myself,
+  and separating them means us editing Codex's main app file to delete the World tab, which is worse
+  than either alternative. So it is all or nothing, and "nothing" is not free: we are nine commits
+  deep on a side branch, this repo has already been burned once by Cairn work living off `master`,
+  and every further fix lands on the branch too. **What you would be agreeing to:** the new World
+  tab and first-run screens land as the default app **without your visual approval** — we will say
+  so plainly in the merge commit rather than let it be inferred — and one known bug rides along
+  (`F4`: hosted anywhere other than the site root, the globe loses its texture and the photos
+  disappear, **silently**). It is routed to Codex and it is the first thing on their list.
+- **Nothing else.** Phase 3 stays held for one round. That is your standing decision and I am not
+  asking you to revisit it — I am telling you the wait is now one breaker round and one architect
+  pass, not four workstreams.
+
+---
+
 # I-30 — the city picker, and the Phase 2 ship gate
 
-> **Status: CURRENT.** Manager, stage 4. Reviewed `review/i30-picker` @ `8a8a36d`
+> **Status: SUPERSEDED on the phase question by the re-issued verdict above; STANDING on `I-30`.**
+> `MGR-9`'s build half, `MGR-10`, `MGR-11`, `MGR-12`, `MGR-13` and `MGR-15` are **discharged** —
+> the re-issued verdict's **§ Verified** has the commands. `MGR-14` is untriggered (it binds at
+> `I-42`). `MGR-9`'s *second* half — the confirmation round over `I-45` — is **not** discharged and
+> is re-placed as `MGR-16`. Everything below is kept as the record of what was routed and why.
+>
+> **Status at the time: CURRENT.** Manager, stage 4. Reviewed `review/i30-picker` @ `8a8a36d`
 > (`e890d50` → `c3a503b` → `8a8a36d`, on top of `4940630` and the `bdee7c7` merge of `master`);
 > `master` untouched at `86692af`. 2026-09-16. Every claim below has a command in **§ Verified**
 > and I ran it in this session.
