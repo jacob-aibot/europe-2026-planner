@@ -5052,6 +5052,44 @@ evidence is **`bash qa/i30-faults-safety.sh`** — `F1` SIGTERM, `F2` the refuse
 `F3` SIGINT where no trap can install — which is `all clear` at `ed13aff`. `S4` and `S5` still
 measure live properties and are unchanged.
 
+**Round 76** re-cuts **one row** of that gate — `O1d`, criterion 15 **arm 2** — against `ROADMAP`
+**revision 84**, which rewrote arm 2 after Jacob ruled `d3-geo` stays (**R75-3**). No new file:
+`r54-gate.mjs` section `O` is edited in place, because the row is the criterion's own assertion and
+a second script would be a second answer to one question.
+
+```bash
+node qa/r54-gate.mjs     # the gate: COMPLETE fails=0 ruled=0 unruled=0 gaps=2 notes=69
+```
+
+**The old row checked a sentence the criterion no longer contains** (*"`cairn/package-lock.json` has
+not moved"*), which is criterion rule 14's own shape inside the instrument. Arm 2 is now three
+sub-arms, all computed from the lockfile's own `packages` graph at the merge base and at `HEAD`,
+quoting no package list:
+
+- **`O1d`/`O1d1`/`O1d2` (2a)** the root workspace's transitive closure is identical at both ends —
+  3 packages, `@types/node` / `typescript` / `undici-types` — **and so is each package's version and
+  integrity**, which a set of names cannot see (**R76-3**).
+- **`O1d3` (2a, extended)** each OTHER bare-Node workspace's closure is unchanged too. A-58's
+  subject is four `package.json`s, not one (**R76-4**).
+- **`O1d4`/`O1d5`/`O1d6` (2b)** every `node_modules/` entry ADDED is inside `apps/web`'s closure and
+  outside the root's — measured: four (`d3-geo`, `d3-array`, `internmap`, `@types/d3-geo`), zero
+  removed, zero changed in place — and the verdict is asserted **invariant across three resolution
+  conventions**, because `apps/web`'s absolute closure size is not (**R76-2**: 70 → 74 deps-only,
+  72 → 76 skipping platform-`optional`, 99 → 103 including them; the `+4` is the same in all three).
+- **`O1d7`/`O1d8`/`O1d9` (2c)** `apps/web`'s declared dependency list equals the list parsed out of
+  `test/views.test.ts`'s own assertion, and every entry is in `test/boundaries.test.ts`'s `allowBare`.
+
+**Four faults fire, all in memory on `structuredClone()`d copies — nothing on disk is written**
+(R74-1 and R74-4 are this board's findings about exactly that hazard): `O1dF1`/`O1dF2` an entry
+reachable only from the root workspace reddens (2a) and (2b) and both name it; `O1dF3` a version
+bump inside an unchanged root closure reddens `O1d2` while (2a)'s name-set stays silent; `O1dF4` a
+fifth key in `apps/web`'s `dependencies` reddens (2c) and names it.
+
+**Do not re-derive these from round 76:** the four added entries and the root closure's three
+packages reproduce exactly from `git show`; `@types/geojson` is **not** a new entry (it arrived with
+`@types/leaflet` at `86692af`); `P3b` and `P5d` went green with `ROADMAP` revision 84 and the gate
+is `fails=0 ruled=0 unruled=0`.
+
 **Do not re-derive these from round 75:** the needle set the architect specifies for criterion 14
 is **510** strings and reproduces exactly (trip id/title, day id/date/**title**, every stop id and
 note including the pool, every place id and note, every photo id); the two coordinate-bearing

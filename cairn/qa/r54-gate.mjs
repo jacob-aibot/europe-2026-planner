@@ -1,6 +1,12 @@
 /**
- * The **Phase 2 phase gate** (ROADMAP `I-11`). Cut at QA round 54; **re-cut at QA round 75**
- * against ROADMAP **revision 83**, which corrected six stale criteria and rewrote the privacy
+ * The **Phase 2 phase gate** (ROADMAP `I-11`). Cut at QA round 54; re-cut at QA round 75 against
+ * ROADMAP revision 83; **section `O`'s arm 2 re-cut at QA round 76** against ROADMAP **revision
+ * 84**, which rewrote criterion 15 arm 2 after Jacob ruled `d3-geo` stays (R75-3). The row that
+ * stood there checked a **withdrawn proxy** — *"the lockfile has not moved"* — which is criterion
+ * rule 14's shape: a criterion checks the relationship it names, never a token standing in for it.
+ * See section `O`.
+ *
+ * Round 75's header, unchanged below. It was cut against ROADMAP **revision 83**, which corrected six stale criteria and rewrote the privacy
  * criterion. Rows that quoted a count the criteria no longer state (`F1a`, `M1`, `M2`, `M3`,
  * `P1a`, `P4`) assert the **identity** the criterion now names instead; `D-c2v` and `J3` assert
  * the sentences ROADMAP revision 60 corrected; section **N** is rebuilt on criterion 14's
@@ -39,7 +45,8 @@
  *   L  EC-12 NO SILENT LOSS — the closed list of six `state.doc` assignments
  *   M  EC-13 the row is exactly the allow-list — the three IDENTITIES, no count
  *   N  EC-14 no coordinate BELONGING TO A PERSON leaves the device's own storage
- *   O  EC-15 the photo subsystem with no browser; no package.json / lockfile movement
+ *   O  EC-15 the photo subsystem with no browser; arm 2 is over the lockfile's own dependency
+ *            CLOSURE — (2a) zero root growth, (2b) every added entry web-side, (2c) the pinned list
  *   P  EC-E  the export surface, counted rather than assumed, against §2.10
  *   Q  the phase attack list, run end to end (the country/edge cases named in ROADMAP)
  */
@@ -1218,41 +1225,236 @@ section('N — EC-14: no coordinate BELONGING TO A PERSON leaves the device’s 
 }
 
 // ---------------------------------------------------------------------------
-section('O — EC-15: the photo subsystem with no browser, and no dependency movement');
+section('O — EC-15: the photo subsystem with no browser, and the lockfile’s CLOSURE');
 // ---------------------------------------------------------------------------
 {
-  // Criterion 15's ceiling as SCOPED at ROADMAP revision 83 (MGR-10 item c): A-58's "no
-  // dependency" verdict, over `cairn/package.json`'s four dependency keys, `cairn/package-lock.json`
-  // and core/client's imports — and NOT over `scripts`, and NOT over `apps/web/package.json`.
-  // The row that used to be here read a WORKING-TREE diff against HEAD, which on a clean tree is
-  // green for any artefact whatsoever: criterion rule 9's own shape, named by the architect.
+  // Criterion 15's ceiling as SCOPED at ROADMAP revision 83 (MGR-10 item c) and REWRITTEN at
+  // revision 84: A-58's "no dependency" verdict, over `cairn/package.json`'s four dependency keys,
+  // `cairn/package-lock.json`'s own dependency GRAPH, and core/client's imports — and NOT over
+  // `scripts`, and NOT over `apps/web/package.json`.
+  // Two withdrawn rows are recorded here so nobody re-derives them as new:
+  //   * revision 83's own `O1`/`O3` read a WORKING-TREE diff against HEAD, green on a clean tree for
+  //     any artefact whatsoever — criterion rule 9's shape.
+  //   * round 75's `O1d` read the COMMITTED diff, which fixed that, but asserted *"the lockfile has
+  //     not moved"* — a sentence criterion 15 no longer contains after revision 84 (R75-3).
   const pkg = JSON.parse(readFileSync(resolve(CAIRN, 'package.json'), 'utf8'));
   eq('O1  ARM 1: cairn/package.json declares zero runtime dependencies', Object.keys(pkg.dependencies ?? {}), []);
   eq('O1a …and the only devDependencies are the pre-existing type-only pair',
     Object.keys(pkg.devDependencies ?? {}).sort(), ['@types/node', 'typescript']);
   eq('O1b …and there are no optionalDependencies or peerDependencies',
     ['optionalDependencies', 'peerDependencies'].filter((k) => Object.keys(pkg[k] ?? {}).length), []);
-  // ARM 2: the lockfile does not move — against COMMITTED bytes, over the phase, not the tree.
+  // ARM 2 — the lockfile's CLOSURE, against COMMITTED bytes, over the phase, not the tree.
   const lockfiles = execFileSync('bash', ['-c',
     `cd ${REPO} && git ls-files '*package-lock.json' '*yarn.lock' '*pnpm-lock.yaml' 'npm-shrinkwrap.json'`], { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
   eq('O1c cairn/package-lock.json is the repository’s only lockfile (the ceiling’s stated subject)',
     lockfiles, ['cairn/package-lock.json']);
-  const base = execFileSync('bash', ['-c', `cd ${CAIRN} && git merge-base HEAD master 2>/dev/null || true`], { encoding: 'utf8' }).trim();
-  const lockMove = base
-    ? execFileSync('bash', ['-c', `cd ${CAIRN} && git diff --numstat ${base} HEAD -- package-lock.json || true`], { encoding: 'utf8' }).trim()
-    : '';
-  const lockAdds = base
-    ? execFileSync('bash', ['-c', `cd ${CAIRN} && git diff ${base} HEAD -- package-lock.json | grep '^+ *"node_modules/' | sed 's/[": ]//g;s/+//' | sort -u | tr '\n' ' ' || true`], { encoding: 'utf8' }).trim()
-    : '';
-  ok('O1d ARM 2: cairn/package-lock.json has not moved between the branch point and HEAD (committed bytes)',
-    lockMove === '', { mergeBase: base.slice(0, 7), numstat: lockMove, packagesAdded: lockAdds });
-  if (lockMove !== '') {
-    ruled('O1d — criterion 15 arm 2 is RED at HEAD and stays red',
-      'NOT the breaker’s and NOT the gate’s: `cairn/package-lock.json` genuinely moved on review/i30-picker (+45 lines: d3-geo, d3-array, internmap, @types/d3-geo), pulled in by two Codex `apps/web` modules. Criterion 15 arm 2 forbids ANY movement of this file, and it is the repository’s only lockfile. Jacob’s call on whether d3-geo enters the tree; the architect’s if the answer is yes and arm 2 must name it.',
-      'the lockfile returns to its branch-point bytes, OR Jacob accepts d3-geo and arm 2 is re-scoped to say so. Until then this row is the machine-checkable form of the manager’s "it gates the MERGE TO master".');
+  // ARM 2 — REWRITTEN at ROADMAP revision 84 (QA R75-3; Jacob ruled, on a measured review, that
+  // `d3-geo` stays). The row that stood here asserted `git diff --numstat … -- package-lock.json`
+  // is empty — a sentence criterion 15 NO LONGER CONTAINS. Criterion rule 14: a criterion checks
+  // the relationship it names, never a token standing in for the relationship. Arm 2's headline is
+  // now *"`cairn/package-lock.json` moves only inside `apps/web`'s own dependency closure — and the
+  // closure, not the file, is what the ceiling is over"*, and it has three sub-arms, every one of
+  // them computed from the lockfile's OWN `packages` graph, quoting no package list, against
+  // COMMITTED bytes (merge base → HEAD) and never against the working tree.
+  const lockAt = (rev) => JSON.parse(execFileSync('git', ['show', `${rev}:cairn/package-lock.json`],
+    { cwd: REPO, encoding: 'utf8', maxBuffer: 1 << 28 }));
+  const manifestAt = (rev) => JSON.parse(execFileSync('git', ['show', `${rev}:cairn/package.json`],
+    { cwd: REPO, encoding: 'utf8', maxBuffer: 1 << 24 }));
+  /**
+   * The transitive closure of ONE workspace, resolved through the lockfile's own `packages` map by
+   * **npm's hoisting rule**: from directory `d`, `name` resolves at `d/node_modules/name`, else at
+   * the nearest ancestor directory that carries it. The start node contributes `dependencies` +
+   * `devDependencies` (what npm installs for a workspace); every node below it contributes
+   * `dependencies`, and — under `conv` — `optionalDependencies` and `peerDependencies`, which npm 7+
+   * also installs. `conv.skipOptional` drops entries the lockfile itself marks `optional: true`:
+   * the platform-specific binaries that are in the graph but not on any one machine. A workspace
+   * link is followed to its linked path, so `@cairn/client` contributes `@cairn/core`.
+   * Returns the entry KEYS, which is what (2b) is over — not names, because a nested
+   * `a/node_modules/b` is a different resolution from a hoisted `node_modules/b`.
+   */
+  const closureOf = (lock, start, conv = {}) => {
+    const pkgs = lock.packages ?? {};
+    const lookup = (dir, name) => {
+      let d = dir;
+      for (;;) {
+        const cand = d === '' ? `node_modules/${name}` : `${d}/node_modules/${name}`;
+        if (Object.hasOwn(pkgs, cand)) return cand;
+        if (d === '') return null;
+        const i = d.lastIndexOf('/');
+        d = i === -1 ? '' : d.slice(0, i);
+      }
+    };
+    const seed = pkgs[start];
+    if (!seed) throw new Error(`no lockfile entry for workspace ${JSON.stringify(start)}`);
+    const out = new Set();
+    const unresolved = [];
+    const q = [...Object.keys(seed.dependencies ?? {}), ...Object.keys(seed.devDependencies ?? {})]
+      .map((n) => [start, n]);
+    while (q.length) {
+      const [from, name] = q.shift();
+      const key = lookup(from, name);
+      if (!key) { unresolved.push(`${from === '' ? '<root>' : from} -> ${name}`); continue; }
+      if (out.has(key)) continue;
+      const entry = pkgs[key];
+      if (conv.skipOptional && entry.optional) continue;
+      out.add(key);
+      const linked = entry.link && pkgs[entry.resolved] ? pkgs[entry.resolved] : entry;
+      const dir = entry.link && pkgs[entry.resolved] ? entry.resolved : key;
+      for (const n of Object.keys(linked.dependencies ?? {})) q.push([dir, n]);
+      if (conv.optional) for (const n of Object.keys(linked.optionalDependencies ?? {})) q.push([dir, n]);
+      if (conv.peer) for (const n of Object.keys(linked.peerDependencies ?? {})) q.push([dir, n]);
+    }
+    return { keys: [...out].sort(), unresolved };
+  };
+  /** Every installed-package entry in a lockfile, at any depth. */
+  const entryKeys = (lock) => Object.keys(lock.packages ?? {}).filter((k) => /(^|\/)node_modules\//.test(k)).sort();
+  /** `name@version|integrity` for an entry — the identity a set of NAMES cannot see move. */
+  const identOf = (lock, k) => {
+    const e = lock.packages[k];
+    return `${k}@${e.version ?? '?'}|${e.integrity ?? e.resolved ?? (e.link ? `link:${e.resolved}` : '?')}`;
+  };
+  /**
+   * The primary resolution convention. `{optional, peer, skipOptional}` reproduces the architect's
+   * own revision-84 figures (`apps/web` 72 → 76) and is npm's real single-platform install closure.
+   * `O1d6` re-runs (2b)'s membership test under two OTHER conventions so the verdict is shown to be
+   * invariant to the convention rather than a property of this one.
+   */
+  const CONV = { optional: true, peer: true, skipOptional: true };
+  const CONVS = {
+    'deps+optional+peer, minus platform-optional (primary)': CONV,
+    'deps only': {},
+    'deps+optional+peer, platform-optional included': { optional: true, peer: true },
+  };
+
+  const base = execFileSync('git', ['merge-base', 'HEAD', 'master'], { cwd: CAIRN, encoding: 'utf8' }).trim();
+  note('O1c1 the branch point criterion 15 arm 2 measures from (merge-base HEAD master)', base.slice(0, 7));
+  const baseLock = lockAt(base);
+  const headLock = lockAt('HEAD');
+  // The lockfile's own root entry is what (2a) resolves from; this row is what stops that being a
+  // second source of truth from `cairn/package.json`, which is the file the criterion names.
+  const rootDecl = (lock) => [...Object.keys(lock.packages[''].dependencies ?? {}),
+    ...Object.keys(lock.packages[''].devDependencies ?? {})].sort();
+  const manDecl = (m) => [...Object.keys(m.dependencies ?? {}), ...Object.keys(m.devDependencies ?? {})].sort();
+  eq('O1d0 the lockfile’s root entry declares exactly what cairn/package.json declares, at BOTH ends',
+    [rootDecl(baseLock), rootDecl(headLock)], [manDecl(manifestAt(base)), manDecl(manifestAt('HEAD'))]);
+
+  // (2a) THE ROOT WORKSPACE'S CLOSURE DOES NOT MOVE — a ZERO-growth ceiling, not a bounded one.
+  const rootBase = closureOf(baseLock, '', CONV);
+  const rootHead = closureOf(headLock, '', CONV);
+  eq('O1d ARM 2 (2a): the root workspace’s transitive closure is IDENTICAL at the branch point and at HEAD',
+    rootHead.keys, rootBase.keys);
+  note('O1d1 …and what that closure is, re-derived at both ends (history against a commit; no criterion depends on it)',
+    { n: rootHead.keys.length, packages: rootHead.keys.map((k) => k.replace('node_modules/', '')) });
+  // (2a) reads a set of NAMES. A `typescript` 5.9.3 → 6.0.0 bump is movement the headline covers and
+  // a name-set cannot see, so the identity is asserted beside it. Green here, and not vacuously:
+  // O1d7 shows the pair firing.
+  eq('O1d2 …and every package IN that closure has the same version and integrity at both ends',
+    rootHead.keys.map((k) => identOf(headLock, k)), rootBase.keys.map((k) => identOf(baseLock, k)));
+  // A-58's subject is "the bare-Node half", which is FOUR workspaces, not one: the root plus
+  // packages/{core,client,tokens}, each with a package.json of its own that (2a) as written does not
+  // read. A dependency declared in `packages/core/package.json` and never imported is invisible to
+  // arm 1 (which reads cairn/package.json) and to arm 3 (which greps imports). This row is that hole.
+  const BARE = ['packages/core', 'packages/client', 'packages/tokens'];
+  const bareMoved = BARE.filter((w) =>
+    JSON.stringify(closureOf(headLock, w, CONV).keys) !== JSON.stringify(closureOf(baseLock, w, CONV).keys));
+  eq('O1d3 …and so does each OTHER bare-Node workspace’s closure — A-58’s subject is four package.jsons, not one',
+    bareMoved, []);
+  note('O1d3a the bare-Node workspaces’ closures at HEAD',
+    Object.fromEntries(BARE.map((w) => [w, closureOf(headLock, w, CONV).keys.map((k) => k.replace('node_modules/', ''))])));
+
+  // (2b) EVERY ENTRY ADDED IS INSIDE apps/web's CLOSURE AND OUTSIDE THE ROOT'S. No removal either.
+  const webBase = closureOf(baseLock, 'apps/web', CONV);
+  const webHead = closureOf(headLock, 'apps/web', CONV);
+  const kBase = new Set(entryKeys(baseLock));
+  const kHead = new Set(entryKeys(headLock));
+  const added = [...kHead].filter((k) => !kBase.has(k)).sort();
+  const removed = [...kBase].filter((k) => !kHead.has(k)).sort();
+  const inWeb = new Set(webHead.keys);
+  const inRoot = new Set(rootHead.keys);
+  const misplaced = added
+    .filter((k) => !(inWeb.has(k) && !inRoot.has(k)))
+    .map((k) => `${k} inWebClosure=${inWeb.has(k)} inRootClosure=${inRoot.has(k)}`);
+  eq('O1d4 ARM 2 (2b): every node_modules/ entry ADDED between the branch point and HEAD is inside apps/web’s closure and outside the root’s',
+    misplaced, []);
+  eq('O1d5 …and nothing was REMOVED — a package leaving the lockfile changes what the bare-Node half resolves and is ruled the same way',
+    removed, []);
+  note('O1d4a what actually moved, re-derived from the two graphs',
+    { added: added.map((k) => k.replace('node_modules/', '')), removed, changedInPlace: [...kHead].filter((k) => kBase.has(k) && JSON.stringify(baseLock.packages[k]) !== JSON.stringify(headLock.packages[k])) });
+  // (2b)'s verdict must not be an artefact of how a closure is walked.
+  const convVerdicts = Object.fromEntries(Object.entries(CONVS).map(([label, c]) => {
+    const w = new Set(closureOf(headLock, 'apps/web', c).keys);
+    const r = new Set(closureOf(headLock, '', c).keys);
+    return [label, { web: `${closureOf(baseLock, 'apps/web', c).keys.length} -> ${w.size}`, bad: added.filter((k) => !(w.has(k) && !r.has(k))) }];
+  }));
+  eq('O1d6 …and (2b)’s verdict is the same under all three resolution conventions — it is a property of the graph, not of the walk',
+    Object.values(convVerdicts).flatMap((v) => v.bad), []);
+  note('O1d6a apps/web’s closure size under each convention (the +4 is invariant; the absolute is not)',
+    Object.fromEntries(Object.entries(convVerdicts).map(([k, v]) => [k, v.web])));
+  note('O1d6b dependency edges the lockfile names but does not install (unresolved peers — a fact, asserted on by nothing)',
+    webHead.unresolved.length);
+
+  // (2c) apps/web's DECLARED list is exactly what test/views.test.ts pins. (2b) bounds the lockfile
+  // by a list; (2c) is what stops the list moving without a ruling. Neither ships without the other.
+  const webPkg = JSON.parse(readFileSync(resolve(CAIRN, 'apps/web/package.json'), 'utf8'));
+  const webDeps = Object.keys(webPkg.dependencies ?? {}).sort();
+  const viewsSrc = stripComments(readFileSync(resolve(CAIRN, 'test/views.test.ts'), 'utf8'));
+  const pinM = /Object\.keys\(pkg\.dependencies \?\? \{\}\)\.sort\(\),\s*\[([^\]]*)\]/.exec(viewsSrc);
+  const pinned = pinM ? [...pinM[1].matchAll(/'([^']+)'|"([^"]+)"/g)].map((x) => x[1] ?? x[2]).sort() : null;
+  ok('O1d7 ARM 2 (2c): test/views.test.ts still carries the dependency-list assertion the admission rule makes the act of admission', pinned !== null);
+  eq('O1d8 …and apps/web’s declared dependency list is exactly what it pins', webDeps, pinned ?? []);
+  // Condition 4's other half: the same commit edits boundaries.test.ts's `allowBare`. A runtime
+  // dependency that is declared and pinned but not allowed to be imported is an admission half made.
+  const bnd = stripComments(readFileSync(resolve(CAIRN, 'test/boundaries.test.ts'), 'utf8'));
+  const webUnit = /name:\s*'apps\/web'[\s\S]*?allowBare:\s*\[([^\]]*)\]/.exec(bnd);
+  const allowBare = webUnit ? [...webUnit[1].matchAll(/'([^']+)'/g)].map((x) => x[1]) : [];
+  eq('O1d9 …and every one of them is in test/boundaries.test.ts’s apps/web allowBare (admission condition 4, both halves)',
+    webDeps.filter((d) => !allowBare.includes(d)), []);
+
+  // ---- the two injected faults criterion 15 arm 2 REQUIRES (criterion rule 9) ----------------
+  // BOTH ARE IN MEMORY, on structuredClone()d copies. Nothing on disk is touched and nothing is
+  // written: R74-1 and R74-4 are this board's own findings about probes that mutated the checkout
+  // they were measuring, and this branch is Jacob's.
+  {
+    const f = structuredClone(headLock);
+    f.packages[''].devDependencies = { ...f.packages[''].devDependencies, 'left-pad': '^1.3.0' };
+    f.packages['node_modules/left-pad'] = { version: '1.3.0', resolved: 'https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz', integrity: 'sha512-INJECTED-FAULT', dev: true };
+    const fRoot = closureOf(f, '', CONV).keys;
+    const fWeb = new Set(closureOf(f, 'apps/web', CONV).keys);
+    const fRootSet = new Set(fRoot);
+    const grew = fRoot.filter((k) => !rootBase.keys.includes(k));
+    ok('O1dF1 FAULT A fires: an entry reachable ONLY from the root workspace reddens (2a) and NAMES it',
+      JSON.stringify(fRoot) !== JSON.stringify(rootBase.keys)
+      && grew.length === 1 && grew[0] === 'node_modules/left-pad', { rootClosureGrewBy: grew });
+    note('O1dF1a …what (2a) named', { was: rootBase.keys.length, now: fRoot.length, added: grew });
+    const fAdded = Object.keys(f.packages).filter((k) => /(^|\/)node_modules\//.test(k)).filter((k) => !kBase.has(k)).sort();
+    const fBad = fAdded.filter((k) => !(fWeb.has(k) && !fRootSet.has(k)))
+      .map((k) => `${k} inWebClosure=${fWeb.has(k)} inRootClosure=${fRootSet.has(k)}`);
+    ok('O1dF2 FAULT A fires on (2b) as well, naming it and which side of each closure it is on',
+      fBad.length === 1 && fBad[0] === 'node_modules/left-pad inWebClosure=false inRootClosure=true', { rejected: fBad });
+    note('O1dF2a …what (2b) named', fBad);
+    // …and the version-bump fault O1d2 exists for, which (2a)'s name-set cannot see.
+    const g = structuredClone(headLock);
+    g.packages['node_modules/typescript'] = { ...g.packages['node_modules/typescript'], version: '6.0.0', integrity: 'sha512-INJECTED-FAULT' };
+    const gIdent = closureOf(g, '', CONV).keys.map((k) => identOf(g, k));
+    ok('O1dF3 FAULT A′ fires: a VERSION bump inside the unchanged root closure reddens O1d2, which the name-set of (2a) cannot see',
+      JSON.stringify(gIdent) !== JSON.stringify(rootBase.keys.map((k) => identOf(baseLock, k)))
+      && JSON.stringify(closureOf(g, '', CONV).keys) === JSON.stringify(rootBase.keys),
+      { nameSetVerdict: 'identical', identityVerdict: gIdent.find((x) => x.includes('typescript')) });
+    note('O1dF3a …what O1d2 named, and what (2a) alone would have said',
+      { nameSet: 'identical — silent', identity: gIdent.find((x) => x.includes('typescript')) });
   }
-  const dirty = execFileSync('bash', ['-c', `cd ${CAIRN} && git status --porcelain -- package.json package-lock.json | wc -l`], { encoding: 'utf8' }).trim();
-  note('O1e the working-tree diff, recorded and asserted on by NOTHING — on a clean tree it measures nothing (criterion rule 9)', dirty);
+  {
+    const fWebDeps = [...webDeps, 'lodash'].sort();
+    const extra = fWebDeps.filter((d) => !(pinned ?? []).includes(d));
+    ok('O1dF4 FAULT B fires: a fifth key in apps/web’s `dependencies` reddens (2c) and NAMES it',
+      JSON.stringify(fWebDeps) !== JSON.stringify(pinned) && JSON.stringify(extra) === JSON.stringify(['lodash']),
+      { declaredButNotPinned: extra });
+    note('O1dF4a …what (2c) named', { declared: fWebDeps, pinned, declaredButNotPinned: extra });
+  }
+  const dirty = execFileSync('bash', ['-c', `cd ${CAIRN} && git status --porcelain -- package.json package-lock.json apps/web/package.json | wc -l`], { encoding: 'utf8' }).trim();
+  note('O1e the working-tree diff, recorded and asserted on by NOTHING — on a clean tree it measures nothing (criterion rule 9); it is also this section’s own no-mutation receipt', dirty);
+  note('O1e1 the committed lockfile numstat over the phase, recorded as a FACT and asserted on by nothing — arm 2 is over the closure, not the file',
+    execFileSync('bash', ['-c', `cd ${CAIRN} && git diff --numstat ${base} HEAD -- package-lock.json || true`], { encoding: 'utf8' }).trim() || '(no movement)');
   // ARM 3: the arm that holds when the other two are quiet.
   const coreImports = execFileSync('bash', ['-c',
     `cd ${CAIRN} && grep -rhn "^import .* from '" packages/core/src packages/client/src --include=*.ts | grep -v "from '\\.\\|from 'node:" | sort -u || true`], { encoding: 'utf8' }).trim();
